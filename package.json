@@ -2,6 +2,12 @@
   "name": "pool-forge",
   "version": "0.1.0",
   "private": true,
+  "description": "Pool design, estimating, and proposal platform",
+  "author": {
+    "name": "Pool Forge",
+    "email": "billy@proedu.me"
+  },
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -17,7 +23,10 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "docs:commands": "tsx scripts/gen-commands.ts"
+    "docs:commands": "tsx scripts/gen-commands.ts",
+    "electron:dev": "concurrently -k -n web,electron -c blue,green \"PORT=3001 next dev\" \"wait-on http://localhost:3001 && cross-env POOL_FORGE_DEV_URL=http://localhost:3001 electron electron/main.cjs\"",
+    "electron:build": "cross-env NEXT_OUTPUT=standalone next build && electron-builder --mac --win --publish never",
+    "electron:pack": "cross-env NEXT_OUTPUT=standalone next build && electron-builder --dir"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -69,6 +78,10 @@
     "@vitejs/plugin-react": "^4.3.3",
     "@vitest/ui": "^2.1.5",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1",
     "eslint": "^9.14.0",
     "eslint-config-next": "^15.0.3",
     "jsdom": "^25.0.1",
@@ -77,7 +90,8 @@
     "tailwindcss": "^3.4.15",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.5"
+    "vitest": "^2.1.5",
+    "wait-on": "^9.0.5"
   },
   "packageManager": "pnpm@10.7.1"
 }

@@ -48,6 +48,21 @@ Demo credentials (after `pnpm db:seed`):
 | `pnpm db:seed` | Run `prisma/seed.ts` |
 | `pnpm db:generate` | Regenerate the Prisma client |
 | `pnpm db:studio` | Open Prisma Studio |
+| `pnpm electron:dev` | Run the app as a desktop window (boots Next dev + Electron) |
+| `pnpm electron:pack` | Package the desktop app into `dist-electron/` (no installer) |
+| `pnpm electron:build` | Build signed `.dmg` (macOS) and `.exe` (Windows) installers |
+
+## Desktop app
+
+`pnpm electron:dev` opens the app in a native window pointed at the local
+Next.js dev server. The Electron main process is `electron/main.cjs`;
+electron-builder config lives in `electron-builder.yml`.
+
+For packaged builds, `pnpm electron:pack` produces an unsigned bundle in
+`dist-electron/`. Postgres is still required at runtime — distribute the
+desktop app to teams who already run the Docker stack, or swap to the
+embedded SQLite story before shipping to end users. Code-signing
+(macOS notarization, Windows EV cert) lives outside the dev-loop scripts.
 
 ## Architecture
 

@@ -1,0 +1,35 @@
+appId: com.poolforge.app
+productName: Pool Forge
+asar: true
+directories:
+  output: dist-electron
+  buildResources: electron/build
+files:
+  - electron/**/*
+  - package.json
+  - "!**/.next/cache/**"
+extraResources:
+  - from: .next/standalone
+    to: standalone
+  - from: .next/static
+    to: standalone/.next/static
+  - from: public
+    to: standalone/public
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  artifactName: "${productName}-${version}-${arch}.${ext}"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: "${productName}-Setup-${version}.${ext}"
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+publish: null

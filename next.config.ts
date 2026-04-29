@@ -1,7 +1,10 @@
 import type { NextConfig } from 'next'
 
+const isStandalone = process.env.NEXT_OUTPUT === 'standalone'
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  ...(isStandalone ? { output: 'standalone' as const } : {}),
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
