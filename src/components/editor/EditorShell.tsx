@@ -10,12 +10,16 @@ import { TopToolbar } from './TopToolbar'
 
 export interface EditorShellProps {
   projectId?: string
+  projectName?: string
 }
 
-export function EditorShell({ projectId: _projectId }: EditorShellProps = {}) {
+export function EditorShell({
+  projectId: _projectId,
+  projectName,
+}: EditorShellProps = {}) {
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-background">
-      <TopToolbar />
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
+      <TopToolbar {...(projectName !== undefined ? { projectName } : {})} />
       <div className="flex flex-1 overflow-hidden">
         <LeftToolbar />
         <StencilPanel />
