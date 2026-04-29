@@ -1,4 +1,5 @@
 'use client'
+import { ShapeKind } from '@prisma/client'
 
 import {
   MousePointer2,
@@ -53,7 +54,7 @@ export function LeftToolbar() {
 
   function quickAddPool() {
     setActiveTool('tool.select')
-    const id = addShape('rectangle-pool', 100, 100)
+    const id = addShape(ShapeKind.RECTANGLE_POOL, 100, 100)
     select(id)
   }
 

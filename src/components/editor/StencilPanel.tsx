@@ -1,67 +1,56 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { toast } from 'sonner'
+import { StencilCategory, ShapeKind } from '@prisma/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { stencilsByCategory, type Stencil } from '@/modules/editor/stencils'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
-import type { ShapeKind } from '@/modules/editor/state/shapes'
 
-const CATEGORY_LABEL: Record<Stencil['category'], string> = {
-  'pool-shape': 'Pool shapes',
-  'interior-feature': 'Interior features',
-  'deck-house': 'Deck & house',
-  'construction-symbol': 'Construction symbols',
-  'water-outdoor': 'Water & outdoor',
+const CATEGORY_LABEL: Record<StencilCategory, string> = {
+  [StencilCategory.POOL_SHAPE]: 'Pool shapes',
+  [StencilCategory.INTERIOR_FEATURE]: 'Interior features',
+  [StencilCategory.DECK_HOUSE]: 'Deck & house',
+  [StencilCategory.CONSTRUCTION_SYMBOL]: 'Construction symbols',
+  [StencilCategory.WATER_OUTDOOR]: 'Water & outdoor',
 }
 
-// Stencils that have a real ShapeKind backing them. Everything else
-// shows a "coming soon" toast.
-const STENCIL_TO_KIND: Record<string, ShapeKind> = {
-  'pool.rectangle': 'rectangle-pool',
-  'deck.concrete': 'concrete-deck',
-  'deck.paver': 'paver-deck',
-  'deck.grass': 'grass-area',
-  'feature.sun-shelf': 'sun-shelf',
-  'feature.bench': 'bench',
-  'pool.spa': 'spa',
-  'pool-spa.rectangle': 'spa',
-}
+const CATEGORY_ORDER: StencilCategory[] = [
+  StencilCategory.POOL_SHAPE,
+  StencilCategory.INTERIOR_FEATURE,
+  StencilCategory.DECK_HOUSE,
+  StencilCategory.CONSTRUCTION_SYMBOL,
+  StencilCategory.WATER_OUTDOOR,
+]
 
 export function StencilPanel() {
   const [query, setQuery] = useState('')
   const addShape = useShapesStore((s) => s.addShape)
+  const addStencil = useShapesStore((s) => s.addStencil)
   const select = useSelectionStore((s) => s.select)
 
   const groups = stencilsByCategory()
-  const order: Stencil['category'][] = [
-    'pool-shape',
-    'interior-feature',
-    'deck-house',
-    'construction-symbol',
-    'water-outdoor',
-  ]
 
   const filtered = useMemo(() => {
     if (!query.trim()) return groups
     const q = query.toLowerCase()
-    const out = {} as Record<Stencil['category'], Stencil[]>
-    for (const cat of order) {
-      out[cat] = groups[cat].filter((s) => s.name.toLowerCase().includes(q))
+    const out = {} as Record<StencilCategory, Stencil[]>
+    for (const cat of CATEGORY_ORDER) {
+      out[cat] = (groups[cat] ?? []).filter((s) => s.name.toLowerCase().includes(q))
     }
     return out
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, groups])
 
   function handleClick(stencil: Stencil) {
-    const kind = STENCIL_TO_KIND[stencil.id]
-    if (!kind) {
-      toast(`${stencil.name} — coming soon`)
-      return
+    // Stencils with a dedicated ShapeKind go through addShape; the rest
+    // materialize as the generic STENCIL kind via addStencil.
+    let id: string
+    if (stencil.shapeKind === ShapeKind.STENCIL) {
+      id = addStencil(stencil.id, 200, 200)
+    } else {
+      id = addShape(stencil.shapeKind, 200, 200, { stencilId: stencil.id })
     }
-    const id = addShape(kind, 200, 200)
     select(id)
   }
 
@@ -79,7 +68,7 @@ export function StencilPanel() {
         />
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-2">
-        {order.map((category) => {
+        {CATEGORY_ORDER.map((category) => {
           const items = filtered[category] ?? []
           if (items.length === 0) return null
           return (
@@ -90,20 +79,17 @@ export function StencilPanel() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-1 p-1 pt-0">
-                {items.map((stencil) => {
-                  const wired = Boolean(STENCIL_TO_KIND[stencil.id])
-                  return (
-                    <button
-                      key={stencil.id}
-                      type="button"
-                      onClick={() => handleClick(stencil)}
-                      className={`flex h-14 flex-col items-center justify-center rounded border bg-card px-1 text-[10px] leading-tight text-foreground transition-colors hover:bg-accent hover:text-accent-foreground ${wired ? 'border-input' : 'border-dashed border-muted-foreground/30 opacity-70'}`}
-                      title={wired ? `Click to add: ${stencil.name}` : `${stencil.name} (coming soon)`}
-                    >
-                      <span className="line-clamp-2 text-center">{stencil.name}</span>
-                    </button>
-                  )
-                })}
+                {items.map((stencil) => (
+                  <button
+                    key={stencil.id}
+                    type="button"
+                    onClick={() => handleClick(stencil)}
+                    className="flex h-14 flex-col items-center justify-center rounded border border-input bg-card px-1 text-[10px] leading-tight text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    title={`Click to add: ${stencil.name}`}
+                  >
+                    <span className="line-clamp-2 text-center">{stencil.name}</span>
+                  </button>
+                ))}
               </CardContent>
             </Card>
           )

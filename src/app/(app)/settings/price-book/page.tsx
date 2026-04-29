@@ -39,8 +39,6 @@ export default async function PriceBookSettingsPage() {
     upgradeOnly: it.upgradeOnly,
   }))
 
-  const knownCategories = Array.from(new Set(items.map((i) => i.category))).sort()
-
   const grouped = new Map<string, ExistingItem[]>()
   for (const item of items) {
     const list = grouped.get(item.category) ?? []
@@ -67,7 +65,7 @@ export default async function PriceBookSettingsPage() {
               Import XLSX
             </Link>
           </Button>
-          <AddItemButton knownCategories={knownCategories} />
+          <AddItemButton />
         </div>
       </div>
 
@@ -75,7 +73,7 @@ export default async function PriceBookSettingsPage() {
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
             <p className="mb-4">No items yet.</p>
-            <AddItemButton knownCategories={knownCategories} />
+            <AddItemButton />
           </CardContent>
         </Card>
       ) : (
@@ -105,11 +103,7 @@ export default async function PriceBookSettingsPage() {
                       </thead>
                       <tbody>
                         {list.map((item) => (
-                          <PriceBookItemRow
-                            key={item.id}
-                            item={item}
-                            knownCategories={knownCategories}
-                          />
+                          <PriceBookItemRow key={item.id} item={item} />
                         ))}
                       </tbody>
                     </table>

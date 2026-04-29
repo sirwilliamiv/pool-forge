@@ -1,4 +1,5 @@
 'use client'
+import { ShapeKind } from '@prisma/client'
 
 // Konva-using inner canvas. Loaded only on client (ssr:false) by CanvasStage.
 //
@@ -22,6 +23,7 @@ import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { getStencil } from '@/modules/editor/stencils'
 import { SurveyLayer } from './SurveyLayer'
 
 const PIXELS_PER_INCH = 2 // 25 ft pool == 600 px (before user zoom)
@@ -29,23 +31,27 @@ const STAGE_W = 1200
 const STAGE_H = 800
 const GRID_INCHES = 12 // grid line every foot
 
-function fillFor(kind: Shape['kind']): { fill: string; stroke: string; dash?: number[] } {
-  switch (kind) {
-    case 'rectangle-pool':
+function fillForShape(shape: Shape): { fill: string; stroke: string; dash?: number[] } {
+  if (shape.kind === ShapeKind.STENCIL) {
+    const def = getStencil(shape.stencilId)
+    if (def) return { fill: def.defaultFill, stroke: def.defaultStroke }
+  }
+  switch (shape.kind) {
+    case ShapeKind.RECTANGLE_POOL:
       return { fill: '#3b82f6', stroke: '#1e3a8a' }
-    case 'concrete-deck':
+    case ShapeKind.CONCRETE_DECK:
       return { fill: '#cbd5e1', stroke: '#64748b' }
-    case 'paver-deck':
+    case ShapeKind.PAVER_DECK:
       return { fill: '#a78bfa', stroke: '#5b21b6' }
-    case 'grass-area':
+    case ShapeKind.GRASS_AREA:
       return { fill: '#86efac', stroke: '#166534' }
-    case 'sun-shelf':
+    case ShapeKind.SUN_SHELF:
       return { fill: '#93c5fd', stroke: '#1d4ed8' }
-    case 'bench':
+    case ShapeKind.BENCH:
       return { fill: '#d6a772', stroke: '#7c4a1d' }
-    case 'spa':
+    case ShapeKind.SPA:
       return { fill: '#1d4ed8', stroke: '#172554', dash: [8, 6] }
-    default:
+    case ShapeKind.STENCIL:
       return { fill: '#e5e7eb', stroke: '#374151' }
   }
 }
@@ -154,7 +160,7 @@ export default function CanvasStageInner() {
 
         <Layer>
           {sortedShapes.map((shape) => {
-            const palette = fillFor(shape.kind)
+            const palette = fillForShape(shape)
             const isSelected = selectedIds.includes(shape.id)
             return (
               <Group

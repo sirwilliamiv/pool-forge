@@ -1,4 +1,5 @@
 import type { MeasurementSummary } from '@/modules/measurements/engine'
+import { ShapeKind } from '@prisma/client'
 import type { QuoteSummary } from '@/modules/pricing/engine'
 import type { Shape } from '@/modules/editor/state/shapes'
 import { DrawingSvg } from './DrawingSvg'
@@ -75,7 +76,7 @@ function v(s?: string | number | null | boolean): string {
 export function ConstructionDocument(props: ConstructionDocumentProps) {
   const { project, customer, shapes, measurements: m, quote } = props
   const pf = (project.poolFields ?? {}) as PoolFields
-  const hasSpa = shapes.some((s) => s.kind === 'spa')
+  const hasSpa = shapes.some((s) => s.kind === ShapeKind.SPA)
 
   return (
     <div className="construction-doc mx-auto max-w-[8in] bg-white p-6 text-xs text-black">

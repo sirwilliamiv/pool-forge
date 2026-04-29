@@ -2,13 +2,14 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { PriceCategory, UnitType } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 const ItemInputSchema = z.object({
-  category: z.string().min(1).max(64),
+  category: z.nativeEnum(PriceCategory),
   name: z.string().min(1).max(120),
-  unitType: z.enum(['sqft', 'lf', 'each', 'lump', 'hour']),
+  unitType: z.nativeEnum(UnitType),
   retailPrice: z.number().min(0),
   unitCost: z.number().min(0).optional(),
   customerVisible: z.boolean().default(true),

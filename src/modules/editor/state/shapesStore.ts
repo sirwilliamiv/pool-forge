@@ -1,15 +1,23 @@
 'use client'
 
 import { create } from 'zustand'
-import { SHAPE_DEFAULTS, type Shape, type ShapeKind } from './shapes'
+import { SHAPE_DEFAULTS, ShapeKind, type Shape } from './shapes'
 import { useHistoryStore } from './historyStore'
+import { getStencil } from '@/modules/editor/stencils'
 
 const TRANSACTION_AUTOCOMMIT_MS = 800
+
+interface AddShapeOptions {
+  stencilId?: string
+  width?: number
+  height?: number
+}
 
 interface ShapesState {
   shapes: Shape[]
   hydrate: (shapes: Shape[]) => void
-  addShape: (kind: ShapeKind, x: number, y: number) => string
+  addShape: (kind: ShapeKind, x: number, y: number, opts?: AddShapeOptions) => string
+  addStencil: (stencilId: string, x: number, y: number) => string
   updateShape: (id: string, patch: Partial<Shape>) => void
   removeShape: (id: string) => void
   removeShapes: (ids: string[]) => void
@@ -35,26 +43,48 @@ function rid(prefix = 'shape') {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-function defaultsFor(kind: ShapeKind, x: number, y: number, z: number): Shape {
-  const d = SHAPE_DEFAULTS[kind]
+function defaultsFor(
+  kind: ShapeKind,
+  x: number,
+  y: number,
+  z: number,
+  opts?: AddShapeOptions,
+): Shape {
+  let width = opts?.width ?? SHAPE_DEFAULTS[kind].width
+  let height = opts?.height ?? SHAPE_DEFAULTS[kind].height
+  if (kind === ShapeKind.STENCIL && opts?.stencilId) {
+    const s = getStencil(opts.stencilId)
+    if (s) {
+      const factor = s.defaultDimensions.unit === 'ft' ? 12 : 1
+      width = opts.width ?? s.defaultDimensions.width * factor
+      height = opts.height ?? s.defaultDimensions.height * factor
+    }
+  }
   const base = {
     id: rid(kind),
     x,
     y,
-    width: d.width,
-    height: d.height,
+    width,
+    height,
     rotation: 0,
     zIndex: z,
     locked: false,
     hidden: false,
   }
-  if (kind === 'rectangle-pool') {
-    return { ...base, kind: 'rectangle-pool', depthShallow: 3, depthDeep: 5 }
+  switch (kind) {
+    case ShapeKind.RECTANGLE_POOL:
+      return { ...base, kind: ShapeKind.RECTANGLE_POOL, depthShallow: 3, depthDeep: 5 }
+    case ShapeKind.CONCRETE_DECK:
+    case ShapeKind.PAVER_DECK:
+    case ShapeKind.GRASS_AREA:
+      return { ...base, kind }
+    case ShapeKind.SUN_SHELF:
+    case ShapeKind.BENCH:
+    case ShapeKind.SPA:
+      return { ...base, kind }
+    case ShapeKind.STENCIL:
+      return { ...base, kind: ShapeKind.STENCIL, stencilId: opts?.stencilId ?? 'unknown' }
   }
-  if (kind === 'concrete-deck' || kind === 'paver-deck' || kind === 'grass-area') {
-    return { ...base, kind }
-  }
-  return { ...base, kind }
 }
 
 export const useShapesStore = create<ShapesState>((set, get) => {
@@ -94,13 +124,17 @@ export const useShapesStore = create<ShapesState>((set, get) => {
       set({ shapes })
     },
 
-    addShape(kind, x, y) {
+    addShape(kind, x, y, opts) {
       commitOpenTx()
       pushHistory()
       const z = nextZ++
-      const shape = defaultsFor(kind, x, y, z)
+      const shape = defaultsFor(kind, x, y, z, opts)
       set({ shapes: [...get().shapes, shape] })
       return shape.id
+    },
+
+    addStencil(stencilId, x, y) {
+      return get().addShape(ShapeKind.STENCIL, x, y, { stencilId })
     },
 
     updateShape(id, patch) {

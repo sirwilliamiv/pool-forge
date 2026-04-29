@@ -1,9 +1,12 @@
 import { read, utils } from 'xlsx'
+import { PriceCategory, UnitType } from '@prisma/client'
+
+export { PriceCategory, UnitType }
 
 export interface ImportRow {
-  category: string
+  category: PriceCategory
   name: string
-  unitType: string
+  unitType: UnitType
   retailPrice: number
   unitCost?: number
   customerVisible?: boolean
@@ -19,8 +22,6 @@ export interface RowError {
   rowIndex: number
   message: string
 }
-
-const VALID_UNIT_TYPES = new Set(['sqft', 'lf', 'each', 'lump', 'hour'])
 
 export function parseSheet(buffer: ArrayBuffer): ImportPreview {
   const wb = read(buffer, { type: 'array' })
@@ -75,15 +76,37 @@ function coerceBool(raw: unknown): boolean | undefined {
   return undefined
 }
 
-function normalizeUnit(raw: unknown): string {
+// Map free-form unit strings from spreadsheets to a typed UnitType enum.
+function normalizeUnit(raw: unknown): UnitType {
   const v = String(raw ?? '').trim().toLowerCase()
-  if (!v) return 'each'
-  if (v.includes('sq')) return 'sqft'
-  if (v === 'lf' || v.includes('linear') || v === 'ft') return 'lf'
-  if (v.includes('each') || v === 'ea') return 'each'
-  if (v.includes('lump') || v === 'ls') return 'lump'
-  if (v.includes('hour') || v === 'hr') return 'hour'
-  return VALID_UNIT_TYPES.has(v) ? v : 'each'
+  if (!v) return UnitType.EACH
+  if (v.includes('sq')) return UnitType.SQFT
+  if (v === 'lf' || v.includes('linear') || v === 'ft') return UnitType.LF
+  if (v.includes('each') || v === 'ea') return UnitType.EACH
+  if (v.includes('lump') || v === 'ls') return UnitType.LUMP
+  if (v.includes('hour') || v === 'hr') return UnitType.HOUR
+  return UnitType.EACH
+}
+
+// Map free-form category strings to a typed PriceCategory enum.
+function normalizeCategory(raw: unknown): PriceCategory {
+  const v = String(raw ?? '').trim().toLowerCase()
+  if (!v) return PriceCategory.MISC
+  if (v.includes('pool')) return PriceCategory.POOL
+  if (v.includes('spa')) return PriceCategory.SPA
+  if (v.includes('deck')) return PriceCategory.DECK
+  if (v.includes('coping')) return PriceCategory.COPING
+  if (v.includes('equip')) return PriceCategory.EQUIPMENT
+  if (v.includes('light')) return PriceCategory.LIGHTING
+  if (v.includes('screen')) return PriceCategory.SCREEN
+  if (v.includes('bench')) return PriceCategory.BENCH
+  if (v.includes('drain')) return PriceCategory.DRAIN
+  if (v.includes('elec')) return PriceCategory.ELECTRICAL
+  if (v.includes('water')) return PriceCategory.WATER_FEATURE
+  if (v.includes('fence')) return PriceCategory.FENCE
+  if (v.includes('wall')) return PriceCategory.WALL
+  if (v.includes('lanai')) return PriceCategory.LANAI
+  return PriceCategory.MISC
 }
 
 export function rowsToItems(
@@ -121,9 +144,7 @@ export function rowsToItems(
       continue
     }
 
-    const category = mapping.category
-      ? String(row[mapping.category] ?? '').trim() || 'Uncategorized'
-      : 'Uncategorized'
+    const category = normalizeCategory(mapping.category ? row[mapping.category] : '')
     const unitType = normalizeUnit(mapping.unitType ? row[mapping.unitType] : '')
 
     const item: ImportRow = { category, name, unitType, retailPrice: retail }

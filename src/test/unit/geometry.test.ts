@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { ShapeKind, PriceCategory, UnitType } from '@prisma/client'
 import {
   rectangleAreaSqft,
   rectanglePerimeterLf,
@@ -39,7 +40,7 @@ describe('rectangle geometry', () => {
 describe('measurement engine', () => {
   const pool: Shape = {
     id: 'p1',
-    kind: 'rectangle-pool',
+    kind: ShapeKind.RECTANGLE_POOL,
     x: 0,
     y: 0,
     width: 25 * 12,
@@ -53,7 +54,7 @@ describe('measurement engine', () => {
   }
   const deck: Shape = {
     id: 'd1',
-    kind: 'concrete-deck',
+    kind: ShapeKind.CONCRETE_DECK,
     x: 0,
     y: 0,
     width: 35 * 12,
@@ -85,17 +86,17 @@ describe('measurement engine', () => {
 
 describe('pricing engine', () => {
   const items: PriceBookItemLite[] = [
-    { id: '1', category: 'Pool', name: 'Pool base', unitType: 'sqft', retailPrice: 50 },
-    { id: '2', category: 'Deck', name: 'Concrete deck', unitType: 'sqft', retailPrice: 12 },
-    { id: '3', category: 'Coping', name: 'Travertine coping', unitType: 'lf', retailPrice: 18 },
-    { id: '4', category: 'Equipment', name: 'Heater', unitType: 'each', retailPrice: 2400 },
+    { id: '1', category: PriceCategory.POOL, name: 'Pool base', unitType: UnitType.SQFT, retailPrice: 50 },
+    { id: '2', category: PriceCategory.DECK, name: 'Concrete deck', unitType: UnitType.SQFT, retailPrice: 12 },
+    { id: '3', category: PriceCategory.COPING, name: 'Travertine coping', unitType: UnitType.LF, retailPrice: 18 },
+    { id: '4', category: PriceCategory.EQUIPMENT, name: 'Heater', unitType: UnitType.EACH, retailPrice: 2400 },
   ]
 
   it('computes a realistic quote from measurements', () => {
     const measurements = computeMeasurements([
       {
         id: 'p',
-        kind: 'rectangle-pool',
+        kind: ShapeKind.RECTANGLE_POOL,
         x: 0,
         y: 0,
         width: 25 * 12,
@@ -109,7 +110,7 @@ describe('pricing engine', () => {
       },
       {
         id: 'd',
-        kind: 'concrete-deck',
+        kind: ShapeKind.CONCRETE_DECK,
         x: 0,
         y: 0,
         width: 35 * 12,
@@ -123,13 +124,13 @@ describe('pricing engine', () => {
     const q = computeQuote(items, measurements, { heaterSelected: true })
     // Pool 300×$50 + Deck 770×$12 + Coping 74×$18 + Heater $2400
     expect(q.subtotal).toBeCloseTo(300 * 50 + 770 * 12 + 74 * 18 + 2400, 1)
-    expect(q.lineItems.find((l) => l.category === 'Pool')?.quantity).toBe(300)
-    expect(q.lineItems.find((l) => l.category === 'Equipment')?.quantity).toBe(1)
+    expect(q.lineItems.find((l) => l.category === PriceCategory.POOL)?.quantity).toBe(300)
+    expect(q.lineItems.find((l) => l.category === PriceCategory.EQUIPMENT)?.quantity).toBe(1)
   })
 
   it('omits equipment when not selected', () => {
     const m = computeMeasurements([])
     const q = computeQuote(items, m, {})
-    expect(q.lineItems.find((l) => l.category === 'Equipment')).toBeUndefined()
+    expect(q.lineItems.find((l) => l.category === PriceCategory.EQUIPMENT)).toBeUndefined()
   })
 })

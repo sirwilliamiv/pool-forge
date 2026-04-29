@@ -9,12 +9,11 @@ import { PriceBookItemDialog, type ExistingItem } from './PriceBookItemDialog'
 
 export interface PriceBookItemRowProps {
   item: ExistingItem
-  knownCategories: string[]
 }
 
 const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
-export function PriceBookItemRow({ item, knownCategories }: PriceBookItemRowProps) {
+export function PriceBookItemRow({ item }: PriceBookItemRowProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -65,7 +64,6 @@ export function PriceBookItemRow({ item, knownCategories }: PriceBookItemRowProp
         open={editOpen}
         onOpenChange={setEditOpen}
         item={item}
-        knownCategories={knownCategories}
       />
     </>
   )

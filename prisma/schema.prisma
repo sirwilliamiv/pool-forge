@@ -18,32 +18,32 @@ enum OrgRole {
 }
 
 model User {
-  id           String               @id @default(cuid())
-  email        String               @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   passwordHash String
   name         String?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  memberships  OrganizationMember[]
-  exports      Export[]             @relation("ExportGeneratedBy")
-  auditLogs    CommandAuditLog[]
+  memberships OrganizationMember[]
+  exports     Export[]             @relation("ExportGeneratedBy")
+  auditLogs   CommandAuditLog[]
 }
 
 model Organization {
-  id        String               @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  members           OrganizationMember[]
-  customers         Customer[]
-  projects          Project[]
-  shapeTemplates    ShapeTemplate[]
-  materials         Material[]
-  priceBooks        PriceBook[]
-  appSettings       AppSetting[]
-  auditLogs         CommandAuditLog[]
+  members        OrganizationMember[]
+  customers      Customer[]
+  projects       Project[]
+  shapeTemplates ShapeTemplate[]
+  materials      Material[]
+  priceBooks     PriceBook[]
+  appSettings    AppSetting[]
+  auditLogs      CommandAuditLog[]
 }
 
 model OrganizationMember {
@@ -88,24 +88,24 @@ enum ProjectStatus {
 }
 
 model Project {
-  id                 String        @id @default(cuid())
-  orgId              String
-  customerId         String?
-  name               String
-  salesperson        String?
-  designer           String?
-  status             ProjectStatus @default(DRAFT)
-  proposalExpiresAt  DateTime?
-  internalNotes      String?
-  poolFields         Json          @default("{}")
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  id                String        @id @default(cuid())
+  orgId             String
+  customerId        String?
+  name              String
+  salesperson       String?
+  designer          String?
+  status            ProjectStatus @default(DRAFT)
+  proposalExpiresAt DateTime?
+  internalNotes     String?
+  poolFields        Json          @default("{}")
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
-  org       Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  customer  Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  drawing   Drawing?
-  quotes    Quote[]
-  exports   Export[]
+  org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer    Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  drawing     Drawing?
+  quotes      Quote[]
+  exports     Export[]
   validations ValidationResult[]
 
   @@index([orgId])
@@ -155,14 +155,14 @@ model DrawingObject {
 // ============================================================
 
 model ShapeTemplate {
-  id                   String  @id @default(cuid())
-  orgId                String?
-  category             String
-  name                 String
-  defaultGeometry      Json    @default("{}")
-  defaultStyle         Json    @default("{}")
-  measurementBehavior  Json    @default("{}")
-  pricingBehavior      Json    @default("{}")
+  id                  String  @id @default(cuid())
+  orgId               String?
+  category            String
+  name                String
+  defaultGeometry     Json    @default("{}")
+  defaultStyle        Json    @default("{}")
+  measurementBehavior Json    @default("{}")
+  pricingBehavior     Json    @default("{}")
 
   org Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
@@ -182,13 +182,13 @@ enum MaterialKind {
 }
 
 model Material {
-  id        String       @id @default(cuid())
-  orgId     String?
-  kind      MaterialKind
-  name      String
-  fillSpec  Json         @default("{}")
+  id       String       @id @default(cuid())
+  orgId    String?
+  kind     MaterialKind
+  name     String
+  fillSpec Json         @default("{}")
 
-  org            Organization?    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org            Organization?   @relation(fields: [orgId], references: [id], onDelete: Cascade)
   drawingObjects DrawingObject[]
 
   @@unique([orgId, name])
@@ -215,20 +215,46 @@ model PriceBook {
   @@index([orgId])
 }
 
+enum PriceCategory {
+  POOL
+  SPA
+  DECK
+  COPING
+  EQUIPMENT
+  LIGHTING
+  SCREEN
+  BENCH
+  DRAIN
+  ELECTRICAL
+  WATER_FEATURE
+  FENCE
+  WALL
+  LANAI
+  MISC
+}
+
+enum UnitType {
+  SQFT
+  LF
+  EACH
+  LUMP
+  HOUR
+}
+
 model PriceBookItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   priceBookId     String
-  category        String
+  category        PriceCategory
   name            String
-  unitType        String
-  unitCost        Decimal  @default(0) @db.Decimal(12, 4)
-  retailPrice     Decimal  @default(0) @db.Decimal(12, 4)
+  unitType        UnitType
+  unitCost        Decimal       @default(0) @db.Decimal(12, 4)
+  retailPrice     Decimal       @default(0) @db.Decimal(12, 4)
   formula         Json?
   taxBehavior     String?
-  customerVisible Boolean  @default(true)
-  internalOnly    Boolean  @default(false)
-  required        Boolean  @default(false)
-  upgradeOnly     Boolean  @default(false)
+  customerVisible Boolean       @default(true)
+  internalOnly    Boolean       @default(false)
+  required        Boolean       @default(false)
+  upgradeOnly     Boolean       @default(false)
 
   priceBook PriceBook @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
 
@@ -264,14 +290,14 @@ model Quote {
 }
 
 model QuoteLineItem {
-  id              String  @id @default(cuid())
-  quoteId         String
-  name            String
-  source          String
-  quantity        Decimal @default(0) @db.Decimal(12, 4)
-  unitPrice       Decimal @default(0) @db.Decimal(12, 4)
-  total           Decimal @default(0) @db.Decimal(12, 2)
-  validationStatus String @default("ok")
+  id               String  @id @default(cuid())
+  quoteId          String
+  name             String
+  source           String
+  quantity         Decimal @default(0) @db.Decimal(12, 4)
+  unitPrice        Decimal @default(0) @db.Decimal(12, 4)
+  total            Decimal @default(0) @db.Decimal(12, 2)
+  validationStatus String  @default("ok")
 
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
@@ -342,4 +368,103 @@ model AppSetting {
   org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@unique([orgId, key])
+}
+
+// ============================================================
+// Stencil catalog — the design library backing the editor.
+// ============================================================
+
+enum StencilCategory {
+  POOL_SHAPE
+  INTERIOR_FEATURE
+  DECK_HOUSE
+  CONSTRUCTION_SYMBOL
+  WATER_OUTDOOR
+}
+
+enum MeasurementBehavior {
+  POOL_AREA_PERIMETER_GALLONS
+  SPA_AREA_PERIMETER_GALLONS
+  BENCH_LINEAR_FEET
+  SHELF_AREA
+  FEATURE_COUNT
+  DECK_AREA
+  LANAI_AREA
+  COPING_LINEAR_FEET
+  DECO_DRAIN_LINEAR_FEET
+  SCREEN_AREA
+  FENCE_LINEAR_FEET
+  WALL_LINEAR_FEET
+  POINT_MARKER
+  DIMENSION_LINE
+  NONE
+}
+
+enum PricingBehavior {
+  POOL_BASE
+  SPA_BASE
+  FEATURE_FIXED
+  FEATURE_PER_UNIT
+  DECK_PER_SQFT
+  LANAI_PER_SQFT
+  COPING_PER_LF
+  DECO_DRAIN_PER_LF
+  SCREEN_PER_SQFT
+  FENCE_PER_LF
+  WALL_PER_LF
+  BENCH_PER_LF
+  NONE
+}
+
+enum ExportVisibility {
+  CUSTOMER
+  CONSTRUCTION
+  BOTH
+  NONE
+}
+
+enum EditableProperty {
+  WIDTH
+  HEIGHT
+  DEPTH_SHALLOW
+  DEPTH_DEEP
+  ROTATION
+  FILL
+  STROKE
+  MATERIAL
+  LABEL
+  COUNT
+  RADIUS
+  LENGTH
+  NOTE
+}
+
+enum ShapeKind {
+  RECTANGLE_POOL
+  CONCRETE_DECK
+  PAVER_DECK
+  GRASS_AREA
+  SUN_SHELF
+  BENCH
+  SPA
+  STENCIL
+}
+
+model StencilDef {
+  id                  String              @id
+  name                String
+  category            StencilCategory
+  defaultWidthIn      Int
+  defaultHeightIn     Int
+  defaultFill         String
+  defaultStroke       String
+  measurementBehavior MeasurementBehavior
+  pricingBehavior     PricingBehavior
+  exportVisibility    ExportVisibility
+  affectsQuote        Boolean             @default(false)
+  onConstructionSheet Boolean             @default(true)
+  editableProperties  EditableProperty[]
+  shapeKind           ShapeKind           @default(STENCIL)
+
+  @@index([category])
 }

@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useMemo } from 'react'
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { useShapesStore } from '@/modules/editor/state'
@@ -30,7 +30,6 @@ interface ValidationDockProps {
 
 export function ValidationDock({ project }: ValidationDockProps) {
   const shapes = useShapesStore((s) => s.shapes)
-  const [open, setOpen] = useState(false)
 
   const report = useMemo(() => {
     const measurements = computeMeasurements(shapes)
@@ -46,40 +45,39 @@ export function ValidationDock({ project }: ValidationDockProps) {
   const { items, counts } = report
   const pillTone =
     counts.error > 0
-      ? 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300'
+      ? 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300 hover:bg-red-500/20'
       : counts.warn > 0
-        ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+        ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20'
+        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20'
 
   return (
-    <div className="w-full">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          'h-8 w-full justify-between gap-2 px-3 text-xs font-medium',
-          pillTone,
-        )}
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn('h-8 gap-2 px-3 text-xs font-medium', pillTone)}
+        >
+          <span className="flex items-center gap-2">
+            <span className="font-semibold">{counts.error}</span> errors
+            <span aria-hidden>·</span>
+            <span className="font-semibold">{counts.warn}</span> warn
+            <span aria-hidden>·</span>
+            <span className="font-semibold">{counts.pass}</span> ok
+          </span>
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="max-h-[60vh] w-80 overflow-y-auto p-2 text-xs"
       >
-        <span className="flex items-center gap-2">
-          <span className="font-semibold">{counts.error}</span> errors
-          <span aria-hidden>·</span>
-          <span className="font-semibold">{counts.warn}</span> warn
-          <span aria-hidden>·</span>
-          <span className="font-semibold">{counts.pass}</span> ok
-        </span>
-        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-      </Button>
-
-      {open && (
-        <Card className="mt-1 max-h-[60vh] overflow-y-auto p-2 text-xs shadow-lg">
-          <ItemSection level="error" items={items} />
-          <ItemSection level="warn" items={items} />
-          <ItemSection level="pass" items={items} cap={PASS_CAP} />
-        </Card>
-      )}
-    </div>
+        <ItemSection level="error" items={items} />
+        <ItemSection level="warn" items={items} />
+        <ItemSection level="pass" items={items} cap={PASS_CAP} />
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -117,7 +115,7 @@ function ItemSection({ level, items, cap }: ItemSectionProps) {
       {hidden > 0 && (
         <div className="px-1 pt-1 text-[10px] text-muted-foreground">+{hidden} more</div>
       )}
-      {(level === 'error' || level === 'warn') && (cap ? false : matching.length > 0) && (
+      {(level === 'error' || level === 'warn') && matching.length > 0 && !cap && (
         <Separator className="mt-2" />
       )}
     </div>

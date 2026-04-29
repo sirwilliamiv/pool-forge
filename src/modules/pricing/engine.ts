@@ -1,10 +1,13 @@
+import { PriceCategory, UnitType } from '@prisma/client'
 import type { MeasurementSummary } from '@/modules/measurements/engine'
+
+export { PriceCategory, UnitType }
 
 export interface PriceBookItemLite {
   id: string
-  category: string
+  category: PriceCategory
   name: string
-  unitType: string
+  unitType: UnitType
   retailPrice: number
 }
 
@@ -18,7 +21,7 @@ export interface PricingSelections {
 export interface QuoteLine {
   itemId: string
   name: string
-  category: string
+  category: PriceCategory
   source: string
   quantity: number
   unitPrice: number
@@ -31,42 +34,54 @@ export interface QuoteSummary {
   total: number
 }
 
-// Map a price-book item to a quantity using its category + unit type
-// against the live measurement summary.
+interface QuantityResult {
+  quantity: number
+  source: string
+}
+
+// Map a price-book item to a quantity by dispatching on its category + unit
+// type enums. No string matching — every line goes through a typed branch.
 function quantityForItem(
   item: PriceBookItemLite,
   m: MeasurementSummary,
   sel: PricingSelections,
-): { quantity: number; source: string } {
-  const cat = item.category.toLowerCase()
-  const unit = item.unitType.toLowerCase()
-
-  if (cat.includes('pool') && unit === 'sqft') {
-    return { quantity: m.poolSurfaceArea, source: 'Pool surface area' }
+): QuantityResult {
+  switch (item.category) {
+    case PriceCategory.POOL:
+      return item.unitType === UnitType.SQFT
+        ? { quantity: m.poolSurfaceArea, source: 'Pool surface area' }
+        : { quantity: m.hasPool ? 1 : 0, source: 'Pool present' }
+    case PriceCategory.SPA:
+      return { quantity: m.featureCount > 0 ? 1 : 0, source: 'Spa present' }
+    case PriceCategory.DECK:
+      return { quantity: m.deckArea, source: 'Deck area' }
+    case PriceCategory.LANAI:
+      return { quantity: 0, source: 'Lanai area' }
+    case PriceCategory.COPING:
+      return { quantity: m.copingLinearFeet, source: 'Pool perimeter' }
+    case PriceCategory.DRAIN:
+      return { quantity: m.decoDrainLinearFeet, source: 'Deco drain length' }
+    case PriceCategory.BENCH:
+      return { quantity: m.benchLinearFeet, source: 'Bench length' }
+    case PriceCategory.EQUIPMENT:
+      return {
+        quantity: sel.heaterSelected || sel.saltSystemSelected ? 1 : 0,
+        source: 'Equipment selection',
+      }
+    case PriceCategory.LIGHTING:
+      return { quantity: sel.lightingQuantity ?? 0, source: 'Lighting count' }
+    case PriceCategory.SCREEN:
+      return {
+        quantity: sel.screenSelected ? m.deckArea : 0,
+        source: 'Screen over deck',
+      }
+    case PriceCategory.WATER_FEATURE:
+    case PriceCategory.FENCE:
+    case PriceCategory.WALL:
+    case PriceCategory.ELECTRICAL:
+    case PriceCategory.MISC:
+      return { quantity: 0, source: 'Manual' }
   }
-  if (cat.includes('deck') && unit === 'sqft') {
-    return { quantity: m.deckArea, source: 'Deck area' }
-  }
-  if (cat.includes('coping') && unit === 'lf') {
-    return { quantity: m.copingLinearFeet, source: 'Pool perimeter' }
-  }
-  if (cat.includes('drain') && unit === 'lf') {
-    return { quantity: m.decoDrainLinearFeet, source: 'Deco drain length' }
-  }
-  if (cat.includes('bench') && unit === 'lf') {
-    return { quantity: m.benchLinearFeet, source: 'Bench length' }
-  }
-  if (cat.includes('equipment') && unit === 'each') {
-    const qty = sel.heaterSelected || sel.saltSystemSelected ? 1 : 0
-    return { quantity: qty, source: 'Equipment selection' }
-  }
-  if (cat.includes('lighting') && unit === 'each') {
-    return { quantity: sel.lightingQuantity ?? 0, source: 'Lighting count' }
-  }
-  if (cat.includes('screen') && unit === 'sqft') {
-    return { quantity: sel.screenSelected ? m.deckArea : 0, source: 'Screen over deck' }
-  }
-  return { quantity: 0, source: 'Manual' }
 }
 
 export function computeQuote(

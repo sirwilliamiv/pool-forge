@@ -1,5 +1,14 @@
-import { PrismaClient, Prisma, OrgRole, ProjectStatus, MaterialKind } from '@prisma/client'
+import {
+  PrismaClient,
+  Prisma,
+  OrgRole,
+  ProjectStatus,
+  MaterialKind,
+  PriceCategory,
+  UnitType,
+} from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { STENCILS } from '../src/modules/editor/stencils'
 
 const db = new PrismaClient()
 
@@ -130,52 +139,52 @@ async function main() {
 
   const items: Array<{
     id: string
-    category: string
+    category: PriceCategory
     name: string
-    unitType: string
+    unitType: UnitType
     unitCost: string
     retailPrice: string
     required?: boolean
   }> = [
     {
       id: PRICE_ITEM_IDS.pool,
-      category: 'Pool',
+      category: PriceCategory.POOL,
       name: 'Pool Base — Wetted Area',
-      unitType: 'sqft',
+      unitType: UnitType.SQFT,
       unitCost: '32.00',
       retailPrice: '85.00',
       required: true,
     },
     {
       id: PRICE_ITEM_IDS.deck,
-      category: 'Deck',
+      category: PriceCategory.DECK,
       name: 'Concrete Deck',
-      unitType: 'sqft',
+      unitType: UnitType.SQFT,
       unitCost: '6.50',
       retailPrice: '14.00',
     },
     {
       id: PRICE_ITEM_IDS.coping,
-      category: 'Coping',
+      category: PriceCategory.COPING,
       name: 'Travertine Coping',
-      unitType: 'lf',
+      unitType: UnitType.LF,
       unitCost: '18.00',
       retailPrice: '42.00',
     },
     {
       id: PRICE_ITEM_IDS.equipment,
-      category: 'Equipment',
+      category: PriceCategory.EQUIPMENT,
       name: 'Variable Speed Pump',
-      unitType: 'each',
+      unitType: UnitType.EACH,
       unitCost: '850.00',
       retailPrice: '1750.00',
       required: true,
     },
     {
       id: PRICE_ITEM_IDS.lighting,
-      category: 'Lighting',
+      category: PriceCategory.LIGHTING,
       name: 'LED Pool Light',
-      unitType: 'each',
+      unitType: UnitType.EACH,
       unitCost: '180.00',
       retailPrice: '450.00',
     },
@@ -201,6 +210,51 @@ async function main() {
         unitCost: new Prisma.Decimal(item.unitCost),
         retailPrice: new Prisma.Decimal(item.retailPrice),
         required: item.required ?? false,
+      },
+    })
+  }
+
+  // Seed StencilDef from the TS catalog. The catalog is the source of truth;
+  // this mirrors it into the DB so server code can query/joined-fetch it.
+  for (const s of STENCILS) {
+    const widthIn = s.defaultDimensions.unit === 'ft'
+      ? s.defaultDimensions.width * 12
+      : s.defaultDimensions.width
+    const heightIn = s.defaultDimensions.unit === 'ft'
+      ? s.defaultDimensions.height * 12
+      : s.defaultDimensions.height
+    await db.stencilDef.upsert({
+      where: { id: s.id },
+      update: {
+        name: s.name,
+        category: s.category,
+        defaultWidthIn: widthIn,
+        defaultHeightIn: heightIn,
+        defaultFill: s.defaultFill,
+        defaultStroke: s.defaultStroke,
+        measurementBehavior: s.measurementBehavior,
+        pricingBehavior: s.pricingBehavior,
+        exportVisibility: s.exportVisibility,
+        affectsQuote: s.affectsQuote,
+        onConstructionSheet: s.onConstructionSheet,
+        editableProperties: s.editableProperties,
+        shapeKind: s.shapeKind,
+      },
+      create: {
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        defaultWidthIn: widthIn,
+        defaultHeightIn: heightIn,
+        defaultFill: s.defaultFill,
+        defaultStroke: s.defaultStroke,
+        measurementBehavior: s.measurementBehavior,
+        pricingBehavior: s.pricingBehavior,
+        exportVisibility: s.exportVisibility,
+        affectsQuote: s.affectsQuote,
+        onConstructionSheet: s.onConstructionSheet,
+        editableProperties: s.editableProperties,
+        shapeKind: s.shapeKind,
       },
     })
   }
@@ -279,6 +333,7 @@ async function main() {
     user: user.email,
     project: PROJECT_ID,
     priceBookItems: items.length,
+    stencilDefs: STENCILS.length,
   })
 }
 

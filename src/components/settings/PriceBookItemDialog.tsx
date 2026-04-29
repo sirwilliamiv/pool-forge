@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { PriceCategory, UnitType } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,13 +24,14 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { createItem, updateItem, type ItemInput } from '@/app/(app)/settings/price-book/actions'
 
-const UNIT_TYPES = ['sqft', 'lf', 'each', 'lump', 'hour'] as const
+const UNIT_TYPES: UnitType[] = [UnitType.SQFT, UnitType.LF, UnitType.EACH, UnitType.LUMP, UnitType.HOUR]
+const PRICE_CATEGORIES: PriceCategory[] = Object.values(PriceCategory) as PriceCategory[]
 
 export interface ExistingItem {
   id: string
-  category: string
+  category: PriceCategory
   name: string
-  unitType: string
+  unitType: UnitType
   retailPrice: number
   unitCost: number
   customerVisible: boolean
@@ -42,23 +44,19 @@ export interface PriceBookItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   item?: ExistingItem | undefined
-  knownCategories?: string[]
 }
 
 export function PriceBookItemDialog({
   open,
   onOpenChange,
   item,
-  knownCategories = [],
 }: PriceBookItemDialogProps) {
   const isEdit = Boolean(item)
   const [pending, startTransition] = useTransition()
 
-  const [category, setCategory] = useState(item?.category ?? '')
+  const [category, setCategory] = useState<PriceCategory>(item?.category ?? PriceCategory.MISC)
   const [name, setName] = useState(item?.name ?? '')
-  const [unitType, setUnitType] = useState<(typeof UNIT_TYPES)[number]>(
-    (item?.unitType as (typeof UNIT_TYPES)[number] | undefined) ?? 'each',
-  )
+  const [unitType, setUnitType] = useState<UnitType>(item?.unitType ?? UnitType.EACH)
   const [retailPrice, setRetailPrice] = useState(item?.retailPrice.toString() ?? '0')
   const [unitCost, setUnitCost] = useState(item?.unitCost.toString() ?? '')
   const [customerVisible, setCustomerVisible] = useState(item?.customerVisible ?? true)
@@ -67,9 +65,9 @@ export function PriceBookItemDialog({
   const [upgradeOnly, setUpgradeOnly] = useState(item?.upgradeOnly ?? false)
 
   function reset() {
-    setCategory('')
+    setCategory(PriceCategory.MISC)
     setName('')
-    setUnitType('each')
+    setUnitType(UnitType.EACH)
     setRetailPrice('0')
     setUnitCost('')
     setCustomerVisible(true)
@@ -97,7 +95,7 @@ export function PriceBookItemDialog({
     }
 
     const payload: ItemInput = {
-      category: category.trim() || 'Uncategorized',
+      category,
       name: name.trim(),
       unitType,
       retailPrice: retail,
@@ -128,8 +126,6 @@ export function PriceBookItemDialog({
     })
   }
 
-  const datalistId = 'pricebook-categories'
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
@@ -142,19 +138,19 @@ export function PriceBookItemDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="pb-category">Category</Label>
-              <Input
-                id="pb-category"
-                list={datalistId}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Pool, Deck, Equipment…"
-              />
-              <datalist id={datalistId}>
-                {knownCategories.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
+              <Label>Category</Label>
+              <Select value={category} onValueChange={(v) => setCategory(v as PriceCategory)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRICE_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="pb-name">Name</Label>
@@ -170,7 +166,7 @@ export function PriceBookItemDialog({
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>Unit type</Label>
-              <Select value={unitType} onValueChange={(v) => setUnitType(v as typeof unitType)}>
+              <Select value={unitType} onValueChange={(v) => setUnitType(v as UnitType)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
