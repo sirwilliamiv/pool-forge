@@ -1,0 +1,15 @@
+// Phase 0 stub schema. Track A replaces with the full 18-model schema.
+// Kept minimal so `prisma generate` produces a valid PrismaClient for typechecking.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Bootstrap {
+  id String @id @default(cuid())
+}

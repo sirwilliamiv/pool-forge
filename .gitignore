@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# next.js
+.next/
+out/
+build/
+dist/
+
+# production / coverage
+coverage/
+*.lcov
+
+# testing
+playwright-report/
+test-results/
+.playwright/
+
+# env
+.env
+.env.local
+.env.*.local
+.env.deploy
+
+# misc
+.DS_Store
+*.pem
+.vscode/
+.idea/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# typescript / next
+*.tsbuildinfo
+next-env.d.ts
+
+# prisma
+prisma/migrations/dev.db*
+
+# docker
+pgdata/
