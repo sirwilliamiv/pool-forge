@@ -6,6 +6,8 @@ export type { HistorySnapshot } from './historyStore'
 export { useShapesStore } from './shapesStore'
 export { useSaveStatusStore } from './saveStore'
 export type { SaveStatus } from './saveStore'
+export { useSurveyStore } from './surveyStore'
+export type { SurveyConfig } from './surveyStore'
 export {
   type Shape,
   type ShapeKind,

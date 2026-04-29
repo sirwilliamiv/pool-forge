@@ -6,6 +6,7 @@ import { PropertiesPanel } from './PropertiesPanel'
 import { QuotePanel } from './QuotePanel'
 import { StatusBar } from './StatusBar'
 import { StencilPanel } from './StencilPanel'
+import { SurveyPanel } from './SurveyPanel'
 import { TopToolbar } from './TopToolbar'
 
 export interface EditorShellProps {
@@ -28,6 +29,7 @@ export function EditorShell({
         <StencilPanel />
         <main className="relative flex flex-1 overflow-hidden">
           <CanvasStage />
+          <SurveyPanel />
         </main>
         <PropertiesPanel />
       </div>

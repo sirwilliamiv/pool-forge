@@ -22,6 +22,7 @@ import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { SurveyLayer } from './SurveyLayer'
 
 const PIXELS_PER_INCH = 2 // 25 ft pool == 600 px (before user zoom)
 const STAGE_W = 1200
@@ -146,6 +147,10 @@ export default function CanvasStageInner() {
         style={{ background: 'white' }}
       >
         <Layer listening={false}>{gridLines}</Layer>
+
+        <Layer>
+          <SurveyLayer />
+        </Layer>
 
         <Layer>
           {sortedShapes.map((shape) => {
