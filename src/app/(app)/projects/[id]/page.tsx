@@ -3,8 +3,8 @@ import { notFound, redirect } from 'next/navigation'
 import type { ProjectStatus, Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { Button } from '@/components/ui/button'
 import { ProjectForm } from '@/components/project/ProjectForm'
+import { ProjectActions } from '@/components/project/ProjectActions'
 
 type PoolFields = {
   poolType?: string
@@ -150,19 +150,17 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="container py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            <Link href="/dashboard" className="hover:underline">
-              ← Back to projects
-            </Link>
-          </p>
-        </div>
-        <Button asChild>
-          <Link href={`/projects/${project.id}/editor`}>Open editor</Link>
-        </Button>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
+        <p className="text-sm text-muted-foreground">
+          <Link href="/dashboard" className="hover:underline">
+            ← Back to projects
+          </Link>
+        </p>
       </div>
+      <ProjectActions
+        project={{ id: project.id, name: project.name, status: project.status }}
+      />
       <ProjectForm projectId={project.id} initial={initial} saveAction={saveProjectAction} />
     </div>
   )

@@ -33,6 +33,9 @@ export async function TopNav() {
             <Link href="/settings/price-book" className="text-muted-foreground hover:text-foreground">
               Price book
             </Link>
+            <Link href="/docs/tools" className="text-muted-foreground hover:text-foreground">
+              Docs
+            </Link>
           </nav>
         </div>
 

@@ -4,9 +4,10 @@ import type { ProjectStatus } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { StatusBadge } from '@/components/dashboard/StatusBadge'
 import { StatusFilter } from '@/components/dashboard/StatusFilter'
 import { NewProjectDialog } from '@/components/dashboard/NewProjectDialog'
+import { ProjectCardMenu } from '@/components/dashboard/ProjectCardMenu'
+import { StatusDropdown } from '@/components/dashboard/StatusDropdown'
 
 const VALID_STATUSES: ProjectStatus[] = [
   'DRAFT',
@@ -64,8 +65,13 @@ export default async function DashboardPage({
   const sp = await searchParams
   const status = parseStatus(sp.status)
 
-  const where: { orgId: string; status?: ProjectStatus } = { orgId }
-  if (status) where.status = status
+  // Default view hides ARCHIVED unless filter explicitly selects it.
+  const where: { orgId: string; status?: ProjectStatus | { not: ProjectStatus } } = { orgId }
+  if (status) {
+    where.status = status
+  } else {
+    where.status = { not: 'ARCHIVED' }
+  }
 
   const projects = await db.project.findMany({
     where,
@@ -90,25 +96,33 @@ export default async function DashboardPage({
 
       {projects.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center text-sm text-muted-foreground">
-          No projects yet. Create one to get started.
+          {status
+            ? 'No projects match this filter.'
+            : "No projects yet — click 'New project' to start."}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (
-            <Link key={p.id} href={`/projects/${p.id}`} className="block">
-              <Card className="h-full transition-shadow hover:shadow-md">
-                <CardHeader className="space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base">{p.name}</CardTitle>
-                    <StatusBadge status={p.status} />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-1 text-sm text-muted-foreground">
+            <Card key={p.id} className="h-full transition-shadow hover:shadow-md">
+              <CardHeader className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <Link
+                    href={`/projects/${p.id}`}
+                    className="flex-1 truncate hover:underline"
+                  >
+                    <CardTitle className="text-base truncate">{p.name}</CardTitle>
+                  </Link>
+                  <ProjectCardMenu projectId={p.id} projectName={p.name} />
+                </div>
+                <StatusDropdown projectId={p.id} status={p.status} />
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm text-muted-foreground">
+                <Link href={`/projects/${p.id}`} className="block hover:underline">
                   {p.customer ? <div>{p.customer.name}</div> : <div className="italic">No customer</div>}
                   <div>Updated {p.updatedAt.toLocaleDateString()}</div>
-                </CardContent>
-              </Card>
-            </Link>
+                </Link>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

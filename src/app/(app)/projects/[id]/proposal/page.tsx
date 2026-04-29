@@ -107,6 +107,7 @@ export default async function ProposalPage({
             lightingQuantity: selections.lightingQuantity ?? 0,
           }}
           companyName={project.org.name}
+          shapes={drawing.shapes}
         />
       </div>
     </div>

@@ -2,6 +2,8 @@ import { Fragment } from 'react'
 import type { Customer, Project } from '@prisma/client'
 import type { MeasurementSummary } from '@/modules/measurements/engine'
 import type { QuoteSummary, QuoteLine } from '@/modules/pricing/engine'
+import type { Shape } from '@/modules/editor/state/shapes'
+import { DrawingSvg } from './DrawingSvg'
 
 interface ProposalDocumentProps {
   project: Project
@@ -15,6 +17,7 @@ interface ProposalDocumentProps {
     lightingQuantity: number
   }
   companyName: string
+  shapes?: Shape[]
 }
 
 const fmtMoney = (n: number) =>
@@ -49,6 +52,7 @@ export function ProposalDocument({
   quote,
   selections,
   companyName,
+  shapes = [],
 }: ProposalDocumentProps) {
   const poolFields = (project.poolFields ?? {}) as Record<string, unknown>
   const interiorFinish =
@@ -104,13 +108,13 @@ export function ProposalDocument({
         </Block>
       </section>
 
-      {/* Drawing reservation */}
+      {/* Drawing */}
       <section className="mt-8">
         <h2 className="font-sans text-sm font-semibold uppercase tracking-wider text-slate-500">
           Plan view
         </h2>
-        <div className="mt-2 flex h-64 items-center justify-center border bg-slate-50 text-sm text-slate-400">
-          [Drawing rendering reserved]
+        <div className="mt-2">
+          <DrawingSvg shapes={shapes} widthPx={760} heightPx={420} />
         </div>
       </section>
 

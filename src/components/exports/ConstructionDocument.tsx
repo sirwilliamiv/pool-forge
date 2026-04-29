@@ -1,6 +1,7 @@
 import type { MeasurementSummary } from '@/modules/measurements/engine'
 import type { QuoteSummary } from '@/modules/pricing/engine'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { DrawingSvg } from './DrawingSvg'
 
 interface CustomerLite {
   name: string
@@ -212,9 +213,7 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
         <h2 className="mb-1 border-b border-black pb-0.5 text-sm font-bold uppercase tracking-wide">
           Construction Layout
         </h2>
-        <div className="flex h-96 items-center justify-center border border-black text-[11px] italic text-neutral-600">
-          [Construction layout placeholder]
-        </div>
+        <DrawingSvg shapes={shapes} widthPx={760} heightPx={480} />
       </section>
 
       {/* Access notes */}
