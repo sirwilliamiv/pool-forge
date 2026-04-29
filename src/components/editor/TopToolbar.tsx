@@ -1,18 +1,26 @@
 'use client'
 
-import { Trash2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
+import Link from 'next/link'
+import { Trash2, ZoomIn, ZoomOut, Maximize2, FileText, Wrench, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useHistoryStore } from '@/modules/editor/state/historyStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 
 interface TopToolbarProps {
+  projectId?: string
   projectName?: string
 }
 
-export function TopToolbar({ projectName = 'Untitled' }: TopToolbarProps) {
+export function TopToolbar({ projectId, projectName = 'Untitled' }: TopToolbarProps) {
   const zoom = useEditorStore((s) => s.zoom)
   const zoomIn = useEditorStore((s) => s.zoomIn)
   const zoomOut = useEditorStore((s) => s.zoomOut)
@@ -84,7 +92,36 @@ export function TopToolbar({ projectName = 'Untitled' }: TopToolbarProps) {
         <Button variant="outline" size="sm" onClick={toggleQuotePanel}>
           Quote
         </Button>
-        <Button size="sm">Export</Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" disabled={!projectId}>
+              Export
+              <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem asChild>
+              <Link
+                href={projectId ? `/projects/${projectId}/proposal` : '#'}
+                target="_blank"
+                rel="noopener"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Customer proposal
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href={projectId ? `/projects/${projectId}/construction` : '#'}
+                target="_blank"
+                rel="noopener"
+              >
+                <Wrench className="mr-2 h-4 w-4" />
+                Construction packet
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )

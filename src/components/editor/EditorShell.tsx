@@ -14,12 +14,15 @@ export interface EditorShellProps {
 }
 
 export function EditorShell({
-  projectId: _projectId,
+  projectId,
   projectName,
 }: EditorShellProps = {}) {
+  const toolbarProps: { projectId?: string; projectName?: string } = {}
+  if (projectId !== undefined) toolbarProps.projectId = projectId
+  if (projectName !== undefined) toolbarProps.projectName = projectName
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <TopToolbar {...(projectName !== undefined ? { projectName } : {})} />
+      <TopToolbar {...toolbarProps} />
       <div className="flex flex-1 overflow-hidden">
         <LeftToolbar />
         <StencilPanel />
