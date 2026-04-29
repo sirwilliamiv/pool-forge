@@ -1,0 +1,22 @@
+import { describe, it } from 'vitest'
+
+describe('validation engine', () => {
+  it.todo('fails when customer name is missing')
+  it.todo('fails when job address is missing')
+  it.todo('fails when required pool depth (shallow or deep) is missing')
+  it.todo('fails when pool interior finish is missing')
+  it.todo('fails when pump selection is missing')
+  it.todo('fails when sanitation selection is missing')
+  it.todo('fails when deck material is missing')
+  it.todo('fails when pool has no measured area')
+  it.todo('fails when deck has no measured area')
+  it.todo('fails when price book item is missing a price')
+  it.todo('fails when quote total is zero')
+  it.todo('fails when construction packet missing access notes')
+  it.todo('warns when screen is selected but screen specs are blank')
+  it.todo('warns when heater is selected but no gas/electric note attached')
+  it.todo('passes when all required fields are populated and pool has measurements')
+  it.todo('proposal export includes correct total when validation passes')
+  it.todo('construction export includes selected equipment when validation passes')
+  it.todo('export blocked when red-state errors remain unresolved')
+})

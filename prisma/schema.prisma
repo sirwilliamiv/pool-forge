@@ -1,6 +1,3 @@
-// Phase 0 stub schema. Track A replaces with the full 18-model schema.
-// Kept minimal so `prisma generate` produces a valid PrismaClient for typechecking.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,6 +7,339 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Bootstrap {
-  id String @id @default(cuid())
+// ============================================================
+// Auth & org
+// ============================================================
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id           String               @id @default(cuid())
+  email        String               @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  memberships  OrganizationMember[]
+  exports      Export[]             @relation("ExportGeneratedBy")
+  auditLogs    CommandAuditLog[]
+}
+
+model Organization {
+  id        String               @id @default(cuid())
+  name      String
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  members           OrganizationMember[]
+  customers         Customer[]
+  projects          Project[]
+  shapeTemplates    ShapeTemplate[]
+  materials         Material[]
+  priceBooks        PriceBook[]
+  appSettings       AppSetting[]
+  auditLogs         CommandAuditLog[]
+}
+
+model OrganizationMember {
+  id     String  @id @default(cuid())
+  userId String
+  orgId  String
+  role   OrgRole @default(MEMBER)
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+}
+
+// ============================================================
+// Customers & projects
+// ============================================================
+
+model Customer {
+  id      String  @id @default(cuid())
+  orgId   String
+  name    String
+  email   String?
+  phone   String?
+  address String?
+  notes   String?
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@index([orgId])
+}
+
+enum ProjectStatus {
+  DRAFT
+  READY_FOR_REVIEW
+  PROPOSAL_SENT
+  APPROVED
+  CONSTRUCTION_READY
+  ARCHIVED
+}
+
+model Project {
+  id                 String        @id @default(cuid())
+  orgId              String
+  customerId         String?
+  name               String
+  salesperson        String?
+  designer           String?
+  status             ProjectStatus @default(DRAFT)
+  proposalExpiresAt  DateTime?
+  internalNotes      String?
+  poolFields         Json          @default("{}")
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  org       Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer  Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  drawing   Drawing?
+  quotes    Quote[]
+  exports   Export[]
+  validations ValidationResult[]
+
+  @@index([orgId])
+  @@index([status])
+}
+
+// ============================================================
+// Drawing
+// ============================================================
+
+model Drawing {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  scale     Float    @default(1.0)
+  rootJson  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  objects DrawingObject[]
+}
+
+model DrawingObject {
+  id         String   @id @default(cuid())
+  drawingId  String
+  parentId   String?
+  type       String
+  geometry   Json     @default("{}")
+  materialId String?
+  locked     Boolean  @default(false)
+  hidden     Boolean  @default(false)
+  zIndex     Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  drawing  Drawing         @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  parent   DrawingObject?  @relation("DrawingObjectChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children DrawingObject[] @relation("DrawingObjectChildren")
+  material Material?       @relation(fields: [materialId], references: [id], onDelete: SetNull)
+
+  @@index([drawingId])
+  @@index([parentId])
+}
+
+// ============================================================
+// Shape templates & materials
+// ============================================================
+
+model ShapeTemplate {
+  id                   String  @id @default(cuid())
+  orgId                String?
+  category             String
+  name                 String
+  defaultGeometry      Json    @default("{}")
+  defaultStyle         Json    @default("{}")
+  measurementBehavior  Json    @default("{}")
+  pricingBehavior      Json    @default("{}")
+
+  org Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, name])
+  @@index([category])
+}
+
+enum MaterialKind {
+  POOL_WATER
+  CONCRETE_DECK
+  PAVER_DECK
+  GRASS
+  COPING
+  SCREEN
+  LANAI
+  CUSTOM
+}
+
+model Material {
+  id        String       @id @default(cuid())
+  orgId     String?
+  kind      MaterialKind
+  name      String
+  fillSpec  Json         @default("{}")
+
+  org            Organization?    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  drawingObjects DrawingObject[]
+
+  @@unique([orgId, name])
+}
+
+// ============================================================
+// Pricing
+// ============================================================
+
+model PriceBook {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String
+  version   Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  org    Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  items  PriceBookItem[]
+  rules  PricingRule[]
+  quotes Quote[]
+
+  @@unique([orgId, name, version])
+  @@index([orgId])
+}
+
+model PriceBookItem {
+  id              String   @id @default(cuid())
+  priceBookId     String
+  category        String
+  name            String
+  unitType        String
+  unitCost        Decimal  @default(0) @db.Decimal(12, 4)
+  retailPrice     Decimal  @default(0) @db.Decimal(12, 4)
+  formula         Json?
+  taxBehavior     String?
+  customerVisible Boolean  @default(true)
+  internalOnly    Boolean  @default(false)
+  required        Boolean  @default(false)
+  upgradeOnly     Boolean  @default(false)
+
+  priceBook PriceBook @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+
+  @@index([priceBookId])
+  @@index([category])
+}
+
+model PricingRule {
+  id          String @id @default(cuid())
+  priceBookId String
+  name        String
+  config      Json   @default("{}")
+
+  priceBook PriceBook @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+
+  @@index([priceBookId])
+}
+
+model Quote {
+  id          String   @id @default(cuid())
+  projectId   String
+  priceBookId String
+  subtotal    Decimal  @default(0) @db.Decimal(12, 2)
+  total       Decimal  @default(0) @db.Decimal(12, 2)
+  generatedAt DateTime @default(now())
+  snapshot    Json     @default("{}")
+
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  priceBook PriceBook       @relation(fields: [priceBookId], references: [id], onDelete: Restrict)
+  lineItems QuoteLineItem[]
+
+  @@index([projectId])
+}
+
+model QuoteLineItem {
+  id              String  @id @default(cuid())
+  quoteId         String
+  name            String
+  source          String
+  quantity        Decimal @default(0) @db.Decimal(12, 4)
+  unitPrice       Decimal @default(0) @db.Decimal(12, 4)
+  total           Decimal @default(0) @db.Decimal(12, 2)
+  validationStatus String @default("ok")
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+}
+
+// ============================================================
+// Validation, exports, audit, settings
+// ============================================================
+
+model ValidationResult {
+  id        String   @id @default(cuid())
+  projectId String
+  runAt     DateTime @default(now())
+  items     Json     @default("[]")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+enum ExportKind {
+  CUSTOMER_PROPOSAL
+  CONSTRUCTION_PACKET
+  IMAGE
+}
+
+model Export {
+  id            String     @id @default(cuid())
+  projectId     String
+  kind          ExportKind
+  url           String?
+  generatedAt   DateTime   @default(now())
+  generatedById String?
+
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  generatedBy User?   @relation("ExportGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+}
+
+model CommandAuditLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  orgId        String?
+  commandId    String
+  inputJson    Json     @default("{}")
+  outputJson   Json     @default("{}")
+  success      Boolean  @default(false)
+  errorMessage String?
+  ranAt        DateTime @default(now())
+
+  user User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  org  Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+
+  @@index([commandId])
+  @@index([orgId])
+  @@index([userId])
+  @@index([ranAt])
+}
+
+model AppSetting {
+  id    String @id @default(cuid())
+  orgId String
+  key   String
+  value Json   @default("{}")
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, key])
 }
