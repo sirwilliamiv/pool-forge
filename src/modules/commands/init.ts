@@ -11,6 +11,8 @@ import './categories/export'
 import './categories/template'
 import './categories/auth'
 import './categories/settings'
+import './categories/scene'
+import './categories/palette'
 
 let _initialized = false
 

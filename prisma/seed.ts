@@ -36,6 +36,14 @@ const TEMPLATE_IDS = {
 const MATERIAL_IDS = {
   poolWater: 'seed-mat-pool-water',
   concreteDeck: 'seed-mat-concrete-deck',
+  pebbletecBlueGranite: 'seed-mat-pebbletec-blue-granite',
+  pebbletecCobalt: 'seed-mat-pebbletec-cobalt',
+  plasterWhite: 'seed-mat-plaster-white',
+  travertineSilver: 'seed-mat-travertine-silver',
+  travertineIvory: 'seed-mat-travertine-ivory',
+  glassMosaicAqua: 'seed-mat-glass-mosaic-aqua',
+  paverDeckTan: 'seed-mat-paver-deck-tan',
+  grass: 'seed-mat-grass',
 } as const
 
 async function main() {
@@ -327,6 +335,76 @@ async function main() {
       fillSpec: { type: 'solid', color: '#D9D6CF' },
     },
   })
+
+  const extraMaterials: Array<{
+    id: string
+    kind: MaterialKind
+    name: string
+    fillSpec: Prisma.InputJsonValue
+  }> = [
+    {
+      id: MATERIAL_IDS.pebbletecBlueGranite,
+      kind: MaterialKind.CUSTOM,
+      name: 'PebbleTec — Blue Granite',
+      fillSpec: { type: 'gradient', color: '#1E3A8A', secondary: '#2563EB', brand: 'PebbleTec', costPerSqft: 9.0, unit: 'sqft', slot: 'interior' },
+    },
+    {
+      id: MATERIAL_IDS.pebbletecCobalt,
+      kind: MaterialKind.CUSTOM,
+      name: 'PebbleTec — Cobalt',
+      fillSpec: { type: 'gradient', color: '#1E40AF', secondary: '#3B82F6', brand: 'PebbleTec', costPerSqft: 7.1, unit: 'sqft', slot: 'interior' },
+    },
+    {
+      id: MATERIAL_IDS.plasterWhite,
+      kind: MaterialKind.CUSTOM,
+      name: 'White Plaster',
+      fillSpec: { type: 'gradient', color: '#F1F5F9', secondary: '#CBD5E1', costPerSqft: 4.25, unit: 'sqft', slot: 'interior' },
+    },
+    {
+      id: MATERIAL_IDS.travertineSilver,
+      kind: MaterialKind.COPING,
+      name: 'Travertine — Silver',
+      fillSpec: { type: 'gradient', color: '#A8A29E', secondary: '#78716C', costPerLf: 30.0, unit: 'lf', slot: 'coping' },
+    },
+    {
+      id: MATERIAL_IDS.travertineIvory,
+      kind: MaterialKind.COPING,
+      name: 'Travertine — Ivory',
+      fillSpec: { type: 'gradient', color: '#FEF3C7', secondary: '#FDE68A', costPerLf: 28.0, unit: 'lf', slot: 'coping' },
+    },
+    {
+      id: MATERIAL_IDS.glassMosaicAqua,
+      kind: MaterialKind.CUSTOM,
+      name: 'Glass Mosaic — Aqua mix',
+      fillSpec: { type: 'mosaic', color: '#06B6D4', secondary: '#0EA5E9', costPerLf: 15.0, unit: 'lf', slot: 'tileBand' },
+    },
+    {
+      id: MATERIAL_IDS.paverDeckTan,
+      kind: MaterialKind.PAVER_DECK,
+      name: 'Paver Deck — Tan',
+      fillSpec: { type: 'gradient', color: '#D6BFA0', secondary: '#A8896A', costPerSqft: 14.0, unit: 'sqft' },
+    },
+    {
+      id: MATERIAL_IDS.grass,
+      kind: MaterialKind.GRASS,
+      name: 'Grass',
+      fillSpec: { type: 'solid', color: '#9CCC8E', costPerSqft: 1.5, unit: 'sqft' },
+    },
+  ]
+
+  for (const m of extraMaterials) {
+    await db.material.upsert({
+      where: { id: m.id },
+      update: {},
+      create: {
+        id: m.id,
+        orgId: null,
+        kind: m.kind,
+        name: m.name,
+        fillSpec: m.fillSpec,
+      },
+    })
+  }
 
   console.log('Seed complete:', {
     org: org.id,

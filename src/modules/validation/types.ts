@@ -10,6 +10,11 @@ export interface ValidationItem {
   category: ValidationCategory
   message: string
   field?: string
+  // Optional: shape id the issue refers to (for click-to-select in the dock).
+  // Not yet emitted by the rule engine; populated by future rules.
+  targetId?: string
+  // Optional: short hint surfaced in the validation dock and command palette.
+  suggestedFix?: string
 }
 
 export interface ValidationProject {

@@ -11,6 +11,8 @@ export type CommandCategory =
   | 'template'
   | 'auth'
   | 'settings'
+  | 'scene'
+  | 'palette'
 
 export type CommandContext = {
   userId: string

@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import { register } from '@/modules/commands/registry'
 
+// Server `execute` for shape commands records intent and echoes input so the
+// CommandAuditLog row is meaningful. The actual `useShapesStore` mutation is
+// applied client-side via a handler registered through
+// `registerClientHandler` in src/lib/commands/dispatch.ts. The consumer track
+// (E for inspector, D for selection, H for palette) registers the handler.
+
 register({
   id: 'add.shape',
   label: 'Add shape',
@@ -21,7 +27,9 @@ register({
     'Drop a swim out bench on the left side.',
     'Add a sun shelf.',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: useShapesStore.getState().addStencil(input.stencilId, input.x, input.y)
+  //         (or addShape(kind, x, y, opts) for non-stencil kinds)
+  execute: async () => ({ ok: true, data: { shapeId: 'client-pending' } }),
 })
 
 register({
@@ -40,7 +48,9 @@ register({
     'Select the pool.',
     'Select the deck and the spa.',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: useSelectionStore.getState().selectMany(input.ids)
+  //   (with additive=true, merge with existing selectedIds)
+  execute: async (input) => ({ ok: true, data: { selectedIds: input.ids } }),
 })
 
 register({
@@ -63,7 +73,15 @@ register({
     'Move the spa over to the right.',
     'Nudge the pool down.',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: const s = useShapesStore.getState();
+  //         const cur = s.shapes.find(x => x.id === input.id);
+  //         const x = input.relative ? (cur?.x ?? 0) + input.x : input.x;
+  //         const y = input.relative ? (cur?.y ?? 0) + input.y : input.y;
+  //         s.updateShape(input.id, { x, y });
+  execute: async (input) => ({
+    ok: true,
+    data: { id: input.id, x: input.x, y: input.y },
+  }),
 })
 
 register({
@@ -85,7 +103,11 @@ register({
     'Resize the pool to twenty by ten feet.',
     'Make the spa six feet wide.',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: useShapesStore.getState().updateShape(input.id, { width: input.width, height: input.height })
+  execute: async (input) => ({
+    ok: true,
+    data: { id: input.id, width: input.width, height: input.height },
+  }),
 })
 
 register({
@@ -106,7 +128,14 @@ register({
     'Rotate the pool ninety degrees.',
     'Spin the deck a little to the left.',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: const s = useShapesStore.getState();
+  //         const cur = s.shapes.find(x => x.id === input.id);
+  //         const rotation = input.relative ? (cur?.rotation ?? 0) + input.degrees : input.degrees;
+  //         s.updateShape(input.id, { rotation });
+  execute: async (input) => ({
+    ok: true,
+    data: { id: input.id, degrees: input.degrees },
+  }),
 })
 
 register({
@@ -124,7 +153,9 @@ register({
     'Delete the bench.',
     'Remove the selected shapes.',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: useShapesStore.getState().removeShapes(input.ids);
+  //         useSelectionStore.getState().clear();
+  execute: async (input) => ({ ok: true, data: { deletedIds: input.ids } }),
 })
 
 register({
@@ -145,7 +176,31 @@ register({
     'Duplicate the pool.',
     'Make a copy of the spa.',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: const newId = useShapesStore.getState().duplicate(input.id);
+  //         return { sourceId: input.id, newId };
+  execute: async (input) => ({
+    ok: true,
+    data: { sourceId: input.id, newId: 'client-pending' },
+  }),
+})
+
+register({
+  id: 'shape.rename',
+  label: 'Rename shape',
+  description: 'Rename a shape in-canvas (e.g., from the inspector selection card).',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    name: z.string().max(120),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    name: z.string(),
+  }),
+  voiceExamples: ['Rename the pool to Backyard Lap Pool.'],
+  // CLIENT: useShapesStore.getState().renameShape(input.id, input.name)
+  //   (Shape.name is optional; persistence round-trips it via the JSON column.)
+  execute: async (input) => ({ ok: true, data: { id: input.id, name: input.name } }),
 })
 
 register({
@@ -165,5 +220,134 @@ register({
     'Change the deck to pavers.',
     'Set the pool finish to pebble.',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: useShapesStore.getState().updateShape(input.id, { materialId: input.materialId })
+  //         (Note: Shape type doesn't have materialId yet — Track E adds it via
+  //         displayHint or extends the Shape interface.)
+  execute: async (input) => ({
+    ok: true,
+    data: { id: input.id, materialId: input.materialId },
+  }),
+})
+
+register({
+  id: 'pool.geometry.update',
+  label: 'Update pool geometry',
+  description: 'Update length, width, average depth, shallow/deep depth, or slope of the selected pool.',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    length: z.number().positive().optional(),
+    width: z.number().positive().optional(),
+    avgDepth: z.number().positive().optional(),
+    shallowDepth: z.number().positive().optional(),
+    deepDepth: z.number().positive().optional(),
+    slope: z.number().optional(),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+  }),
+  voiceExamples: [
+    'Make the pool deeper at the deep end.',
+    'Lengthen the pool to thirty feet.',
+  ],
+  // CLIENT (Track E PositionSection / GeometrySection):
+  //   const patch: Partial<Shape> = {};
+  //   if (input.length != null) patch.width = input.length * 12;   // feet → inches
+  //   if (input.width  != null) patch.height = input.width  * 12;
+  //   if (input.shallowDepth != null) patch.depthShallow = input.shallowDepth;
+  //   if (input.deepDepth    != null) patch.depthDeep   = input.deepDepth;
+  //   useShapesStore.getState().updateShape(input.id, patch);
+  execute: async (input) => ({ ok: true, data: { id: input.id } }),
+})
+
+register({
+  id: 'pool.material.set',
+  label: 'Set pool material slot',
+  description: 'Apply a material to a specific surface slot of the selected pool (interior, coping, or tile band).',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    slot: z.enum(['interior', 'coping', 'tileBand']),
+    materialId: z.string(),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    slot: z.enum(['interior', 'coping', 'tileBand']),
+    materialId: z.string(),
+  }),
+  voiceExamples: [
+    'Change the interior to PebbleTec Cobalt.',
+    'Set the coping to travertine.',
+  ],
+  // CLIENT (Track E MaterialSection):
+  //   Persist via DrawingObject.displayHint until the Shape type carries
+  //   per-slot material ids natively. The patch shape is:
+  //     { displayHint: { ...prev.displayHint, [slotKey]: input.materialId } }
+  execute: async (input) => ({
+    ok: true,
+    data: { id: input.id, slot: input.slot, materialId: input.materialId },
+  }),
+})
+
+register({
+  id: 'shape.hide',
+  label: 'Toggle layer visibility',
+  description: 'Hide or show a shape on the canvas without deleting it.',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    hidden: z.boolean(),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    hidden: z.boolean(),
+  }),
+  voiceExamples: ['Hide the spa.', 'Show the deck.'],
+  // CLIENT: useShapesStore.getState().updateShape(input.id, { hidden: input.hidden })
+  execute: async (input) => ({ ok: true, data: { id: input.id, hidden: input.hidden } }),
+})
+
+register({
+  id: 'shape.lock',
+  label: 'Toggle layer lock',
+  description: 'Lock or unlock a shape so it cannot be moved or edited from the canvas.',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    locked: z.boolean(),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    locked: z.boolean(),
+  }),
+  voiceExamples: ['Lock the survey overlay.', 'Unlock the pool.'],
+  // CLIENT: useShapesStore.getState().updateShape(input.id, { locked: input.locked })
+  execute: async (input) => ({ ok: true, data: { id: input.id, locked: input.locked } }),
+})
+
+register({
+  id: 'pool.depth.set',
+  label: 'Update pool depth profile',
+  description: 'Patch the depth profile (shallow, deep, slope, sun-shelf elevation, bubbler height) of the selected pool.',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    shallowDepth: z.number().optional(),
+    deepDepth: z.number().optional(),
+    slope: z.number().optional(),
+    sunShelfElevation: z.number().optional(),
+    bubblerHeight: z.number().optional(),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+  }),
+  voiceExamples: [
+    'Raise the sun shelf two inches.',
+    'Set the deep end to seven feet.',
+  ],
+  // CLIENT (Track E):
+  //   patch.depthShallow / patch.depthDeep on the Shape;
+  //   slope/sunShelfElevation/bubblerHeight live on DrawingObject.depthProfile
+  //   (Wave 0 added the column). Persistence layer round-trips depthProfile.
+  execute: async (input) => ({ ok: true, data: { id: input.id } }),
 })

@@ -129,17 +129,20 @@ model Drawing {
 }
 
 model DrawingObject {
-  id         String   @id @default(cuid())
-  drawingId  String
-  parentId   String?
-  type       String
-  geometry   Json     @default("{}")
-  materialId String?
-  locked     Boolean  @default(false)
-  hidden     Boolean  @default(false)
-  zIndex     Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  drawingId    String
+  parentId     String?
+  type         String
+  name         String?
+  geometry     Json     @default("{}")
+  displayHint  Json     @default("{}")
+  depthProfile Json?
+  materialId   String?
+  locked       Boolean  @default(false)
+  hidden       Boolean  @default(false)
+  zIndex       Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   drawing  Drawing         @relation(fields: [drawingId], references: [id], onDelete: Cascade)
   parent   DrawingObject?  @relation("DrawingObjectChildren", fields: [parentId], references: [id], onDelete: SetNull)

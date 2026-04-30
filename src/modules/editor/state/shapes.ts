@@ -16,6 +16,7 @@ export interface ShapeBase {
   zIndex: number
   locked: boolean
   hidden: boolean
+  name?: string
 }
 
 export interface RectanglePool extends ShapeBase {

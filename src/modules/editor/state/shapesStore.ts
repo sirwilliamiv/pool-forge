@@ -19,6 +19,7 @@ interface ShapesState {
   addShape: (kind: ShapeKind, x: number, y: number, opts?: AddShapeOptions) => string
   addStencil: (stencilId: string, x: number, y: number) => string
   updateShape: (id: string, patch: Partial<Shape>) => void
+  renameShape: (id: string, name: string) => void
   removeShape: (id: string) => void
   removeShapes: (ids: string[]) => void
   bringToFront: (id: string) => void
@@ -149,6 +150,16 @@ export const useShapesStore = create<ShapesState>((set, get) => {
       set({
         shapes: get().shapes.map((s) =>
           s.id === id ? ({ ...s, ...patch } as Shape) : s,
+        ),
+      })
+    },
+
+    renameShape(id, name) {
+      commitOpenTx()
+      pushHistory()
+      set({
+        shapes: get().shapes.map((s) =>
+          s.id === id ? ({ ...s, name } as Shape) : s,
         ),
       })
     },

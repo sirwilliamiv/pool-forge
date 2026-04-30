@@ -24,6 +24,25 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+
+    /* Pool Forge spec tokens (§3) — used alongside shadcn HSL vars. */
+    --pf-canvas-bg: #EEF2F4;
+    --pf-accent: #0E9DE5;
+    --pf-accent-strong: #0284C7;
+    --pf-accent-soft: #E0F2FE;
+    --pf-text-muted: #64748B;
+    --pf-text-faint: #94A3B8;
+    --pf-warn: #F59E0B;
+    --pf-warn-soft: #FEF3C7;
+    --pf-error: #EF4444;
+    --pf-error-soft: #FEE2E2;
+    --pf-border-light: #F1F3F5;
+    --pf-row-hover: #F9FAFB;
+    --pf-row-active: #E0F2FE;
+    --pf-shadow-xs: 0 1px 0 rgba(15,23,42,0.04);
+    --pf-shadow-sm: 0 1px 2px rgba(15,23,42,0.06);
+    --pf-shadow-md: 0 4px 14px rgba(15,23,42,0.08);
+    --pf-shadow-lg: 0 24px 60px rgba(15,23,42,0.18);
   }
 
   .dark {

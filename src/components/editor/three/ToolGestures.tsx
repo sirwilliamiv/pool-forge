@@ -1,0 +1,227 @@
+'use client'
+
+import { Line } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
+import { useEffect, useRef } from 'react'
+import * as THREE from 'three'
+import { dispatch } from '@/lib/commands/dispatch'
+import { inches } from '@/lib/three/units'
+import { useEditorStore, type Vec3 } from '@/modules/editor/state/editorStore'
+import { MeasureLabelOverlay } from '../shell/MeasureLabelOverlay'
+
+const GROUND_Y = 0
+
+const ADD_TOOL_STENCIL: Record<string, string> = {
+  'tool.pool-shape': 'pool.rectangle',
+  'tool.steps': 'pool.corner-steps',
+  'tool.water-feature': 'water.waterfall',
+  'tool.lights': 'feature.light',
+  'tool.deck': 'deck.concrete',
+}
+
+function intersectGround(
+  e: PointerEvent,
+  el: HTMLCanvasElement,
+  camera: THREE.Camera,
+  raycaster: THREE.Raycaster,
+): THREE.Vector3 | null {
+  const rect = el.getBoundingClientRect()
+  const ndc = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    -((e.clientY - rect.top) / rect.height) * 2 + 1,
+  )
+  raycaster.setFromCamera(ndc, camera)
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -GROUND_Y)
+  const hit = new THREE.Vector3()
+  if (!raycaster.ray.intersectPlane(plane, hit)) return null
+  return hit
+}
+
+function pickShapeId(
+  e: PointerEvent,
+  el: HTMLCanvasElement,
+  camera: THREE.Camera,
+  scene: THREE.Scene,
+  raycaster: THREE.Raycaster,
+): string | null {
+  const rect = el.getBoundingClientRect()
+  const ndc = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    -((e.clientY - rect.top) / rect.height) * 2 + 1,
+  )
+  raycaster.setFromCamera(ndc, camera)
+  const hits = raycaster.intersectObjects(scene.children, true)
+  for (const hit of hits) {
+    let obj: THREE.Object3D | null = hit.object
+    while (obj) {
+      const id = obj.userData?.id
+      if (typeof id === 'string') return id
+      obj = obj.parent
+    }
+  }
+  return null
+}
+
+export function ToolGestures() {
+  const { gl, camera, scene } = useThree()
+  const downRef = useRef<{ x: number; y: number } | null>(null)
+  const pointerWorldRef = useRef<Vec3 | null>(null)
+
+  // For the pending-A → B preview line, track pointer world position.
+  const measureA = useEditorStore((s) => s.measureA)
+  const measureB = useEditorStore((s) => s.measureB)
+
+  useEffect(() => {
+    const el = gl.domElement
+    const raycaster = new THREE.Raycaster()
+
+    function onPointerDown(e: PointerEvent) {
+      if (e.button !== 0) return
+      downRef.current = { x: e.clientX, y: e.clientY }
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      // Track for measure preview line; cheap raycast on every move
+      const tool = useEditorStore.getState().activeTool
+      if (tool !== 'tool.measure') return
+      const hit = intersectGround(e, el, camera, raycaster)
+      if (hit) pointerWorldRef.current = [hit.x, hit.y, hit.z]
+    }
+
+    function onPointerUp(e: PointerEvent) {
+      const down = downRef.current
+      downRef.current = null
+      if (!down) return
+      const dx = Math.abs(e.clientX - down.x)
+      const dy = Math.abs(e.clientY - down.y)
+      if (dx > 4 || dy > 4) return // drag, not a click — defer to orbit/selection
+
+      const tool = useEditorStore.getState().activeTool
+
+      // Add-* tools: place a stencil at click point, then return to select.
+      const stencilId = ADD_TOOL_STENCIL[tool]
+      if (stencilId) {
+        const hit = intersectGround(e, el, camera, raycaster)
+        if (!hit) return
+        // Click is the *center* of the new shape; the store stores top-left
+        // in inches and renderers offset by w/2,h/2. So inches((cx - w/2))
+        // for x; but we don't know stencil dims here. Pass center; client
+        // handler doesn't know dims either, so dispatch center-based and
+        // let the store land it at top-left == center for now (small offset
+        // is fine — user can drag to refine).
+        void dispatch('add.shape', {
+          stencilId,
+          x: inches(hit.x),
+          y: inches(hit.z),
+        })
+        useEditorStore.getState().setActiveTool('tool.select')
+        return
+      }
+
+      if (tool === 'tool.material-brush') {
+        const id = pickShapeId(e, el, camera, scene, raycaster)
+        if (!id) return
+        const matId = useEditorStore.getState().activeMaterialId
+        if (!matId) {
+          // No active material — consume the click but tell user via toast?
+          // For v1 just no-op silently; Materials tab is a follow-up.
+          return
+        }
+        void dispatch('pool.material.set', {
+          id,
+          slot: 'interior' as const,
+          materialId: matId,
+        })
+        return
+      }
+
+      if (tool === 'tool.measure') {
+        const hit = intersectGround(e, el, camera, raycaster)
+        if (!hit) return
+        const p: Vec3 = [hit.x, hit.y, hit.z]
+        const a = useEditorStore.getState().measureA
+        const b = useEditorStore.getState().measureB
+        if (!a) {
+          useEditorStore.getState().setMeasureA(p)
+          useEditorStore.getState().setMeasureB(null)
+        } else if (!b) {
+          useEditorStore.getState().setMeasureB(p)
+        } else {
+          // Restart on third click
+          useEditorStore.getState().setMeasureA(p)
+          useEditorStore.getState().setMeasureB(null)
+        }
+        return
+      }
+
+      if (tool === 'tool.annotation') {
+        const hit = intersectGround(e, el, camera, raycaster)
+        if (!hit) return
+        // Drop a placeholder text annotation as a stencil.
+        // Reuse 'feature.deep-end-marker' as a minimal marker stencil.
+        void dispatch('add.shape', {
+          stencilId: 'feature.deep-end-marker',
+          x: inches(hit.x),
+          y: inches(hit.z),
+        })
+        return
+      }
+
+      if (tool === 'tool.comment') {
+        // No comment infra in v1 — log and consume.
+        // eslint-disable-next-line no-console
+        console.info('[Pool Forge] Comment tool: comments deferred for v1.')
+        return
+      }
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        const tool = useEditorStore.getState().activeTool
+        if (tool === 'tool.measure') {
+          useEditorStore.getState().clearMeasure()
+        }
+      }
+    }
+
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointermove', onPointerMove)
+    el.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointermove', onPointerMove)
+      el.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [gl, camera, scene])
+
+  // Render measure markers + line + label inside the R3F scene.
+  return (
+    <>
+      {measureA && (
+        <mesh position={measureA}>
+          <sphereGeometry args={[0.15, 16, 16]} />
+          <meshBasicMaterial color="#0E9DE5" />
+        </mesh>
+      )}
+      {measureB && (
+        <mesh position={measureB}>
+          <sphereGeometry args={[0.15, 16, 16]} />
+          <meshBasicMaterial color="#0E9DE5" />
+        </mesh>
+      )}
+      {measureA && measureB && (
+        <>
+          <Line
+            points={[measureA, measureB]}
+            color="#0E9DE5"
+            lineWidth={2}
+            depthTest={false}
+          />
+          <MeasureLabelOverlay a={measureA} b={measureB} />
+        </>
+      )}
+    </>
+  )
+}
