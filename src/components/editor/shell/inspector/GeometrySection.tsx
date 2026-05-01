@@ -65,6 +65,11 @@ export function GeometrySection() {
   const slope = lengthFt > 0 ? Math.max(0, deep - shallow) / lengthFt : 0
 
   function pushGeom(patch: { length?: number; width?: number; avgDepth?: number; shallowDepth?: number; deepDepth?: number; slope?: number }) {
+    if (shape!.displayHint?.lockedRatio && (patch.length != null || patch.width != null)) {
+      const ratio = widthFt > 0 ? lengthFt / widthFt : 1
+      if (patch.length != null) patch.width = patch.length / ratio
+      else if (patch.width != null) patch.length = patch.width * ratio
+    }
     void dispatch('pool.geometry.update', { id: shape!.id, ...patch })
   }
 
@@ -74,16 +79,24 @@ export function GeometrySection() {
       actions={
         <>
           <button
-            className="text-textFaint hover:text-foreground"
-            title="Flip — TODO Track G"
-            onClick={() => {/* TODO: register pool.flip in Track G */}}
+            className={
+              shape.displayHint?.flippedX
+                ? 'text-pfAccentStrong'
+                : 'text-textFaint hover:text-foreground'
+            }
+            title="Flip horizontally"
+            onClick={() => void dispatch('pool.flip', { id: shape.id, axis: 'x' })}
           >
             <FlipHorizontal className="h-3 w-3" />
           </button>
           <button
-            className="text-textFaint hover:text-foreground"
-            title="Lock ratio — TODO Track G"
-            onClick={() => {/* TODO: lock-ratio constraint */}}
+            className={
+              shape.displayHint?.lockedRatio
+                ? 'text-pfAccentStrong'
+                : 'text-textFaint hover:text-foreground'
+            }
+            title={shape.displayHint?.lockedRatio ? 'Unlock ratio' : 'Lock ratio'}
+            onClick={() => void dispatch('pool.lock.ratio', { id: shape.id })}
           >
             <Lock className="h-3 w-3" />
           </button>

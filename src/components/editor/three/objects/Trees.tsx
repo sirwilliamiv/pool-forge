@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { treeBark, treeFoliage, treeFoliageAlt } from '../Materials'
 
 interface TreeSpec {
   x: number
@@ -57,18 +58,9 @@ export function Trees({
     if (ref.current && shape) ref.current.userData.id = shape.id
   }, [shape])
 
-  const trunk = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.95 }),
-    [],
-  )
-  const leaves = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x4d7c3a, roughness: 0.9 }),
-    [],
-  )
-  const leavesAlt = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x5e8c44, roughness: 0.9 }),
-    [],
-  )
+  const trunk = treeBark
+  const leaves = treeFoliage
+  const leavesAlt = treeFoliageAlt
 
   const rootPosition: [number, number, number] = shape
     ? [feet(shape.x), 0, feet(shape.y)]

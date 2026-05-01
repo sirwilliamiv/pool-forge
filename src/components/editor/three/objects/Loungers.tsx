@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { loungerWood } from '../Materials'
 
 interface LoungerSpec {
   x: number
@@ -56,10 +57,7 @@ export function Loungers({
     if (ref.current && shape) ref.current.userData.id = shape.id
   }, [shape])
 
-  const wood = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x9c6b3f, roughness: 0.85 }),
-    [],
-  )
+  const wood = loungerWood
 
   const rootPosition: [number, number, number] = shape
     ? [feet(shape.x), 0, feet(shape.y)]

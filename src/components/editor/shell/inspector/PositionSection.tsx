@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSelectionStore, useShapesStore } from '@/modules/editor/state'
 import { dispatch } from '@/lib/commands/dispatch'
 import { Crosshair } from 'lucide-react'
+import { distanceToHouse, distanceToSetback } from '@/modules/measurements/engine'
 
 interface FieldProps {
   prefix: string
@@ -47,6 +48,7 @@ function NumberField({ prefix, suffix, value, onCommit, step = 0.1 }: FieldProps
 export function PositionSection() {
   const selectedId = useSelectionStore((s) => s.selectedIds[0])
   const shape = useShapesStore((s) => s.shapes.find((x) => x.id === selectedId))
+  const allShapes = useShapesStore((s) => s.shapes)
 
   if (!shape) {
     return (
@@ -58,6 +60,8 @@ export function PositionSection() {
 
   const xFt = shape.x / 12
   const yFt = shape.y / 12
+  const houseDistance = distanceToHouse(shape, allShapes)
+  const setback = distanceToSetback(shape, allShapes)
 
   function commitX(ft: number) {
     void dispatch('move.shape', { id: shape!.id, x: ft * 12, y: shape!.y })
@@ -77,8 +81,12 @@ export function PositionSection() {
         <NumberField prefix="R" suffix="°" value={shape.rotation} onCommit={commitRotation} step={1} />
       </div>
       <div className="mx-3 mb-2 space-y-1 border-t border-borderLight pt-2">
-        <DerivedRow label="From house" value="—" />
-        <DerivedRow label="Setback" value="—" />
+        <DerivedRow label="From house" value={houseDistance} />
+        <DerivedRow
+          label="Setback"
+          value={`${setback.distance} (${setback.required})`}
+          warn={setback.violated}
+        />
       </div>
     </Section>
   )

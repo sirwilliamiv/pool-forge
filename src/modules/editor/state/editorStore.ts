@@ -9,6 +9,7 @@ export type Vec3 = [number, number, number]
 interface EditorState {
   activeTool: string
   activeMaterialId: string | null
+  activeStencilId: string | null
   mode: ToolMode
   zoom: number
   panX: number
@@ -21,6 +22,7 @@ interface EditorState {
 
   setActiveTool: (toolId: string) => void
   setActiveMaterial: (materialId: string | null) => void
+  setActiveStencil: (stencilId: string | null) => void
   setMode: (mode: ToolMode) => void
   setZoom: (zoom: number) => void
   zoomIn: () => void
@@ -42,6 +44,7 @@ const MAX_ZOOM = 8
 export const useEditorStore = create<EditorState>()((set) => ({
   activeTool: 'tool.select',
   activeMaterialId: null,
+  activeStencilId: null,
   mode: 'select',
   zoom: 1,
   panX: 0,
@@ -54,6 +57,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
 
   setActiveTool: (toolId) => set({ activeTool: toolId, measureA: null, measureB: null }),
   setActiveMaterial: (materialId) => set({ activeMaterialId: materialId }),
+  setActiveStencil: (stencilId) => set({ activeStencilId: stencilId }),
   setMode: (mode) => set({ mode }),
   setZoom: (zoom) => set({ zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }),
   zoomIn: () => set((s) => ({ zoom: Math.min(MAX_ZOOM, s.zoom * 1.2) })),

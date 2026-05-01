@@ -2,6 +2,7 @@
 
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
+import { useCameraStore } from '@/modules/editor/state/cameraStore'
 
 type CameraView = 'top' | 'front' | 'left' | 'right' | 'iso'
 
@@ -14,6 +15,8 @@ const FACES: { view: CameraView; label: string; className: string }[] = [
 ]
 
 export function ViewCube() {
+  const targetView = useCameraStore((s) => s.targetView)
+
   function snap(view: CameraView) {
     void dispatch('camera.set.view', { view })
   }
@@ -25,21 +28,25 @@ export function ViewCube() {
       aria-label="View cube"
     >
       <div className="grid h-full w-full grid-cols-3 grid-rows-3 gap-0.5">
-        {FACES.map(({ view, label, className }) => (
-          <button
-            key={view}
-            type="button"
-            onClick={() => snap(view)}
-            className={cn(
-              'flex items-center justify-center rounded-pfXs border border-transparent text-[9px] font-semibold uppercase tracking-wide text-textMuted transition hover:border-border hover:bg-rowHover hover:text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent',
-              view === 'iso' && 'bg-rowActive font-bold text-pfAccentStrong',
-              className,
-            )}
-            aria-label={`Snap camera to ${label.toLowerCase()} view`}
-          >
-            {label}
-          </button>
-        ))}
+        {FACES.map(({ view, label, className }) => {
+          const active = targetView === view
+          return (
+            <button
+              key={view}
+              type="button"
+              onClick={() => snap(view)}
+              className={cn(
+                'flex items-center justify-center rounded-pfXs border border-transparent text-[9px] font-semibold uppercase tracking-wide text-textMuted transition hover:border-border hover:bg-rowHover hover:text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent',
+                active && 'bg-pfAccentSoft font-bold text-pfAccentStrong',
+                className,
+              )}
+              aria-label={`Snap camera to ${label.toLowerCase()} view`}
+              aria-pressed={active}
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

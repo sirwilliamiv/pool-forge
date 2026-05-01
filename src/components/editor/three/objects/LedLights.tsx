@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { ledRing, ledGlow } from '../Materials'
 
 interface Props {
   shape: Shape
@@ -46,11 +47,8 @@ export function LedLights({
     if (ref.current) ref.current.userData.id = shape.id
   }, [shape.id])
 
-  const ring = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4 }),
-    [],
-  )
-  const glow = useMemo(() => new THREE.MeshBasicMaterial({ color: 0xfef9c3 }), [])
+  const ring = ledRing
+  const glow = ledGlow
 
   return (
     <group ref={ref} position={[feet(shape.x), 0, feet(shape.y)]}>

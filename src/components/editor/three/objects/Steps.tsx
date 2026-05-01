@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { plasterShallow } from '../Materials'
 
 interface Props {
   shape: Shape
@@ -20,11 +21,6 @@ export function Steps({ shape, risers = 3 }: Props) {
 
   const w = feet(shape.width)
   const h = feet(shape.height)
-
-  const plasterShallow = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.4 }),
-    [],
-  )
 
   const stepWidth = Math.max(2, w)
   const stepDepth = Math.max(0.6, h / risers)

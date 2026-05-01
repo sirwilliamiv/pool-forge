@@ -5,6 +5,7 @@ import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { concreteDeck } from '../Materials'
 
 interface Cutout {
   kind: 'rect' | 'circle'
@@ -30,10 +31,7 @@ export function Deck({ shape, cutouts = [] }: Props) {
   const w = feet(shape.width)
   const h = feet(shape.height)
 
-  const deckMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0xd9d3c3, roughness: 0.85 }),
-    [],
-  )
+  const deckMat = concreteDeck
 
   const geometry = useMemo(() => {
     const outer = new THREE.Shape()

@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { drainGrate } from '../Materials'
 
 interface Props {
   shape?: Shape
@@ -19,10 +20,7 @@ export function Drains({ shape, position = [0, 0, 0], count = 2 }: Props) {
     if (ref.current && shape) ref.current.userData.id = shape.id
   }, [shape])
 
-  const grate = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.6, metalness: 0.4 }),
-    [],
-  )
+  const grate = drainGrate
 
   const rootPosition: [number, number, number] = shape
     ? [feet(shape.x), 0, feet(shape.y)]

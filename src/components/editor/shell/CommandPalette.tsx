@@ -181,7 +181,9 @@ export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React
           />
           <Command.List className="max-h-[360px] overflow-y-auto p-2">
             <Command.Empty className="px-3 py-6 text-center text-[12px] text-textMuted">
-              No commands match.
+              {query.trim()
+                ? `No commands match “${query.trim()}”.`
+                : 'No commands match.'}
             </Command.Empty>
 
             {suggestionRows.length > 0 && (

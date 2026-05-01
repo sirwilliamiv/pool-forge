@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { plasterShallow, sunShelfWater } from '../Materials'
 
 interface Props {
   shape: Shape
@@ -20,22 +21,7 @@ export function SunShelf({ shape }: Props) {
   const w = feet(shape.width)
   const h = feet(shape.height)
 
-  const plasterShallow = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.4 }),
-    [],
-  )
-  const water = useMemo(
-    () =>
-      new THREE.MeshPhysicalMaterial({
-        color: 0xbae6fd,
-        transparent: true,
-        opacity: 0.8,
-        roughness: 0.05,
-        transmission: 0.5,
-        clearcoat: 1.0,
-      }),
-    [],
-  )
+  const water = sunShelfWater
 
   return (
     <group

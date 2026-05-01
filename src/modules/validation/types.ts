@@ -32,12 +32,25 @@ export interface ValidationSelections {
   lightingQuantity: number
 }
 
+/**
+ * Optional shape ids the rule engine can use to emit `targetId` on issues.
+ * Caller (editor page) populates from the loaded drawing. When omitted, rules
+ * still run and emit messages — they just won't be jump-to-able from the dock.
+ */
+export interface ValidationTargets {
+  pool?: string
+  spa?: string
+  spillover?: string
+  heater?: string
+}
+
 export interface ValidationContext {
   project: ValidationProject
   measurements: MeasurementSummary
   selections: ValidationSelections
   shapeCount: number
   hasDeck: boolean
+  targets?: ValidationTargets
 }
 
 export interface ValidationRule {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSelectionStore, useShapesStore, isPool, isFeature, isDeck } from '@/modules/editor/state'
 import { dispatch } from '@/lib/commands/dispatch'
-import { Box, Square, Waves } from 'lucide-react'
+import { Box, FolderOpen, Square, Waves } from 'lucide-react'
 
 function metaFor(shape: ReturnType<typeof useShapesStore.getState>['shapes'][number]): string {
   if (isPool(shape)) {
@@ -32,13 +32,26 @@ export function SelectionCard() {
   const [name, setName] = useState('')
 
   useEffect(() => {
-    setName(shape ? shape.kind.replace('_', ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : '')
-  }, [shape?.id, shape?.kind])
+    if (!shape) {
+      setName('')
+      return
+    }
+    const fallback = shape.kind.replace('_', ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
+    setName(shape.name ?? fallback)
+  }, [shape?.id, shape?.kind, shape?.name])
 
   if (!shape) {
     return (
-      <div className="flex h-[60px] items-center justify-center bg-gradient-to-b from-pfAccentSoft to-white px-3 text-[11.5px] text-textMuted">
-        Nothing selected
+      <div className="flex h-[60px] items-center gap-3 bg-gradient-to-b from-pfAccentSoft to-white px-3">
+        <div className="grid h-8 w-8 place-items-center rounded-pfSm bg-white shadow-pfXs">
+          <FolderOpen className="h-4 w-4 text-pfAccentStrong" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[12px] font-medium leading-tight text-foreground">
+            Project overview
+          </div>
+          <div className="mt-0.5 truncate text-[11px] text-textMuted">Hardcoded for demo</div>
+        </div>
       </div>
     )
   }
@@ -46,9 +59,10 @@ export function SelectionCard() {
   const Icon = iconFor(shape.kind)
 
   function commitName() {
-    if (!shape || name === shape.kind) return
-    // TODO: register shape.rename in Track G; until then this is a no-op dispatch the audit log will reject.
-    void dispatch('shape.rename', { id: shape.id, name })
+    if (!shape) return
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === shape.name) return
+    void dispatch('shape.rename', { id: shape.id, name: trimmed })
   }
 
   return (

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { useSelectionStore } from '@/modules/editor/state'
 import { dispatch } from '@/lib/commands/dispatch'
 import { ChevronDown, Plus } from 'lucide-react'
@@ -9,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useState } from 'react'
+import type { RawMaterial, MaterialKindLite } from '../materials/MaterialGrid'
 
 type Slot = 'interior' | 'coping' | 'tileBand'
 
@@ -19,6 +20,47 @@ interface MaterialOption {
   meta: string
   cost: string
   swatch: string // CSS background
+}
+
+const SLOT_KINDS: Record<Slot, MaterialKindLite[]> = {
+  interior: ['CUSTOM', 'POOL_WATER'],
+  coping: ['COPING'],
+  tileBand: ['CUSTOM'],
+}
+
+function asRecord(v: unknown): Record<string, unknown> {
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
+}
+
+function buildSwatch(spec: Record<string, unknown>): string {
+  const type = typeof spec.type === 'string' ? spec.type : 'solid'
+  const color = typeof spec.color === 'string' ? spec.color : '#94A3B8'
+  const secondary = typeof spec.secondary === 'string' ? spec.secondary : color
+  if (type === 'mosaic') {
+    return `repeating-linear-gradient(45deg, ${color} 0 4px, ${secondary} 4px 8px)`
+  }
+  if (type === 'gradient') {
+    return `linear-gradient(135deg, ${color} 0%, ${secondary} 100%)`
+  }
+  return color
+}
+
+function rawToOption(raw: RawMaterial): MaterialOption {
+  const spec = asRecord(raw.fillSpec)
+  const brand = typeof spec.brand === 'string' ? spec.brand : null
+  const cost =
+    typeof spec.costPerSqft === 'number'
+      ? `$${spec.costPerSqft.toFixed(2)}/sqft`
+      : typeof spec.costPerLf === 'number'
+        ? `$${spec.costPerLf.toFixed(2)}/lf`
+        : ''
+  return {
+    id: raw.id,
+    name: raw.name,
+    meta: brand ?? raw.kind.replace('_', ' ').toLowerCase(),
+    cost,
+    swatch: buildSwatch(spec),
+  }
 }
 
 // TODO: replace with real prisma.Material loader (server prop or server action).
@@ -95,8 +137,17 @@ const PLACEHOLDER_OPTIONS: Record<Slot, MaterialOption[]> = {
   ],
 }
 
-function MaterialRow({ slot, shapeId, label }: { slot: Slot; shapeId: string; label: string }) {
-  const options = PLACEHOLDER_OPTIONS[slot]
+function MaterialRow({
+  slot,
+  shapeId,
+  label,
+  options,
+}: {
+  slot: Slot
+  shapeId: string
+  label: string
+  options: MaterialOption[]
+}) {
   const [selectedId, setSelectedId] = useState(options[0]?.id ?? '')
   const current = options.find((o) => o.id === selectedId) ?? options[0]
   if (!current) return null
@@ -154,8 +205,26 @@ function MaterialRow({ slot, shapeId, label }: { slot: Slot; shapeId: string; la
   )
 }
 
-export function MaterialSection() {
+export interface MaterialSectionProps {
+  materials?: RawMaterial[]
+}
+
+export function MaterialSection({ materials = [] }: MaterialSectionProps) {
   const selectedId = useSelectionStore((s) => s.selectedIds[0])
+
+  const optionsBySlot = useMemo<Record<Slot, MaterialOption[]>>(() => {
+    function pick(slot: Slot): MaterialOption[] {
+      const kinds = SLOT_KINDS[slot]
+      const matched = materials.filter((m) => kinds.includes(m.kind))
+      if (matched.length === 0) return PLACEHOLDER_OPTIONS[slot]
+      return matched.map(rawToOption)
+    }
+    return {
+      interior: pick('interior'),
+      coping: pick('coping'),
+      tileBand: pick('tileBand'),
+    }
+  }, [materials])
 
   if (!selectedId) {
     return (
@@ -170,9 +239,9 @@ export function MaterialSection() {
 
   return (
     <>
-      <MaterialRow slot="interior" shapeId={selectedId} label="Interior finish" />
-      <MaterialRow slot="coping" shapeId={selectedId} label="Coping" />
-      <MaterialRow slot="tileBand" shapeId={selectedId} label="Tile band" />
+      <MaterialRow slot="interior" shapeId={selectedId} label="Interior finish" options={optionsBySlot.interior} />
+      <MaterialRow slot="coping" shapeId={selectedId} label="Coping" options={optionsBySlot.coping} />
+      <MaterialRow slot="tileBand" shapeId={selectedId} label="Tile band" options={optionsBySlot.tileBand} />
     </>
   )
 }

@@ -2,7 +2,6 @@
 
 import {
   ChevronDown,
-  Droplet,
   Hand,
   Lightbulb,
   MessageSquare,
@@ -10,7 +9,6 @@ import {
   PaintBucket,
   Ruler,
   Sparkles,
-  Square,
   StretchHorizontal,
   Type,
   Waves,
@@ -19,6 +17,7 @@ import type { LucideIcon } from 'lucide-react'
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
+import { PoolShapePicker } from './PoolShapePicker'
 
 interface ToolItem {
   id: string
@@ -31,7 +30,6 @@ interface ToolItem {
 
 const TOOLS: ToolItem[] = [
   { id: 'tool.select', icon: MousePointer2, label: 'Move', shortcut: 'V', group: 'create' },
-  { id: 'tool.pool-shape', icon: Square, label: 'Pool shape', shortcut: 'R', hasChevron: true, group: 'create' },
   { id: 'tool.steps', icon: StretchHorizontal, label: 'Steps & shelves', shortcut: 'S', group: 'create' },
   { id: 'tool.water-feature', icon: Waves, label: 'Water feature', shortcut: 'W', group: 'create' },
   { id: 'tool.lights', icon: Lightbulb, label: 'Lights', shortcut: 'L', group: 'create' },
@@ -52,7 +50,9 @@ export function Toolbar() {
       role="toolbar"
       aria-label="Editor tools"
     >
-      {renderGroup('create')}
+      {renderGroup('create').slice(0, 1)}
+      <PoolShapePicker />
+      {renderGroup('create').slice(1)}
       <Divider />
       {renderGroup('surface')}
       <Divider />

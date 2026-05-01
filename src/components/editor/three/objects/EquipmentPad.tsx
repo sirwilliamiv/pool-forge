@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { concretePad, heaterMetal, filterTank, pumpHousing } from '../Materials'
 
 interface Props {
   shape?: Shape
@@ -18,22 +19,10 @@ export function EquipmentPad({ shape, position = [-30, 0, 18] }: Props) {
     if (ref.current && shape) ref.current.userData.id = shape.id
   }, [shape])
 
-  const pad = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0xc8c2b5, roughness: 0.9 }),
-    [],
-  )
-  const heater = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x44403c, roughness: 0.6, metalness: 0.3 }),
-    [],
-  )
-  const filter = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.3 }),
-    [],
-  )
-  const pump = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x4b5563, roughness: 0.4, metalness: 0.4 }),
-    [],
-  )
+  const pad = concretePad
+  const heater = heaterMetal
+  const filter = filterTank
+  const pump = pumpHousing
 
   const rootPosition: [number, number, number] = shape
     ? [feet(shape.x), 0, feet(shape.y)]

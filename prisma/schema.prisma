@@ -57,6 +57,7 @@ model OrganizationMember {
 
   @@unique([userId, orgId])
   @@index([orgId])
+  @@index([userId])
 }
 
 // ============================================================
@@ -110,6 +111,7 @@ model Project {
 
   @@index([orgId])
   @@index([status])
+  @@index([orgId, status, updatedAt])
 }
 
 // ============================================================
@@ -195,6 +197,7 @@ model Material {
   drawingObjects DrawingObject[]
 
   @@unique([orgId, name])
+  @@index([orgId, kind])
 }
 
 // ============================================================
@@ -360,6 +363,8 @@ model CommandAuditLog {
   @@index([orgId])
   @@index([userId])
   @@index([ranAt])
+  @@index([userId, ranAt])
+  @@index([orgId, commandId, ranAt])
 }
 
 model AppSetting {

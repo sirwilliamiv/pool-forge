@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { bubblerStone, bubblerFountain, bubblerDroplet } from '../Materials'
 
 interface Props {
   shape: Shape
@@ -47,32 +48,9 @@ export function Bubblers({ shape, count = 2 }: Props) {
     if (ref.current) ref.current.userData.id = shape.id
   }, [shape.id])
 
-  const stone = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0xa8a29e, roughness: 0.85 }),
-    [],
-  )
-  const fountain = useMemo(
-    () =>
-      new THREE.MeshPhysicalMaterial({
-        color: 0xbae6fd,
-        transparent: true,
-        opacity: 0.45,
-        roughness: 0.1,
-        transmission: 0.7,
-      }),
-    [],
-  )
-  const droplet = useMemo(
-    () =>
-      new THREE.MeshPhysicalMaterial({
-        color: 0x38bdf8,
-        transparent: true,
-        opacity: 0.6,
-        roughness: 0.05,
-        transmission: 0.6,
-      }),
-    [],
-  )
+  const stone = bubblerStone
+  const fountain = bubblerFountain
+  const droplet = bubblerDroplet
 
   const w = feet(shape.width)
 

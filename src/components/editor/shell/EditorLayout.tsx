@@ -103,11 +103,12 @@ export function EditorLayout({
         selectionCardSlot={<SelectionCard />}
         positionSlot={<PositionSection />}
         geometrySlot={<GeometrySection />}
-        materialSlot={<MaterialSection />}
+        materialSlot={<MaterialSection materials={materials} />}
         computedMetricsSlot={<ComputedMetrics />}
         quoteContributionSlot={
           inspectorQuote ? <QuoteContribution quote={inspectorQuote} /> : <QuoteContribution />
         }
+        inspectorQuote={inspectorQuote}
       />
 
       <EditorPersistence projectId={projectId} initial={initial} />

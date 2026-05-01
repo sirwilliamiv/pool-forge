@@ -80,6 +80,8 @@ export function CustomOrbit() {
   const domElement = useThree((s) => s.gl.domElement)
   const transitionToken = useCameraStore((s) => s.transitionToken)
   const targetView = useCameraStore((s) => s.targetView)
+  const framePose = useCameraStore((s) => s.framePose)
+  const frameTarget = useCameraStore((s) => s.frameTarget)
 
   const sphRef = useRef<SphericalState>({ ...ISO_DEFAULT })
   const targetRef = useRef(new THREE.Vector3(0, -1, 0))
@@ -92,17 +94,35 @@ export function CustomOrbit() {
 
   // Trigger transition when the view-cube store ticks transitionToken.
   useEffect(() => {
-    if (!targetView) return
-    const pose = VIEW_POSES[targetView]
-    if (!pose) return
-    transitionRef.current = {
-      startTime: performance.now(),
-      startSph: { ...sphRef.current },
-      endSph: { ...pose.spherical },
-      startTarget: targetRef.current.clone(),
-      endTarget: new THREE.Vector3(...pose.target),
+    if (targetView) {
+      const pose = VIEW_POSES[targetView]
+      if (!pose) return
+      transitionRef.current = {
+        startTime: performance.now(),
+        startSph: { ...sphRef.current },
+        endSph: { ...pose.spherical },
+        startTarget: targetRef.current.clone(),
+        endTarget: new THREE.Vector3(...pose.target),
+      }
+      return
     }
-  }, [transitionToken, targetView])
+    if (framePose && frameTarget) {
+      // Convert cartesian framePose (relative to frameTarget) into spherical.
+      const dx = framePose[0] - frameTarget[0]
+      const dy = framePose[1] - frameTarget[1]
+      const dz = framePose[2] - frameTarget[2]
+      const distance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, Math.hypot(dx, dy, dz)))
+      const polar = Math.max(POLAR_MIN, Math.min(POLAR_MAX, Math.acos(dy / distance || 1)))
+      const azimuth = Math.atan2(dz, dx)
+      transitionRef.current = {
+        startTime: performance.now(),
+        startSph: { ...sphRef.current },
+        endSph: { azimuth, polar, distance },
+        startTarget: targetRef.current.clone(),
+        endTarget: new THREE.Vector3(...frameTarget),
+      }
+    }
+  }, [transitionToken, targetView, framePose, frameTarget])
 
   // Pointer-driven orbit + pan + zoom on the canvas DOM element.
   useEffect(() => {

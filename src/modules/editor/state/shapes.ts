@@ -5,6 +5,13 @@ import { ShapeKind } from '@prisma/client'
 
 export { ShapeKind }
 
+export interface DisplayHint {
+  flippedX?: boolean
+  flippedY?: boolean
+  lockedRatio?: boolean
+  text?: string
+}
+
 export interface ShapeBase {
   id: string
   kind: ShapeKind
@@ -17,6 +24,7 @@ export interface ShapeBase {
   locked: boolean
   hidden: boolean
   name?: string
+  displayHint?: DisplayHint
 }
 
 export interface RectanglePool extends ShapeBase {

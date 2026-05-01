@@ -53,6 +53,80 @@ const EMPTY_SUMMARY: MeasurementSummary = {
   hasDeck: false,
 }
 
+// Setback envelope: spec §8.3 — 7'6" rear, 5' side. Encoded in inches.
+const REAR_SETBACK_IN = 7.5 * 12
+const SIDE_SETBACK_IN = 5 * 12
+// Default house wall position when no HOUSE_WALL shape is in the scene:
+// 28 ft north of origin (matches site-context placement). Inches.
+const DEFAULT_HOUSE_Y_IN = -28 * 12
+// Lot bounds (inches). Used as the setback reference rectangle.
+const LOT_HALF_WIDTH_IN = 50 * 12
+const LOT_REAR_IN = 60 * 12
+const LOT_FRONT_IN = -40 * 12
+
+function shapeCenter(shape: Shape): { cx: number; cy: number } {
+  return { cx: shape.x + shape.width / 2, cy: shape.y + shape.height / 2 }
+}
+
+function formatFtIn(inches: number): string {
+  const total = Math.max(0, Math.round(inches))
+  const ft = Math.floor(total / 12)
+  const rem = total % 12
+  if (rem === 0) return `${ft}'`
+  return `${ft}' ${rem}"`
+}
+
+export function distanceToHouse(shape: Shape, _shapes: Shape[]): string {
+  // Future: walk shapes for a HOUSE_WALL — none in the schema today.
+  // Use the default site-context wall placement: y = DEFAULT_HOUSE_Y_IN.
+  const { cy } = shapeCenter(shape)
+  // House wall runs along x axis at y = DEFAULT_HOUSE_Y_IN; nearest distance
+  // from a centered shape is |cy - houseY| - height/2 (clamped at 0).
+  const raw = Math.abs(cy - DEFAULT_HOUSE_Y_IN) - shape.height / 2
+  const d = Math.max(0, raw)
+  const face = cy < DEFAULT_HOUSE_Y_IN ? 'north face' : 'south face'
+  return `${formatFtIn(d)} — ${face}`
+}
+
+export interface SetbackInfo {
+  distance: string
+  required: string
+  violated: boolean
+  edge: 'rear' | 'front' | 'left' | 'right'
+}
+
+export function distanceToSetback(shape: Shape, _shapes: Shape[]): SetbackInfo {
+  const { cx, cy } = shapeCenter(shape)
+  const halfW = shape.width / 2
+  const halfH = shape.height / 2
+
+  // Distances from each lot edge to the nearest shape edge (inches).
+  const distRear = LOT_REAR_IN - (cy + halfH)
+  const distFront = (cx - halfW) - LOT_FRONT_IN
+  const distLeft = (cx - halfW) - -LOT_HALF_WIDTH_IN
+  const distRight = LOT_HALF_WIDTH_IN - (cx + halfW)
+
+  const candidates: Array<{ edge: SetbackInfo['edge']; dist: number; required: number }> = [
+    { edge: 'rear', dist: distRear, required: REAR_SETBACK_IN },
+    { edge: 'front', dist: distFront, required: REAR_SETBACK_IN },
+    { edge: 'left', dist: distLeft, required: SIDE_SETBACK_IN },
+    { edge: 'right', dist: distRight, required: SIDE_SETBACK_IN },
+  ]
+
+  // Pick the most-constraining (smallest dist - required) edge.
+  let worst = candidates[0]!
+  for (const c of candidates) {
+    if (c.dist - c.required < worst.dist - worst.required) worst = c
+  }
+
+  return {
+    distance: `${formatFtIn(Math.max(0, worst.dist))} ${worst.edge}`,
+    required: `req. ${formatFtIn(worst.required)}`,
+    violated: worst.dist < worst.required,
+    edge: worst.edge,
+  }
+}
+
 export function computeMeasurements(shapes: Shape[]): MeasurementSummary {
   const summary: MeasurementSummary = { ...EMPTY_SUMMARY }
   const visible = shapes.filter((s) => !s.hidden)

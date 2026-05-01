@@ -17,6 +17,12 @@ import type {
   ValidationSelections,
 } from '@/modules/validation/types'
 import { getSuggestions } from '@/lib/commands/suggestions'
+import {
+  loadCachedQuote,
+  loadCachedValidation,
+  writeCachedQuote,
+  writeCachedValidation,
+} from '@/lib/cache/editor'
 
 function asBool(v: unknown): boolean {
   return v === true || v === 'true' || v === 1
@@ -99,7 +105,14 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
     lightingQuantity: asNumber(poolFields.lightingQuantity),
   }
 
-  const quoteSummary = computeQuote(items, measurements, pricingSelections)
+  // Cache-first read; fall back to compute and fire-and-forget write.
+  const cachedQuote = await loadCachedQuote(project.id)
+  const quoteSummary = cachedQuote ?? computeQuote(items, measurements, pricingSelections)
+  if (!cachedQuote && priceBook && quoteSummary.lineItems.length) {
+    void writeCachedQuote(project.id, priceBook.id, quoteSummary).catch((err) =>
+      console.error('writeCachedQuote miss-write failed', err),
+    )
+  }
   const quoteDock = quoteSummary.lineItems.length
     ? {
         id: project.id,
@@ -129,7 +142,14 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
     shapeCount: initial.shapes?.length ?? 0,
     hasDeck: measurements.hasDeck,
   }
-  const validationReport: ValidationReport = runValidation(validationContext)
+  const cachedValidation = await loadCachedValidation(project.id)
+  const validationReport: ValidationReport =
+    cachedValidation ?? runValidation(validationContext)
+  if (!cachedValidation) {
+    void writeCachedValidation(project.id, validationReport).catch((err) =>
+      console.error('writeCachedValidation miss-write failed', err),
+    )
+  }
 
   const paletteSuggestions = await getSuggestions({ projectId: project.id })
 

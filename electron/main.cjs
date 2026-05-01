@@ -9,6 +9,10 @@ const DEV_URL = process.env.POOL_FORGE_DEV_URL || 'http://localhost:3001'
 const PROD_PORT = Number(process.env.POOL_FORGE_PORT || 3010)
 const PROD_URL = `http://127.0.0.1:${PROD_PORT}`
 
+// NextAuth requires AUTH_URL to match the origin the browser loads from.
+// Set it before any Next.js process (dev wait or prod spawn) reads env.
+process.env.AUTH_URL = IS_DEV ? DEV_URL : PROD_URL
+
 let mainWindow = null
 let nextServer = null
 

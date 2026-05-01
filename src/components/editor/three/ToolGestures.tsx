@@ -2,12 +2,13 @@
 
 import { Line } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { dispatch } from '@/lib/commands/dispatch'
 import { inches } from '@/lib/three/units'
 import { useEditorStore, type Vec3 } from '@/modules/editor/state/editorStore'
 import { MeasureLabelOverlay } from '../shell/MeasureLabelOverlay'
+import { AnnotationDialog } from '../shell/AnnotationDialog'
 
 const GROUND_Y = 0
 
@@ -66,6 +67,10 @@ export function ToolGestures() {
   const { gl, camera, scene } = useThree()
   const downRef = useRef<{ x: number; y: number } | null>(null)
   const pointerWorldRef = useRef<Vec3 | null>(null)
+  const [pendingAnnotation, setPendingAnnotation] = useState<{
+    worldX: number
+    worldZ: number
+  } | null>(null)
 
   // For the pending-A → B preview line, track pointer world position.
   const measureA = useEditorStore((s) => s.measureA)
@@ -99,16 +104,19 @@ export function ToolGestures() {
       const tool = useEditorStore.getState().activeTool
 
       // Add-* tools: place a stencil at click point, then return to select.
-      const stencilId = ADD_TOOL_STENCIL[tool]
+      // For 'tool.pool-shape', the active stencil id comes from PoolShapePicker.
+      let stencilId: string | undefined
+      if (tool === 'tool.pool-shape') {
+        stencilId = useEditorStore.getState().activeStencilId ?? 'pool.rectangle'
+      } else {
+        stencilId = ADD_TOOL_STENCIL[tool]
+      }
       if (stencilId) {
         const hit = intersectGround(e, el, camera, raycaster)
         if (!hit) return
         // Click is the *center* of the new shape; the store stores top-left
-        // in inches and renderers offset by w/2,h/2. So inches((cx - w/2))
-        // for x; but we don't know stencil dims here. Pass center; client
-        // handler doesn't know dims either, so dispatch center-based and
-        // let the store land it at top-left == center for now (small offset
-        // is fine — user can drag to refine).
+        // in inches and renderers offset by w/2,h/2. Small offset is fine —
+        // user can drag to refine.
         void dispatch('add.shape', {
           stencilId,
           x: inches(hit.x),
@@ -157,13 +165,7 @@ export function ToolGestures() {
       if (tool === 'tool.annotation') {
         const hit = intersectGround(e, el, camera, raycaster)
         if (!hit) return
-        // Drop a placeholder text annotation as a stencil.
-        // Reuse 'feature.deep-end-marker' as a minimal marker stencil.
-        void dispatch('add.shape', {
-          stencilId: 'feature.deep-end-marker',
-          x: inches(hit.x),
-          y: inches(hit.z),
-        })
+        setPendingAnnotation({ worldX: hit.x, worldZ: hit.z })
         return
       }
 
@@ -221,6 +223,20 @@ export function ToolGestures() {
           />
           <MeasureLabelOverlay a={measureA} b={measureB} />
         </>
+      )}
+      {pendingAnnotation && (
+        <AnnotationDialog
+          onSave={(text) => {
+            void dispatch('add.shape', {
+              stencilId: 'feature.deep-end-marker',
+              x: inches(pendingAnnotation.worldX),
+              y: inches(pendingAnnotation.worldZ),
+              displayHint: { text },
+            })
+            setPendingAnnotation(null)
+          }}
+          onCancel={() => setPendingAnnotation(null)}
+        />
       )}
     </>
   )

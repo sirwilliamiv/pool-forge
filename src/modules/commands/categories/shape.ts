@@ -18,6 +18,7 @@ register({
     y: z.number(),
     width: z.number().positive().optional(),
     height: z.number().positive().optional(),
+    displayHint: z.record(z.unknown()).optional(),
   }),
   outputSchema: z.object({
     shapeId: z.string(),
@@ -182,6 +183,44 @@ register({
     ok: true,
     data: { sourceId: input.id, newId: 'client-pending' },
   }),
+})
+
+register({
+  id: 'pool.flip',
+  label: 'Flip shape',
+  description: 'Mirror a shape across its X or Y axis.',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    axis: z.enum(['x', 'y']),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    axis: z.enum(['x', 'y']),
+  }),
+  // CLIENT: reflect shape geometry locally — for X axis flip, negate width-side
+  //   asymmetric features (e.g., shallow vs deep ends, sun shelf side); for Y
+  //   axis, mirror along width. Track A wires the actual geometry mutation.
+  execute: async (input) => ({ ok: true, data: { id: input.id, axis: input.axis } }),
+})
+
+register({
+  id: 'pool.lock.ratio',
+  label: 'Lock aspect ratio',
+  description: 'Constrain L/W proportion when resizing.',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    locked: z.boolean(),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    locked: z.boolean(),
+  }),
+  // CLIENT: useEditorStore.getState().setRatioLock(input.id, input.locked)
+  //   — purely UI state; resize commands consult this when both L and W change
+  //   in the same commit. Track A adds the editorStore field + consumer.
+  execute: async (input) => ({ ok: true, data: { id: input.id, locked: input.locked } }),
 })
 
 register({

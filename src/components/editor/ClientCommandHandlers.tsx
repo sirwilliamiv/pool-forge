@@ -10,7 +10,10 @@ import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useViewStore } from '@/modules/editor/state/viewStore'
 import { ShapeKind } from '@/modules/editor/state/shapes'
 import { getStencil } from '@/modules/editor/stencils'
+import { feet } from '@/lib/three/units'
 import { useCommandPaletteStore } from './shell/CommandPalette'
+
+let sunStudyRaf: number | null = null
 
 // Single mount point for client-side command handlers. Each command's server
 // `execute` records the audit row; the matching handler here applies the
@@ -33,6 +36,8 @@ const HANDLER_IDS: string[] = [
   'pool.geometry.update',
   'pool.material.set',
   'pool.depth.set',
+  'pool.flip',
+  'pool.lock.ratio',
   // canvas category
   'selection.set',
   'camera.set.view',
@@ -51,7 +56,14 @@ export function ClientCommandHandlers() {
   useEffect(() => {
     // ---------- shape ----------
     registerClientHandler<
-      { stencilId: string; x: number; y: number; width?: number; height?: number },
+      {
+        stencilId: string
+        x: number
+        y: number
+        width?: number
+        height?: number
+        displayHint?: Record<string, unknown>
+      },
       { shapeId: string }
     >('add.shape', (input) => {
       const stencil = getStencil(input.stencilId)
@@ -66,6 +78,9 @@ export function ClientCommandHandlers() {
       if (input.width != null) opts.width = input.width
       if (input.height != null) opts.height = input.height
       const shapeId = store.addShape(kind, input.x, input.y, opts)
+      if (input.displayHint) {
+        store.updateShape(shapeId, { displayHint: input.displayHint })
+      }
       return { shapeId }
     })
 
@@ -202,6 +217,33 @@ export function ClientCommandHandlers() {
     })
 
     registerClientHandler<
+      { id: string; axis?: 'x' | 'y' },
+      { id: string; flippedX: boolean; flippedY: boolean }
+    >('pool.flip', (input) => {
+      const cur = useShapesStore.getState().shapes.find((s) => s.id === input.id)
+      const hint = cur?.displayHint ?? {}
+      const flippedX = input.axis === 'y' ? (hint.flippedX ?? false) : !(hint.flippedX ?? false)
+      const flippedY = input.axis === 'y' ? !(hint.flippedY ?? false) : (hint.flippedY ?? false)
+      useShapesStore
+        .getState()
+        .updateShape(input.id, { displayHint: { ...hint, flippedX, flippedY } })
+      return { id: input.id, flippedX, flippedY }
+    })
+
+    registerClientHandler<
+      { id: string; locked?: boolean },
+      { id: string; lockedRatio: boolean }
+    >('pool.lock.ratio', (input) => {
+      const cur = useShapesStore.getState().shapes.find((s) => s.id === input.id)
+      const hint = cur?.displayHint ?? {}
+      const lockedRatio = input.locked ?? !(hint.lockedRatio ?? false)
+      useShapesStore
+        .getState()
+        .updateShape(input.id, { displayHint: { ...hint, lockedRatio } })
+      return { id: input.id, lockedRatio }
+    })
+
+    registerClientHandler<
       {
         id: string
         shallowDepth?: number
@@ -242,8 +284,34 @@ export function ClientCommandHandlers() {
     registerClientHandler<unknown, { framed: boolean }>(
       'camera.frame.selection',
       () => {
-        // Defer real bbox-fit; stub to iso for now.
-        useCameraStore.getState().setView('iso')
+        const ids = useSelectionStore.getState().selectedIds
+        const shapes = useShapesStore.getState().shapes
+        const selected = shapes.filter((s) => ids.includes(s.id))
+        if (selected.length === 0) {
+          useCameraStore.getState().setView('iso')
+          return { framed: true }
+        }
+        // Combined bbox in inches → feet (1 unit = 1 foot in scene).
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        for (const s of selected) {
+          if (s.x < minX) minX = s.x
+          if (s.y < minY) minY = s.y
+          if (s.x + s.width > maxX) maxX = s.x + s.width
+          if (s.y + s.height > maxY) maxY = s.y + s.height
+        }
+        const cx = feet((minX + maxX) / 2)
+        const cz = feet((minY + maxY) / 2)
+        const sizeX = feet(maxX - minX)
+        const sizeZ = feet(maxY - minY)
+        const radius = Math.max(8, Math.hypot(sizeX, sizeZ) * 0.7)
+        const distance = Math.max(15, radius * 2.6)
+        // Orbit pose: 35° elevation looking SE, target at bbox center on ground.
+        const elev = 0.5 // ~28°
+        const az = -0.756 // match ISO_DEFAULT azimuth
+        const px = cx + distance * Math.cos(elev) * Math.cos(az)
+        const py = distance * Math.sin(elev)
+        const pz = cz + distance * Math.cos(elev) * Math.sin(az)
+        useCameraStore.getState().frameSelection([px, py, pz], [cx, 0, cz])
         return { framed: true }
       },
     )
@@ -280,8 +348,28 @@ export function ClientCommandHandlers() {
 
     registerClientHandler<{ durationMs?: number }, { started: boolean }>(
       'sun.run.study',
-      () => {
-        // RAF animation deferred — return success so the audit row is meaningful.
+      (input) => {
+        if (sunStudyRaf != null) {
+          cancelAnimationFrame(sunStudyRaf)
+          sunStudyRaf = null
+        }
+        const duration = input?.durationMs ?? 8000
+        const sun = useSunStore.getState()
+        const startMin = sun.sunrise
+        const endMin = sun.sunset
+        const t0 = performance.now()
+        const tick = (now: number) => {
+          const u = Math.min(1, (now - t0) / duration)
+          useSunStore
+            .getState()
+            .setMinutes(startMin + (endMin - startMin) * u)
+          if (u < 1) {
+            sunStudyRaf = requestAnimationFrame(tick)
+          } else {
+            sunStudyRaf = null
+          }
+        }
+        sunStudyRaf = requestAnimationFrame(tick)
         return { started: true }
       },
     )

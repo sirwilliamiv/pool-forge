@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { spaBody, spaSkirt, spaWaterPhysical, spaCoping } from '../Materials'
 
 interface Props {
   shape: Shape
@@ -23,30 +24,10 @@ export function Spa({ shape }: Props) {
   const skirtRadius = radius + 0.7
   const spaHeight = 1.5
 
-  const body = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.4 }),
-    [],
-  )
-  const stone = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0xa8a29e, roughness: 0.85 }),
-    [],
-  )
-  const water = useMemo(
-    () =>
-      new THREE.MeshPhysicalMaterial({
-        color: 0x60a5fa,
-        transparent: true,
-        opacity: 0.78,
-        roughness: 0.05,
-        transmission: 0.5,
-        clearcoat: 1.0,
-      }),
-    [],
-  )
-  const coping = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0xc9c2b0, roughness: 0.7 }),
-    [],
-  )
+  const body = spaBody
+  const stone = spaSkirt
+  const water = spaWaterPhysical
+  const coping = spaCoping
 
   return (
     <group
