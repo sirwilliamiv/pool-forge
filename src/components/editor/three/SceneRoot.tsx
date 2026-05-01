@@ -123,7 +123,11 @@ export function SceneRoot() {
     <group name="scene-root">
       {shapes.map((shape) =>
         shape.hidden ? null : (
-          <group key={shape.id}>{renderShape(shape)}</group>
+          <group
+            key={`${shape.id}-${shape.width}-${shape.height}-${shape.rotation ?? 0}`}
+          >
+            {renderShape(shape)}
+          </group>
         ),
       )}
 

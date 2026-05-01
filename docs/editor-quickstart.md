@@ -1,115 +1,112 @@
-# Pool Forge — Editor Quickstart
+# Pool Forge — Editor Demo Guide
 
-Login: `demo@poolforge.test` / `demo1234`. Open the seeded project from the dashboard. The editor opens at `/projects/seed-project-demo/editor`.
+**Login:** `demo@poolforge.test` / `demo1234`
+**Direct URL:** `/projects/seed-project-demo/editor`
+
+The editor covers the full viewport. To leave, browser-back to the dashboard.
 
 ---
 
-## The screen at a glance
+## The screen
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  PF  · Pool Forge / Customer / Backyard Pool · auto-saved   │  ← Header
+│  PF · breadcrumb · auto-saved 2m ago        avatar   Share  │  44px header
 ├──────────┬───────────────────────────────────┬──────────────┤
-│ Layers   │  [Plan][Design][Build][Customer]  │  Design tab  │
+│ Layers   │  [Plan|Design|Build|Customer]     │  Design tab  │
 │ Stencils │                                   │  Selection   │
 │ Materials│         3D scene                  │  Position    │
-│          │                                   │  Geometry    │
-│          │  Sun ☀                Tools ⚙     │  Material    │
-│          │                       Quote $     │  Computed    │
-│ Plan|3D|Section                  Validation  │  Quote       │
+│  search  │                                   │  Geometry    │
+│   ┊      │  Sun ☀                  Quote $  │  Material    │
+│ shape    │                                   │  Computed    │
+│  rows    │                         ViewCube  │  Quote       │
+│   ┊      │  Toolbar           Validation 0/4 │              │
+│Plan|3D|… │                                   │              │
 └──────────┴───────────────────────────────────┴──────────────┘
+   248px           1fr                              296px
 ```
 
-- **Header** — breadcrumb, auto-save status, your avatar, share button
-- **Left panel** — 3 tabs: **Layers** (everything in this design), **Stencils** (drag-on shapes), **Materials** (finishes you can apply)
-- **Center** — the 3D canvas + floating chrome
-- **Right panel** — the **Inspector**: details about whatever's selected
-- **Bottom-left of left panel** — view mode (Plan top-down / 3D / Section)
+- **Header** — breadcrumb, save status, avatar, Share
+- **Left** — three tabs: Layers / Stencils / Materials. Bottom: view-mode pill.
+- **Center** — 3D canvas with floating chrome
+- **Right** — Inspector. Three tabs: Design / Specs / Quote.
 
 ---
 
-## 90-second demo path
+## 5-minute demo script
 
-1. **Look around the pool.** Drag = orbit. Shift-drag = pan. Scroll = zoom.
-2. **Click the pool.** A blue halo appears. The right panel fills in with Position / Geometry / Material / Computed metrics / Quote contribution.
-3. **Edit the geometry.** In the right panel under "Geometry," change `L` from 30 to 36 and press **Enter**. The pool grows. Costs update.
-4. **Drag the sun.** Bottom-left card "Sun Study" — drag the slider. Lighting moves in real time. Release commits one audit row.
-5. **Snap the camera.** Right side has a small ViewCube card with TOP / FRONT / LEFT / RIGHT / ISO buttons. Click each.
-6. **Switch presentation modes.** Top-center pill: Plan / Design / Build / Customer.
-   - **Plan**: top-down, dimension labels, setback envelope, no trees.
-   - **Design**: rich 3D — the default working view.
-   - **Build**: rebar dots on the floor, gas-line route, construction labels.
-   - **Customer**: softer light, no construction symbols, no validation glows — what the homeowner sees.
-7. **Open the command palette.** Press **⌘K** (Mac) or **Ctrl+K**. Type to filter. ↑↓ to navigate. ⏎ to run. Esc to close. The "Suggested" group reads from the project's open validation issues.
+The seeded project has a 60'×30' rectangle pool with deck, spa, sun shelf, and site context (house, trees, equipment pad, loungers).
 
----
+### 1. Orbit the scene (10s)
+- **Left-drag** — orbit
+- **Shift-drag** or right-drag — pan target
+- **Scroll** — zoom
 
-## Left panel — three tabs
+### 2. Select and move (20s)
+- **Click the pool** → blue selection halo appears + DOM label "Rectangle pool" + dark contextual toolbar above it (duplicate / swap-material / lock / hide / delete).
+- **Drag the pool** while still selected → it follows the ground plane. Release to commit (one audit row).
+- **Click empty ground** → selection clears.
 
-### Layers
-Lists every shape in the design. Each row:
-- **Click name** → selects on canvas
-- **Eye icon** (hover or selected) → hide/show
-- **Padlock** → lock/unlock so it can't be dragged
+### 3. Edit via inspector (45s)
+- Select the pool again.
+- Right panel shows **Design** tab:
+  - **Position** — X / Y / Rotation. Type `30` in X, **Tab** out → pool jumps to that x.
+  - **Geometry** — L/W/D̄, Sh/Dp/Sl. Type `80` in L, **Enter** → pool grows to 80 ft long. The Computed metrics (surface area, perimeter, gallons, wetted area) update.
+  - **Material** — three rows (Interior / Coping / Tile band). Click a row → dropdown of real seeded materials → pick one.
 
-Selecting a shape on the canvas highlights its row, and vice versa.
+### 4. Add a stencil (15s)
+- Left panel → **Stencils** tab → search "step" → click a "Corner steps" card → 3D steps appear next to the pool, layers tree gets a new row.
+- Bottom toolbar Pool button has a **chevron** → click → choose Roman / Grecian / Kidney → next click on the canvas drops that pool variant.
 
-### Stencils
-70+ presets across categories (Pool shells, Steps & shelves, Water features, Lighting, Site & deck, Construction symbols).
-- **Search** the box at the top filters across all categories
-- **Click a card** → drops a new shape into the design at canvas center
+### 5. Layers panel (15s)
+- Left panel → **Layers** tab.
+- Click any layer row → corresponding 3D shape gets the halo.
+- Hover a row → eye icon appears → click → shape disappears from the canvas. Click again to show.
+- Padlock icon → toggles lock (locked shapes can't be dragged).
 
-### Materials
-Swatches grouped by kind (Interior finishes / Coping / Tile / Decking).
-- **Click a swatch with a shape selected** → applies that material to the shape
-- **Click a swatch with nothing selected** → arms the **material brush**. Then choose the brush tool (B) from the bottom toolbar and click any shape to apply.
+### 6. Materials panel (20s)
+- Left panel → **Materials** tab.
+- With the pool selected, click any swatch → material applied to the pool's interior slot, toast confirms.
+- With nothing selected, click a swatch → arms the **Material brush**. Then press **B** + click a shape on canvas → applies.
 
----
+### 7. Sun study (15s)
+- Bottom-left **Sun Study** card — drag the slider from sunrise to sunset. Lighting + shadows track the sun in real time. Release commits one audit row.
+- Or run **"Run sun study"** from ⌘K → the sun animates across the day automatically over 8 seconds.
 
-## Bottom toolbar (in order, with shortcuts)
+### 8. View cube (10s)
+- Right side **ViewCube** card — click TOP / FRONT / LEFT / RIGHT / ISO faces → camera tweens to that pose over 300ms. The active face highlights.
 
-| Button | Key | What it does |
-|---|---|---|
-| Move | **V** | Default. Click-to-select, drag-to-move (drag is currently inspector-only — Phase 3). |
-| Pool shape | **R** | Next click on the canvas drops a rectangle pool there. |
-| Steps | **S** | Next click drops corner steps. |
-| Water feature | **W** | Next click drops a waterfall. |
-| Lights | **L** | Next click drops an LED light. |
-| Deck | **D** | Next click drops a concrete deck. |
-| Material brush | **B** | Next click on a shape applies the active brush material. |
-| Measure | **M** | Click two points → floating distance label appears. **Esc** clears. |
-| Annotation | **T** | Drops a placeholder marker. (Real text input is Phase 3.) |
-| Comment | **C** | Placeholder — comments aren't wired yet. |
-| Sparkle | — | Opens the ⌘K command palette. |
+### 9. Presentation modes (30s)
+Top-center pill — four modes share the same scene with different presentation:
+- **Plan** — top-down ortho camera, setback envelope (amber wireframe), dimension labels. No trees/house.
+- **Design** — the working view (default). Rich 3D + selection chrome.
+- **Build** — adds rebar dots on the floor + yellow gas-line route + construction labels.
+- **Customer** — softer light, no construction symbols, no validation glows. What the homeowner sees.
 
-After dropping a shape with R/S/W/L/D, the tool resets back to Move.
+### 10. Validation dock (15s)
+- Bottom-right pill: red `2` / amber `4` / green `8`.
+- Click the chevron → expand to a list of issues with proposed fixes.
+- Click any issue row → 3D selection jumps to the affected shape (the seeded validations now emit `targetId`).
 
----
+### 11. Live quote dock (15s)
+- Top-right card — running total + delta chip (e.g., `+$1,820` after a change).
+- Click the header to expand → category breakdown (Pool shell, Spa, Equipment, Deck, Lighting), subtotal, permits, **Generate proposal** button.
 
-## Right panel — the Inspector
+### 12. Inspector tabs (20s)
+Right panel header has three tabs:
+- **Design** — what we used above.
+- **Specs** — construction-grade defaults: wall 8", rebar #4 @ 18" OC, 4000 PSI, gas 3/4", 240V. Read-only for v1.
+- **Quote** — full per-line-item table grouped by category. Selected shape's lines are highlighted.
 
-Three tabs at the top: **Design** (geometry & materials), **Specs** (construction details — coming), **Quote** (full per-line-item).
+### 13. Command palette (15s)
+- **⌘K** (Mac) / **Ctrl+K** (Win) → modal opens.
+- **Suggested** group at the top: pulled from the project's open validation issues + rotating hints.
+- **Add** group: stencils to drop. Click → adds shape, persists.
+- **Actions** group: registered commands.
+- ↑↓ to navigate, ⏎ to run, **Esc** to close.
 
-When something is selected, the Design tab shows:
-
-- **Selection card** — what you've selected. Editable name.
-- **Position** — X, Y, Rotation. Type a value, press **Enter** or **Tab** to commit. The 3D scene updates.
-- **Geometry** — Length / Width / Avg depth, then Shallow / Deep / Slope.
-- **Interior finish / Coping / Tile band** — current material, swap from a dropdown.
-- **Computed** — surface area, perimeter, volume, wetted area. Live.
-- **Contribution to quote** — what this element costs the project, with breakdown.
-
-When **nothing** is selected, the inspector shows project-level info (the demo defers this — for now you'll just see the empty placeholder).
-
----
-
-## Floating chrome (over the canvas)
-
-- **Top-center mode pill** — Plan / Design / Build / Customer
-- **Top-right Live Quote dock** — running total + delta. Click the header to expand and see line items by category. Generate Proposal button at the bottom.
-- **Right ViewCube** — TOP / FRONT / LEFT / RIGHT / ISO snap buttons (300ms ease)
-- **Bottom-left Sun Study** — drag to scrub the day. Lighting follows in real time.
-- **Bottom-right Validation dock** — errors/warnings/ok pills. Click a row → selection jumps to the affected layer.
+### 14. Frame selection (5s)
+- Click any shape, press **F** → camera tweens to frame it.
 
 ---
 
@@ -117,28 +114,65 @@ When **nothing** is selected, the inspector shows project-level info (the demo d
 
 | Action | Key |
 |---|---|
-| Tools | **V R S W L D B M T C** |
+| Move tool | **V** |
+| Pool shape (with chevron for variants) | **R** |
+| Steps | **S** |
+| Water feature | **W** |
+| Lights | **L** |
+| Deck | **D** |
+| Material brush | **B** |
+| Measure (click two points → distance label) | **M** |
+| Annotation (click → text dialog) | **T** |
+| Comment (placeholder) | **C** |
 | Frame selection | **F** |
-| Pan canvas | **Space + drag** |
+| Pan | **Space + drag** |
 | Command palette | **⌘K / Ctrl+K** |
 | Undo / Redo | **⌘Z / ⌘⇧Z** |
 | Duplicate selected | **⌘D** |
-| View mode tabs | **1 / 2 / 3** (Plan / 3D / Section) |
+| View mode | **1 / 2 / 3** (Plan / 3D / Section) |
 | Deselect / close modal | **Esc** |
 | Export proposal / construction | **⌘E / ⌘⇧E** |
 
-Help: `⌘/` lists everything (coming).
+---
+
+## Troubleshooting the demo
+
+**Editor shows "Internal Server Error" right after login.**
+The seed may not have run. From the project root: `pnpm db:seed`.
+
+**Geometry edits don't appear to render.**
+Click into the input, change the number, press **Enter** or **Tab** (don't just click away mid-keystroke). The 3D scene rebuilds geometry on each commit. If it still doesn't update, the audit log will show whether the dispatch went through — `select * from "CommandAuditLog" order by "ranAt" desc limit 5;`.
+
+**Toolbar or panels disappear.**
+The editor uses `fixed inset-0` to cover the viewport — there shouldn't be any window-level scroll. If the layout breaks, your viewport is below 1024px wide; resize.
+
+**Drag doesn't work.**
+Drag only works on **selected** shapes with the **Move tool active** (V). It also fails on locked shapes (padlock in the layers panel or contextual toolbar).
+
+**Material clicks don't apply.**
+You need a shape selected first. With nothing selected, clicking a material **arms the brush** — press B, then click a shape.
+
+**Plan mode looks empty.**
+Trees, house, loungers, and equipment pad are intentionally hidden in Plan and Customer modes. Switch back to Design.
 
 ---
 
-## What's intentionally not wired yet
+## What's deferred (not on the demo path)
 
-The v1 cut deferred:
-- Multiplayer cursors (header avatar is single-user)
-- In-canvas drag/resize handles (use the inspector)
-- Comment threads (Comment tool drops a placeholder)
-- Real annotation text input (Annotation tool drops a marker)
-- The Specs and Quote inspector tabs (Design tab is the working one)
-- ⌘K voice dictation (the footer affordance is shown but inactive)
+- Real multiplayer cursors (header avatar is single-user)
+- In-canvas resize handles (use the inspector for now)
+- Real comment threads
+- Voice dictation footer in ⌘K (rendered dormant)
 
-Everything else listed above is real and audited via `CommandAuditLog`.
+Everything in the script above is real and audit-logged.
+
+---
+
+## Tech notes
+
+- Stack: Next.js 15 + React Three Fiber 9 + Zustand + Prisma + PostgreSQL.
+- Scene: ~60 procedural meshes. 1 unit = 1 foot.
+- Persistence: 800ms debounced save of the full Drawing tree as JSON. Quote and ValidationResult are write-through cached so editor mount is fast.
+- Every UI mutation routes through `/api/commands` and writes a `CommandAuditLog` row.
+- Web build: `pnpm dev` (port 3000 default).
+- Electron: `pnpm electron:dev` for desktop. AUTH_URL is set automatically in `electron/main.cjs`.
