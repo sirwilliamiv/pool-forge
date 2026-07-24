@@ -40,12 +40,15 @@ interface PoolFields {
   accessNotes?: string
 }
 
+export type ConstructionPageSize = 'letter' | 'tabloid'
+
 export interface ConstructionDocumentProps {
   project: ProjectLite
   customer: CustomerLite | null
   shapes: Shape[]
   measurements: MeasurementSummary
   quote: QuoteSummary
+  pageSize?: ConstructionPageSize
 }
 
 const SYMBOL_LEGEND = [
@@ -74,12 +77,17 @@ function v(s?: string | number | null | boolean): string {
 }
 
 export function ConstructionDocument(props: ConstructionDocumentProps) {
-  const { project, customer, shapes, measurements: m, quote } = props
+  const { project, customer, shapes, measurements: m, quote, pageSize = 'tabloid' } = props
   const pf = (project.poolFields ?? {}) as PoolFields
   const hasSpa = shapes.some((s) => s.kind === ShapeKind.SPA)
+  // Tabloid (11×17 landscape) is the default — Jimmy prints 10 copies of the onion-skin
+  // for site use. Letter is opt-in for offices without a 17" printer.
+  const widthClass = pageSize === 'tabloid' ? 'max-w-[16in]' : 'max-w-[8in]'
+  const drawingW = pageSize === 'tabloid' ? 1400 : 760
+  const drawingH = pageSize === 'tabloid' ? 720 : 480
 
   return (
-    <div className="construction-doc mx-auto max-w-[8in] bg-white p-6 text-xs text-black">
+    <div className={`construction-doc size-${pageSize} mx-auto ${widthClass} bg-white p-6 text-xs text-black`}>
       {/* Header */}
       <header className="mb-4 flex items-start justify-between border-b-2 border-black pb-2">
         <div>
@@ -214,7 +222,7 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
         <h2 className="mb-1 border-b border-black pb-0.5 text-sm font-bold uppercase tracking-wide">
           Construction Layout
         </h2>
-        <DrawingSvg shapes={shapes} widthPx={760} heightPx={480} />
+        <DrawingSvg shapes={shapes} widthPx={drawingW} heightPx={drawingH} />
       </section>
 
       {/* Access notes */}

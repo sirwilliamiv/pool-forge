@@ -1,8 +1,4 @@
-@page tabloid-page {
-  size: 11in 17in landscape;
-  margin: 0.4in;
-}
-@page letter-page {
+@page {
   size: letter portrait;
   margin: 0.4in;
 }
@@ -14,13 +10,7 @@
   body {
     background: white !important;
   }
-  .construction-doc.size-tabloid {
-    page: tabloid-page;
-  }
-  .construction-doc.size-letter {
-    page: letter-page;
-  }
-  .construction-doc {
+  .screen-rfq-doc {
     box-shadow: none !important;
     border: none !important;
   }
@@ -30,7 +20,7 @@
   }
 }
 
-.construction-doc {
+.screen-rfq-doc {
   background: white;
   color: black;
 }

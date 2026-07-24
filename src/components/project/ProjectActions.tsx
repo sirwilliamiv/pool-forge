@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Archive, Copy, ExternalLink, Trash2 } from 'lucide-react'
+import { Archive, Copy, ExternalLink, FileText, Printer, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ProjectStatus } from '@prisma/client'
 import { Button } from '@/components/ui/button'
@@ -98,6 +98,42 @@ export function ProjectActions({ project }: ProjectActionsProps) {
           >
             <Trash2 className="mr-1.5 h-4 w-4" />
             Delete
+          </Button>
+        </div>
+      </div>
+
+      {/* Document exports — opens in a new tab so the source page stays open. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Documents
+        </span>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/projects/${project.id}/proposal`} target="_blank">
+              <FileText className="mr-1.5 h-4 w-4" />
+              Customer proposal
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/projects/${project.id}/construction`} target="_blank">
+              <Printer className="mr-1.5 h-4 w-4" />
+              Construction packet
+              <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                11×17
+              </span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/projects/${project.id}/site-plan`} target="_blank">
+              <FileText className="mr-1.5 h-4 w-4" />
+              Site plan
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/projects/${project.id}/screen-enclosure-quote`} target="_blank">
+              <FileText className="mr-1.5 h-4 w-4" />
+              Screen enclosure RFQ
+            </Link>
           </Button>
         </div>
       </div>

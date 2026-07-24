@@ -4,21 +4,31 @@ import { db } from '@/lib/db'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
 import { computeQuote, type PriceBookItemLite } from '@/modules/pricing/engine'
-import { ConstructionDocument } from '@/components/exports/ConstructionDocument'
+import {
+  ConstructionDocument,
+  type ConstructionPageSize,
+} from '@/components/exports/ConstructionDocument'
 import { PrintButton } from '@/components/exports/PrintButton'
 import './construction.css'
 
+function parsePageSize(v: string | string[] | undefined): ConstructionPageSize {
+  const raw = Array.isArray(v) ? v[0] : v
+  return raw === 'letter' ? 'letter' : 'tabloid'
+}
+
 interface PoolFieldsLite {
   heaterSelected?: boolean
-  saltSelected?: boolean
+  saltSystemSelected?: boolean
   screenSelected?: boolean
   lightingQuantity?: number | string
 }
 
 export default async function ConstructionPacketPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams?: Promise<{ size?: string | string[] }>
 }) {
   const session = await auth()
   if (!session?.user) redirect('/login')
@@ -26,6 +36,7 @@ export default async function ConstructionPacketPage({
   if (!orgId) redirect('/login')
 
   const { id } = await params
+  const pageSize = parsePageSize((await searchParams)?.size)
   const project = await db.project.findUnique({
     where: { id },
     include: { customer: true },
@@ -54,6 +65,7 @@ export default async function ConstructionPacketPage({
       name: i.name,
       unitType: i.unitType,
       retailPrice: Number(i.retailPrice),
+      required: i.required,
     })) ?? []
 
   const pf = (project.poolFields ?? {}) as PoolFieldsLite
@@ -64,15 +76,25 @@ export default async function ConstructionPacketPage({
 
   const quote = computeQuote(items, measurements, {
     heaterSelected: Boolean(pf.heaterSelected),
-    saltSystemSelected: Boolean(pf.saltSelected),
+    saltSystemSelected: Boolean(pf.saltSystemSelected),
     screenSelected: Boolean(pf.screenSelected),
     lightingQuantity: lightingQty,
   })
 
+  const otherSize: ConstructionPageSize = pageSize === 'tabloid' ? 'letter' : 'tabloid'
+
   return (
     <div className="min-h-screen bg-neutral-100 py-6">
-      <div className="fixed right-4 top-4 z-50">
-        <PrintButton label="Print / Save as PDF" />
+      <div className="no-print fixed right-4 top-4 z-50 flex items-center gap-2">
+        <a
+          href={`?size=${otherSize}`}
+          className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+        >
+          Switch to {otherSize === 'tabloid' ? '11×17' : 'Letter'}
+        </a>
+        <PrintButton
+          label={`Print / Save as PDF (${pageSize === 'tabloid' ? '11×17' : 'Letter'})`}
+        />
       </div>
       <ConstructionDocument
         project={{
@@ -97,6 +119,7 @@ export default async function ConstructionPacketPage({
         shapes={shapes}
         measurements={measurements}
         quote={quote}
+        pageSize={pageSize}
       />
     </div>
   )

@@ -137,10 +137,22 @@ export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React
       },
       {
         id: 'action.export.construction',
-        label: 'Export construction packet',
+        label: 'Export construction packet (11×17)',
         shortcut: '⌘⇧E',
         icon: Zap,
-        run: () => void runAndClose('export.constructionPacket', {}),
+        run: () => void runAndClose('export.constructionPacket', { pageSize: 'tabloid' }),
+      },
+      {
+        id: 'action.export.sitePlan',
+        label: 'Export site plan',
+        icon: Zap,
+        run: () => void runAndClose('export.sitePlan', {}),
+      },
+      {
+        id: 'action.export.screenRfq',
+        label: 'Export screen enclosure RFQ',
+        icon: Zap,
+        run: () => void runAndClose('export.screenEnclosureQuote', {}),
       },
       {
         id: 'action.run.validation',
