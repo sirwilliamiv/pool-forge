@@ -10,6 +10,8 @@ import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 
 const DRAG_THRESHOLD_PX = 4
+// Snap increment for drag-move when snapping is enabled (inches; 0.5 ft).
+const SNAP_INCHES = 6
 
 export function DragHandler() {
   const { gl, camera, scene } = useThree()
@@ -128,8 +130,11 @@ export function DragHandler() {
 
       const dxFeet = ground.x - drag.startGroundX
       const dzFeet = ground.z - drag.startGroundZ
-      const newX = drag.startShapeX + inches(dxFeet)
-      const newY = drag.startShapeY + inches(dzFeet)
+      const rawX = drag.startShapeX + inches(dxFeet)
+      const rawY = drag.startShapeY + inches(dzFeet)
+      const snapOn = useEditorStore.getState().snapEnabled
+      const newX = snapOn ? Math.round(rawX / SNAP_INCHES) * SNAP_INCHES : rawX
+      const newY = snapOn ? Math.round(rawY / SNAP_INCHES) * SNAP_INCHES : rawY
 
       drag.lastX = newX
       drag.lastY = newY
