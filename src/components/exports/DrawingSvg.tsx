@@ -81,55 +81,82 @@ export function DrawingSvg({
         const cx = s.width / 2
         const cy = s.height / 2
         const water = isWater(s.kind)
+        const isEllipsePool =
+          s.kind === ShapeKind.RECTANGLE_POOL && s.displayHint?.poolShape === 'ellipse'
         const rx = Math.min(s.width, s.height) * (water ? 0.18 : 0.04)
         const labelFontSize = Math.max(8, Math.min(s.width, s.height) * 0.08)
         const palette = fillForShape(s)
         return (
           <g key={s.id} transform={`translate(${s.x} ${s.y}) rotate(${s.rotation} ${cx} ${cy})`}>
             {s.kind === ShapeKind.RECTANGLE_POOL ? (
-              <rect
-                x={-COPING_IN}
-                y={-COPING_IN}
-                width={s.width + COPING_IN * 2}
-                height={s.height + COPING_IN * 2}
-                rx={rx + COPING_IN}
-                fill="#e7e2d8"
-                stroke="#c9c0ad"
-                strokeWidth={1.5}
-                filter="url(#pf-shadow)"
-              />
+              isEllipsePool ? (
+                <ellipse
+                  cx={cx}
+                  cy={cy}
+                  rx={cx + COPING_IN}
+                  ry={cy + COPING_IN}
+                  fill="#e7e2d8"
+                  stroke="#c9c0ad"
+                  strokeWidth={1.5}
+                  filter="url(#pf-shadow)"
+                />
+              ) : (
+                <rect
+                  x={-COPING_IN}
+                  y={-COPING_IN}
+                  width={s.width + COPING_IN * 2}
+                  height={s.height + COPING_IN * 2}
+                  rx={rx + COPING_IN}
+                  fill="#e7e2d8"
+                  stroke="#c9c0ad"
+                  strokeWidth={1.5}
+                  filter="url(#pf-shadow)"
+                />
+              )
             ) : null}
             {water ? (
-              <>
-                <rect
-                  x={0}
-                  y={0}
-                  width={s.width}
-                  height={s.height}
-                  rx={rx}
+              isEllipsePool ? (
+                <ellipse
+                  cx={cx}
+                  cy={cy}
+                  rx={cx}
+                  ry={cy}
                   fill="url(#pf-water)"
                   stroke="#0369a1"
                   strokeWidth={1.5}
                 />
-                <rect
-                  x={s.width * 0.1}
-                  y={s.height * 0.28}
-                  width={s.width * 0.8}
-                  height={Math.max(1.5, s.height * 0.015)}
-                  rx={2}
-                  fill="#ffffff"
-                  opacity={0.35}
-                />
-                <rect
-                  x={s.width * 0.1}
-                  y={s.height * 0.52}
-                  width={s.width * 0.55}
-                  height={Math.max(1.5, s.height * 0.012)}
-                  rx={2}
-                  fill="#ffffff"
-                  opacity={0.22}
-                />
-              </>
+              ) : (
+                <>
+                  <rect
+                    x={0}
+                    y={0}
+                    width={s.width}
+                    height={s.height}
+                    rx={rx}
+                    fill="url(#pf-water)"
+                    stroke="#0369a1"
+                    strokeWidth={1.5}
+                  />
+                  <rect
+                    x={s.width * 0.1}
+                    y={s.height * 0.28}
+                    width={s.width * 0.8}
+                    height={Math.max(1.5, s.height * 0.015)}
+                    rx={2}
+                    fill="#ffffff"
+                    opacity={0.35}
+                  />
+                  <rect
+                    x={s.width * 0.1}
+                    y={s.height * 0.52}
+                    width={s.width * 0.55}
+                    height={Math.max(1.5, s.height * 0.012)}
+                    rx={2}
+                    fill="#ffffff"
+                    opacity={0.22}
+                  />
+                </>
+              )
             ) : (
               <rect
                 x={0}
