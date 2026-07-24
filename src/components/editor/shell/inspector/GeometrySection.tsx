@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSelectionStore, useShapesStore, isPool } from '@/modules/editor/state'
 import { dispatch } from '@/lib/commands/dispatch'
-import { FlipHorizontal, Lock } from 'lucide-react'
+import { Circle, FlipHorizontal, Lock } from 'lucide-react'
 
 interface FieldProps {
   prefix: string
@@ -100,6 +100,24 @@ export function GeometrySection() {
           >
             <Lock className="h-3 w-3" />
           </button>
+          {pool ? (
+            <button
+              className={
+                shape.displayHint?.poolShape === 'ellipse'
+                  ? 'text-pfAccentStrong'
+                  : 'text-textFaint hover:text-foreground'
+              }
+              title={shape.displayHint?.poolShape === 'ellipse' ? 'Rectangular footprint' : 'Oval footprint'}
+              onClick={() =>
+                void dispatch('pool.shape.set', {
+                  id: shape.id,
+                  poolShape: shape.displayHint?.poolShape === 'ellipse' ? 'rectangle' : 'ellipse',
+                })
+              }
+            >
+              <Circle className="h-3 w-3" />
+            </button>
+          ) : null}
         </>
       }
     >

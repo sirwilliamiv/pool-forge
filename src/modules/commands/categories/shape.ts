@@ -205,6 +205,22 @@ register({
 })
 
 register({
+  id: 'pool.shape.set',
+  label: 'Set pool footprint',
+  description: 'Switch a pool between a rectangular and an elliptical footprint.',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    poolShape: z.enum(['rectangle', 'ellipse']),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    poolShape: z.enum(['rectangle', 'ellipse']),
+  }),
+  execute: async (input) => ({ ok: true, data: { id: input.id, poolShape: input.poolShape } }),
+})
+
+register({
   id: 'pool.lock.ratio',
   label: 'Lock aspect ratio',
   description: 'Constrain L/W proportion when resizing.',

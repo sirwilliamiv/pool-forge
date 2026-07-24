@@ -17,6 +17,7 @@ import { LedLights } from './objects/LedLights'
 import { Loungers } from './objects/Loungers'
 import { PlanOverlay } from './PlanOverlay'
 import { PoolWalls } from './objects/PoolWalls'
+import { EllipsePool } from './objects/EllipsePool'
 import { Spa } from './objects/Spa'
 import { Spillover } from './objects/Spillover'
 import { Steps } from './objects/Steps'
@@ -28,7 +29,9 @@ import { Water } from './objects/Water'
 function renderShape(shape: Shape) {
   switch (shape.kind) {
     case ShapeKind.RECTANGLE_POOL:
-      return (
+      return shape.displayHint?.poolShape === 'ellipse' ? (
+        <EllipsePool shape={shape} />
+      ) : (
         <>
           <PoolWalls shape={shape} />
           <Water shape={shape} />

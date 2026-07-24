@@ -38,6 +38,7 @@ const HANDLER_IDS: string[] = [
   'pool.depth.set',
   'pool.flip',
   'pool.lock.ratio',
+  'pool.shape.set',
   // canvas category
   'selection.set',
   'camera.set.view',
@@ -83,6 +84,18 @@ export function ClientCommandHandlers() {
       }
       return { shapeId }
     })
+
+    registerClientHandler<{ id: string; poolShape: 'rectangle' | 'ellipse' }, { id: string }>(
+      'pool.shape.set',
+      (input) => {
+        const store = useShapesStore.getState()
+        const shape = store.shapes.find((s) => s.id === input.id)
+        store.updateShape(input.id, {
+          displayHint: { ...(shape?.displayHint ?? {}), poolShape: input.poolShape },
+        })
+        return { id: input.id }
+      },
+    )
 
     registerClientHandler<{ ids: string[]; additive?: boolean }, { selectedIds: string[] }>(
       'select.shape',
