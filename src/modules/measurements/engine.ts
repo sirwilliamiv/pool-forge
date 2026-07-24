@@ -14,6 +14,7 @@ import {
   rectanglePerimeterLf,
   wettedAreaSqft,
 } from '@/lib/geometry/rectangle'
+import { ellipseAreaSqft, ellipsePerimeterLf } from '@/lib/geometry/ellipse'
 
 export interface MeasurementSummary {
   poolSurfaceArea: number
@@ -135,8 +136,13 @@ export function computeMeasurements(shapes: Shape[]): MeasurementSummary {
 
   for (const shape of visible) {
     if (isPool(shape)) {
-      const area = rectangleAreaSqft(shape.width, shape.height)
-      const perimeter = rectanglePerimeterLf(shape.width, shape.height)
+      const ellipse = shape.displayHint?.poolShape === 'ellipse'
+      const area = ellipse
+        ? ellipseAreaSqft(shape.width, shape.height)
+        : rectangleAreaSqft(shape.width, shape.height)
+      const perimeter = ellipse
+        ? ellipsePerimeterLf(shape.width, shape.height)
+        : rectanglePerimeterLf(shape.width, shape.height)
       const avgDepth = (shape.depthShallow + shape.depthDeep) / 2
       summary.poolSurfaceArea += area
       summary.poolPerimeter += perimeter

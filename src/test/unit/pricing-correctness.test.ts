@@ -160,3 +160,13 @@ describe('measurements — spa signal and multi-pool depth', () => {
     expect(m.poolDepthDeep).toBe(8)
   })
 })
+
+describe('measurements — ellipse pool footprint', () => {
+  it('an ellipse-flagged pool measures with ellipse area, not the bounding box', () => {
+    const rect = computeMeasurements([poolShape()]).poolSurfaceArea
+    const ellipseShape: Shape = { ...poolShape(), displayHint: { poolShape: 'ellipse' } }
+    const ellipse = computeMeasurements([ellipseShape]).poolSurfaceArea
+    expect(ellipse).toBeLessThan(rect)
+    expect(ellipse).toBeCloseTo((Math.PI / 4) * rect, 4)
+  })
+})

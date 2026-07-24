@@ -10,6 +10,9 @@ export interface DisplayHint {
   flippedY?: boolean
   lockedRatio?: boolean
   text?: string
+  // Pool footprint shape. Absent or 'rectangle' = the default box footprint;
+  // 'ellipse' measures and renders the pool as an oval within its bounding box.
+  poolShape?: 'rectangle' | 'ellipse'
 }
 
 export interface ShapeBase {
