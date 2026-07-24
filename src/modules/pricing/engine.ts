@@ -9,6 +9,8 @@ export interface PriceBookItemLite {
   name: string
   unitType: UnitType
   retailPrice: number
+  /** Required count-unit items are forced onto the quote at qty 1 (e.g. the pump). */
+  required?: boolean
 }
 
 export interface PricingSelections {
@@ -52,7 +54,7 @@ function quantityForItem(
         ? { quantity: m.poolSurfaceArea, source: 'Pool surface area' }
         : { quantity: m.hasPool ? 1 : 0, source: 'Pool present' }
     case PriceCategory.SPA:
-      return { quantity: m.featureCount > 0 ? 1 : 0, source: 'Spa present' }
+      return { quantity: m.spaCount > 0 ? 1 : 0, source: 'Spa present' }
     case PriceCategory.DECK:
       return { quantity: m.deckArea, source: 'Deck area' }
     case PriceCategory.LANAI:
@@ -84,6 +86,17 @@ function quantityForItem(
   }
 }
 
+// Unit types that represent a discrete count / flat charge (not an area or
+// linear measurement). A `required` item of one of these types is forced onto
+// the quote at qty 1 even when its category rule yields 0 — e.g. a required
+// variable-speed pump must appear whether or not a heater is selected. Area /
+// linear required items are left at 0 so we never invent surface area.
+const COUNT_UNIT_TYPES: ReadonlySet<UnitType> = new Set([
+  UnitType.EACH,
+  UnitType.LUMP,
+  UnitType.HOUR,
+])
+
 export function computeQuote(
   items: PriceBookItemLite[],
   measurements: MeasurementSummary,
@@ -91,16 +104,25 @@ export function computeQuote(
 ): QuoteSummary {
   const lineItems: QuoteLine[] = items
     .map<QuoteLine>((item) => {
-      const { quantity, source } = quantityForItem(item, measurements, selections)
+      const derived = quantityForItem(item, measurements, selections)
+      let quantity = derived.quantity
+      let source = derived.source
+      if (item.required && quantity <= 0 && COUNT_UNIT_TYPES.has(item.unitType)) {
+        quantity = 1
+        source = 'Required'
+      }
+      // Round the quantity first, then derive the line total from the rounded
+      // quantity so `quantity × unitPrice` always equals the printed line total.
+      const roundedQty = Math.round(quantity * 100) / 100
       const unitPrice = Number(item.retailPrice) || 0
       return {
         itemId: item.id,
         name: item.name,
         category: item.category,
         source,
-        quantity: Math.round(quantity * 100) / 100,
+        quantity: roundedQty,
         unitPrice,
-        total: Math.round(quantity * unitPrice * 100) / 100,
+        total: Math.round(roundedQty * unitPrice * 100) / 100,
       }
     })
     .filter((l) => l.quantity > 0)

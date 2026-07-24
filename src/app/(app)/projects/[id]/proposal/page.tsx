@@ -73,6 +73,7 @@ export default async function ProposalPage({
         name: i.name,
         unitType: i.unitType,
         retailPrice: Number(i.retailPrice),
+        required: i.required,
       }))
     : []
 

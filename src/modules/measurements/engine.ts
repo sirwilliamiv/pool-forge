@@ -30,6 +30,7 @@ export interface MeasurementSummary {
   decoDrainLinearFeet: number
   benchLinearFeet: number
   featureCount: number
+  spaCount: number
   hasPool: boolean
   hasDeck: boolean
 }
@@ -49,6 +50,7 @@ const EMPTY_SUMMARY: MeasurementSummary = {
   decoDrainLinearFeet: 0,
   benchLinearFeet: 0,
   featureCount: 0,
+  spaCount: 0,
   hasPool: false,
   hasDeck: false,
 }
@@ -142,11 +144,13 @@ export function computeMeasurements(shapes: Shape[]): MeasurementSummary {
       summary.poolGallons += poolGallons(area, avgDepth)
       summary.poolLengthFt = Math.max(summary.poolLengthFt, shape.width / 12)
       summary.poolWidthFt = Math.max(summary.poolWidthFt, shape.height / 12)
-      summary.poolDepthShallow = shape.depthShallow
-      summary.poolDepthDeep = shape.depthDeep
-      summary.poolAvgDepth = avgDepth
+      // Multiple pools: keep the deepest depths rather than letting the last
+      // pool overwrite. Coping follows the pool perimeter; deco drain is a
+      // separate deck feature sourced only from deco-drain stencils.
+      summary.poolDepthShallow = Math.max(summary.poolDepthShallow, shape.depthShallow)
+      summary.poolDepthDeep = Math.max(summary.poolDepthDeep, shape.depthDeep)
+      summary.poolAvgDepth = (summary.poolDepthShallow + summary.poolDepthDeep) / 2
       summary.copingLinearFeet += perimeter
-      summary.decoDrainLinearFeet += perimeter
       summary.hasPool = true
     } else if (isDeck(shape)) {
       summary.deckArea += rectangleAreaSqft(shape.width, shape.height)
@@ -155,6 +159,8 @@ export function computeMeasurements(shapes: Shape[]): MeasurementSummary {
       summary.featureCount += 1
       if (shape.kind === ShapeKind.BENCH) {
         summary.benchLinearFeet += Math.max(shape.width, shape.height) / 12
+      } else if (shape.kind === ShapeKind.SPA) {
+        summary.spaCount += 1
       }
     } else if (isStencil(shape)) {
       const def = getStencil(shape.stencilId)
@@ -172,12 +178,12 @@ export function computeMeasurements(shapes: Shape[]): MeasurementSummary {
           summary.poolLengthFt = Math.max(summary.poolLengthFt, shape.width / 12)
           summary.poolWidthFt = Math.max(summary.poolWidthFt, shape.height / 12)
           summary.copingLinearFeet += perimeter
-          summary.decoDrainLinearFeet += perimeter
           summary.hasPool = true
           break
         }
         case MeasurementBehavior.SPA_AREA_PERIMETER_GALLONS:
           summary.featureCount += 1
+          summary.spaCount += 1
           break
         case MeasurementBehavior.DECK_AREA:
         case MeasurementBehavior.LANAI_AREA:
