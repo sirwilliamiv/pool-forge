@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { ProjectForm } from '@/components/project/ProjectForm'
 import { ProjectActions } from '@/components/project/ProjectActions'
+import { ShareProposalCard } from '@/components/project/ShareProposalCard'
 import { poolFieldsSchema, readPoolFields } from '@/modules/projects/pool-fields'
 
 async function saveProjectAction(
@@ -152,6 +153,22 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       </div>
       <ProjectActions
         project={{ id: project.id, name: project.name, status: project.status }}
+      />
+      <ShareProposalCard
+        projectId={project.id}
+        initialToken={project.shareToken}
+        accepted={
+          project.proposalAcceptedAt
+            ? {
+                name: project.proposalAcceptedName ?? 'Customer',
+                at: project.proposalAcceptedAt.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                }),
+              }
+            : null
+        }
       />
       <ProjectForm projectId={project.id} initial={initial} saveAction={saveProjectAction} />
     </div>

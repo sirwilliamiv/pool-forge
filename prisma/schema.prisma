@@ -104,6 +104,11 @@ model Project {
   proposalExpiresAt DateTime?
   internalNotes     String?
   poolFields        Json          @default("{}")
+  // Public read-only proposal share link + customer acceptance.
+  shareToken           String?    @unique
+  sharedAt             DateTime?
+  proposalAcceptedAt   DateTime?
+  proposalAcceptedName String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 

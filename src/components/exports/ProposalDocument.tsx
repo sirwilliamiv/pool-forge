@@ -19,6 +19,7 @@ interface ProposalDocumentProps {
   companyName: string
   logoUrl?: string | null
   brandColor?: string | null
+  showInternalNotes?: boolean
   shapes?: Shape[]
 }
 
@@ -56,6 +57,7 @@ export function ProposalDocument({
   companyName,
   logoUrl = null,
   brandColor = null,
+  showInternalNotes = false,
   shapes = [],
 }: ProposalDocumentProps) {
   const accent = brandColor && /^#[0-9a-fA-F]{3,8}$/.test(brandColor) ? brandColor : '#0f172a'
@@ -277,7 +279,7 @@ export function ProposalDocument({
       </section>
 
       {/* Notes */}
-      {project.internalNotes ? (
+      {showInternalNotes && project.internalNotes ? (
         <section className="mt-8">
           <Block title="Notes">
             <p className="whitespace-pre-wrap text-sm">{project.internalNotes}</p>
