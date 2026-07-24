@@ -5,27 +5,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { ProjectForm } from '@/components/project/ProjectForm'
 import { ProjectActions } from '@/components/project/ProjectActions'
-
-type PoolFields = {
-  poolType?: string
-  depthShallow?: string
-  depthDeep?: string
-  interiorFinish?: string
-  equipmentPackage?: string
-  sanitizationPackage?: string
-  heaterSelection?: string
-  lightingSelection?: string
-  deckMaterial?: string
-  copingMaterial?: string
-  screenOption?: string
-}
-
-function readPoolFields(json: Prisma.JsonValue): PoolFields {
-  if (json && typeof json === 'object' && !Array.isArray(json)) {
-    return json as PoolFields
-  }
-  return {}
-}
+import { poolFieldsSchema, readPoolFields } from '@/modules/projects/pool-fields'
 
 async function saveProjectAction(
   projectId: string,
@@ -52,6 +32,10 @@ async function saveProjectAction(
     deckMaterial: string
     copingMaterial: string
     screenOption: string
+    heaterSelected: boolean
+    saltSystemSelected: boolean
+    screenSelected: boolean
+    lightingQuantity: number
   },
 ) {
   'use server'
@@ -62,7 +46,7 @@ async function saveProjectAction(
   const project = await db.project.findUnique({ where: { id: projectId }, select: { orgId: true, customerId: true } })
   if (!project || project.orgId !== orgId) return { ok: false, error: 'Project not found' }
 
-  const poolFields: PoolFields = {
+  const poolFields = poolFieldsSchema.parse({
     poolType: input.poolType,
     depthShallow: input.depthShallow,
     depthDeep: input.depthDeep,
@@ -74,7 +58,11 @@ async function saveProjectAction(
     deckMaterial: input.deckMaterial,
     copingMaterial: input.copingMaterial,
     screenOption: input.screenOption,
-  }
+    heaterSelected: input.heaterSelected,
+    saltSystemSelected: input.saltSystemSelected,
+    screenSelected: input.screenSelected,
+    lightingQuantity: input.lightingQuantity,
+  })
 
   const projectData: Prisma.ProjectUpdateInput = {
     name: input.name,
@@ -146,6 +134,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     deckMaterial: pool.deckMaterial ?? '',
     copingMaterial: pool.copingMaterial ?? '',
     screenOption: pool.screenOption ?? '',
+    heaterSelected: pool.heaterSelected,
+    saltSystemSelected: pool.saltSystemSelected,
+    screenSelected: pool.screenSelected,
+    lightingQuantity: pool.lightingQuantity,
   }
 
   return (

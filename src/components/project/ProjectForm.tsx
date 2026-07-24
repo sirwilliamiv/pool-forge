@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import type { ProjectStatus } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -51,6 +52,10 @@ export type ProjectFormInput = {
     deckMaterial: string
     copingMaterial: string
     screenOption: string
+    heaterSelected: boolean
+    saltSystemSelected: boolean
+    screenSelected: boolean
+    lightingQuantity: number
   }
 }
 
@@ -189,6 +194,42 @@ export function ProjectForm({
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Selections</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            These drive the quote, validation, and the customer proposal.
+          </p>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <CheckField
+            label="Include heater"
+            checked={form.heaterSelected}
+            onChange={(v) => update('heaterSelected', v)}
+          />
+          <CheckField
+            label="Include salt system"
+            checked={form.saltSystemSelected}
+            onChange={(v) => update('saltSystemSelected', v)}
+          />
+          <CheckField
+            label="Include screen enclosure"
+            checked={form.screenSelected}
+            onChange={(v) => update('screenSelected', v)}
+          />
+          <Field label="Pool lights (qty)">
+            <Input
+              type="number"
+              min={0}
+              value={form.lightingQuantity}
+              onChange={(e) =>
+                update('lightingQuantity', Math.max(0, Math.floor(Number(e.target.value) || 0)))
+              }
+            />
+          </Field>
+        </CardContent>
+      </Card>
+
       <Separator />
 
       <div className="flex justify-end">
@@ -206,5 +247,22 @@ function Field({ label, children, full }: { label: string; children: React.React
       <Label>{label}</Label>
       {children}
     </div>
+  )
+}
+
+function CheckField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string
+  checked: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <label className="flex items-center gap-2 py-2">
+      <Checkbox checked={checked} onCheckedChange={(v) => onChange(v === true)} />
+      <span className="text-sm">{label}</span>
+    </label>
   )
 }

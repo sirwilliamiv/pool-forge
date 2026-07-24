@@ -30,6 +30,13 @@ function isBlank(v: unknown): boolean {
   return false
 }
 
+// Every rule below checks real project/measurement/selection data. Rules that
+// only ever emitted a hardcoded pass or fail (synthetic setback, depth-marker,
+// spillover, heater-BTU, and the decorative "safety ✓" code pills) were
+// removed: printing a green "GFCI ✓ / NEC 680.26 bonding ✓" on a
+// contractor-facing packet while checking nothing is a liability, and an
+// always-fail warning trains users to ignore the dock. Reinstate any of them
+// only with a real check against geometry/selections.
 export const ALL_RULES: ValidationRule[] = [
   // ────────────────── Project-level ──────────────────
   {
@@ -138,121 +145,33 @@ export const ALL_RULES: ValidationRule[] = [
     category: 'pool',
     passMessage: 'Interior finish selected',
     check(ctx) {
-      return isBlank(pf(ctx, 'interior'))
+      return isBlank(pf(ctx, 'interiorFinish'))
         ? fail(
             'pool.interior.required',
             'warn',
             'pool',
             'Select a pool interior finish',
             {
-              field: 'interior',
+              field: 'interiorFinish',
               targetId: ctx.targets?.pool,
-              suggestedFix: 'Pick an interior finish in the Materials tab',
+              suggestedFix: 'Set the interior finish in project settings',
             },
           )
         : null
     },
   },
 
-  // ────────────────── Setback (synthetic, demo-friendly) ──────────────────
-  {
-    id: 'pool.setback.rear',
-    level: 'warn',
-    category: 'pool',
-    passMessage: 'Pool clears rear setback',
-    check(ctx) {
-      // Synthetic: warn if the seeded project's pool sits within 7'6" of rear setback.
-      // Real implementation uses computed setback distance once we have property lines.
-      if (ctx.measurements.poolSurfaceArea <= 0) return null
-      return fail(
-        'pool.setback.rear',
-        'warn',
-        'pool',
-        'Pool within 5\'2" of rear property setback (req. 7\'6")',
-        {
-          targetId: ctx.targets?.pool,
-          suggestedFix: 'Move pool 2\'4" toward house',
-        },
-      )
-    },
-  },
-  {
-    id: 'pool.depth.marker.placed',
-    level: 'warn',
-    category: 'pool',
-    passMessage: 'Deep-end depth marker placed',
-    check(ctx) {
-      if (ctx.measurements.poolSurfaceArea <= 0) return null
-      // Synthetic: assume marker missing for demo. Real impl scans for depth-marker stencils.
-      return fail(
-        'pool.depth.marker.placed',
-        'warn',
-        'pool',
-        'Deep-end depth marker not placed',
-        {
-          targetId: ctx.targets?.pool,
-          suggestedFix: 'Drop a depth-marker stencil at the deep end',
-        },
-      )
-    },
-  },
-
-  // ────────────────── Spillover / spa ──────────────────
-  {
-    id: 'spillover.elevation',
-    level: 'error',
-    category: 'pool',
-    passMessage: 'Spillover elevation matches spa skirt',
-    check(ctx) {
-      // Synthetic: fires when a spa is present in the design.
-      if (!ctx.targets?.spa) return null
-      return fail(
-        'spillover.elevation',
-        'error',
-        'pool',
-        'Spillover elevation 1.25" below spa skirt',
-        {
-          targetId: ctx.targets.spillover ?? ctx.targets.spa,
-          suggestedFix: 'Raise spillover by 1.25"',
-        },
-      )
-    },
-  },
-
   // ────────────────── Equipment ──────────────────
-  {
-    id: 'equipment.heater.btu',
-    level: 'error',
-    category: 'equipment',
-    passMessage: 'Heater BTU sized for pool volume',
-    check(ctx) {
-      // Synthetic: any selected heater on a 24k+ gal pool is "undersized" for demo.
-      if (!ctx.selections.heaterSelected) return null
-      const gallons = ctx.measurements.poolGallons
-      if (gallons < 20000) return null
-      return fail(
-        'equipment.heater.btu',
-        'error',
-        'equipment',
-        `Heater BTU undersized for ${Math.round(gallons).toLocaleString()} gal at 88°F`,
-        {
-          field: 'heaterBtu',
-          targetId: ctx.targets?.heater,
-          suggestedFix: 'Upgrade to 500k BTU (+$1,250)',
-        },
-      )
-    },
-  },
   {
     id: 'equipment.pump.required',
     level: 'warn',
     category: 'equipment',
-    passMessage: 'Pump selected',
+    passMessage: 'Equipment package selected',
     check(ctx) {
-      return isBlank(pf(ctx, 'pump'))
-        ? fail('equipment.pump.required', 'warn', 'equipment', 'No pump selection', {
-            field: 'pump',
-            suggestedFix: 'Pick a variable-speed pump in Equipment',
+      return isBlank(pf(ctx, 'equipmentPackage'))
+        ? fail('equipment.pump.required', 'warn', 'equipment', 'No equipment package selected', {
+            field: 'equipmentPackage',
+            suggestedFix: 'Pick an equipment package (includes the pump)',
           })
         : null
     },
@@ -263,37 +182,37 @@ export const ALL_RULES: ValidationRule[] = [
     category: 'equipment',
     passMessage: 'Sanitation selected',
     check(ctx) {
-      return isBlank(pf(ctx, 'sanitation'))
-        ? fail(
-            'equipment.sanitation.required',
-            'warn',
-            'equipment',
-            'No sanitation selection',
-            {
-              field: 'sanitation',
-              suggestedFix: 'Pick chlorine, salt, or UV in Equipment',
-            },
-          )
-        : null
+      // Satisfied by a sanitation package or by the salt-system selection.
+      if (!isBlank(pf(ctx, 'sanitizationPackage')) || ctx.selections.saltSelected) return null
+      return fail(
+        'equipment.sanitation.required',
+        'warn',
+        'equipment',
+        'No sanitation selection',
+        {
+          field: 'sanitizationPackage',
+          suggestedFix: 'Pick chlorine, salt, or UV in project settings',
+        },
+      )
     },
   },
   {
     id: 'heater.fuel.required',
     level: 'warn',
     category: 'equipment',
-    passMessage: 'Heater fuel set',
+    passMessage: 'Heater specified',
     check(ctx) {
       if (!ctx.selections.heaterSelected) return null
-      return isBlank(pf(ctx, 'heaterFuel'))
+      return isBlank(pf(ctx, 'heaterSelection'))
         ? fail(
             'heater.fuel.required',
             'warn',
             'equipment',
-            'Heater selected but fuel type not set (gas/electric)',
+            'Heater included but model/fuel not specified',
             {
-              field: 'heaterFuel',
+              field: 'heaterSelection',
               targetId: ctx.targets?.heater,
-              suggestedFix: 'Set heater fuel type in Equipment',
+              suggestedFix: 'Set the heater model/fuel in project settings',
             },
           )
         : null
@@ -306,57 +225,18 @@ export const ALL_RULES: ValidationRule[] = [
     passMessage: 'Screen specs provided',
     check(ctx) {
       if (!ctx.selections.screenSelected) return null
-      return isBlank(pf(ctx, 'screenSpec'))
+      return isBlank(pf(ctx, 'screenOption'))
         ? fail(
             'screen.specs.required',
             'warn',
             'equipment',
             'Screen selected but no screen spec set',
             {
-              field: 'screenSpec',
-              suggestedFix: 'Set screen mesh + cage spec',
+              field: 'screenOption',
+              suggestedFix: 'Set the screen mesh + cage spec in project settings',
             },
           )
         : null
-    },
-  },
-
-  // ────────────────── Always-pass safety / code rules (demo "ok" pills) ──────────────────
-  {
-    id: 'safety.drains.placed',
-    level: 'warn',
-    category: 'pool',
-    passMessage: 'Main drains placed (anti-entrapment compliant)',
-    check(_ctx) {
-      // Stub: future impl scans for drain stencils. For demo, always passes.
-      return null
-    },
-  },
-  {
-    id: 'safety.perimeter.alarm',
-    level: 'warn',
-    category: 'pool',
-    passMessage: "Perimeter safety alarm spec'd",
-    check(_ctx) {
-      return null
-    },
-  },
-  {
-    id: 'safety.ground.bonding',
-    level: 'warn',
-    category: 'equipment',
-    passMessage: 'Equipment bonding present (NEC 680.26)',
-    check(_ctx) {
-      return null
-    },
-  },
-  {
-    id: 'safety.gfci',
-    level: 'warn',
-    category: 'equipment',
-    passMessage: 'GFCI on all pool circuits',
-    check(_ctx) {
-      return null
     },
   },
 
@@ -376,7 +256,7 @@ export const ALL_RULES: ValidationRule[] = [
             'Deck drawn but no deck material selected',
             {
               field: 'deckMaterial',
-              suggestedFix: 'Pick a deck material in the Materials tab',
+              suggestedFix: 'Pick a deck material in project settings',
             },
           )
         : null
