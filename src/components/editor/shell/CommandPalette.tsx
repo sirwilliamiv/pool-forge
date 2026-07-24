@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Command } from 'cmdk'
 import { create } from 'zustand'
 import { Mic, Plus, Sparkles, Wrench, Zap } from 'lucide-react'
+import { toast } from 'sonner'
 import { dispatch } from '@/lib/commands/dispatch'
 import type { Suggestion } from '@/lib/commands/suggestions'
+import { runExportCommand } from '@/components/exports/ExportCommandHandlers'
+import type { ExportCommandId, ExportRouteInput } from '@/modules/exports/routes'
 
 interface PaletteState {
   open: boolean
@@ -34,9 +37,14 @@ interface PaletteRow {
 
 interface CommandPaletteProps {
   suggestions?: Suggestion[]
+  /** Required by the export commands — they take the project they document. */
+  projectId: string
 }
 
-export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React.ReactElement {
+export function CommandPalette({
+  suggestions = [],
+  projectId,
+}: CommandPaletteProps): React.ReactElement {
   const open = useCommandPaletteStore((s) => s.open)
   const initialQuery = useCommandPaletteStore((s) => s.initialQuery)
   const setOpen = useCommandPaletteStore((s) => s.setOpen)
@@ -66,9 +74,21 @@ export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React
   const runAndClose = useCallback(
     async (id: string, input: unknown) => {
       close()
-      await dispatch(id, input)
+      const result = await dispatch(id, input)
+      // A palette row that fails must say so — silent no-ops are how dead
+      // commands hid here in the first place.
+      if (!result.ok) toast.error(result.error)
     },
     [close],
+  )
+
+  // Exports dispatch ephemerally so the new tab opens inside the click gesture.
+  const runExport = useCallback(
+    (id: ExportCommandId, input: Omit<ExportRouteInput, 'projectId'> = {}) => {
+      close()
+      runExportCommand(id, { ...input, projectId })
+    },
+    [close, projectId],
   )
 
   const suggestionRows: PaletteRow[] = useMemo(
@@ -133,26 +153,26 @@ export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React
         label: 'Export customer proposal',
         shortcut: '⌘E',
         icon: Zap,
-        run: () => void runAndClose('export.customerProposal', {}),
+        run: () => runExport('export.customerProposal'),
       },
       {
         id: 'action.export.construction',
         label: 'Export construction packet (11×17)',
         shortcut: '⌘⇧E',
         icon: Zap,
-        run: () => void runAndClose('export.constructionPacket', { pageSize: 'tabloid' }),
+        run: () => runExport('export.constructionPacket', { pageSize: 'tabloid' }),
       },
       {
         id: 'action.export.sitePlan',
         label: 'Export site plan',
         icon: Zap,
-        run: () => void runAndClose('export.sitePlan', {}),
+        run: () => runExport('export.sitePlan'),
       },
       {
         id: 'action.export.screenRfq',
         label: 'Export screen enclosure RFQ',
         icon: Zap,
-        run: () => void runAndClose('export.screenEnclosureQuote', {}),
+        run: () => runExport('export.screenEnclosureQuote'),
       },
       {
         id: 'action.run.validation',
@@ -167,7 +187,7 @@ export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React
         run: () => void runAndClose('camera.set.view', { view: 'iso' }),
       },
     ],
-    [runAndClose],
+    [runAndClose, runExport],
   )
 
   if (!open) return <></>

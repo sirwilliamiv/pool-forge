@@ -4,17 +4,16 @@ import { db } from '@/lib/db'
 import { EditorLayout } from '@/components/editor/shell/EditorLayout'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
+import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
 import {
-  computeQuote,
-  type PriceBookItemLite,
-  type PricingSelections,
-} from '@/modules/pricing/engine'
+  pricingSelectionsFrom,
+  validationSelectionsFrom,
+} from '@/modules/projects/pool-fields'
 import { runValidation } from '@/modules/validation/engine'
 import type {
   ValidationContext,
   ValidationProject,
   ValidationReport,
-  ValidationSelections,
 } from '@/modules/validation/types'
 import { getSuggestions } from '@/lib/commands/suggestions'
 import {
@@ -23,19 +22,6 @@ import {
   writeCachedQuote,
   writeCachedValidation,
 } from '@/lib/cache/editor'
-
-function asBool(v: unknown): boolean {
-  return v === true || v === 'true' || v === 1
-}
-
-function asNumber(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : 0
-  }
-  return 0
-}
 
 export default async function ProjectEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -52,7 +38,7 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
       orgId: true,
       poolFields: true,
       proposalExpiresAt: true,
-      org: { select: { name: true } },
+      org: { select: { name: true, taxRatePct: true } },
       customer: { select: { name: true, address: true } },
     },
   })
@@ -88,26 +74,17 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
     orderBy: { version: 'desc' },
     include: { items: true },
   })
-  const items: PriceBookItemLite[] = priceBook
-    ? priceBook.items.map((i) => ({
-        id: i.id,
-        category: i.category,
-        name: i.name,
-        unitType: i.unitType,
-        retailPrice: Number(i.retailPrice),
-      }))
-    : []
+  const items = toPriceBookItems(priceBook?.items ?? [])
+  const pricingSelections = pricingSelectionsFrom(poolFields)
 
-  const pricingSelections: PricingSelections = {
-    heaterSelected: asBool(poolFields.heaterSelected),
-    saltSystemSelected: asBool(poolFields.saltSystemSelected),
-    screenSelected: asBool(poolFields.screenSelected),
-    lightingQuantity: asNumber(poolFields.lightingQuantity),
-  }
-
-  // Cache-first read; fall back to compute and fire-and-forget write.
+  // Cache-first read; fall back to compute and fire-and-forget write. Tax comes
+  // from the org so the dock total matches the proposal total.
   const cachedQuote = await loadCachedQuote(project.id)
-  const quoteSummary = cachedQuote ?? computeQuote(items, measurements, pricingSelections)
+  const quoteSummary =
+    cachedQuote ??
+    computeQuote(items, measurements, pricingSelections, {
+      taxRatePct: project.org?.taxRatePct ?? 0,
+    })
   if (!cachedQuote && priceBook && quoteSummary.lineItems.length) {
     void writeCachedQuote(project.id, priceBook.id, quoteSummary).catch((err) =>
       console.error('writeCachedQuote miss-write failed', err),
@@ -128,17 +105,10 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
       }
     : null
 
-  const validationSelections: ValidationSelections = {
-    heaterSelected: asBool(poolFields.heaterSelected),
-    saltSelected: asBool(poolFields.saltSystemSelected),
-    screenSelected: asBool(poolFields.screenSelected),
-    lightingQuantity: asNumber(poolFields.lightingQuantity),
-  }
-
   const validationContext: ValidationContext = {
     project: validationProject,
     measurements,
-    selections: validationSelections,
+    selections: validationSelectionsFrom(poolFields),
     shapeCount: initial.shapes?.length ?? 0,
     hasDeck: measurements.hasDeck,
   }

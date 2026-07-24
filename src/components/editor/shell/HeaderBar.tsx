@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ChevronRight, MessageSquare, Play, Share2, Upload } from 'lucide-react'
 import { SaveStatus } from '@/components/editor/SaveStatus'
+import { runExportCommand } from '@/components/exports/ExportCommandHandlers'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,29 +104,25 @@ export function HeaderBar({ orgName, customerName, projectName, projectId, user 
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Export document</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <a href={`/projects/${projectId}/proposal`} target="_blank" rel="noopener noreferrer">
-                Customer proposal
-              </a>
+            <DropdownMenuItem
+              onSelect={() => runExportCommand('export.customerProposal', { projectId })}
+            >
+              Customer proposal
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a href={`/projects/${projectId}/construction`} target="_blank" rel="noopener noreferrer">
-                Construction packet
-              </a>
+            <DropdownMenuItem
+              onSelect={() =>
+                runExportCommand('export.constructionPacket', { projectId, pageSize: 'tabloid' })
+              }
+            >
+              Construction packet (11×17)
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a href={`/projects/${projectId}/site-plan`} target="_blank" rel="noopener noreferrer">
-                Site plan
-              </a>
+            <DropdownMenuItem onSelect={() => runExportCommand('export.sitePlan', { projectId })}>
+              Site plan
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a
-                href={`/projects/${projectId}/screen-enclosure-quote`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Screen enclosure quote
-              </a>
+            <DropdownMenuItem
+              onSelect={() => runExportCommand('export.screenEnclosureQuote', { projectId })}
+            >
+              Screen enclosure quote
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

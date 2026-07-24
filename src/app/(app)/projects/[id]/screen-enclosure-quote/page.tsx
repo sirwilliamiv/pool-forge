@@ -3,23 +3,11 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, type PriceBookItemLite, type PricingSelections } from '@/modules/pricing/engine'
+import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
+import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
 import { ScreenEnclosureQuoteDocument } from '@/components/exports/ScreenEnclosureQuoteDocument'
 import { PrintButton } from '@/components/exports/PrintButton'
 import './screen-enclosure-quote.css'
-
-function asBool(v: unknown): boolean {
-  return v === true || v === 'true' || v === 1
-}
-
-function asNumber(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : 0
-  }
-  return 0
-}
 
 function flag(v: string | string[] | undefined): boolean {
   const raw = Array.isArray(v) ? v[0] : v
@@ -46,7 +34,7 @@ export default async function ScreenEnclosureQuotePage({
 
   const project = await db.project.findFirst({
     where: { id, orgId },
-    include: { customer: true, org: { select: { name: true } } },
+    include: { customer: true, org: { select: { name: true, taxRatePct: true } } },
   })
   if (!project) notFound()
 
@@ -65,23 +53,13 @@ export default async function ScreenEnclosureQuotePage({
     orderBy: { version: 'desc' },
     include: { items: true },
   })
-  const items: PriceBookItemLite[] =
-    priceBook?.items.map((i) => ({
-      id: i.id,
-      category: i.category,
-      name: i.name,
-      unitType: i.unitType,
-      retailPrice: Number(i.retailPrice),
-    })) ?? []
-
-  const pf = (project.poolFields ?? {}) as Record<string, unknown>
-  const selections: PricingSelections = {
-    heaterSelected: asBool(pf.heaterSelected),
-    saltSystemSelected: asBool(pf.saltSystemSelected),
-    screenSelected: asBool(pf.screenSelected),
-    lightingQuantity: asNumber(pf.lightingQuantity),
-  }
-  const quote = computeQuote(items, measurements, selections)
+  const items = toPriceBookItems(priceBook?.items ?? [])
+  const quote = computeQuote(
+    items,
+    measurements,
+    pricingSelectionsFrom(project.poolFields),
+    { taxRatePct: project.org.taxRatePct },
+  )
 
   return (
     <div className="min-h-screen bg-neutral-100 py-6">

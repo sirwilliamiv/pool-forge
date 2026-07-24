@@ -35,7 +35,9 @@ interface PoolFields {
   copingMaterial?: string
   screenOption?: string
   screenSelected?: boolean
-  saltSelected?: boolean
+  // Canonical key written by the project form — see modules/projects/pool-fields.
+  saltSystemSelected?: boolean
+  heaterSelected?: boolean
   spaSpecs?: string
   accessNotes?: string
 }
@@ -193,11 +195,11 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
           Equipment List
         </h2>
         <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 font-mono text-[11px]">
-          <Row k="Heater" val={v(pf.heaterSelection)} />
+          <Row k="Heater" val={v(pf.heaterSelection || pf.heaterSelected)} />
           <Row k="Heater fuel" val={v(pf.heaterFuel)} />
           <Row k="Pump" val={v(pf.pumpSelection)} />
           <Row k="Sanitization" val={v(pf.sanitizationPackage)} />
-          <Row k="Salt system" val={v(pf.saltSelected)} />
+          <Row k="Salt system" val={v(pf.saltSystemSelected)} />
           <Row k="Equipment pkg" val={v(pf.equipmentPackage)} />
           <Row k="Lighting" val={v(pf.lightingSelection)} />
           <Row k="Lighting qty" val={v(pf.lightingQuantity)} />
@@ -277,9 +279,9 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
               ['Interior finish', pf.interiorFinish, ''],
               ['Coping', pf.copingMaterial, ''],
               ['Deck material', pf.deckMaterial, ''],
-              ['Heater', pf.heaterSelection, pf.heaterFuel ?? ''],
+              ['Heater', pf.heaterSelection, pf.heaterFuel ?? (pf.heaterSelected ? 'Included' : 'Not selected')],
               ['Pump', pf.pumpSelection, ''],
-              ['Sanitization', pf.sanitizationPackage, ''],
+              ['Sanitization', pf.sanitizationPackage, pf.saltSystemSelected ? 'Salt system' : ''],
               ['Lighting', pf.lightingSelection, pf.lightingQuantity ? `${pf.lightingQuantity} fixtures` : ''],
               ['Screen', pf.screenOption, pf.screenSelected ? 'Included' : 'Not selected'],
             ].map(([cat, sel, note]) => (

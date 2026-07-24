@@ -23,6 +23,8 @@ const REQUIRED_COMMAND_IDS = [
   'run.validation',
   'export.customerProposal',
   'export.constructionPacket',
+  'export.sitePlan',
+  'export.screenEnclosureQuote',
 ] as const
 
 describe('command registry', () => {

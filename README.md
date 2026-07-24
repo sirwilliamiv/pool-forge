@@ -68,6 +68,6 @@ embedded SQLite story before shipping to end users. Code-signing
 
 The app is **command-registry-first**: every user-driven action — toolbar buttons, keyboard shortcuts, and the future voice agent — dispatches through a single typed command registry in `src/modules/commands/`. This keeps automation, hotkeys, macros, and voice on the same code path as the UI.
 
-The 2D canvas (React Konva) is the source of truth for shape geometry. The measurement engine derives area, perimeter, gallons, deck area, and feature counts from those shapes; the pricing engine consumes those measurements plus a versioned price book to produce a live quote; the validation engine gates exports.
+The scene is a single three.js / react-three-fiber canvas — the "2D plan view" is the same scene under an orthographic camera, not a separate 2D renderer (there is no Konva). Shape state in `src/modules/editor/state/` is the source of truth for geometry; 1 unit = 1 inch. The measurement engine derives area, perimeter, gallons, deck area, and feature counts from those shapes; the pricing engine consumes those measurements plus a versioned price book to produce a live quote; the validation engine gates exports.
 
 See [`docs/architecture.md`](docs/architecture.md) for a full walkthrough and [`docs/build-priority.md`](docs/build-priority.md) for the active roadmap.

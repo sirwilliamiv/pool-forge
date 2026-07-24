@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { ShapeKind, PriceCategory, UnitType } from '@prisma/client'
 import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, type PriceBookItemLite } from '@/modules/pricing/engine'
+import {
+  computeQuote,
+  toPriceBookItems,
+  type PriceBookItemLite,
+} from '@/modules/pricing/engine'
 import type { Shape } from '@/modules/editor/state/shapes'
 
 // Regression coverage for the P0 spine/pricing fixes: pool selections now reach
@@ -168,5 +172,38 @@ describe('measurements — ellipse pool footprint', () => {
     const ellipse = computeMeasurements([ellipseShape]).poolSurfaceArea
     expect(ellipse).toBeLessThan(rect)
     expect(ellipse).toBeCloseTo((Math.PI / 4) * rect, 4)
+  })
+})
+
+describe('toPriceBookItems', () => {
+  // Call sites used to inline this mapping and drop `required`, which silently
+  // removed every required line (the VS pump) from the editor and cache quotes.
+  it('carries required through and coerces the Decimal retail price', () => {
+    const [item] = toPriceBookItems([
+      {
+        id: 'i1',
+        category: PriceCategory.EQUIPMENT,
+        name: 'VS pump',
+        unitType: UnitType.EACH,
+        retailPrice: { toString: () => '1250.5000' },
+        required: true,
+      },
+    ])
+    expect(item?.required).toBe(true)
+    expect(item?.retailPrice).toBe(1250.5)
+  })
+
+  it('defaults required to false and an unparseable price to 0', () => {
+    const [item] = toPriceBookItems([
+      {
+        id: 'i2',
+        category: PriceCategory.MISC,
+        name: 'Mystery',
+        unitType: UnitType.LUMP,
+        retailPrice: null,
+      },
+    ])
+    expect(item?.required).toBe(false)
+    expect(item?.retailPrice).toBe(0)
   })
 })

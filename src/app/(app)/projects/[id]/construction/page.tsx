@@ -3,7 +3,8 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, type PriceBookItemLite } from '@/modules/pricing/engine'
+import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
+import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
 import {
   ConstructionDocument,
   type ConstructionPageSize,
@@ -14,13 +15,6 @@ import './construction.css'
 function parsePageSize(v: string | string[] | undefined): ConstructionPageSize {
   const raw = Array.isArray(v) ? v[0] : v
   return raw === 'letter' ? 'letter' : 'tabloid'
-}
-
-interface PoolFieldsLite {
-  heaterSelected?: boolean
-  saltSystemSelected?: boolean
-  screenSelected?: boolean
-  lightingQuantity?: number | string
 }
 
 export default async function ConstructionPacketPage({
@@ -39,7 +33,7 @@ export default async function ConstructionPacketPage({
   const pageSize = parsePageSize((await searchParams)?.size)
   const project = await db.project.findUnique({
     where: { id },
-    include: { customer: true },
+    include: { customer: true, org: { select: { taxRatePct: true } } },
   })
   if (!project || project.orgId !== orgId) notFound()
 
@@ -58,28 +52,14 @@ export default async function ConstructionPacketPage({
     orderBy: { version: 'desc' },
     include: { items: true },
   })
-  const items: PriceBookItemLite[] =
-    priceBook?.items.map((i) => ({
-      id: i.id,
-      category: i.category,
-      name: i.name,
-      unitType: i.unitType,
-      retailPrice: Number(i.retailPrice),
-      required: i.required,
-    })) ?? []
+  const items = toPriceBookItems(priceBook?.items ?? [])
 
-  const pf = (project.poolFields ?? {}) as PoolFieldsLite
-  const lightingQty =
-    typeof pf.lightingQuantity === 'number'
-      ? pf.lightingQuantity
-      : Number(pf.lightingQuantity ?? 0) || 0
-
-  const quote = computeQuote(items, measurements, {
-    heaterSelected: Boolean(pf.heaterSelected),
-    saltSystemSelected: Boolean(pf.saltSystemSelected),
-    screenSelected: Boolean(pf.screenSelected),
-    lightingQuantity: lightingQty,
-  })
+  const quote = computeQuote(
+    items,
+    measurements,
+    pricingSelectionsFrom(project.poolFields),
+    { taxRatePct: project.org?.taxRatePct ?? 0 },
+  )
 
   const otherSize: ConstructionPageSize = pageSize === 'tabloid' ? 'letter' : 'tabloid'
 

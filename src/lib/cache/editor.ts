@@ -6,22 +6,21 @@
 // recompute on miss). Writes are called from EditorPersistence (client) via
 // these server actions after a successful debounced save.
 
+import { PriceCategory } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { computeMeasurements } from '@/modules/measurements/engine'
+import { computeQuote, toPriceBookItems, type QuoteSummary } from '@/modules/pricing/engine'
 import {
-  computeQuote,
-  type PriceBookItemLite,
-  type PricingSelections,
-  type QuoteSummary,
-} from '@/modules/pricing/engine'
+  pricingSelectionsFrom,
+  validationSelectionsFrom,
+} from '@/modules/projects/pool-fields'
 import { runValidation } from '@/modules/validation/engine'
 import type {
   ValidationContext,
   ValidationItem,
   ValidationProject,
   ValidationReport,
-  ValidationSelections,
 } from '@/modules/validation/types'
 import type { Shape } from '@/modules/editor/state/shapes'
 
@@ -29,19 +28,6 @@ async function requireOrg(): Promise<{ orgId: string }> {
   const session = await auth()
   if (!session?.user?.orgId) throw new Error('Not authenticated')
   return { orgId: session.user.orgId }
-}
-
-function asBool(v: unknown): boolean {
-  return v === true || v === 'true' || v === 1
-}
-
-function asNumber(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : 0
-  }
-  return 0
 }
 
 // ----- READS -----
@@ -52,27 +38,52 @@ export async function loadCachedQuote(projectId: string): Promise<QuoteSummary |
     orderBy: { generatedAt: 'desc' },
     include: { lineItems: true },
   })
-  if (!row) return null
+  // An empty cache row is a miss, not an authoritative "$0". Treating it as a
+  // hit pinned the editor dock to "no quote" while the exports priced the same
+  // drawing at full value.
+  if (!row || row.lineItems.length === 0) return null
+
   const subtotal = Number(row.subtotal)
   const total = Number(row.total)
   // Cached rows store subtotal + total only; recover the tax split from them.
   const taxAmount = Math.round((total - subtotal) * 100) / 100
   const taxRatePct = subtotal > 0 ? Math.round((taxAmount / subtotal) * 10000) / 100 : 0
+
+  // `QuoteLineItem` has no category column, so the snapshot is the only place
+  // the real categories survive — without it every line reads as POOL and the
+  // inspector's grouping is wrong.
+  const snapshotLines = readSnapshotLineItems(row.snapshot)
+
   return {
     subtotal,
     total,
     taxRatePct,
     taxAmount,
-    lineItems: row.lineItems.map((l) => ({
+    lineItems: row.lineItems.map((l, i) => ({
       itemId: l.id,
       name: l.name,
-      category: 'POOL',
+      category: snapshotLines[i]?.category ?? PriceCategory.MISC,
       source: l.source,
       quantity: Number(l.quantity),
       unitPrice: Number(l.unitPrice),
       total: Number(l.total),
-    })) as QuoteSummary['lineItems'],
+    })),
   }
+}
+
+function readSnapshotLineItems(snapshot: unknown): Array<{ category: PriceCategory }> {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return []
+  const lines = (snapshot as { lineItems?: unknown }).lineItems
+  if (!Array.isArray(lines)) return []
+  return lines.map((l) => {
+    const category = (l as { category?: unknown } | null)?.category
+    return {
+      category:
+        typeof category === 'string' && category in PriceCategory
+          ? (category as PriceCategory)
+          : PriceCategory.MISC,
+    }
+  })
 }
 
 export async function loadCachedValidation(
@@ -150,6 +161,7 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
         name: true,
         poolFields: true,
         proposalExpiresAt: true,
+        org: { select: { taxRatePct: true } },
         customer: { select: { name: true, address: true } },
         drawing: { select: { rootJson: true } },
       },
@@ -176,20 +188,12 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
       include: { items: true },
     })
     if (priceBook) {
-      const items: PriceBookItemLite[] = priceBook.items.map((i) => ({
-        id: i.id,
-        category: i.category,
-        name: i.name,
-        unitType: i.unitType,
-        retailPrice: Number(i.retailPrice),
-      }))
-      const pricingSelections: PricingSelections = {
-        heaterSelected: asBool(poolFields.heaterSelected),
-        saltSystemSelected: asBool(poolFields.saltSystemSelected),
-        screenSelected: asBool(poolFields.screenSelected),
-        lightingQuantity: asNumber(poolFields.lightingQuantity),
-      }
-      const summary = computeQuote(items, measurements, pricingSelections)
+      const summary = computeQuote(
+        toPriceBookItems(priceBook.items),
+        measurements,
+        pricingSelectionsFrom(poolFields),
+        { taxRatePct: project.org?.taxRatePct ?? 0 },
+      )
       await writeCachedQuote(projectId, priceBook.id, summary)
     }
 
@@ -202,16 +206,10 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
         ? project.proposalExpiresAt.toISOString()
         : null,
     }
-    const validationSelections: ValidationSelections = {
-      heaterSelected: asBool(poolFields.heaterSelected),
-      saltSelected: asBool(poolFields.saltSystemSelected),
-      screenSelected: asBool(poolFields.screenSelected),
-      lightingQuantity: asNumber(poolFields.lightingQuantity),
-    }
     const ctx: ValidationContext = {
       project: validationProject,
       measurements,
-      selections: validationSelections,
+      selections: validationSelectionsFrom(poolFields),
       shapeCount: shapes.length,
       hasDeck: measurements.hasDeck,
     }

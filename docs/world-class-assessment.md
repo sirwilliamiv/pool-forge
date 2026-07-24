@@ -2,6 +2,38 @@
 
 Assessment date: 2026-07-23. Based on a full read of the codebase, the running app, and current market research. Findings marked **[verified]** were confirmed directly against the code this session; the rest come from deep code reads and are high-confidence.
 
+## Status update — 2026-07-24
+
+Parts of this document were already stale when it was committed (the pricing
+fixes in `ab57251` predate it). Re-verified against the code:
+
+**Fixed — ignore the finding below:**
+
+- *Spine / `poolFields` key mismatch (P0 #1).* `modules/projects/pool-fields.ts` is
+  the one Zod schema and the form writes the keys the engine reads. Every reader
+  (editor, proposal, construction, screen RFQ, share link, write-through cache)
+  now goes through `pricingSelectionsFrom()` / `validationSelectionsFrom()`.
+- *`construction/page.tsx` reading `pf.saltSelected`.* The page was fixed earlier;
+  `ConstructionDocument` still printed the dead key until 2026-07-24.
+- *`total === subtotal`, required items vanishing, SPA-on-any-feature,
+  deco-drain-at-perimeter.* All fixed in `ab57251`; locked by
+  `pricing-correctness.test.ts`. Org tax is now applied on every surface, not
+  just the proposal.
+- *Validation theater.* The always-pass safety pills and the fake setback rule
+  were deleted in `2dba6cf`; the 12 remaining rules all check something.
+- *Ephemeral client fast path (P3).* Landed in `34e6059` for selection/camera.
+- *Dead export buttons / palette rows.* The four export commands have real
+  server `execute`s (org check + `Export` row) and client handlers; the palette,
+  header dropdown, and project page all dispatch through them.
+
+**Still open:** material selection is a no-op; no formula evaluator (the
+`PriceBookItem.formula` column is dead); LANAI/WATER_FEATURE/FENCE/WALL/
+ELECTRICAL/MISC price at 0; screen priced by deck area; no 3D render in the
+proposal; `window.print()` instead of a server PDF; no e-sign; photoreal
+subsystems absent; `HOTKEYS` is defined but never bound to a listener, so no
+keyboard shortcut in it fires; Comments/Sun-study/Share still dead; survey
+underlay missing from the site plan; editor is desktop-only.
+
 ## Verdict (TL;DR)
 
 Pool Forge has an **unusually strong architecture and a genuinely tidy 3D editor**, wrapped around a **design → price → proposal spine that is currently broken end to end**. The app *demos* like a product but *works* like a scaffold: several finished-looking surfaces are disconnected, synthetic, or stubbed.

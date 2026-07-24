@@ -5,7 +5,8 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, type PriceBookItemLite, type PricingSelections } from '@/modules/pricing/engine'
+import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
+import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
 import { ProposalDocument } from '@/components/exports/ProposalDocument'
 import { PrintButton } from '@/components/exports/PrintButton'
 import './proposal.css'
@@ -24,19 +25,6 @@ export async function generateMetadata({
     select: { name: true },
   })
   return { title: project ? `Proposal — ${project.name}` : 'Proposal' }
-}
-
-function asBool(v: unknown): boolean {
-  return v === true || v === 'true' || v === 1
-}
-
-function asNumber(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : 0
-  }
-  return 0
 }
 
 export default async function ProposalPage({
@@ -69,24 +57,8 @@ export default async function ProposalPage({
     include: { items: true },
   })
 
-  const items: PriceBookItemLite[] = priceBook
-    ? priceBook.items.map((i) => ({
-        id: i.id,
-        category: i.category,
-        name: i.name,
-        unitType: i.unitType,
-        retailPrice: Number(i.retailPrice),
-        required: i.required,
-      }))
-    : []
-
-  const poolFields = (project.poolFields ?? {}) as Record<string, unknown>
-  const selections: PricingSelections = {
-    heaterSelected: asBool(poolFields.heaterSelected),
-    saltSystemSelected: asBool(poolFields.saltSystemSelected),
-    screenSelected: asBool(poolFields.screenSelected),
-    lightingQuantity: asNumber(poolFields.lightingQuantity),
-  }
+  const items = toPriceBookItems(priceBook?.items ?? [])
+  const selections = pricingSelectionsFrom(project.poolFields)
 
   const quote = computeQuote(items, measurements, selections, {
     taxRatePct: project.org.taxRatePct,

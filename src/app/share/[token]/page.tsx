@@ -3,12 +3,8 @@ import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
-import {
-  computeQuote,
-  type PriceBookItemLite,
-  type PricingSelections,
-} from '@/modules/pricing/engine'
-import { readPoolFields } from '@/modules/projects/pool-fields'
+import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
+import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
 import { ProposalDocument } from '@/components/exports/ProposalDocument'
 import { AcceptProposalForm } from '@/components/exports/AcceptProposalForm'
 
@@ -55,23 +51,8 @@ export default async function SharedProposalPage({
     orderBy: { version: 'desc' },
     include: { items: true },
   })
-  const items: PriceBookItemLite[] =
-    priceBook?.items.map((i) => ({
-      id: i.id,
-      category: i.category,
-      name: i.name,
-      unitType: i.unitType,
-      retailPrice: Number(i.retailPrice),
-      required: i.required,
-    })) ?? []
-
-  const pf = readPoolFields(project.poolFields)
-  const selections: PricingSelections = {
-    heaterSelected: pf.heaterSelected,
-    saltSystemSelected: pf.saltSystemSelected,
-    screenSelected: pf.screenSelected,
-    lightingQuantity: pf.lightingQuantity,
-  }
+  const items = toPriceBookItems(priceBook?.items ?? [])
+  const selections = pricingSelectionsFrom(project.poolFields)
   const quote = computeQuote(items, measurements, selections, {
     taxRatePct: project.org.taxRatePct,
   })

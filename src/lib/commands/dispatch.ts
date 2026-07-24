@@ -114,9 +114,12 @@ export async function dispatch<I, O>(
  * Ephemeral dispatch for client-only, high-frequency actions (selection,
  * camera). The registered client handler runs IMMEDIATELY so the UI responds
  * without waiting on the network, and the audit POST is fired fire-and-forget —
- * a slow or failed request never blocks or delays the interaction. Use only for
- * commands whose server `execute` is a no-op audit and whose client handler is a
- * synchronous Zustand mutation.
+ * a slow or failed request never blocks or delays the interaction.
+ *
+ * Use for commands whose client handler must run synchronously: a Zustand
+ * mutation (selection, camera, sun), or a `window.open` that would be eaten by
+ * the popup blocker if it waited on the round-trip (the export commands — their
+ * server half still writes the Export row, it just doesn't gate the tab).
  */
 export function dispatchEphemeral<I, O>(id: string, input: I): DispatchResult<O> {
   void fetch('/api/commands', {

@@ -17,6 +17,10 @@ import {
 } from '@/components/ui/dialog'
 import { StatusDropdown } from '@/components/dashboard/StatusDropdown'
 import {
+  ExportCommandHandlers,
+  runExportCommand,
+} from '@/components/exports/ExportCommandHandlers'
+import {
   archiveProject,
   deleteProject,
   duplicateProject,
@@ -102,38 +106,55 @@ export function ProjectActions({ project }: ProjectActionsProps) {
         </div>
       </div>
 
-      {/* Document exports — opens in a new tab so the source page stays open. */}
+      {/* Document exports — each dispatches an export command, which records the
+          Export row and opens the document in a new tab. */}
+      <ExportCommandHandlers />
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Documents
         </span>
         <div className="ml-auto flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/projects/${project.id}/proposal`} target="_blank">
-              <FileText className="mr-1.5 h-4 w-4" />
-              Customer proposal
-            </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runExportCommand('export.customerProposal', { projectId: project.id })}
+          >
+            <FileText className="mr-1.5 h-4 w-4" />
+            Customer proposal
           </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/projects/${project.id}/construction`} target="_blank">
-              <Printer className="mr-1.5 h-4 w-4" />
-              Construction packet
-              <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                11×17
-              </span>
-            </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              runExportCommand('export.constructionPacket', {
+                projectId: project.id,
+                pageSize: 'tabloid',
+              })
+            }
+          >
+            <Printer className="mr-1.5 h-4 w-4" />
+            Construction packet
+            <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+              11×17
+            </span>
           </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/projects/${project.id}/site-plan`} target="_blank">
-              <FileText className="mr-1.5 h-4 w-4" />
-              Site plan
-            </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runExportCommand('export.sitePlan', { projectId: project.id })}
+          >
+            <FileText className="mr-1.5 h-4 w-4" />
+            Site plan
           </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/projects/${project.id}/screen-enclosure-quote`} target="_blank">
-              <FileText className="mr-1.5 h-4 w-4" />
-              Screen enclosure RFQ
-            </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              runExportCommand('export.screenEnclosureQuote', { projectId: project.id })
+            }
+          >
+            <FileText className="mr-1.5 h-4 w-4" />
+            Screen enclosure RFQ
           </Button>
         </div>
       </div>

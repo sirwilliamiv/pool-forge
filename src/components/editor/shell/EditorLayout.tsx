@@ -2,6 +2,7 @@
 
 import { ClientCommandHandlers } from '@/components/editor/ClientCommandHandlers'
 import { EditorPersistence } from '@/components/editor/EditorPersistence'
+import { ExportCommandHandlers } from '@/components/exports/ExportCommandHandlers'
 import { R3FCanvas } from '@/lib/three/r3f-canvas'
 import type { Shape } from '@/modules/editor/state/shapes'
 import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
@@ -113,7 +114,8 @@ export function EditorLayout({
 
       <EditorPersistence projectId={projectId} initial={initial} />
       <ClientCommandHandlers />
-      <CommandPalette suggestions={paletteSuggestions} />
+      <ExportCommandHandlers />
+      <CommandPalette suggestions={paletteSuggestions} projectId={projectId} />
     </div>
   )
 }

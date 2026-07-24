@@ -13,6 +13,32 @@ export interface PriceBookItemLite {
   required?: boolean
 }
 
+/** A `PriceBookItem` row as Prisma returns it (`retailPrice` is a Decimal). */
+export interface PriceBookItemRow {
+  id: string
+  category: PriceCategory
+  name: string
+  unitType: UnitType
+  retailPrice: unknown
+  required?: boolean
+}
+
+/**
+ * Map price-book rows to the engine's input shape. Call sites used to inline
+ * this and kept forgetting `required`, which silently dropped every required
+ * line (the seeded VS pump) from the quote.
+ */
+export function toPriceBookItems(rows: readonly PriceBookItemRow[]): PriceBookItemLite[] {
+  return rows.map((r) => ({
+    id: r.id,
+    category: r.category,
+    name: r.name,
+    unitType: r.unitType,
+    retailPrice: Number(r.retailPrice) || 0,
+    required: r.required ?? false,
+  }))
+}
+
 export interface PricingSelections {
   heaterSelected?: boolean
   saltSystemSelected?: boolean
