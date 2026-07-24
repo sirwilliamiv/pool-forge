@@ -3,6 +3,14 @@
 import Link from 'next/link'
 import { ChevronRight, MessageSquare, Play, Share2, Upload } from 'lucide-react'
 import { SaveStatus } from '@/components/editor/SaveStatus'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export interface HeaderBarProps {
   orgName?: string | null | undefined
@@ -65,30 +73,69 @@ export function HeaderBar({ orgName, customerName, projectName, projectId, user 
       <div className="flex items-center gap-1">
         <button
           type="button"
-          aria-label="Comments"
-          className="grid h-7 w-7 place-items-center rounded-pfSm bg-rowHover text-textMuted hover:bg-borderLight hover:text-foreground"
+          aria-label="Comments (coming soon)"
+          title="Comments — coming soon"
+          disabled
+          className="grid h-7 w-7 place-items-center rounded-pfSm bg-rowHover text-textMuted opacity-40"
         >
           <MessageSquare className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
-          aria-label="Sun study"
-          className="grid h-7 w-7 place-items-center rounded-pfSm bg-rowHover text-textMuted hover:bg-borderLight hover:text-foreground"
+          aria-label="Sun study (coming soon)"
+          title="Sun study — coming soon"
+          disabled
+          className="grid h-7 w-7 place-items-center rounded-pfSm bg-rowHover text-textMuted opacity-40"
         >
           <Play className="h-3.5 w-3.5" />
         </button>
-        <button
-          type="button"
-          aria-label="Export"
-          className="grid h-7 w-7 place-items-center rounded-pfSm bg-rowHover text-textMuted hover:bg-borderLight hover:text-foreground"
-        >
-          <Upload className="h-3.5 w-3.5" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Export document"
+              title="Export document"
+              className="grid h-7 w-7 place-items-center rounded-pfSm bg-rowHover text-textMuted hover:bg-borderLight hover:text-foreground"
+            >
+              <Upload className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Export document</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <a href={`/projects/${projectId}/proposal`} target="_blank" rel="noopener noreferrer">
+                Customer proposal
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={`/projects/${projectId}/construction`} target="_blank" rel="noopener noreferrer">
+                Construction packet
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={`/projects/${projectId}/site-plan`} target="_blank" rel="noopener noreferrer">
+                Site plan
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href={`/projects/${projectId}/screen-enclosure-quote`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Screen enclosure quote
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <button
         type="button"
-        className="inline-flex h-7 items-center gap-1.5 rounded-pfSm bg-pfAccent px-3 text-[12px] font-medium text-white shadow-pfSm hover:bg-pfAccentStrong"
+        title="Share link — coming soon"
+        disabled
+        className="inline-flex h-7 items-center gap-1.5 rounded-pfSm bg-pfAccent px-3 text-[12px] font-medium text-white opacity-50"
       >
         <Share2 className="h-3.5 w-3.5" />
         Share
