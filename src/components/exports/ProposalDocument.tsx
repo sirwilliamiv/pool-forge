@@ -17,6 +17,8 @@ interface ProposalDocumentProps {
     lightingQuantity: number
   }
   companyName: string
+  logoUrl?: string | null
+  brandColor?: string | null
   shapes?: Shape[]
 }
 
@@ -52,13 +54,18 @@ export function ProposalDocument({
   quote,
   selections,
   companyName,
+  logoUrl = null,
+  brandColor = null,
   shapes = [],
 }: ProposalDocumentProps) {
+  const accent = brandColor && /^#[0-9a-fA-F]{3,8}$/.test(brandColor) ? brandColor : '#0f172a'
+  const safeLogo =
+    typeof logoUrl === 'string' && /^(https?:\/\/|data:image\/)/.test(logoUrl) ? logoUrl : null
   const poolFields = (project.poolFields ?? {}) as Record<string, unknown>
   const interiorFinish =
     typeof poolFields.interiorFinish === 'string' ? poolFields.interiorFinish : null
   const sanitization =
-    typeof poolFields.sanitization === 'string' ? poolFields.sanitization : null
+    typeof poolFields.sanitizationPackage === 'string' ? poolFields.sanitizationPackage : null
   const deckMaterial =
     typeof poolFields.deckMaterial === 'string' ? poolFields.deckMaterial : null
 
@@ -69,9 +76,18 @@ export function ProposalDocument({
   return (
     <article className="proposal-page font-serif text-[11pt] leading-relaxed text-slate-900">
       {/* Header */}
-      <header className="flex items-start justify-between border-b-2 border-slate-900 pb-4">
+      <header
+        className="flex items-start justify-between border-b-2 pb-4"
+        style={{ borderColor: accent }}
+      >
         <div>
-          <div className="font-sans text-2xl font-bold tracking-tight">{companyName}</div>
+          {safeLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={safeLogo} alt={companyName} className="mb-2 h-12 w-auto object-contain" />
+          ) : null}
+          <div className="font-sans text-2xl font-bold tracking-tight" style={{ color: accent }}>
+            {companyName}
+          </div>
           <div className="mt-1 font-sans text-xs uppercase tracking-widest text-slate-500">
             Pool Forge
           </div>
@@ -96,15 +112,15 @@ export function ProposalDocument({
       {/* Prepared for */}
       <section className="mt-6 grid grid-cols-2 gap-8">
         <Block title="Prepared for">
-          <div className="font-medium">{customer?.name ?? '—'}</div>
+          <div className="font-medium">{customer?.name ?? 'Not specified'}</div>
           {customer?.address ? <div>{customer.address}</div> : null}
           {customer?.email ? <div className="text-slate-600">{customer.email}</div> : null}
           {customer?.phone ? <div className="text-slate-600">{customer.phone}</div> : null}
         </Block>
         <Block title="Project specifications">
           <Row label="Project" value={project.name} />
-          <Row label="Salesperson" value={project.salesperson ?? '—'} />
-          <Row label="Designer" value={project.designer ?? '—'} />
+          <Row label="Salesperson" value={project.salesperson ?? 'Not specified'} />
+          <Row label="Designer" value={project.designer ?? 'Not specified'} />
         </Block>
       </section>
 
@@ -129,7 +145,7 @@ export function ProposalDocument({
                     measurements.poolWidthFt,
                     1,
                   )} ft`
-                : '—'
+                : 'Not specified'
             }
           />
           <Row
@@ -140,7 +156,7 @@ export function ProposalDocument({
                     measurements.poolDepthDeep,
                     1,
                   )} ft deep`
-                : '—'
+                : 'Not specified'
             }
           />
           <Row
@@ -153,8 +169,8 @@ export function ProposalDocument({
         </Block>
 
         <Block title="Equipment & features">
-          <Row label="Interior finish" value={interiorFinish ?? '—'} />
-          <Row label="Sanitization" value={sanitization ?? (selections.saltSystemSelected ? 'Salt system' : '—')} />
+          <Row label="Interior finish" value={interiorFinish ?? 'Not specified'} />
+          <Row label="Sanitization" value={sanitization ?? (selections.saltSystemSelected ? 'Salt system' : 'Not specified')} />
           <Row label="Heater" value={selections.heaterSelected ? 'Included' : 'Not included'} />
           <Row
             label="Screen enclosure"
@@ -165,7 +181,7 @@ export function ProposalDocument({
             value={
               selections.lightingQuantity > 0
                 ? `${selections.lightingQuantity} light${selections.lightingQuantity === 1 ? '' : 's'}`
-                : '—'
+                : 'Not specified'
             }
           />
         </Block>
@@ -174,10 +190,10 @@ export function ProposalDocument({
       {/* Deck specs */}
       <section className="mt-8">
         <Block title="Deck specifications">
-          <Row label="Deck material" value={deckMaterial ?? '—'} />
+          <Row label="Deck material" value={deckMaterial ?? 'Not specified'} />
           <Row
             label="Deck area"
-            value={measurements.hasDeck ? `${fmtNumber(measurements.deckArea)} sqft` : '—'}
+            value={measurements.hasDeck ? `${fmtNumber(measurements.deckArea)} sqft` : 'Not specified'}
           />
           <Row
             label="Coping"
@@ -231,17 +247,28 @@ export function ProposalDocument({
             ) : null}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-slate-900">
+            <tr className="border-t-2" style={{ borderColor: accent }}>
               <td colSpan={3} className="py-3 text-right font-sans text-sm font-semibold uppercase tracking-wide">
                 Subtotal
               </td>
               <td className="py-3 text-right tabular-nums">{fmtMoney(quote.subtotal)}</td>
             </tr>
+            {quote.taxRatePct > 0 ? (
+              <tr>
+                <td colSpan={3} className="py-1 text-right font-sans text-sm text-slate-600">
+                  Sales tax ({fmtNumber(quote.taxRatePct, 3)}%)
+                </td>
+                <td className="py-1 text-right tabular-nums">{fmtMoney(quote.taxAmount)}</td>
+              </tr>
+            ) : null}
             <tr>
               <td colSpan={3} className="py-3 text-right font-sans text-base font-semibold uppercase tracking-wide">
                 Total investment
               </td>
-              <td className="py-3 text-right text-lg font-semibold tabular-nums">
+              <td
+                className="py-3 text-right text-lg font-semibold tabular-nums"
+                style={{ color: accent }}
+              >
                 {fmtMoney(quote.total)}
               </td>
             </tr>

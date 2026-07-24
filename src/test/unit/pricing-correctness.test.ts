@@ -123,6 +123,21 @@ describe('pricing — totals are internally consistent', () => {
   })
 })
 
+describe('pricing — sales tax', () => {
+  it('adds tax at the given rate on top of the subtotal', () => {
+    const q = computeQuote(items, computeMeasurements([poolShape()]), {}, { taxRatePct: 6 })
+    expect(q.taxRatePct).toBe(6)
+    expect(q.taxAmount).toBeCloseTo(Math.round(q.subtotal * 0.06 * 100) / 100, 5)
+    expect(q.total).toBeCloseTo(Math.round((q.subtotal + q.taxAmount) * 100) / 100, 5)
+  })
+
+  it('applies no tax by default, so total equals subtotal', () => {
+    const q = computeQuote(items, computeMeasurements([poolShape()]), {})
+    expect(q.taxAmount).toBe(0)
+    expect(q.total).toBe(q.subtotal)
+  })
+})
+
 describe('measurements — coping vs deco drain', () => {
   it('coping equals the pool perimeter', () => {
     expect(computeMeasurements([poolShape()]).copingLinearFeet).toBe(74)

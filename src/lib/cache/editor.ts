@@ -53,9 +53,16 @@ export async function loadCachedQuote(projectId: string): Promise<QuoteSummary |
     include: { lineItems: true },
   })
   if (!row) return null
+  const subtotal = Number(row.subtotal)
+  const total = Number(row.total)
+  // Cached rows store subtotal + total only; recover the tax split from them.
+  const taxAmount = Math.round((total - subtotal) * 100) / 100
+  const taxRatePct = subtotal > 0 ? Math.round((taxAmount / subtotal) * 10000) / 100 : 0
   return {
-    subtotal: Number(row.subtotal),
-    total: Number(row.total),
+    subtotal,
+    total,
+    taxRatePct,
+    taxAmount,
     lineItems: row.lineItems.map((l) => ({
       itemId: l.id,
       name: l.name,

@@ -53,7 +53,10 @@ export default async function ProposalPage({
 
   const project = await db.project.findFirst({
     where: { id, orgId },
-    include: { customer: true, org: { select: { name: true } } },
+    include: {
+      customer: true,
+      org: { select: { name: true, taxRatePct: true, logoUrl: true, brandColor: true } },
+    },
   })
   if (!project) notFound()
 
@@ -85,7 +88,9 @@ export default async function ProposalPage({
     lightingQuantity: asNumber(poolFields.lightingQuantity),
   }
 
-  const quote = computeQuote(items, measurements, selections)
+  const quote = computeQuote(items, measurements, selections, {
+    taxRatePct: project.org.taxRatePct,
+  })
 
   return (
     <div className="min-h-screen bg-slate-100 py-6">
@@ -108,6 +113,8 @@ export default async function ProposalPage({
             lightingQuantity: selections.lightingQuantity ?? 0,
           }}
           companyName={project.org.name}
+          logoUrl={project.org.logoUrl}
+          brandColor={project.org.brandColor}
           shapes={drawing.shapes}
         />
       </div>

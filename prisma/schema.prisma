@@ -31,10 +31,15 @@ model User {
 }
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  name       String
+  // Branding used on customer-facing proposals.
+  logoUrl    String?
+  brandColor String?
+  // Default sales-tax rate applied to the quote subtotal, as a percentage.
+  taxRatePct Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   members        OrganizationMember[]
   customers      Customer[]
@@ -328,6 +333,8 @@ model ValidationResult {
 enum ExportKind {
   CUSTOMER_PROPOSAL
   CONSTRUCTION_PACKET
+  SITE_PLAN
+  SCREEN_ENCLOSURE_QUOTE
   IMAGE
 }
 

@@ -33,7 +33,14 @@ export interface QuoteLine {
 export interface QuoteSummary {
   lineItems: QuoteLine[]
   subtotal: number
+  taxRatePct: number
+  taxAmount: number
   total: number
+}
+
+export interface QuoteOptions {
+  /** Sales-tax rate applied to the subtotal, as a percentage (e.g. 6 for 6%). */
+  taxRatePct?: number
 }
 
 interface QuantityResult {
@@ -101,6 +108,7 @@ export function computeQuote(
   items: PriceBookItemLite[],
   measurements: MeasurementSummary,
   selections: PricingSelections = {},
+  options: QuoteOptions = {},
 ): QuoteSummary {
   const lineItems: QuoteLine[] = items
     .map<QuoteLine>((item) => {
@@ -127,10 +135,9 @@ export function computeQuote(
     })
     .filter((l) => l.quantity > 0)
 
-  const subtotal = lineItems.reduce((sum, l) => sum + l.total, 0)
-  return {
-    lineItems,
-    subtotal: Math.round(subtotal * 100) / 100,
-    total: Math.round(subtotal * 100) / 100,
-  }
+  const subtotal = Math.round(lineItems.reduce((sum, l) => sum + l.total, 0) * 100) / 100
+  const taxRatePct = Math.max(0, options.taxRatePct ?? 0)
+  const taxAmount = Math.round(subtotal * (taxRatePct / 100) * 100) / 100
+  const total = Math.round((subtotal + taxAmount) * 100) / 100
+  return { lineItems, subtotal, taxRatePct, taxAmount, total }
 }
