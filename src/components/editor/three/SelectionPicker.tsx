@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { dispatchEphemeral } from '@/lib/commands/dispatch'
+import { pickShapeId } from '@/lib/three/pick'
 
 export function SelectionPicker() {
   const { gl, camera, scene } = useThree()
@@ -11,7 +12,6 @@ export function SelectionPicker() {
   useEffect(() => {
     const dom = gl.domElement
     const raycaster = new THREE.Raycaster()
-    const mouse = new THREE.Vector2()
 
     let downX = 0
     let downY = 0
@@ -25,21 +25,10 @@ export function SelectionPicker() {
       // Treat as click only if pointer didn't drag.
       if (Math.abs(e.clientX - downX) > 4 || Math.abs(e.clientY - downY) > 4) return
 
-      const rect = dom.getBoundingClientRect()
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
-
-      raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObjects(scene.children, true)
-      for (const hit of intersects) {
-        let obj: THREE.Object3D | null = hit.object
-        while (obj && !(obj.userData && obj.userData.id) && obj.parent) {
-          obj = obj.parent
-        }
-        if (obj && obj.userData && obj.userData.id) {
-          dispatchEphemeral('selection.set', { ids: [obj.userData.id as string] })
-          return
-        }
+      const id = pickShapeId(raycaster, camera, scene, dom, e.clientX, e.clientY)
+      if (id) {
+        dispatchEphemeral('selection.set', { ids: [id] })
+        return
       }
       // Click missed every selectable — clear.
       dispatchEphemeral('selection.set', { ids: [] })

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { dispatch } from '@/lib/commands/dispatch'
 import { inches } from '@/lib/three/units'
+import { pickShapeId } from '@/lib/three/pick'
 import { useEditorStore, type Vec3 } from '@/modules/editor/state/editorStore'
 import { MeasureLabelOverlay } from '../shell/MeasureLabelOverlay'
 import { AnnotationDialog } from '../shell/AnnotationDialog'
@@ -36,31 +37,6 @@ function intersectGround(
   const hit = new THREE.Vector3()
   if (!raycaster.ray.intersectPlane(plane, hit)) return null
   return hit
-}
-
-function pickShapeId(
-  e: PointerEvent,
-  el: HTMLCanvasElement,
-  camera: THREE.Camera,
-  scene: THREE.Scene,
-  raycaster: THREE.Raycaster,
-): string | null {
-  const rect = el.getBoundingClientRect()
-  const ndc = new THREE.Vector2(
-    ((e.clientX - rect.left) / rect.width) * 2 - 1,
-    -((e.clientY - rect.top) / rect.height) * 2 + 1,
-  )
-  raycaster.setFromCamera(ndc, camera)
-  const hits = raycaster.intersectObjects(scene.children, true)
-  for (const hit of hits) {
-    let obj: THREE.Object3D | null = hit.object
-    while (obj) {
-      const id = obj.userData?.id
-      if (typeof id === 'string') return id
-      obj = obj.parent
-    }
-  }
-  return null
 }
 
 export function ToolGestures() {
@@ -127,7 +103,7 @@ export function ToolGestures() {
       }
 
       if (tool === 'tool.material-brush') {
-        const id = pickShapeId(e, el, camera, scene, raycaster)
+        const id = pickShapeId(raycaster, camera, scene, el, e.clientX, e.clientY)
         if (!id) return
         const matId = useEditorStore.getState().activeMaterialId
         if (!matId) {

@@ -5,6 +5,7 @@ import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { dispatch } from '@/lib/commands/dispatch'
 import { inches } from '@/lib/three/units'
+import { pickShapeId } from '@/lib/three/pick'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
@@ -49,24 +50,6 @@ export function DragHandler() {
       return hitPoint.clone()
     }
 
-    function pickShapeId(clientX: number, clientY: number): string | null {
-      const rect = dom.getBoundingClientRect()
-      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1
-      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(ndc, camera)
-      const intersects = raycaster.intersectObjects(scene.children, true)
-      for (const hit of intersects) {
-        let obj: THREE.Object3D | null = hit.object
-        while (obj && !(obj.userData && obj.userData.id) && obj.parent) {
-          obj = obj.parent
-        }
-        if (obj && obj.userData && obj.userData.id) {
-          return obj.userData.id as string
-        }
-      }
-      return null
-    }
-
     function onPointerDown(e: PointerEvent) {
       // Only left button.
       if (e.button !== 0) return
@@ -75,7 +58,7 @@ export function DragHandler() {
       const tool = useEditorStore.getState().activeTool
       if (tool !== 'tool.select' && tool !== 'select') return
 
-      const id = pickShapeId(e.clientX, e.clientY)
+      const id = pickShapeId(raycaster, camera, scene, dom, e.clientX, e.clientY)
       if (!id) return
 
       const selected = useSelectionStore.getState().selectedIds
