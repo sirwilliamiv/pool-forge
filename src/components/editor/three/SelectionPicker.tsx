@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { dispatch } from '@/lib/commands/dispatch'
+import { dispatchEphemeral } from '@/lib/commands/dispatch'
 
 export function SelectionPicker() {
   const { gl, camera, scene } = useThree()
@@ -37,17 +37,17 @@ export function SelectionPicker() {
           obj = obj.parent
         }
         if (obj && obj.userData && obj.userData.id) {
-          void dispatch('selection.set', { ids: [obj.userData.id as string] })
+          dispatchEphemeral('selection.set', { ids: [obj.userData.id as string] })
           return
         }
       }
       // Click missed every selectable — clear.
-      void dispatch('selection.set', { ids: [] })
+      dispatchEphemeral('selection.set', { ids: [] })
     }
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        void dispatch('selection.set', { ids: [] })
+        dispatchEphemeral('selection.set', { ids: [] })
       }
     }
 

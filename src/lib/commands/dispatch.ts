@@ -109,3 +109,32 @@ export async function dispatch<I, O>(
     }
   }
 }
+
+/**
+ * Ephemeral dispatch for client-only, high-frequency actions (selection,
+ * camera). The registered client handler runs IMMEDIATELY so the UI responds
+ * without waiting on the network, and the audit POST is fired fire-and-forget —
+ * a slow or failed request never blocks or delays the interaction. Use only for
+ * commands whose server `execute` is a no-op audit and whose client handler is a
+ * synchronous Zustand mutation.
+ */
+export function dispatchEphemeral<I, O>(id: string, input: I): DispatchResult<O> {
+  void fetch('/api/commands', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id, input }),
+  }).catch(() => {
+    // Audit is best-effort for ephemeral actions.
+  })
+
+  const handler = _clientHandlers.get(id)
+  if (!handler) return { ok: true, data: undefined as O }
+  try {
+    return { ok: true, data: handler(input, undefined) as O }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'client handler failed',
+    }
+  }
+}
