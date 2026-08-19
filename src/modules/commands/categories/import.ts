@@ -5,9 +5,16 @@ import {
   DesignIntentSchema,
   ScaleMethodSchema,
   emptyDesignIntent,
+  hasResolvedScale,
   unreviewedFieldPaths,
   type DesignIntent,
 } from '@/modules/imports/intent'
+import { intentToShapes } from '@/modules/imports/precision/translate'
+import {
+  parseDrawingPayload,
+  serializeDrawingPayload,
+} from '@/modules/editor/drawing-payload'
+import { readPoolFields, type PoolFields } from '@/modules/projects/pool-fields'
 import {
   DesignIntentPatchSchema,
   applyIntentPatch,
@@ -62,6 +69,49 @@ async function loadSession(
 // Gate 2 lives in the contract module so the review UI and this command share
 // one implementation rather than two that a test has to keep in agreement.
 export { unreviewedFieldPaths }
+
+
+/**
+ * Carries the reviewed intent into the fields the pricing engine, validation
+ * rules, and every export already read. Only non-empty values overwrite, so an
+ * import never blanks something the builder set by hand.
+ */
+function poolFieldsFromIntent(existing: unknown, intent: DesignIntent): PoolFields {
+  const fields = readPoolFields(existing)
+  const next: PoolFields = { ...fields }
+
+  const assign = (key: keyof PoolFields, value: string | null): void => {
+    if (value === null || value.trim() === '') return
+    Object.assign(next, { [key]: value })
+  }
+
+  assign('interiorFinish', intent.materials.interiorFinish)
+  assign('copingMaterial', intent.materials.copingMaterial)
+  assign(
+    'deckMaterial',
+    intent.materials.deckMaterial ??
+      (intent.deck.material === 'unknown' ? null : intent.deck.material),
+  )
+  assign('poolType', intent.pool.shapeFamily === 'unknown' ? null : intent.pool.shapeFamily)
+  assign('depthShallow', intent.pool.depthShallowFt === null ? null : String(intent.pool.depthShallowFt))
+  assign('depthDeep', intent.pool.depthDeepFt === null ? null : String(intent.pool.depthDeepFt))
+
+  if (intent.enclosure.present && intent.enclosure.kind !== 'none') {
+    next.screenSelected = true
+    assign('screenOption', intent.enclosure.kind)
+  }
+
+  return next
+}
+
+/** Site observations are appended to the builder's notes, never substituted. */
+function appendSiteNotes(existing: string | null, intent: DesignIntent): string | null {
+  const lines = [...intent.site.notes, ...intent.warnings].filter(line => line.trim() !== '')
+  if (lines.length === 0) return existing
+
+  const block = ['Imported from image:', ...lines.map(line => `- ${line}`)].join('\n')
+  return existing && existing.trim() !== '' ? `${existing}\n\n${block}` : block
+}
 
 register({
   id: 'import.session.create',
@@ -283,10 +333,107 @@ register({
     createdShapeIds: z.array(z.string()),
   }),
   voiceExamples: ['Apply the imported design.', 'Build this into the project.'],
-  // Track I4 (Review) owns the body, including the two hard gates: a null
-  // pixelsPerInch blocks every footprint and derived dimension, and any field
-  // below the review confidence threshold must be touched by a human first.
-  execute: async () => ({ ok: false, error: 'not implemented: track I4 (review + apply)' }),
+  execute: async (input, ctx) => {
+    type ApplyOutput = {
+      sessionId: string
+      projectId: string
+      appliedCommandIds: string[]
+      createdShapeIds: string[]
+    }
+
+    const unauthenticated = notAuthenticated<ApplyOutput>(ctx)
+    if (unauthenticated) return unauthenticated
+
+    const loaded = await loadSession(input.sessionId, ctx)
+    if (!loaded.ok) return { ok: false, error: loaded.error }
+
+    const { intent, touchedFieldPaths } = loaded
+
+    // Gate 1. Without a resolved scale every dimension is a guess, and a pool
+    // that looks right but measures wrong is worse than no pool at all.
+    if (!hasResolvedScale(intent)) {
+      return {
+        ok: false,
+        error: 'Scale is not calibrated yet, so no geometry can be applied. Calibrate the image first.',
+      }
+    }
+
+    // Gate 2. Anything the extractor was unsure about needs a human first.
+    const unreviewed = unreviewedFieldPaths(intent, touchedFieldPaths)
+    if (unreviewed.length > 0) {
+      return {
+        ok: false,
+        error: `${unreviewed.length} field${unreviewed.length === 1 ? '' : 's'} still need review: ${unreviewed.join(', ')}`,
+      }
+    }
+
+    const { shapes: newShapes, warnings } = intentToShapes(intent)
+    if (newShapes.length === 0) {
+      return { ok: false, error: 'The reviewed design has nothing to apply yet.' }
+    }
+
+    const { db } = await import('@/lib/db')
+
+    const project = await db.project.findFirst({
+      where: { id: input.projectId, orgId: ctx.orgId },
+      select: { id: true, poolFields: true, internalNotes: true },
+    })
+    if (!project) return { ok: false, error: 'Project not found' }
+
+    const drawing = await db.drawing.findUnique({
+      where: { projectId: project.id },
+      select: { rootJson: true },
+    })
+    const payload = parseDrawingPayload(drawing?.rootJson ?? { shapes: [], survey: null })
+
+    // Appended, never replacing. An import adds to whatever the builder has
+    // already drawn; silently discarding their work would be unrecoverable.
+    const merged = { ...payload, shapes: [...payload.shapes, ...newShapes] }
+    const poolFields = poolFieldsFromIntent(project.poolFields, intent)
+    const notes = appendSiteNotes(project.internalNotes, intent)
+
+    await db.$transaction([
+      db.drawing.upsert({
+        where: { projectId: project.id },
+        create: {
+          projectId: project.id,
+          scale: 1,
+          rootJson: serializeDrawingPayload(merged) as unknown as object,
+        },
+        update: { rootJson: serializeDrawingPayload(merged) as unknown as object },
+      }),
+      db.project.update({
+        where: { id: project.id },
+        data: { poolFields: poolFields as unknown as object, internalNotes: notes },
+      }),
+      db.importSession.update({
+        where: { id: loaded.id },
+        data: {
+          status: 'APPLIED',
+          appliedAt: new Date(),
+          projectId: project.id,
+          appliedCommandIds: ['import.intent.apply'],
+        },
+      }),
+    ])
+
+    if (warnings.length > 0) {
+      console.warn('[import.intent.apply] translation warnings', {
+        sessionId: loaded.id,
+        warnings,
+      })
+    }
+
+    return {
+      ok: true,
+      data: {
+        sessionId: loaded.id,
+        projectId: project.id,
+        appliedCommandIds: ['import.intent.apply'],
+        createdShapeIds: newShapes.map(shape => shape.id),
+      },
+    }
+  },
 })
 
 register({

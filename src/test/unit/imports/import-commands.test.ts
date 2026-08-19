@@ -97,13 +97,61 @@ describe.skipIf(!reachable)('import commands', () => {
   })
 
   it('the tracks that have not landed fail loudly rather than returning ok', async () => {
-    const stubs = ['import.image.upload', 'import.image.analyze', 'import.intent.apply']
+    const stubs = ['import.image.upload', 'import.image.analyze']
     for (const id of stubs) {
       const cmd = get(id)
       const result = await cmd!.execute({} as never, ctxA)
       expect(result.ok, `${id} must not report success`).toBe(false)
       if (!result.ok) expect(result.error).toMatch(/^not implemented: track/)
     }
+  })
+
+  it('apply refuses while scale is uncalibrated', async () => {
+    const created = await run<SessionData>('import.session.create', { projectId: projectA }, ctxA)
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+
+    const result = await run('import.intent.apply', {
+      sessionId: created.data.sessionId,
+      projectId: projectA,
+    }, ctxA)
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toMatch(/not calibrated/i)
+  })
+
+  it('apply refuses while a low-confidence field is untouched, then names it', async () => {
+    const created = await run<SessionData>('import.session.create', { projectId: projectA }, ctxA)
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+
+    const intent = emptyDesignIntent()
+    intent.scale = { pixelsPerInch: 4, method: 'grid', confidence: 0.95 }
+    intent.pool = { ...intent.pool, shapeFamily: 'rectangle', lengthFt: 32, widthFt: 16 }
+    intent.fieldConfidence = { 'pool.widthFt': 0.2 }
+    await db.importSession.update({
+      where: { id: created.data.sessionId },
+      data: { designIntentJson: intent as unknown as object },
+    })
+
+    const blocked = await run('import.intent.apply', {
+      sessionId: created.data.sessionId,
+      projectId: projectA,
+    }, ctxA)
+    expect(blocked.ok).toBe(false)
+    if (!blocked.ok) expect(blocked.error).toContain('pool.widthFt')
+  })
+
+  it('apply refuses a session belonging to another org', async () => {
+    const created = await run<SessionData>('import.session.create', { projectId: projectA }, ctxA)
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+
+    const result = await run('import.intent.apply', {
+      sessionId: created.data.sessionId,
+      projectId: projectA,
+    }, ctxB)
+    expect(result.ok).toBe(false)
   })
 
   it('session.create opens a DRAFT session with an empty intent', async () => {
