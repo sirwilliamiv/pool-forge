@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Archive, Copy, ExternalLink, FileText, Printer, Trash2 } from 'lucide-react'
+import { Archive, Copy, ExternalLink, FileText, Printer, ScanLine, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ProjectStatus } from '@prisma/client'
 import { Button } from '@/components/ui/button'
@@ -83,6 +83,12 @@ export function ProjectActions({ project }: ProjectActionsProps) {
             <Link href={`/projects/${project.id}/editor`}>
               <ExternalLink className="mr-1.5 h-4 w-4" />
               Open editor
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/projects/${project.id}/import`}>
+              <ScanLine className="mr-1.5 h-4 w-4" />
+              Import from image
             </Link>
           </Button>
           <Button variant="outline" size="sm" onClick={onDuplicate} disabled={pending}>
