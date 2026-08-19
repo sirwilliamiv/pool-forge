@@ -138,6 +138,21 @@ function appendSiteNotes(existing: string | null, intent: DesignIntent): string 
   return existing && existing.trim() !== '' ? `${existing}\n\n${block}` : block
 }
 
+/**
+ * Binds Track I2's Vertex extractors to Track I1's analysis port.
+ *
+ * Gated on live mode and imported dynamically, so a deployment without Vertex
+ * configured keeps the no-op port and the Google SDK never loads. Without this
+ * call the two tracks never meet: every image analyses to a PENDING row that
+ * nothing ever resolves.
+ */
+async function ensureVisionPortInstalled(): Promise<void> {
+  const { isLiveEnabled } = await import('@/modules/imports/vision/client')
+  if (!isLiveEnabled()) return
+  const { installVertexVisionPort } = await import('@/modules/imports/vision/port')
+  installVertexVisionPort()
+}
+
 register({
   id: 'import.session.create',
   label: 'Start image import',
@@ -353,6 +368,7 @@ register({
       return { ok: false, error: 'That image is not part of this import' }
     }
 
+    await ensureVisionPortInstalled()
     const port = getVisionAnalysisPort()
     const extractorVersion = input.extractorVersion ?? port.extractorVersion
 

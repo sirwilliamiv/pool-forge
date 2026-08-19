@@ -94,3 +94,9 @@ export type {
   VisionImage,
   VisionUsage,
 } from './types'
+
+export {
+  VISION_PORT_VERSION,
+  installVertexVisionPort,
+  vertexVisionAnalysisPort,
+} from './port'
