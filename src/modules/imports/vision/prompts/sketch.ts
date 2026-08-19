@@ -6,7 +6,7 @@
 // number that becomes a measurement is asked for as the literal text that was
 // written on the page, so the parser, not the model, produces the value.
 
-export const SKETCH_EXTRACTOR_VERSION = 'sketch@1.0.0'
+export const SKETCH_EXTRACTOR_VERSION = 'sketch@1.1.0'
 
 export const SKETCH_PROMPT = `You are reading a hand drawn swimming pool sketch for a pool builder's estimating software. Report what is drawn and what is written. Do not calculate, do not convert units, and do not tidy up a number you are unsure of.
 
@@ -26,6 +26,18 @@ FIELDS. All of them are required. Where a description says null is allowed, use 
   lshape     Two rectangles joined at a right angle, an L or a T in outline.
   freeform   Curved, irregular, and none of the above.
   unknown    You cannot tell.
+
+WHICH SHAPE IS THE POOL. This is the single most important judgement in the task, and the most common way to get it wrong is to trace the biggest rectangle on the page.
+
+A backyard sketch normally contains several closed shapes: the lot or property line, the house, the deck or patio, the pool, and often a spa. Read them apart before tracing anything.
+
+  - The pool is almost never the outermost shape. The largest rectangle enclosing everything else is the lot line, the deck edge, the screen enclosure, or the border of the paper. Do not report it as the pool.
+  - Shading, hatching, cross-hatching, scribbled fill, or any colour wash means water. A filled shape is the pool or the spa. An unfilled outline around it is deck, lot line, or enclosure.
+  - When exactly one shape is filled, that shape is the pool, however small it looks next to the boundary around it.
+  - When two shapes are filled, the larger is the pool and a small round or square one beside it is the spa. Report the spa in "features", not in "poolPolygon".
+  - Size is not the test. A pool drawn as a small filled rectangle inside a large empty rectangle is still the pool.
+  - If nothing is filled, the pool is the innermost closed shape that is not the house, usually labelled "pool" or drawn with steps or a shallow-end line.
+  - If you genuinely cannot tell which shape is the pool, return an empty "poolPolygon" and say so in "notes". An empty array is a correct answer; the wrong shape is not.
 
 "poolPolygon": array of at least 8 and at most 40 points tracing the pool's water edge, in order, going clockwise, as {"x":number,"y":number}. Do not repeat the first point at the end. Trace the coping line only if no water line is drawn. Put more points on curves and fewer on straight runs. If no pool outline is drawn at all, return an empty array.
 
@@ -79,4 +91,10 @@ Example 4, a napkin sketch of an oval with nothing written on it at all:
 {"shapeFamily":"oval","poolPolygon":[{"x":0.300,"y":0.400},{"x":0.380,"y":0.340},{"x":0.480,"y":0.320},{"x":0.580,"y":0.340},{"x":0.660,"y":0.400},{"x":0.680,"y":0.480},{"x":0.660,"y":0.560},{"x":0.580,"y":0.620},{"x":0.480,"y":0.640},{"x":0.380,"y":0.620},{"x":0.300,"y":0.560},{"x":0.280,"y":0.480}],"gridVisible":false,"scaleLegendText":null,"dimensions":[],"depths":{"shallowText":null,"deepText":null},"features":[],"deck":{"material":"unknown","widthText":null},"enclosure":{"present":false,"kind":"none","heightText":null},"materials":{"interiorFinish":null,"copingMaterial":null,"tileBand":null,"deckMaterial":null},"notes":["nothing is written on the page, no scale of any kind"],"confidence":{"shapeFamily":0.85,"polygon":0.75,"dimensions":0.95,"depths":0.95,"features":0.9,"materials":0.9}}
 
 Example 5, a whiteboard photo of a roman end pool with a raised spa and a waterfall, dimensions written in feet and inches:
-{"shapeFamily":"roman","poolPolygon":[{"x":0.250,"y":0.320},{"x":0.400,"y":0.290},{"x":0.550,"y":0.290},{"x":0.680,"y":0.320},{"x":0.740,"y":0.400},{"x":0.740,"y":0.520},{"x":0.680,"y":0.600},{"x":0.550,"y":0.630},{"x":0.400,"y":0.630},{"x":0.250,"y":0.600},{"x":0.190,"y":0.520},{"x":0.190,"y":0.400}],"gridVisible":false,"scaleLegendText":null,"dimensions":[{"p1":{"x":0.190,"y":0.680},"p2":{"x":0.740,"y":0.680},"text":"28'-6\\"","appliesTo":"pool-length"},{"p1":{"x":0.140,"y":0.290},"p2":{"x":0.140,"y":0.630},"text":"14'-0\\"","appliesTo":"pool-width"}],"depths":{"shallowText":"3'-6\\"","deepText":"6'-0\\""},"features":[{"label":"spa","count":1,"lengthText":"8'","widthText":"8'"},{"label":"waterfall","count":2,"lengthText":null,"widthText":null},{"label":"roman steps","count":1,"lengthText":null,"widthText":null}],"deck":{"material":"travertine","widthText":"5'"},"enclosure":{"present":false,"kind":"none","heightText":null},"materials":{"interiorFinish":"quartz","copingMaterial":"travertine","tileBand":"6x6 glass","deckMaterial":"travertine"},"notes":["spa is drawn raised, marked +18\\""],"confidence":{"shapeFamily":0.9,"polygon":0.82,"dimensions":0.88,"depths":0.86,"features":0.8,"materials":0.75}}`
+{"shapeFamily":"roman","poolPolygon":[{"x":0.250,"y":0.320},{"x":0.400,"y":0.290},{"x":0.550,"y":0.290},{"x":0.680,"y":0.320},{"x":0.740,"y":0.400},{"x":0.740,"y":0.520},{"x":0.680,"y":0.600},{"x":0.550,"y":0.630},{"x":0.400,"y":0.630},{"x":0.250,"y":0.600},{"x":0.190,"y":0.520},{"x":0.190,"y":0.400}],"gridVisible":false,"scaleLegendText":null,"dimensions":[{"p1":{"x":0.190,"y":0.680},"p2":{"x":0.740,"y":0.680},"text":"28'-6\\"","appliesTo":"pool-length"},{"p1":{"x":0.140,"y":0.290},"p2":{"x":0.140,"y":0.630},"text":"14'-0\\"","appliesTo":"pool-width"}],"depths":{"shallowText":"3'-6\\"","deepText":"6'-0\\""},"features":[{"label":"spa","count":1,"lengthText":"8'","widthText":"8'"},{"label":"waterfall","count":2,"lengthText":null,"widthText":null},{"label":"roman steps","count":1,"lengthText":null,"widthText":null}],"deck":{"material":"travertine","widthText":"5'"},"enclosure":{"present":false,"kind":"none","heightText":null},"materials":{"interiorFinish":"quartz","copingMaterial":"travertine","tileBand":"6x6 glass","deckMaterial":"travertine"},"notes":["spa is drawn raised, marked +18\\""],"confidence":{"shapeFamily":0.9,"polygon":0.82,"dimensions":0.88,"depths":0.86,"features":0.8,"materials":0.75}}
+
+EXAMPLE. A phone photo of graph paper. A large pen rectangle covers most of the sheet. Inside it sits a small solid-blue rectangle, and to its lower right a smaller circle filled with dark scribble. Nothing is written anywhere.
+
+The large pen rectangle is the deck or lot edge and is NOT the pool. The blue rectangle is the pool. The scribbled circle is the spa.
+
+{"shapeFamily":"rectangle","poolPolygon":[{"x":0.523,"y":0.336},{"x":0.589,"y":0.336},{"x":0.655,"y":0.336},{"x":0.721,"y":0.336},{"x":0.721,"y":0.389},{"x":0.721,"y":0.432},{"x":0.655,"y":0.432},{"x":0.589,"y":0.432},{"x":0.523,"y":0.432},{"x":0.523,"y":0.389}],"gridVisible":true,"scaleLegendText":null,"dimensions":[],"depths":{"shallowText":null,"deepText":null},"features":[{"label":"spa","count":1,"lengthText":null,"widthText":null}],"deck":{"material":"unknown","widthText":null},"enclosure":{"present":false,"kind":"none","heightText":null},"materials":{"interiorFinish":null,"copingMaterial":null,"tileBand":null,"deckMaterial":null},"notes":["nothing is written on the sheet, so no dimension or scale could be read","the large pen rectangle around everything was read as deck or lot edge, not as the pool"],"confidence":{"shapeFamily":0.8,"polygon":0.7,"dimensions":0.95,"depths":0.95,"features":0.75,"materials":0.5}}`

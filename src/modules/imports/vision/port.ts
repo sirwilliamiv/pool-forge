@@ -24,6 +24,7 @@ import { getBlobStore } from '@/modules/storage'
 import type { DesignIntent } from '@/modules/imports/intent'
 
 import { detectGrid } from '@/modules/imports/precision/grid'
+import { snapPolygonToInk } from '@/modules/imports/precision/ink'
 import type { LabeledDimension } from '@/modules/imports/precision/scale'
 import {
   runPrecisionPipeline,
@@ -160,7 +161,14 @@ async function applyPrecision(
   const height = field?.height ?? 0
   if (width === 0 || height === 0) return withImageSpace
 
-  const polygonPx = polygonNormalized.map(pt => ({ x: pt.x * width, y: pt.y * height }))
+  const modelPolygonPx = polygonNormalized.map(pt => ({ x: pt.x * width, y: pt.y * height }))
+
+  // The model's proportions are trustworthy and its placement is not, so the
+  // outline is moved onto the filled region it was describing before anything
+  // measures it. Without this the polygon lands near the drawing rather than on
+  // it, and every derived number inherits the offset.
+  const snapped = field ? snapPolygonToInk(modelPolygonPx, field.data, width, height) : null
+  const polygonPx = snapped?.region ? snapped.points : modelPolygonPx
 
   const labeledDimensions: LabeledDimension[] = geometry.dimensions
     .filter(d => d.parsedInches !== null && d.parsedInches > 0)
@@ -193,10 +201,20 @@ async function applyPrecision(
 
   const precision = runPrecisionPipeline(input)
 
+  const snapWarnings = snapped?.region
+    ? []
+    : ['the outline could not be matched to a filled shape on the page, so its position is the model estimate']
+
   const next: DesignIntent = {
     ...withImageSpace,
     scale: precision.scale,
-    warnings: [...intent.warnings, ...precision.warnings],
+    // The overlay shows the snapped outline, so what the user checks is the
+    // same geometry the measurements came from.
+    imageSpace: {
+      ...withImageSpace.imageSpace!,
+      poolPolygon: polygonPx.map(p => ({ x: p.x / width, y: p.y / height })),
+    },
+    warnings: [...intent.warnings, ...precision.warnings, ...snapWarnings],
   }
   if (precision.polygonInches && precision.polygonInches.length >= 3) {
     next.pool = { ...next.pool, footprint: { points: precision.polygonInches } }
