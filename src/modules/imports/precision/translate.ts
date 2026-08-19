@@ -22,6 +22,7 @@ import {
   ShapeKind,
   SHAPE_DEFAULTS,
   type DisplayHint,
+  type PolygonPool,
   type Shape,
   type ShapeBase,
 } from '@/modules/editor/state/shapes'
@@ -32,20 +33,14 @@ const INCHES_PER_FOOT = 12
 const DEFAULT_DEPTH_SHALLOW_FT = 3
 const DEFAULT_DEPTH_DEEP_FT = 5
 
-// TODO(I0): replace this local declaration with `PolygonPool` and
-// `ShapeKind.POLYGON_POOL` imported from `@/modules/editor/state/shapes` once
-// track I0's shape primitive lands. It is declared structurally identical to
-// I0's variant (points are inches relative to the shape origin), so the swap is
-// a one-line import change with no call-site edits. This is the single
-// integration point between the two tracks.
-export interface PolygonPoolShape extends Omit<ShapeBase, 'kind'> {
-  kind: 'POLYGON_POOL'
-  points: Point[]
-  depthShallow: number
-  depthDeep: number
-}
+/**
+ * Re-exported so callers written against this module keep one import. I0's
+ * `PolygonPool` is already a member of the `Shape` union, so a translated
+ * shape is just a `Shape`.
+ */
+export type PolygonPoolShape = PolygonPool
 
-export type TranslatedShape = Shape | PolygonPoolShape
+export type TranslatedShape = Shape
 
 export interface TranslateResult {
   shapes: TranslatedShape[]
@@ -180,9 +175,9 @@ function addPool(
     const ring = footprintRing(intent.pool.footprint)
     if (ring.length >= 3) {
       const bounds = boundsOf(ring)
-      const shape: PolygonPoolShape = {
+      const shape: PolygonPool = {
         ...baseShape(nextId('POLYGON_POOL'), bounds.width, bounds.height),
-        kind: 'POLYGON_POOL',
+        kind: ShapeKind.POLYGON_POOL,
         points: ring.map((p) => ({ x: p.x - bounds.minX, y: p.y - bounds.minY })),
         depthShallow,
         depthDeep,
