@@ -87,26 +87,26 @@ uses **Vertex AI only**: the consumer `generativelanguage.googleapis.com`
 endpoint permits Google to use prompts for training, and these are pictures of
 customers' homes.
 
-### Current state (2026-08-19)
+### Project
 
-| Item | State |
-|---|---|
-| `pool-forge-prod` (764613501658) | Created, `aiplatform` + `storage` enabled, **unbilled** |
-| Billing account `0161A7-61F9DB-ED6CCC` | At its 5-project cap, no orphans, no pending deletions |
-| Billing account `010C1D-0603E3-C1CE17` | Closed, unusable |
-| `gss-demo-dev` | Already billed, `aiplatform` enabled, used as the interim project |
+Pool Forge runs Vertex in **`pool-forge-prod`** (project number 764613501658),
+`us-central1`, with `aiplatform` and `storage` enabled and a
+`pool-forge-vertex@` service account holding `roles/aiplatform.user` for the
+eventual Cloud Run deploy.
 
-`gcloud billing projects link pool-forge-prod` fails with `FAILED_PRECONDITION`
-/ `Cloud billing quota exceeded`. All five linked projects are live, so nothing
-can be unlinked without taking a service down. Resolving it needs one of:
+Getting it billed required freeing a slot: billing account
+`0161A7-61F9DB-ED6CCC` caps at 5 linked projects, the second account
+(`010C1D-0603E3-C1CE17`) is closed, and the project-link limit is not exposed
+through the quota API, so it is a support form or nothing. On 2026-08-19
+`hire-billy-prod` was unlinked to make room, chosen because it ran no Cloud Run
+service, no SQL, no GCE, and no secrets; it held only Cloud Build logs and one
+Artifact Registry image from a single 2026-08-03 build, all reproducible from
+source. Note that disabling billing eventually causes Google to reclaim those
+artifacts.
 
-1. A quota increase at https://support.google.com/code/contact/billing_quota_increase
-2. Unlinking a project that is genuinely retired
-
-Until then `GCP_PROJECT_ID` points at `gss-demo-dev`. Verified reachable:
-`gemini-2.5-flash` and `gemini-2.5-pro` both answer in `us-central1`, and the
-real `sketch@1.0.0` extraction prompt returns output that validates against
-`SketchResponseSchema`.
+This is a swap, not spare capacity: relinking `hire-billy-prod` means unlinking
+something else, unless the quota is raised at
+https://support.google.com/code/contact/billing_quota_increase
 
 ### Credentials
 
