@@ -63,6 +63,9 @@ export function applyIntentPatch(intent: DesignIntent, patch: DesignIntentPatch)
     version: intent.version,
     sourceImageIds: patch.sourceImageIds ?? intent.sourceImageIds,
     pool: assignDefined(intent.pool, patch.pool),
+    // Carried through untouched: it is extractor output describing where marks
+    // sit on the raster, not a field a human edits.
+    imageSpace: intent.imageSpace,
     features: patch.features ?? intent.features,
     deck: assignDefined(intent.deck, patch.deck),
     enclosure: assignDefined(intent.enclosure, patch.enclosure),

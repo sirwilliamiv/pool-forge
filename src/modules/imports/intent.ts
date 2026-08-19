@@ -144,10 +144,27 @@ export const MaterialsIntentSchema = z.object({
 })
 export type MaterialsIntent = z.infer<typeof MaterialsIntentSchema>
 
+/**
+ * Geometry in image space, normalized 0..1 against the vision copy.
+ *
+ * Kept alongside the inch-space footprint because it survives an unresolved
+ * scale. Without it the review screen has nothing to draw until calibration,
+ * so a user is asked to trust an extraction they cannot see. The point of the
+ * overlay is that a number is auditable back to the line it came from.
+ */
+export const ImageSpaceSchema = z.object({
+  sourceImageId: z.string(),
+  poolPolygon: z.array(PointSchema),
+  gridVisible: z.boolean(),
+})
+export type ImageSpace = z.infer<typeof ImageSpaceSchema>
+
 export const DesignIntentSchema = z.object({
   version: z.literal(DESIGN_INTENT_VERSION),
   sourceImageIds: z.array(z.string()),
   pool: PoolIntentSchema,
+  /** Null when no extractor produced an outline for the active image. */
+  imageSpace: ImageSpaceSchema.nullable().default(null),
   features: z.array(FeatureIntentSchema),
   deck: DeckIntentSchema,
   enclosure: EnclosureIntentSchema,
@@ -236,6 +253,7 @@ export function emptyDesignIntent(sourceImageIds: string[] = []): DesignIntent {
       depthShallowFt: null,
       depthDeepFt: null,
     },
+    imageSpace: null,
     features: [],
     deck: { footprint: null, material: 'unknown', widthFt: null },
     enclosure: { present: false, kind: 'none', heightFt: null, footprint: null },

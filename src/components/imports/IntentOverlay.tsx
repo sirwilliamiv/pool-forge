@@ -140,6 +140,27 @@ export function IntentOverlay({
         />
       ) : null}
 
+      {/*
+        Pre-calibration fallback. The extractor reports the outline in
+        normalized image coordinates, which need no scale, so the detection is
+        visible while `pixelsPerInch` is still null. Without this the screen is
+        blank until calibration and the user is asked to trust an extraction
+        they cannot see. Dashed and amber to read as provisional.
+      */}
+      {toggles.pool && (intent.pool.footprint === null || ppi === null) && intent.imageSpace &&
+      intent.imageSpace.poolPolygon.length >= 3 ? (
+        <polygon
+          points={intent.imageSpace.poolPolygon
+            .map((p) => `${(p.x * widthPx).toFixed(2)},${(p.y * heightPx).toFixed(2)}`)
+            .join(' ')}
+          fill="rgba(217,119,6,0.14)"
+          stroke="#D97706"
+          strokeWidth={2 * counter}
+          strokeDasharray={`${8 * counter} ${6 * counter}`}
+          vectorEffect="non-scaling-stroke"
+        />
+      ) : null}
+
       {toggles.pool && intent.pool.footprint && ppi !== null ? (
         <>
           <FootprintPath

@@ -62,14 +62,27 @@ function modelFrom(envKey: string, fallback: string): string {
  * not model, since a repaired call still produced a usable payload. It maps to
  * OK; the fact that a repair happened is preserved in the raw JSON.
  */
+/** Best-effort parse; a payload that is not JSON is kept verbatim. */
+function safeJson(value: string | null): unknown {
+  if (value === null) return {}
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
 function toStageResult(record: AnalysisRecord): VisionStageResult {
   return {
     stage: record.stage,
     status: record.status === 'FAILED' ? 'FAILED' : 'OK',
     model: record.model,
     promptHash: record.promptHash,
-    raw: record.rawJson,
-    parsed: record.parsedJson,
+    raw: safeJson(record.rawJson),
+    // Parsed back into an object: the record carries it as a JSON string, and
+    // storing that string in a Json column made every ImageAnalysis row a
+    // quoted blob that has to be re-parsed before it can be read or queried.
+    parsed: safeJson(record.parsedJson),
     tokensIn: record.tokensIn,
     tokensOut: record.tokensOut,
     latencyMs: record.latencyMs,
@@ -122,17 +135,30 @@ async function applyPrecision(
   intent: DesignIntent,
   geometry: ExtractionGeometry | undefined,
   bytes: Buffer,
+  sourceImageId: string,
 ): Promise<DesignIntent> {
   if (!geometry) return intent
 
-  const polygonNormalized =
-    geometry.source === 'sketch' ? geometry.poolPolygonNormalized : geometry.poolPolygonNormalized
+  const polygonNormalized = geometry.poolPolygonNormalized
   if (!polygonNormalized || polygonNormalized.length < 3) return intent
+
+  // Recorded first, before any step that can bail. Scale resolution needs the
+  // raster decoded and grid detection can legitimately find nothing, but the
+  // outline itself needs neither: it is normalized image coordinates. Setting
+  // it only on the success path is what left the review overlay blank.
+  const withImageSpace: DesignIntent = {
+    ...intent,
+    imageSpace: {
+      sourceImageId,
+      poolPolygon: polygonNormalized.map(pt => ({ x: pt.x, y: pt.y })),
+      gridVisible: geometry.source === 'sketch' ? geometry.gridVisible : false,
+    },
+  }
 
   const field = await greyscaleField(bytes)
   const width = field?.width ?? 0
   const height = field?.height ?? 0
-  if (width === 0 || height === 0) return intent
+  if (width === 0 || height === 0) return withImageSpace
 
   const polygonPx = polygonNormalized.map(pt => ({ x: pt.x * width, y: pt.y * height }))
 
@@ -168,7 +194,7 @@ async function applyPrecision(
   const precision = runPrecisionPipeline(input)
 
   const next: DesignIntent = {
-    ...intent,
+    ...withImageSpace,
     scale: precision.scale,
     warnings: [...intent.warnings, ...precision.warnings],
   }
@@ -227,6 +253,7 @@ export const vertexVisionAnalysisPort: VisionAnalysisPort = {
       merged.intent,
       merged.geometryBySource[request.sourceImageId],
       bytes,
+      request.sourceImageId,
     )
 
     // The final intent is persisted as the TRANSLATE stage so a cache hit can
