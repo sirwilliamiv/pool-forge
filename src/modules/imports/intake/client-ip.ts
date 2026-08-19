@@ -20,8 +20,18 @@
 // Pure functions, no I/O, so the security properties are unit-testable.
 
 const XFF_HEADER = 'x-forwarded-for'
-/** Set by Cloud Run and by Google's load balancers. */
-const REAL_IP_HEADERS = ['x-real-ip', 'cf-connecting-ip', 'fly-client-ip'] as const
+
+/**
+ * Optional single fallback header, named by `INTAKE_TRUSTED_IP_HEADER`, used
+ * only when `X-Forwarded-For` is absent.
+ *
+ * Unset by default and deliberately not a guess-list of provider headers.
+ * `cf-connecting-ip` and friends are only trustworthy behind that specific
+ * provider; anywhere else they are plain client-settable text, so probing for
+ * them would let a caller mint a fresh rate-limit bucket per request simply by
+ * varying a header. Naming the header is an operator statement about the
+ * deployment, which is the only thing that makes it trustworthy.
+ */
 
 /**
  * The number of trailing `X-Forwarded-For` entries written by infrastructure we
@@ -180,8 +190,9 @@ export function clientIpBucket(
   const forwarded = trustedForwardedHop(headers.get(XFF_HEADER))
   if (forwarded !== null) return normalizeIpBucket(forwarded)
 
-  for (const name of REAL_IP_HEADERS) {
-    const value = headers.get(name)
+  const trustedHeader = process.env.INTAKE_TRUSTED_IP_HEADER?.trim().toLowerCase()
+  if (trustedHeader) {
+    const value = headers.get(trustedHeader)
     if (value !== null && value.trim().length > 0) return normalizeIpBucket(value)
   }
 

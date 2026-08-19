@@ -1,7 +1,7 @@
 // The rate limiter is only as good as the key it counts on. These are the two
 // ways to hand an attacker unlimited buckets, tested directly.
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   UNKNOWN_IP_BUCKET,
@@ -127,5 +127,49 @@ describe('clientIpBucket', () => {
   it('falls back to the socket address when no proxy header is present', () => {
     expect(clientIpBucket(headersOf({}), '198.51.100.4')).toBe('v4:198.51.100.4')
     expect(clientIpBucket(headersOf({}), null)).toBe(UNKNOWN_IP_BUCKET)
+  })
+})
+
+// A fallback IP header is only trustworthy when an operator names it for the
+// deployment. Probing a guess-list of provider headers would mean that on any
+// host not setting X-Forwarded-For, a caller mints a fresh rate-limit bucket
+// per request by varying a header they control.
+describe('fallback IP header is opt-in', () => {
+  const original = process.env.INTAKE_TRUSTED_IP_HEADER
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.INTAKE_TRUSTED_IP_HEADER
+    else process.env.INTAKE_TRUSTED_IP_HEADER = original
+  })
+
+  it('ignores provider headers when none is configured', () => {
+    delete process.env.INTAKE_TRUSTED_IP_HEADER
+    const bucket = clientIpBucket(
+      headersOf({ 'cf-connecting-ip': '9.9.9.9', 'x-real-ip': '8.8.8.8' }),
+      '203.0.113.5',
+    )
+    expect(bucket).toBe(normalizeIpBucket('203.0.113.5'))
+  })
+
+  it('gives two forged header values the same bucket, not two', () => {
+    delete process.env.INTAKE_TRUSTED_IP_HEADER
+    const a = clientIpBucket(headersOf({ 'cf-connecting-ip': '1.1.1.1' }), '203.0.113.5')
+    const b = clientIpBucket(headersOf({ 'cf-connecting-ip': '2.2.2.2' }), '203.0.113.5')
+    expect(a).toBe(b)
+  })
+
+  it('uses the header once an operator names it', () => {
+    process.env.INTAKE_TRUSTED_IP_HEADER = 'cf-connecting-ip'
+    const bucket = clientIpBucket(headersOf({ 'cf-connecting-ip': '9.9.9.9' }), '203.0.113.5')
+    expect(bucket).toBe(normalizeIpBucket('9.9.9.9'))
+  })
+
+  it('still prefers the trusted forwarded hop over the named header', () => {
+    process.env.INTAKE_TRUSTED_IP_HEADER = 'cf-connecting-ip'
+    const bucket = clientIpBucket(
+      headersOf({ 'x-forwarded-for': '203.0.113.7', 'cf-connecting-ip': '9.9.9.9' }),
+      null,
+    )
+    expect(bucket).toBe(normalizeIpBucket('203.0.113.7'))
   })
 })
