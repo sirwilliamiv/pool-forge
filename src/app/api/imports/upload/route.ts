@@ -22,7 +22,7 @@ import { initCommands } from '@/modules/commands/init'
 import type { CommandContext } from '@/modules/commands/registry'
 import { decodeRejection, statusForRejection } from '@/modules/imports/ingest/rejection'
 import { discardStagedUpload, stageUpload } from '@/modules/imports/ingest/staging'
-import { MAX_IMAGE_BYTES } from '@/modules/imports/ingest/types'
+import { MAX_IMAGES_PER_SESSION, MAX_IMAGE_BYTES, UPLOAD_FILE_FIELD } from '@/modules/imports/ingest/types'
 import { getOrgId, getSession } from '@/modules/auth/session'
 
 initCommands()
@@ -139,50 +139,73 @@ export async function POST(req: Request): Promise<Response> {
 
   // Duck-typed rather than `instanceof Blob`: the Blob that `formData()` yields
   // comes from the fetch implementation, which is not always the same class as
-  // the ambient global.
-  const file = asBlob(form.get('file'))
-  if (!file) {
+  // the ambient global. `file` is accepted as a singular alias so an older
+  // caller keeps working.
+  const files = [...form.getAll(UPLOAD_FILE_FIELD), ...form.getAll('file')]
+    .map(asBlob)
+    .filter((blob): blob is Blob => blob !== null)
+
+  if (files.length === 0) {
     return json({ ok: false, error: 'No file was attached.' }, 400)
   }
-  if (file.size === 0) {
-    return json({ ok: false, error: 'That file is empty.' }, 400)
+  if (files.length > MAX_IMAGES_PER_SESSION) {
+    return json(
+      { ok: false, error: `Attach at most ${MAX_IMAGES_PER_SESSION} images at a time.` },
+      400,
+    )
   }
-  if (file.size > MAX_IMAGE_BYTES) {
-    return json({ ok: false, error: 'That file is too large.' }, 413)
+  for (const file of files) {
+    if (file.size === 0) return json({ ok: false, error: 'That file is empty.' }, 400)
+    if (file.size > MAX_IMAGE_BYTES) return json({ ok: false, error: 'That file is too large.' }, 413)
   }
 
-  const bytes = Buffer.from(await file.arrayBuffer())
-  const declaredMimeType = typeof file.type === 'string' && file.type ? file.type.slice(0, 255) : null
-
-  const uploadRef = stageUpload({ bytes, declaredMimeType, orgId })
   const ctx: CommandContext = { userId, orgId }
+  const uploaded: unknown[] = []
 
-  const commandInput: {
-    sessionId: string
-    uploadRef: string
-    origin: 'BUILDER'
-    projectId?: string
-  } = {
-    sessionId: fields.data.sessionId,
-    uploadRef,
-    origin: 'BUILDER',
+  // Sequential, not parallel: each upload dispatches a command that reads and
+  // writes the same ImportSession, and the per-session image cap has to be
+  // counted against the rows the previous file just wrote.
+  for (const file of files) {
+    const bytes = Buffer.from(await file.arrayBuffer())
+    const declaredMimeType =
+      typeof file.type === 'string' && file.type ? file.type.slice(0, 255) : null
+
+    const uploadRef = stageUpload({ bytes, declaredMimeType, orgId })
+    const commandInput: {
+      sessionId: string
+      uploadRef: string
+      origin: 'BUILDER'
+      projectId?: string
+    } = {
+      sessionId: fields.data.sessionId,
+      uploadRef,
+      origin: 'BUILDER',
+    }
+    if (fields.data.projectId !== undefined) commandInput.projectId = fields.data.projectId
+
+    let result
+    try {
+      result = await dispatchCommand('import.image.upload', commandInput, ctx)
+    } finally {
+      // The command consumes the ref on success and on every handled failure;
+      // this covers the paths where dispatch itself never reached the body.
+      discardStagedUpload(uploadRef)
+    }
+
+    if (!result.ok) {
+      // Report the first failure rather than silently keeping a partial batch:
+      // the user picked these files together and needs to know one did not land.
+      const rejection = decodeRejection(result.error)
+      if (rejection) {
+        return json(
+          { ok: false, error: rejection.message, uploaded },
+          statusForRejection(rejection.code),
+        )
+      }
+      return json({ ok: false, error: result.error, uploaded }, 400)
+    }
+    uploaded.push(result.data)
   }
-  if (fields.data.projectId !== undefined) commandInput.projectId = fields.data.projectId
 
-  let result
-  try {
-    result = await dispatchCommand('import.image.upload', commandInput, ctx)
-  } finally {
-    // The command consumes the ref on success and on every handled failure;
-    // this covers the paths where dispatch itself never reached the body.
-    discardStagedUpload(uploadRef)
-  }
-
-  if (result.ok) return json({ ok: true, data: result.data }, 201)
-
-  const rejection = decodeRejection(result.error)
-  if (rejection) {
-    return json({ ok: false, error: rejection.message }, statusForRejection(rejection.code))
-  }
-  return json({ ok: false, error: result.error }, 400)
+  return json({ ok: true, data: { uploaded, count: uploaded.length } }, 201)
 }

@@ -7,7 +7,7 @@ import { ImagePlus, Loader2, ScanLine, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { dispatch } from '@/lib/commands/dispatch'
-import { MAX_IMAGES_PER_SESSION, MAX_IMAGE_BYTES } from '@/modules/imports/ingest/types'
+import { MAX_IMAGES_PER_SESSION, MAX_IMAGE_BYTES, UPLOAD_FILE_FIELD } from '@/modules/imports/ingest/types'
 import { IMPORT_UPLOAD_URL, INGEST_UNAVAILABLE_MESSAGE } from './source-image'
 import type { ProjectView } from './types'
 
@@ -70,7 +70,7 @@ export function AwaitingImagesState({ project, sessionId }: UploadStateProps) {
     const body = new FormData()
     body.append('sessionId', sessionId)
     for (const file of Array.from(files).slice(0, MAX_IMAGES_PER_SESSION)) {
-      body.append('files', file)
+      body.append(UPLOAD_FILE_FIELD, file)
     }
 
     try {

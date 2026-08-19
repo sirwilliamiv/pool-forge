@@ -26,6 +26,17 @@ export type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number]
 /** Long-edge pixel target for the copy sent to the vision model. */
 export const VISION_MAX_EDGE_PX = 1568
 
+/**
+ * Multipart field name for uploaded files, shared by the builder upload route
+ * and the client that posts to it.
+ *
+ * A constant rather than a literal on each side because they were written by
+ * different tracks and drifted: the client appended `files` while the route
+ * read `file`, so every builder-side upload 400d with "No file was attached"
+ * while both sides' own tests passed.
+ */
+export const UPLOAD_FILE_FIELD = 'files'
+
 export type IngestOrigin = 'BUILDER' | 'CUSTOMER_INTAKE'
 
 export interface IngestInput {
