@@ -156,6 +156,21 @@ the public intake funnel produced a measured design.
 identical call succeeded when run directly. The retry path worked correctly and
 still could not save it, because every attempt hit the same wall.
 
+### iPhone HEIC
+
+sharp's bundled libvips includes AV1 but not HEVC, so an iPhone HEIC opens far
+enough to report its dimensions and then fails on the pixels. `metadata()`
+succeeding proves nothing, which is the trap: a decodability check written that
+way passes and the failure surfaces later.
+
+Since a phone photo of a sketch is the most common thing a customer sends,
+those files decode through `libheif-js` (libheif plus libde265 compiled to
+wasm) rather than being refused with "export it as JPEG". It is lazily imported
+so the JPEG and PNG paths never load the wasm, and it is listed in
+`serverExternalPackages`. libheif applies EXIF orientation itself, so that path
+must not also call sharp's `.rotate()`, and raw RGBA carries no tags at all, so
+the metadata strip is inherent rather than a step to remember.
+
 ### Cost control
 
 Classification runs on `gemini-2.5-flash`, extraction on `gemini-2.5-pro`.

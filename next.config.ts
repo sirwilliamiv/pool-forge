@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  serverExternalPackages: ['sharp', '@hyzyla/pdfium'],
+  serverExternalPackages: ['sharp', '@hyzyla/pdfium', 'libheif-js'],
   webpack: (config) => {
     config.externals = [...(config.externals ?? []), { canvas: 'commonjs canvas' }]
     return config

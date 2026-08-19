@@ -86,14 +86,16 @@ function open(bytes: Buffer): sharp.Sharp {
   return sharp(bytes, { failOn: 'error' })
 }
 
+import { decodeHeic, needsHeicDecode } from './heic'
+
 function decodeFailure(sniffed: AllowedMimeType, err: unknown): IngestRejection {
   const ref = logIngestFailure(`decode ${sniffed}`, err)
   if (sniffed === 'image/heic' || sniffed === 'image/heif') {
-    // The prebuilt libvips ships AV1 but not HEVC, so most iPhone HEICs cannot
-    // be decoded here. Say something the user can act on rather than "corrupt".
+    // HEVC now decodes through the wasm path, so reaching here means the file
+    // itself is unreadable rather than the format being unsupported.
     return new IngestRejection(
-      'UNSUPPORTED_TYPE',
-      `That HEIC image could not be decoded. Export it as JPEG or PNG and try again (ref ${ref}).`,
+      'CORRUPT',
+      `That HEIC image could not be read (ref ${ref}).`,
     )
   }
   return new IngestRejection('CORRUPT', `That image could not be read (ref ${ref}).`)
@@ -122,6 +124,24 @@ export async function prepareImage(
     ).toBuffer()
     widthPx = page.width
     heightPx = page.height
+  } else if (needsHeicDecode(sniffed)) {
+    // sharp's libvips has no HEVC, so the pixels come from the wasm decoder.
+    // libheif has already applied orientation, hence no `.rotate()` here, and
+    // raw RGBA carries no metadata at all, so the strip is inherent.
+    try {
+      const decoded = await decodeHeic(bytes)
+      const out = await encode(
+        sharp(decoded.data, {
+          raw: { width: decoded.width, height: decoded.height, channels: decoded.channels },
+        }),
+        format,
+      ).toBuffer({ resolveWithObject: true })
+      canonical = out.data
+      widthPx = out.info.width
+      heightPx = out.info.height
+    } catch (err) {
+      throw decodeFailure(sniffed, err)
+    }
   } else {
     try {
       // `.rotate()` applies the EXIF orientation; the re-encode then drops every
