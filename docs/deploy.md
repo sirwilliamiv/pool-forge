@@ -79,3 +79,68 @@ or a build hook) so the client matches the schema.
   Neon. No `db.ts` change is needed for the Node runtime.
 - The prod cutover reminders in `CLAUDE.md` still apply (no `db push` on a
   populated prod DB; use `migrate deploy`).
+
+## Vertex AI for image ingestion
+
+Wave I sends customer photographs to a vision model. Per the global rule this
+uses **Vertex AI only**: the consumer `generativelanguage.googleapis.com`
+endpoint permits Google to use prompts for training, and these are pictures of
+customers' homes.
+
+### Current state (2026-08-19)
+
+| Item | State |
+|---|---|
+| `pool-forge-prod` (764613501658) | Created, `aiplatform` + `storage` enabled, **unbilled** |
+| Billing account `0161A7-61F9DB-ED6CCC` | At its 5-project cap, no orphans, no pending deletions |
+| Billing account `010C1D-0603E3-C1CE17` | Closed, unusable |
+| `gss-demo-dev` | Already billed, `aiplatform` enabled, used as the interim project |
+
+`gcloud billing projects link pool-forge-prod` fails with `FAILED_PRECONDITION`
+/ `Cloud billing quota exceeded`. All five linked projects are live, so nothing
+can be unlinked without taking a service down. Resolving it needs one of:
+
+1. A quota increase at https://support.google.com/code/contact/billing_quota_increase
+2. Unlinking a project that is genuinely retired
+
+Until then `GCP_PROJECT_ID` points at `gss-demo-dev`. Verified reachable:
+`gemini-2.5-flash` and `gemini-2.5-pro` both answer in `us-central1`, and the
+real `sketch@1.0.0` extraction prompt returns output that validates against
+`SketchResponseSchema`.
+
+### Credentials
+
+Application Default Credentials, no key files in the repo.
+
+```
+gcloud auth application-default login
+gcloud auth application-default set-quota-project gss-demo-dev
+```
+
+This is interactive, so it cannot be scripted in CI. In deployment the runtime
+service account supplies ADC instead, and needs `roles/aiplatform.user` on the
+project named by `GCP_PROJECT_ID`.
+
+Confirm before enabling live mode:
+
+```
+gcloud auth application-default print-access-token >/dev/null && echo ok
+```
+
+A stale `~/.config/gcloud/application_default_credentials.json` still exists on
+disk after its refresh token expires, so presence of the file proves nothing.
+Check the token, not the file.
+
+### Turning it on
+
+`VERTEX_LIVE="1"` in `.env.local`. While it is `0` (or unset) the vision client
+is disabled, `installVertexVisionPort()` declines to bind, the analysis port
+stays the no-op, and the Google SDK is never loaded. Every test replays recorded
+fixtures regardless.
+
+### Cost control
+
+Classification runs on `gemini-2.5-flash`, extraction on `gemini-2.5-pro`.
+Images are downscaled to 1568px on the long edge before any call, and results
+cache on `(sourceImageId, stage, extractorVersion)`, so re-analysis at an
+unchanged prompt version costs nothing.

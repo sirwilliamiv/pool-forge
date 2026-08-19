@@ -172,6 +172,27 @@ Then five tracks over disjoint files:
 
 I2 and I3 depend only on the `DesignIntent` contract, so they start the moment I0's schema file exists rather than waiting for the full contract commit. I4 codes against fixtures. I1 and I5 need I0's models.
 
+## Open risks found by live testing
+
+**Model-reported confidence is top-compressed.** A first live run against
+`gemini-2.5-pro` in `us-central1` returned `1.0` on every confidence field for a
+clean vector sketch, and `0.90` to `0.95` for the same sketch degraded to a
+blurred, noisy, low-contrast, quality-42 recompression. It read both cases
+correctly, so the high scores were not wrong, but the review gate keys on
+scores below `0.6` and will rarely fire on model self-assessment alone.
+
+Consequence: the deterministic downgrades are the real safety net, not the
+model's opinion of itself. Those already exist and must not be weakened:
+unparseable dimension text, an assumed unit on a bare number, and scale
+candidates disagreeing beyond 5% each subtract confidence in code. I6's eval
+harness should measure gate firing rate against the golden corpus and treat a
+near-zero rate as a defect, not a pass.
+
+The extraction itself was accurate on first contact: scale legend, both
+dimension strings with pixel endpoints, both depths, the spa with its size, and
+the deck material all read correctly, and the response validated against
+`SketchResponseSchema` with no repair round-trip.
+
 ## Acceptance for the wave
 
 A builder uploads a photograph of a dimensioned graph-paper sketch, reviews an extracted design where every number is either deterministically measured or badged for review, applies it in one undoable action, and reads a priced quote from the result. A homeowner uploads three inspiration images through a public link and the builder finds a draft project waiting.
