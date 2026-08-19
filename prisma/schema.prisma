@@ -602,6 +602,11 @@ model ImportSession {
   // Command ids emitted by `import.intent.apply`, so the batch is traceable
   // back through CommandAuditLog and coalesces to one undo entry.
   appliedCommandIds String[]
+  // Dotted DesignIntent paths a human has explicitly corrected via
+  // `import.intent.patch`. Gate 2 in the design spec: a field whose confidence
+  // is below CONFIDENCE_REVIEW_REQUIRED cannot be applied until it appears
+  // here. Accumulates, never resets, so the record survives re-extraction.
+  touchedFieldPaths String[]
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 

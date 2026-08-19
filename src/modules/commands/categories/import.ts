@@ -5,6 +5,7 @@ import {
   DesignIntentSchema,
   ScaleMethodSchema,
   emptyDesignIntent,
+  fieldsRequiringReview,
   type DesignIntent,
 } from '@/modules/imports/intent'
 import {
@@ -41,16 +42,31 @@ async function loadSession(
   sessionId: string,
   ctx: CommandContext,
 ): Promise<
-  | { ok: true; id: string; intent: DesignIntent }
+  | { ok: true; id: string; intent: DesignIntent; touchedFieldPaths: string[] }
   | { ok: false; error: string }
 > {
   const { db } = await import('@/lib/db')
   const row = await db.importSession.findFirst({
     where: { id: sessionId, orgId: ctx.orgId },
-    select: { id: true, designIntentJson: true },
+    select: { id: true, designIntentJson: true, touchedFieldPaths: true },
   })
   if (!row) return { ok: false, error: 'Import session not found' }
-  return { ok: true, id: row.id, intent: parseStoredIntent(row.designIntentJson) ?? emptyDesignIntent() }
+  return {
+    ok: true,
+    id: row.id,
+    intent: parseStoredIntent(row.designIntentJson) ?? emptyDesignIntent(),
+    touchedFieldPaths: row.touchedFieldPaths,
+  }
+}
+
+/**
+ * Gate 2 from the design spec. A field whose confidence sits below
+ * CONFIDENCE_REVIEW_REQUIRED may not be applied until a human has corrected it
+ * through `import.intent.patch`. Returns the paths still blocking an apply.
+ */
+export function unreviewedFieldPaths(intent: DesignIntent, touched: string[]): string[] {
+  const seen = new Set(touched)
+  return fieldsRequiringReview(intent).filter(path => !seen.has(path))
 }
 
 register({
@@ -232,11 +248,15 @@ register({
 
     const intent = applyIntentPatch(loaded.intent, input.patch)
     const paths = touchedPaths(input.patch)
+    const merged = [...new Set([...loaded.touchedFieldPaths, ...paths])].sort()
 
     const { db } = await import('@/lib/db')
     const updated = await db.importSession.update({
       where: { id: loaded.id },
-      data: { designIntentJson: intent as unknown as object },
+      data: {
+        designIntentJson: intent as unknown as object,
+        touchedFieldPaths: merged,
+      },
       select: { id: true, status: true },
     })
 
