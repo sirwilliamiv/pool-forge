@@ -1,0 +1,47 @@
+Here is the analysis of the render:
+
+```json
+{
+  "shapeFamily": "rectangle",
+  "features": [
+    { "label": "spa", "count": 1 },
+    { "label": "sun shelf", "count": 1 },
+    { "label": "bubbler", "count": 2 }
+  ],
+  "materials": {
+    "interiorFinish": "white plaster",
+    "copingMaterial": "travertine",
+    "tileBand": "6x6 blue",
+    "deckMaterial": "travertine"
+  },
+  "deckMaterialFamily": "travertine",
+  "enclosure": { "present": true, "kind": "screen" },
+  "styleNotes": ["Florida screen cage", "travertine deck, light and bright"],
+  "waterColor": "turquoise",
+  "confidence": {
+    "shapeFamily": 0.9,
+    "features": 0.84,
+    "materials": 0.72,
+    "style": 0.8
+  },
+  "lengthFt": 30,
+  "widthFt": 15,
+  "depthShallowFt": 3.5,
+  "depthDeepFt": 6,
+  "poolPolygon": [
+    { "x": 0.2, "y": 0.3 },
+    { "x": 0.8, "y": 0.3 },
+    { "x": 0.8, "y": 0.7 },
+    { "x": 0.2, "y": 0.7 }
+  ],
+  "scale": { "pixelsPerInch": 4.2, "method": "labeled-dimension", "confidence": 0.8 },
+  "dimensions": [
+    {
+      "p1": { "x": 0.2, "y": 0.26 },
+      "p2": { "x": 0.8, "y": 0.26 },
+      "text": "30'",
+      "appliesTo": "pool-length"
+    }
+  ]
+}
+```

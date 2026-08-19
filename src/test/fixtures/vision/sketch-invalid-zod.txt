@@ -1,0 +1,38 @@
+{
+  "shapeFamily": "oblong",
+  "poolPolygon": [
+    { "x": 0.220, "y": 0.300 },
+    { "x": 0.760, "y": 0.300 },
+    { "x": 0.760, "y": 0.640 },
+    { "x": 0.220, "y": 0.640 }
+  ],
+  "gridVisible": "yes",
+  "scaleLegendText": "1 square = 1 ft",
+  "dimensions": [
+    {
+      "p1": { "x": 0.220, "y": 0.255 },
+      "p2": { "x": 0.760, "y": 0.255 },
+      "text": "32'",
+      "appliesTo": "length"
+    }
+  ],
+  "depths": { "shallowText": "3'", "deepText": "6'" },
+  "features": [{ "label": "spa", "count": 0, "lengthText": null, "widthText": null }],
+  "deck": { "material": "pavers", "widthText": null },
+  "enclosure": { "present": false, "kind": "none", "heightText": null },
+  "materials": {
+    "interiorFinish": null,
+    "copingMaterial": null,
+    "tileBand": null,
+    "deckMaterial": null
+  },
+  "notes": [],
+  "confidence": {
+    "shapeFamily": 1.4,
+    "polygon": 0.9,
+    "dimensions": 0.9,
+    "depths": 0.9,
+    "features": 0.9,
+    "materials": 0.9
+  }
+}

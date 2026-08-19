@@ -1,0 +1,35 @@
+{
+  "existingPool": { "present": false, "condition": "unknown" },
+  "visibleFeatures": [
+    { "label": "concrete slab", "count": 1 },
+    { "label": "AC unit", "count": 1 },
+    { "label": "mature tree", "count": 2 }
+  ],
+  "houseWall": {
+    "visible": true,
+    "material": "stucco",
+    "hasSlidingDoor": true,
+    "notes": "covered patio runs the width of the wall"
+  },
+  "fence": {
+    "present": true,
+    "material": "wood",
+    "gateVisible": true,
+    "notes": "gate on the left side of the yard, looks single width"
+  },
+  "slope": { "observed": "flat", "direction": null },
+  "groundCover": "grass",
+  "access": {
+    "rating": "tight",
+    "notes": "the only gate is a single width gate between the house and the fence"
+  },
+  "obstacles": ["overhead service drop crosses the left side of the yard"],
+  "notes": ["irrigation heads visible in the lawn"],
+  "confidence": {
+    "features": 0.85,
+    "houseWall": 0.9,
+    "fence": 0.88,
+    "slope": 0.45,
+    "access": 0.6
+  }
+}
