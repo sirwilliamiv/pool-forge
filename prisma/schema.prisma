@@ -607,6 +607,15 @@ model ImportSession {
   // is below CONFIDENCE_REVIEW_REQUIRED cannot be applied until it appears
   // here. Accumulates, never resets, so the record survives re-extraction.
   touchedFieldPaths String[]
+  // Queue state for customer-intake analysis (src/modules/imports/intake/queue.ts).
+  // Written to PENDING inside the submission transaction, before any model call
+  // is attempted, so a polling client sees progress immediately instead of
+  // nothing until a blocking call returns. A worker claims a row with
+  // `UPDATE ... WHERE analysisStatus = 'PENDING'`, which is atomic across
+  // instances. A plain String rather than a Prisma enum keeps the claim
+  // predicate literal and adds no new DB type; the allowed values live in one
+  // const map, `INTAKE_ANALYSIS_STATUS`.
+  analysisStatus    String              @default("NONE")
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
@@ -616,6 +625,33 @@ model ImportSession {
   @@index([orgId])
   @@index([projectId])
   @@index([orgId, status, updatedAt])
+  @@index([analysisStatus, createdAt])
+}
+
+/**
+ * The public intake funnel's rate limiter. The ONE new model this track adds.
+ *
+ * Counting has to be atomic across every running instance: an in-memory token
+ * bucket is per-process, so N instances collectively let through N times the
+ * ceiling. Every request runs a single
+ * `INSERT ... ON CONFLICT ... DO UPDATE ... WHERE count < ceiling`; Postgres
+ * reports zero affected rows exactly when the bucket is spent.
+ *
+ * `bucketKey` is already normalized by the caller: an IP key is reduced to its
+ * IPv6 /64 prefix so rotating addresses inside one allocation share a bucket.
+ */
+model IntakeRateCounter {
+  id String @id @default(cuid())
+  // 'ip' or 'token'. Keeps the two ceilings in separate namespaces.
+  scope       String
+  bucketKey   String
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([scope, bucketKey, windowStart])
+  @@index([expiresAt])
 }
 
 model IntakeLink {

@@ -14,6 +14,7 @@ import './categories/settings'
 import './categories/scene'
 import './categories/palette'
 import './categories/import'
+import './categories/intake'
 
 let _initialized = false
 
