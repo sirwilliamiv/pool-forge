@@ -37,6 +37,35 @@ export const VISION_MAX_EDGE_PX = 1568
  */
 export const UPLOAD_FILE_FIELD = 'files'
 
+/**
+ * Where uploaded image bytes are served from, shared so the client and the
+ * route cannot disagree about the path.
+ *
+ * They did: the review screen requested `/api/imports/images/{id}` while the
+ * route was mounted at `/api/imports/blob/[key]`, so every image in the wizard
+ * rendered as "could not be loaded".
+ */
+export const IMPORT_BLOB_PATH = '/api/imports/blob'
+
+export type ImageVariantName = 'original' | 'vision' | 'thumbnail'
+
+/**
+ * URL for one variant of a stored source image.
+ *
+ * Defaults to `vision`, not `original`, for two reasons. A HEIC original is
+ * served as `image/heic`, which no browser renders, so an iPhone upload would
+ * show a broken image. And the vision copy is the exact raster the model read
+ * and the one grid detection measured, so overlay coordinates and the
+ * calibration scale register against it rather than against a different-sized
+ * source. Pass `original` only when the raw stored file is genuinely wanted.
+ */
+export function sourceImageUrl(
+  sourceImageId: string,
+  variant: ImageVariantName = 'vision',
+): string {
+  return `${IMPORT_BLOB_PATH}/${encodeURIComponent(sourceImageId)}?v=${variant}`
+}
+
 export type IngestOrigin = 'BUILDER' | 'CUSTOMER_INTAKE'
 
 export interface IngestInput {

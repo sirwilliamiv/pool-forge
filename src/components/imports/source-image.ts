@@ -1,12 +1,13 @@
-// The two ingest endpoints this screen consumes. Track I1 owns both; nothing
-// here implements them. They are named in one place so that when I1 lands the
-// review wizard needs no edit, and so the failure copy shown until then names
-// the same thing the URL points at.
+// The two ingest endpoints this screen consumes, both owned by the ingest
+// module. Re-exported here rather than re-declared: the previous copy spelled
+// the blob path as `/api/imports/images/{id}` while the route was mounted at
+// `/api/imports/blob/[key]`, so every image in the wizard failed to load.
 
-/** Org-scoped authenticated blob read. Bytes never travel in a JSON column. */
-export function sourceImageUrl(sourceImageId: string): string {
-  return `/api/imports/images/${encodeURIComponent(sourceImageId)}`
-}
+export {
+  IMPORT_BLOB_PATH,
+  sourceImageUrl,
+  type ImageVariantName,
+} from '@/modules/imports/ingest/types'
 
 /** Multipart upload. Sniffs magic bytes, strips EXIF, dedupes on sha256. */
 export const IMPORT_UPLOAD_URL = '/api/imports/upload'
