@@ -116,11 +116,8 @@ export async function handleIntakeSubmission(
         uploadedBy: null,
       }
 
-      // TODO(I1): `ingestImage` is Track I1's, in `src/modules/imports/ingest/`,
-      // which has not merged onto this branch. It is resolved through
-      // `ingest-seam.ts` until it does; swap that file to a direct re-export and
-      // this call site is unchanged. Byte sniffing, EXIF/GPS stripping,
-      // downscaling, hashing, dedupe, and blob writes all live behind it.
+      // Byte sniffing, EXIF/GPS stripping, downscaling, hashing, dedupe, and
+      // blob writes all live behind this one call, in Track I1's module.
       const result = await ingestImage(input)
       sourceImageIds.push(result.sourceImageId)
     }

@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { db } from '@/lib/db'
 import { initCommands } from '@/modules/commands/init'
-import { get } from '@/modules/commands/registry'
+import { all, get } from '@/modules/commands/registry'
 import type { CommandContext, CommandResult } from '@/modules/commands/registry'
 import { emptyDesignIntent, type DesignIntent } from '@/modules/imports/intent'
 
@@ -96,13 +96,25 @@ describe.skipIf(!reachable)('import commands', () => {
     }
   })
 
-  it('the tracks that have not landed fail loudly rather than returning ok', async () => {
-    const stubs = ['import.image.upload', 'import.image.analyze']
-    for (const id of stubs) {
-      const cmd = get(id)
-      const result = await cmd!.execute({} as never, ctxA)
-      expect(result.ok, `${id} must not report success`).toBe(false)
-      if (!result.ok) expect(result.error).toMatch(/^not implemented: track/)
+  // Every import command now has a real body: I1 landed upload and the durable
+  // half of analyze, I2 the extractors behind the port, I3 the translation, and
+  // apply enforces both gates. This guards the whole category against a
+  // regression to a placeholder, which is the failure this originally caught.
+  it('no import command reports back as unimplemented', async () => {
+    for (const cmd of all().filter(c => c.category === 'import')) {
+      let result: Awaited<ReturnType<typeof cmd.execute>> | null = null
+      try {
+        result = await cmd.execute({} as never, ctxA)
+      } catch {
+        // A real body rejecting junk input is fine; a placeholder never throws.
+        continue
+      }
+      // Success on empty input is legitimate for some of these (session.create
+      // takes no required field). The invariant is only that nothing is still
+      // answering with a placeholder.
+      if (!result.ok) {
+        expect(result.error, `${cmd.id} is still a placeholder`).not.toMatch(/not implemented/i)
+      }
     }
   })
 
