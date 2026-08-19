@@ -21,12 +21,26 @@ import {
   NOOP_EXTRACTOR_VERSION,
 } from '@/modules/imports/analysis-port'
 import { getBlobStore } from '@/modules/storage'
+import type { DesignIntent } from '@/modules/imports/intent'
+
+import { detectGrid } from '@/modules/imports/precision/grid'
+import type { LabeledDimension } from '@/modules/imports/precision/scale'
+import {
+  runPrecisionPipeline,
+  type PrecisionInput,
+  type ScaleBarReading,
+} from '@/modules/imports/precision/pipeline'
 
 import { createVisionClient } from './client'
 import { classifyImage } from './classify'
 import { extractForKind } from './extractors'
 import { mergeContributions } from './merge'
-import type { AnalysisRecord, VisionImage } from './types'
+import type {
+  AnalysisRecord,
+  ExtractionGeometry,
+  ScaleLegend,
+  VisionImage,
+} from './types'
 
 /**
  * Bumped whenever a prompt or a parser changes, because it keys the
@@ -61,6 +75,107 @@ function toStageResult(record: AnalysisRecord): VisionStageResult {
     latencyMs: record.latencyMs,
     errorRef: record.errorRef,
   }
+}
+
+
+const INCHES_PER = { ft: 12, in: 1, m: 39.3701, cm: 0.393701 } as const
+
+/**
+ * What one grid square is worth, in inches, from a legend like "1 sq = 1 ft".
+ * Null when the legend was absent or stated a unit we do not convert.
+ */
+function squareInchesFromLegend(legend: ScaleLegend | null): number | null {
+  if (legend === null || legend.unitsPerSquare === null || legend.unit === null) return null
+  const factor = INCHES_PER[legend.unit]
+  if (factor === undefined) return null
+  const inches = legend.unitsPerSquare * factor
+  return inches > 0 ? inches : null
+}
+
+/**
+ * Decode the vision copy to a single-channel intensity buffer for grid
+ * detection. The detector wants raw luminance, not a JPEG.
+ */
+async function greyscaleField(
+  bytes: Buffer,
+): Promise<{ data: Uint8ClampedArray; width: number; height: number } | null> {
+  try {
+    const sharp = (await import('sharp')).default
+    const { data, info } = await sharp(bytes)
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    return { data: new Uint8ClampedArray(data), width: info.width, height: info.height }
+  } catch {
+    // A decode failure must not fail the whole analysis: without a grid the
+    // scale simply falls through to the labeled dimensions.
+    return null
+  }
+}
+
+/**
+ * CALIBRATE and TRANSLATE. The model deliberately leaves `scale.pixelsPerInch`
+ * null and reports geometry in image space; resolving it is the precision
+ * layer's job, and every number produced here is deterministic.
+ */
+async function applyPrecision(
+  intent: DesignIntent,
+  geometry: ExtractionGeometry | undefined,
+  bytes: Buffer,
+): Promise<DesignIntent> {
+  if (!geometry) return intent
+
+  const polygonNormalized =
+    geometry.source === 'sketch' ? geometry.poolPolygonNormalized : geometry.poolPolygonNormalized
+  if (!polygonNormalized || polygonNormalized.length < 3) return intent
+
+  const field = await greyscaleField(bytes)
+  const width = field?.width ?? 0
+  const height = field?.height ?? 0
+  if (width === 0 || height === 0) return intent
+
+  const polygonPx = polygonNormalized.map(pt => ({ x: pt.x * width, y: pt.y * height }))
+
+  const labeledDimensions: LabeledDimension[] = geometry.dimensions
+    .filter(d => d.parsedInches !== null && d.parsedInches > 0)
+    .map(d => ({ p1: d.p1, p2: d.p2, realInches: d.parsedInches as number }))
+
+  let scaleBar: ScaleBarReading | null = null
+  if (geometry.source === 'sitePlan' && geometry.scaleBar?.parsedInches) {
+    scaleBar = {
+      p1: geometry.scaleBar.p1,
+      p2: geometry.scaleBar.p2,
+      realInches: geometry.scaleBar.parsedInches,
+    }
+  }
+
+  const grid =
+    field && geometry.source === 'sketch' && geometry.gridVisible
+      ? detectGrid(field.data, field.width, field.height)
+      : null
+
+  const input: PrecisionInput = {
+    polygonPx,
+    grid,
+    gridSquareRealInches:
+      geometry.source === 'sketch' ? squareInchesFromLegend(geometry.scaleLegend) : null,
+    labeledDimensions,
+    scaleBar,
+    manual: null,
+    options: {},
+  }
+
+  const precision = runPrecisionPipeline(input)
+
+  const next: DesignIntent = {
+    ...intent,
+    scale: precision.scale,
+    warnings: [...intent.warnings, ...precision.warnings],
+  }
+  if (precision.polygonInches && precision.polygonInches.length >= 3) {
+    next.pool = { ...next.pool, footprint: { points: precision.polygonInches } }
+  }
+  return next
 }
 
 export const vertexVisionAnalysisPort: VisionAnalysisPort = {
@@ -108,11 +223,32 @@ export const vertexVisionAnalysisPort: VisionAnalysisPort = {
     stages.push(toStageResult(extraction.analysis))
 
     const merged = mergeContributions([extraction.contribution])
+    const intent = await applyPrecision(
+      merged.intent,
+      merged.geometryBySource[request.sourceImageId],
+      bytes,
+    )
+
+    // The final intent is persisted as the TRANSLATE stage so a cache hit can
+    // replay it into another session. Without this row the cache knows an image
+    // was analysed but not what the analysis concluded.
+    stages.push({
+      stage: 'TRANSLATE',
+      status: 'OK',
+      model: extraction.analysis.model,
+      promptHash: extraction.analysis.promptHash,
+      raw: {},
+      parsed: intent,
+      tokensIn: 0,
+      tokensOut: 0,
+      latencyMs: 0,
+      errorRef: null,
+    })
 
     return {
       extractorVersion: VISION_PORT_VERSION,
       kind: classification.kind as SourceImageKind,
-      intent: merged.intent,
+      intent,
       stages,
     }
   },

@@ -27,7 +27,7 @@ import {
   type IngestInput,
 } from '@/modules/imports/ingest/types'
 import { resetVariantCache } from '@/modules/imports/ingest/variants'
-import { emptyDesignIntent, type DesignIntent } from '@/modules/imports/intent'
+import { DesignIntentSchema, emptyDesignIntent, type DesignIntent } from '@/modules/imports/intent'
 import { getBlobStore, resetBlobStore } from '@/modules/storage'
 
 import { onePagePdf, solidJpeg, solidPng } from './image-fixtures'
@@ -369,18 +369,21 @@ describe.skipIf(!reachable)('image ingest', () => {
       if (!uploaded.ok) return
       const sourceImageId = uploaded.data.sourceImageId
 
+      let calls = 0
       const fake: VisionAnalysisPort = {
         extractorVersion: `test-${RUN}`,
         analyze: async (request) => {
+          calls += 1
           expect(request.orgId).toBe(orgA)
           expect(request.visionKey).toBeTruthy()
+          const produced: DesignIntent = {
+            ...emptyDesignIntent(request.intent.sourceImageIds),
+            pool: { ...emptyDesignIntent().pool, shapeFamily: 'kidney' },
+          }
           return {
             extractorVersion: `test-${RUN}`,
             kind: 'SKETCH',
-            intent: {
-              ...emptyDesignIntent(request.intent.sourceImageIds),
-              pool: { ...emptyDesignIntent().pool, shapeFamily: 'kidney' },
-            },
+            intent: produced,
             stages: [
               {
                 stage: 'CLASSIFY',
@@ -392,6 +395,20 @@ describe.skipIf(!reachable)('image ingest', () => {
                 tokensIn: 7,
                 tokensOut: 3,
                 latencyMs: 12,
+                errorRef: null,
+              },
+              {
+                // A cacheable port must record what it concluded, not just
+                // that it ran. The cache replays this row into a later session.
+                stage: 'TRANSLATE',
+                status: 'OK',
+                model: 'fake-1',
+                promptHash: 'hash-1',
+                raw: {},
+                parsed: produced,
+                tokensIn: 0,
+                tokensOut: 0,
+                latencyMs: 0,
                 errorRef: null,
               },
             ],
@@ -428,6 +445,45 @@ describe.skipIf(!reachable)('image ingest', () => {
         )
         expect(second.ok).toBe(true)
         if (second.ok) expect(second.data.cached).toBe(true)
+
+        // The bug this guards: ingest dedupes identical bytes within an org, so
+        // two sessions can share one SourceImage. The cache is keyed on the
+        // image, so a hit in a DIFFERENT session must replay the stored design
+        // into it. Returning that session's untouched intent left the second
+        // uploader with an empty design and no error to explain it.
+        const otherSession = await dispatchCommand<{ sessionId: string }>(
+          'import.session.create',
+          { projectId: projectA },
+          ctxA,
+        )
+        expect(otherSession.ok).toBe(true)
+        if (!otherSession.ok) return
+
+        // Attach the shared image to the new session, which is what a second
+        // upload of identical bytes produces after dedupe.
+        await db.importSession.update({
+          where: { id: otherSession.data.sessionId },
+          data: { designIntentJson: emptyDesignIntent([sourceImageId]) as unknown as object },
+        })
+
+        const replayCalls = calls
+        const replayed = await dispatchCommand<{ cached: boolean; intent: DesignIntent }>(
+          'import.image.analyze',
+          { sessionId: otherSession.data.sessionId, sourceImageId },
+          ctxA,
+        )
+        expect(replayed.ok, 'replay into a second session must succeed').toBe(true)
+        if (!replayed.ok) return
+        expect(replayed.data.cached).toBe(true)
+        expect(replayed.data.intent.pool.shapeFamily).toBe('kidney')
+        expect(calls, 'a cache hit must not call the model again').toBe(replayCalls)
+
+        const persisted = await db.importSession.findUnique({
+          where: { id: otherSession.data.sessionId },
+          select: { designIntentJson: true },
+        })
+        const stored = DesignIntentSchema.parse(persisted?.designIntentJson)
+        expect(stored.pool.shapeFamily, 'the replay must persist, not just return').toBe('kidney')
 
         const crossOrg = await dispatchCommand(
           'import.image.analyze',

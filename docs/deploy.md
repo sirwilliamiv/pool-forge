@@ -138,6 +138,24 @@ is disabled, `installVertexVisionPort()` declines to bind, the analysis port
 stays the no-op, and the Google SDK is never loaded. Every test replays recorded
 fixtures regardless.
 
+### Measured behaviour (live, 2026-08-19)
+
+Verified end to end through the running app: a graph-paper sketch uploaded via
+the public intake funnel produced a measured design.
+
+| Signal | Value |
+|---|---|
+| `gemini-2.5-pro` sketch extraction | 41 to 46 s, ~5,000 in / ~750 out tokens |
+| Scale resolved by | `grid`, from the graph paper itself |
+| Ground truth | 20 px per square at 1 sq = 1 ft, so 1.66667 px/inch |
+| Measured | 1.665585 px/inch, **0.065% error** |
+| Extracted | 32 ft x 16 ft, depths 3.5 / 6, spa, paver deck, 8-point footprint |
+
+`VERTEX_TIMEOUT_MS` is 180s rather than 60s because of this: a 46 s call under a
+60 s ceiling returned `504 DEADLINE_EXCEEDED` on all three attempts, while the
+identical call succeeded when run directly. The retry path worked correctly and
+still could not save it, because every attempt hit the same wall.
+
 ### Cost control
 
 Classification runs on `gemini-2.5-flash`, extraction on `gemini-2.5-pro`.

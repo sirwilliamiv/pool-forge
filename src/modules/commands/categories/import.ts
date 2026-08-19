@@ -373,15 +373,37 @@ register({
     const extractorVersion = input.extractorVersion ?? port.extractorVersion
 
     if (!input.force) {
+      // The cache is keyed on the image, not the session. Two sessions can
+      // share a SourceImage, because ingest dedupes identical bytes within an
+      // org. So a hit must replay the stored result into THIS session's intent:
+      // returning the session's current intent unchanged leaves the second
+      // uploader of an identical image with an empty design and no error.
       const cached = await db.imageAnalysis.findFirst({
-        where: { sourceImageId: image.id, extractorVersion, status: 'OK' },
-        select: { id: true },
+        where: {
+          sourceImageId: image.id,
+          extractorVersion,
+          status: 'OK',
+          stage: 'TRANSLATE',
+        },
+        select: { parsedJson: true },
       })
       if (cached) {
-        return {
-          ok: true,
-          data: { sourceImageId: image.id, cached: true, intent: loaded.intent },
+        const replayed = DesignIntentSchema.safeParse(cached.parsedJson)
+        if (replayed.success) {
+          const withImage = replayed.data.sourceImageIds.includes(image.id)
+            ? replayed.data
+            : { ...replayed.data, sourceImageIds: [...replayed.data.sourceImageIds, image.id] }
+          await db.importSession.update({
+            where: { id: loaded.id },
+            data: { designIntentJson: withImage as unknown as object },
+          })
+          return {
+            ok: true,
+            data: { sourceImageId: image.id, cached: true, intent: withImage },
+          }
         }
+        // A stored result that no longer validates (contract moved on) is not a
+        // cache hit. Fall through and re-analyse rather than serve a broken one.
       }
     }
 
