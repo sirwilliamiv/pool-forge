@@ -7,23 +7,14 @@
 
 import {
   CONFIDENCE_REVIEW_REQUIRED,
-  fieldsRequiringReview,
   hasResolvedScale,
+  unreviewedFieldPaths,
   type DesignIntent,
 } from '@/modules/imports/intent'
 
-/**
- * Mirrors `unreviewedFieldPaths()` in `src/modules/commands/categories/import.ts`.
- *
- * Deliberately re-derived rather than imported: that module calls `register()`
- * at load and lazily imports Prisma, neither of which belongs in a client
- * bundle. `src/test/unit/imports/review-gates.test.ts` asserts the two stay in
- * agreement, so drift fails a test rather than shipping.
- */
-export function unreviewedFieldPaths(intent: DesignIntent, touched: string[]): string[] {
-  const seen = new Set(touched)
-  return fieldsRequiringReview(intent).filter((path) => !seen.has(path))
-}
+// Re-exported from the contract module, which is the single implementation the
+// server enforces too. It is client-safe: no `register()` call, no Prisma.
+export { unreviewedFieldPaths }
 
 export type ApplyBlockReason = 'scale' | 'review' | 'empty' | 'applied'
 

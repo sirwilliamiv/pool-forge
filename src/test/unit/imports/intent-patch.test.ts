@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { DesignIntentSchema, emptyDesignIntent } from '@/modules/imports/intent'
+import {
+  DesignIntentSchema,
+  emptyDesignIntent,
+  pathCoveredBy,
+  unreviewedFieldPaths,
+  type DesignIntent,
+} from '@/modules/imports/intent'
 import {
   DesignIntentPatchSchema,
   applyIntentPatch,
@@ -86,5 +92,52 @@ describe('parseStoredIntent', () => {
     expect(parseStoredIntent({})).toBeNull()
     expect(parseStoredIntent(null)).toBeNull()
     expect(parseStoredIntent('nope')).toBeNull()
+  })
+})
+
+// Gate 2 regression. `fieldConfidence` keys are not limited to two segments,
+// so a shallow `touchedPaths` walk emitted `features` while the blocking key
+// was `features.0.count`. Nothing matched, and the field stayed blocked no
+// matter how many times a human corrected it: apply was unreachable forever.
+describe('review gate over deep confidence paths', () => {
+  function intentWithLowConfidence(paths: string[]): DesignIntent {
+    const intent = emptyDesignIntent(['img-1'])
+    for (const path of paths) intent.fieldConfidence[path] = 0.2
+    return intent
+  }
+
+  it('clears a deep path when the human replaces its whole array', () => {
+    const intent = intentWithLowConfidence(['features.0.count'])
+    expect(unreviewedFieldPaths(intent, [])).toEqual(['features.0.count'])
+
+    const touched = touchedPaths({
+      features: [{ stencilId: null, label: 'Spa', lengthFt: 8, widthFt: 8, count: 1, x: null, y: null }],
+    })
+    expect(touched).toContain('features')
+    expect(unreviewedFieldPaths(intent, touched)).toEqual([])
+  })
+
+  it('clears a nested object leaf', () => {
+    const intent = intentWithLowConfidence(['site.setbacksFt.front'])
+    const touched = touchedPaths({
+      site: { setbacksFt: { front: 10, rear: null, left: null, right: null } },
+    })
+    expect(touched).toContain('site.setbacksFt.front')
+    expect(unreviewedFieldPaths(intent, touched)).toEqual([])
+  })
+
+  it('does not let correcting one sibling rubber-stamp another', () => {
+    const intent = intentWithLowConfidence(['pool.lengthFt', 'pool.widthFt'])
+    const touched = touchedPaths({ pool: { lengthFt: 32 } })
+
+    expect(touched).toEqual(['pool.lengthFt'])
+    expect(unreviewedFieldPaths(intent, touched)).toEqual(['pool.widthFt'])
+  })
+
+  it('matches whole segments, so a prefix string is not a match', () => {
+    expect(pathCoveredBy('pool.length', 'pool.lengthFt')).toBe(false)
+    expect(pathCoveredBy('pool', 'pool.lengthFt')).toBe(true)
+    expect(pathCoveredBy('pool.lengthFt', 'pool.lengthFt')).toBe(true)
+    expect(pathCoveredBy('pool.lengthFt', 'pool')).toBe(false)
   })
 })

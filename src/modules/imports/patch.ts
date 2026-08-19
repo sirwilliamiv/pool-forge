@@ -84,19 +84,44 @@ export function applyIntentPatch(intent: DesignIntent, patch: DesignIntentPatch)
  * ordinary usage turns into labelled signal for prompt iteration.
  */
 export function touchedPaths(patch: DesignIntentPatch): string[] {
-  const paths: string[] = []
-  for (const [section, value] of Object.entries(patch)) {
-    if (value === undefined) continue
-    if (Array.isArray(value) || value === null || typeof value !== 'object') {
-      paths.push(section)
-      continue
+  const paths = new Set<string>()
+
+  // Recurses to full depth because `fieldConfidence` keys are not limited to
+  // two segments: `features.0.count` and `site.setbacksFt.front` are both real.
+  // A shallower walk emits `features`, which never matches `features.0.count`,
+  // and the field stays blocked no matter how many times a human corrects it.
+  //
+  // Ancestors are emitted alongside descendants, so replacing a whole array
+  // reviews its elements. `pathCoveredBy` relies on that.
+  const walk = (value: unknown, prefix: string): void => {
+    if (value === undefined) return
+
+    // A plain object is a partial edit, so recurse and record only the leaves
+    // actually changed. Recording the parent too would mean correcting
+    // `pool.lengthFt` silently marks `pool.widthFt` reviewed, which is exactly
+    // the rubber-stamp this gate exists to prevent.
+    const isPartial =
+      value !== null && typeof value === 'object' && !Array.isArray(value)
+
+    if (!isPartial) {
+      // Terminal replacement, including a whole array: it covers everything
+      // beneath it, so replacing `features` reviews `features.0.count`.
+      paths.add(prefix)
+      return
     }
-    for (const [field, inner] of Object.entries(value as Record<string, unknown>)) {
+
+    for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
       if (inner === undefined) continue
-      paths.push(`${section}.${field}`)
+      walk(inner, `${prefix}.${key}`)
     }
   }
-  return paths.sort()
+
+  for (const [section, value] of Object.entries(patch)) {
+    if (value === undefined) continue
+    walk(value, section)
+  }
+
+  return [...paths].sort()
 }
 
 /** Reads a persisted `designIntentJson` column, falling back to `null`. */

@@ -187,6 +187,37 @@ export function fieldsRequiringReview(intent: DesignIntent): string[] {
     .sort()
 }
 
+/**
+ * True when correcting `touchedPath` also accounts for `candidate`.
+ *
+ * Matching is segment-wise, and a touched ancestor covers its descendants:
+ * editing the whole `features` array is a review of `features.0.count`, and
+ * editing `site.setbacksFt` is a review of `site.setbacksFt.front`. Without
+ * this, any confidence key deeper than the patch granularity could never be
+ * cleared and would block apply forever.
+ *
+ * Segment-wise matters: `pool.length` must not cover `pool.lengthFt`.
+ */
+export function pathCoveredBy(touchedPath: string, candidate: string): boolean {
+  if (touchedPath === candidate) return true
+  return candidate.startsWith(`${touchedPath}.`)
+}
+
+/**
+ * Gate 2 from the design spec. Returns the dotted paths still below the review
+ * threshold that no human correction has covered, which are exactly what
+ * blocks `import.intent.apply`.
+ *
+ * Lives here rather than beside the command so the review UI and the server
+ * enforce one implementation. The command module calls `register()` at load and
+ * lazily imports Prisma, so a client bundle cannot import from it.
+ */
+export function unreviewedFieldPaths(intent: DesignIntent, touched: string[]): string[] {
+  return fieldsRequiringReview(intent).filter(
+    candidate => !touched.some(t => pathCoveredBy(t, candidate)),
+  )
+}
+
 /** True when geometry may be applied. Scale gates every derived dimension. */
 export function hasResolvedScale(intent: DesignIntent): boolean {
   return intent.scale.pixelsPerInch !== null && intent.scale.pixelsPerInch > 0

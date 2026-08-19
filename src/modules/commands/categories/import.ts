@@ -5,7 +5,7 @@ import {
   DesignIntentSchema,
   ScaleMethodSchema,
   emptyDesignIntent,
-  fieldsRequiringReview,
+  unreviewedFieldPaths,
   type DesignIntent,
 } from '@/modules/imports/intent'
 import {
@@ -59,15 +59,9 @@ async function loadSession(
   }
 }
 
-/**
- * Gate 2 from the design spec. A field whose confidence sits below
- * CONFIDENCE_REVIEW_REQUIRED may not be applied until a human has corrected it
- * through `import.intent.patch`. Returns the paths still blocking an apply.
- */
-export function unreviewedFieldPaths(intent: DesignIntent, touched: string[]): string[] {
-  const seen = new Set(touched)
-  return fieldsRequiringReview(intent).filter(path => !seen.has(path))
-}
+// Gate 2 lives in the contract module so the review UI and this command share
+// one implementation rather than two that a test has to keep in agreement.
+export { unreviewedFieldPaths }
 
 register({
   id: 'import.session.create',
