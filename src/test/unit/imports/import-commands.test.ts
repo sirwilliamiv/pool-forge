@@ -118,6 +118,46 @@ describe.skipIf(!reachable)('import commands', () => {
     }
   })
 
+  // The review ledger tracks CLASSIFY, EXTRACT and CALIBRATE. Nothing wrote a
+  // CALIBRATE row, so the header read "2 of 3 stages" with calibration "NOT
+  // RUN" permanently, even straight after a successful hand calibration.
+  it('calibrate.set records the stage it completed', async () => {
+    const created = await run<SessionData>('import.session.create', { projectId: projectA }, ctxA)
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+
+    const image = await db.sourceImage.create({
+      data: {
+        orgId: orgA,
+        kind: 'SKETCH',
+        storageKey: `k/${RUN}/cal.png`,
+        mimeType: 'image/png',
+        bytes: 10,
+        sha256: `sha-cal-${RUN}`,
+        widthPx: 100,
+        heightPx: 80,
+        origin: 'BUILDER',
+      },
+      select: { id: true },
+    })
+    await db.importSession.update({
+      where: { id: created.data.sessionId },
+      data: { designIntentJson: emptyDesignIntent([image.id]) as unknown as object },
+    })
+
+    const result = await run('import.calibrate.set', {
+      sessionId: created.data.sessionId,
+      pixelsPerInch: 2.5,
+    }, ctxA)
+    expect(result.ok).toBe(true)
+
+    const row = await db.imageAnalysis.findFirst({
+      where: { sourceImageId: image.id, stage: 'CALIBRATE' },
+    })
+    expect(row, 'a hand calibration must leave a CALIBRATE row').not.toBeNull()
+    expect(row?.status).toBe('OK')
+  })
+
   it('apply refuses while scale is uncalibrated', async () => {
     const created = await run<SessionData>('import.session.create', { projectId: projectA }, ctxA)
     expect(created.ok).toBe(true)

@@ -49,6 +49,9 @@ import {
 
 const ANONYMOUS = 'anonymous'
 
+/** Extractor version stamped on a hand-set scale, so it never collides with a model run. */
+const MANUAL_CALIBRATION_VERSION = 'manual-v1'
+
 const sessionOutput = z.object({
   sessionId: z.string(),
   status: z.enum(['DRAFT', 'READY', 'APPLIED', 'DISCARDED']),
@@ -544,6 +547,43 @@ register({
       data: { designIntentJson: intent as unknown as object },
       select: { id: true, status: true },
     })
+
+    // Record the calibration against every image in the session so the review
+    // ledger reflects that the stage is done. Without it a user could calibrate
+    // successfully and still be told CALIBRATE had not run.
+    for (const sourceImageId of intent.sourceImageIds) {
+      const owned = await db.sourceImage.findFirst({
+        where: { id: sourceImageId, orgId: ctx.orgId },
+        select: { id: true },
+      })
+      if (!owned) continue
+      const row = {
+        model: 'manual',
+        promptHash: 'n/a',
+        rawJson: {} as object,
+        parsedJson: {
+          pixelsPerInch: intent.scale.pixelsPerInch,
+          method: intent.scale.method,
+          confidence: intent.scale.confidence,
+        } as object,
+        tokensIn: 0,
+        tokensOut: 0,
+        latencyMs: 0,
+        status: 'OK' as const,
+        errorRef: null,
+      }
+      await db.imageAnalysis.upsert({
+        where: {
+          sourceImageId_stage_extractorVersion: {
+            sourceImageId,
+            stage: 'CALIBRATE',
+            extractorVersion: MANUAL_CALIBRATION_VERSION,
+          },
+        },
+        create: { sourceImageId, stage: 'CALIBRATE', extractorVersion: MANUAL_CALIBRATION_VERSION, ...row },
+        update: row,
+      })
+    }
 
     return { ok: true, data: { sessionId: updated.id, status: updated.status, intent } }
   },

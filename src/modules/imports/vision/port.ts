@@ -256,6 +256,31 @@ export const vertexVisionAnalysisPort: VisionAnalysisPort = {
       request.sourceImageId,
     )
 
+    // The review screen's ledger tracks CLASSIFY, EXTRACT and CALIBRATE. Without
+    // this row calibration read "NOT RUN" and the header stuck at "2 of 3
+    // stages" forever, whatever the pipeline actually did.
+    //
+    // Status describes whether the stage ran, not whether it found a scale. An
+    // image with no grid, no dimension and no scale bar is a completed
+    // calibration with a null result, and the banner is what says so; marking
+    // it FAILED would invite a re-run that cannot possibly help.
+    stages.push({
+      stage: 'CALIBRATE',
+      status: 'OK',
+      model: 'deterministic',
+      promptHash: 'n/a',
+      raw: {},
+      parsed: {
+        pixelsPerInch: intent.scale.pixelsPerInch,
+        method: intent.scale.method,
+        confidence: intent.scale.confidence,
+      },
+      tokensIn: 0,
+      tokensOut: 0,
+      latencyMs: 0,
+      errorRef: null,
+    })
+
     // The final intent is persisted as the TRANSLATE stage so a cache hit can
     // replay it into another session. Without this row the cache knows an image
     // was analysed but not what the analysis concluded.
