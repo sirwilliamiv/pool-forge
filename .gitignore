@@ -52,3 +52,6 @@ pgdata/
 
 # electron
 dist-electron/
+
+# Agent worktrees
+.claude/worktrees/
