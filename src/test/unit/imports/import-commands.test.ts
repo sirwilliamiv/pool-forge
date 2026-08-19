@@ -97,7 +97,9 @@ describe.skipIf(!reachable)('import commands', () => {
   })
 
   it('the tracks that have not landed fail loudly rather than returning ok', async () => {
-    const stubs = ['import.image.upload', 'import.image.analyze', 'import.intent.apply']
+    // Track I1 landed `import.image.upload` and the durable half of
+    // `import.image.analyze`; their coverage lives in ingest-commands.test.ts.
+    const stubs = ['import.intent.apply']
     for (const id of stubs) {
       const cmd = get(id)
       const result = await cmd!.execute({} as never, ctxA)
