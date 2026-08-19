@@ -1,0 +1,24 @@
+{
+  "propertyBoundary": [
+    { "x": 0.180, "y": 0.150 },
+    { "x": 0.760, "y": 0.190 },
+    { "x": 0.820, "y": 0.640 },
+    { "x": 0.400, "y": 0.860 },
+    { "x": 0.170, "y": 0.520 }
+  ],
+  "houseFootprint": null,
+  "poolPolygon": null,
+  "scaleBar": null,
+  "printedScaleText": "SCALE: 1\" = 20'",
+  "northArrow": null,
+  "setbacks": [],
+  "dimensions": [],
+  "notes": ["scan is skewed a few degrees"],
+  "confidence": {
+    "propertyBoundary": 0.7,
+    "houseFootprint": 0.1,
+    "scale": 0.4,
+    "setbacks": 0.05,
+    "north": 0.05
+  }
+}

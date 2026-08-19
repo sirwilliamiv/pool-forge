@@ -1,0 +1,1 @@
+{"kind":"SCREENSHOT","rotationDeg":0,"qualityFlags":["no-scale-reference"],"confidence":0.87}

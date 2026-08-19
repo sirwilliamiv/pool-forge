@@ -1,0 +1,48 @@
+```json
+{
+  "shapeFamily": "oval",
+  "poolPolygon": [
+    { "x": 0.300, "y": 0.400 },
+    { "x": 0.380, "y": 0.340 },
+    { "x": 0.480, "y": 0.320 },
+    { "x": 0.580, "y": 0.340 },
+    { "x": 0.660, "y": 0.400 },
+    { "x": 0.680, "y": 0.480 },
+    { "x": 0.660, "y": 0.560 },
+    { "x": 0.580, "y": 0.620 },
+    { "x": 0.480, "y": 0.640 },
+    { "x": 0.380, "y": 0.620 },
+    { "x": 0.300, "y": 0.560 },
+    { "x": 0.280, "y": 0.480 }
+  ],
+  "gridVisible": true,
+  "scaleLegendText": "1 sq = 2'",
+  "dimensions": [
+    {
+      "p1": { "x": 0.280, "y": 0.700 },
+      "p2": { "x": 0.680, "y": 0.700 },
+      "text": "24 ft",
+      "appliesTo": "pool-length"
+    }
+  ],
+  "depths": { "shallowText": null, "deepText": "5'" },
+  "features": [],
+  "deck": { "material": "unknown", "widthText": null },
+  "enclosure": { "present": true, "kind": "screen", "heightText": "10'" },
+  "materials": {
+    "interiorFinish": null,
+    "copingMaterial": null,
+    "tileBand": null,
+    "deckMaterial": null
+  },
+  "notes": [],
+  "confidence": {
+    "shapeFamily": 0.88,
+    "polygon": 0.8,
+    "dimensions": 0.84,
+    "depths": 0.7,
+    "features": 0.9,
+    "materials": 0.6
+  }
+}
+```

@@ -1,0 +1,25 @@
+{
+  "shapeFamily": "lagoon",
+  "features": [
+    { "label": "waterfall", "count": 2 },
+    { "label": "grotto", "count": 1 },
+    { "label": "beach entry", "count": 1 },
+    { "label": "spa", "count": 1 }
+  ],
+  "materials": {
+    "interiorFinish": "blue pebble",
+    "copingMaterial": "natural stone, irregular",
+    "tileBand": null,
+    "deckMaterial": "stamped concrete"
+  },
+  "deckMaterialFamily": "concrete",
+  "enclosure": { "present": false, "kind": "none" },
+  "styleNotes": ["tropical resort", "heavy rockwork and planting", "twilight scene with warm lighting"],
+  "waterColor": "caribbean blue",
+  "confidence": {
+    "shapeFamily": 0.86,
+    "features": 0.8,
+    "materials": 0.62,
+    "style": 0.92
+  }
+}

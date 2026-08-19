@@ -1,0 +1,61 @@
+{
+  "shapeFamily": "rectangle",
+  "poolPolygon": [
+    { "x": 0.220, "y": 0.300 },
+    { "x": 0.355, "y": 0.300 },
+    { "x": 0.490, "y": 0.300 },
+    { "x": 0.625, "y": 0.300 },
+    { "x": 0.760, "y": 0.300 },
+    { "x": 0.760, "y": 0.470 },
+    { "x": 0.760, "y": 0.640 },
+    { "x": 0.625, "y": 0.640 },
+    { "x": 0.490, "y": 0.640 },
+    { "x": 0.355, "y": 0.640 },
+    { "x": 0.220, "y": 0.640 },
+    { "x": 0.220, "y": 0.470 }
+  ],
+  "gridVisible": true,
+  "scaleLegendText": "1 square = 1 ft",
+  "dimensions": [
+    {
+      "p1": { "x": 0.220, "y": 0.255 },
+      "p2": { "x": 0.760, "y": 0.255 },
+      "text": "32'",
+      "appliesTo": "pool-length"
+    },
+    {
+      "p1": { "x": 0.180, "y": 0.300 },
+      "p2": { "x": 0.180, "y": 0.640 },
+      "text": "16'",
+      "appliesTo": "pool-width"
+    },
+    {
+      "p1": { "x": 0.780, "y": 0.300 },
+      "p2": { "x": 0.860, "y": 0.300 },
+      "text": "4'-6\"",
+      "appliesTo": "deck-width"
+    }
+  ],
+  "depths": { "shallowText": "3'", "deepText": "6'-6\"" },
+  "features": [
+    { "label": "spa", "count": 1, "lengthText": "7'", "widthText": "7'" },
+    { "label": "entry steps", "count": 1, "lengthText": null, "widthText": null }
+  ],
+  "deck": { "material": "paver", "widthText": "4'-6\"" },
+  "enclosure": { "present": false, "kind": "none", "heightText": null },
+  "materials": {
+    "interiorFinish": "pebble",
+    "copingMaterial": "travertine",
+    "tileBand": null,
+    "deckMaterial": "paver"
+  },
+  "notes": ["north arrow drawn in the top right corner"],
+  "confidence": {
+    "shapeFamily": 0.97,
+    "polygon": 0.9,
+    "dimensions": 0.93,
+    "depths": 0.86,
+    "features": 0.88,
+    "materials": 0.7
+  }
+}
