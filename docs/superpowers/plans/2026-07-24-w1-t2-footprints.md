@@ -2,6 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Roadmap amendment (2026-08-19, Wave I0).** The freeform polygon primitive this track was slated to create now ships from `2026-08-19-image-ingestion-design.md` Wave I0, because full auto geometry needs it first. **T2 is a consumer, not the author, of:**
+>
+> - `ShapeKind.POLYGON_POOL` (prisma enum, migration `20260819151011_image_ingestion_contract`),
+> - the `PolygonPool` variant and `isPolygonPool()` guard in `src/modules/editor/state/shapes.ts`,
+> - `src/lib/geometry/polygon-footprint.ts` (`polygonArea`, `polygonPerimeter`, `polygonBounds`, `polygonCentroid`, `normalizePolygon`, `isSelfIntersecting`),
+> - `src/components/editor/three/objects/PolygonPool.tsx` and its `SceneRoot` dispatch case,
+> - the POLYGON_POOL branch in `src/modules/measurements/engine.ts`, which measures the silhouette rather than the bounding box.
+>
+> T2 still owns the silhouette **library** (`silhouettes.ts`, `FOOTPRINT_LIBRARY`, stencil wiring, plan SVG). Build the normalised 0..1 silhouettes on top of the primitive above rather than a second polygon path: rebase onto I0 before starting.
+
 **Goal:** Every pool shape in the stencil catalog has its own silhouette — measured, rendered in 3D, and drawn in the plan SVG from one definition.
 
 **Architecture:** Wave 0 put a `Footprint` union behind `resolveFootprint()` and routed all pool metrics through `poolFootprintMetrics()`. This track fills `FOOTPRINT_LIBRARY` with normalised silhouettes, adds one extruded-polygon renderer that consumes them, and points the plan SVG at the same source. One silhouette definition, three consumers — a pool cannot measure as one shape and draw as another.

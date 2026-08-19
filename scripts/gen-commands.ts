@@ -21,6 +21,7 @@ const CATEGORY_ORDER: CommandCategory[] = [
   'settings',
   'scene',
   'palette',
+  'import',
 ]
 
 const CATEGORY_LABELS: Record<CommandCategory, string> = {
@@ -36,6 +37,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   settings: 'Settings',
   scene: 'Scene',
   palette: 'Palette',
+  import: 'Import',
 }
 
 function groupByCategory(

@@ -36,6 +36,17 @@ export interface RectanglePool extends ShapeBase {
   depthDeep: number
 }
 
+// Freeform footprint pool. `points` are in inches, relative to the shape
+// origin (x, y), so translating the shape never rewrites the ring. `width` and
+// `height` on ShapeBase stay the ring's bounding box, which keeps selection,
+// drag, and the inspector working unchanged.
+export interface PolygonPool extends ShapeBase {
+  kind: typeof ShapeKind.POLYGON_POOL
+  points: { x: number; y: number }[]
+  depthShallow: number
+  depthDeep: number
+}
+
 export interface DeckShape extends ShapeBase {
   kind:
     | typeof ShapeKind.CONCRETE_DECK
@@ -57,10 +68,14 @@ export interface StencilShape extends ShapeBase {
   stencilId: string
 }
 
-export type Shape = RectanglePool | DeckShape | FeatureShape | StencilShape
+export type Shape = RectanglePool | PolygonPool | DeckShape | FeatureShape | StencilShape
 
 export function isPool(shape: Shape): shape is RectanglePool {
   return shape.kind === ShapeKind.RECTANGLE_POOL
+}
+
+export function isPolygonPool(shape: Shape): shape is PolygonPool {
+  return shape.kind === ShapeKind.POLYGON_POOL
 }
 
 export function isDeck(shape: Shape): shape is DeckShape {
@@ -91,6 +106,7 @@ export function shapeKindFromPrisma(k: ShapeKind): ShapeKind {
 
 export const SHAPE_DEFAULTS: Record<ShapeKind, { width: number; height: number; label: string }> = {
   [ShapeKind.RECTANGLE_POOL]: { width: 25 * 12, height: 12 * 12, label: 'Rectangle Pool' },
+  [ShapeKind.POLYGON_POOL]: { width: 25 * 12, height: 12 * 12, label: 'Freeform Pool' },
   [ShapeKind.CONCRETE_DECK]: { width: 35 * 12, height: 22 * 12, label: 'Concrete Deck' },
   [ShapeKind.PAVER_DECK]: { width: 35 * 12, height: 22 * 12, label: 'Paver Deck' },
   [ShapeKind.GRASS_AREA]: { width: 20 * 12, height: 20 * 12, label: 'Grass Area' },

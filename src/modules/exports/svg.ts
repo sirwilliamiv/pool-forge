@@ -18,6 +18,7 @@ export interface SvgFill {
 
 const PALETTE: Record<ShapeKind, SvgFill> = {
   [ShapeKind.RECTANGLE_POOL]: { fill: '#3b82f6', stroke: '#1e40af' },
+  [ShapeKind.POLYGON_POOL]: { fill: '#3b82f6', stroke: '#1e40af' },
   [ShapeKind.CONCRETE_DECK]: { fill: '#cbd5e1', stroke: '#475569' },
   [ShapeKind.PAVER_DECK]: { fill: '#a78bfa', stroke: '#5b21b6' },
   [ShapeKind.GRASS_AREA]: { fill: '#86efac', stroke: '#166534' },
@@ -72,6 +73,8 @@ export function labelForShape(shape: Shape): string {
   switch (shape.kind) {
     case ShapeKind.RECTANGLE_POOL:
       return `Pool ${wFt}×${hFt} ft`
+    case ShapeKind.POLYGON_POOL:
+      return `Freeform pool ${wFt}×${hFt} ft`
     case ShapeKind.CONCRETE_DECK:
       return `Concrete deck ${wFt}×${hFt} ft`
     case ShapeKind.PAVER_DECK:

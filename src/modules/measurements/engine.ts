@@ -2,6 +2,7 @@ import { ShapeKind } from '@prisma/client'
 import {
   isDeck,
   isFeature,
+  isPolygonPool,
   isPool,
   isStencil,
   type Shape,
@@ -15,6 +16,11 @@ import {
   wettedAreaSqft,
 } from '@/lib/geometry/rectangle'
 import { ellipseAreaSqft, ellipsePerimeterLf } from '@/lib/geometry/ellipse'
+import {
+  polygonArea,
+  polygonBounds,
+  polygonPerimeter,
+} from '@/lib/geometry/polygon-footprint'
 
 export interface MeasurementSummary {
   poolSurfaceArea: number
@@ -153,6 +159,25 @@ export function computeMeasurements(shapes: Shape[]): MeasurementSummary {
       // Multiple pools: keep the deepest depths rather than letting the last
       // pool overwrite. Coping follows the pool perimeter; deco drain is a
       // separate deck feature sourced only from deco-drain stencils.
+      summary.poolDepthShallow = Math.max(summary.poolDepthShallow, shape.depthShallow)
+      summary.poolDepthDeep = Math.max(summary.poolDepthDeep, shape.depthDeep)
+      summary.poolAvgDepth = (summary.poolDepthShallow + summary.poolDepthDeep) / 2
+      summary.copingLinearFeet += perimeter
+      summary.hasPool = true
+    } else if (isPolygonPool(shape)) {
+      // A freeform pool measures from its own silhouette. Using the bounding
+      // box here would over-count every concave footprint, which is exactly
+      // the error the image pipeline exists to avoid.
+      const area = polygonArea(shape.points)
+      const perimeter = polygonPerimeter(shape.points)
+      const bounds = polygonBounds(shape.points)
+      const avgDepth = (shape.depthShallow + shape.depthDeep) / 2
+      summary.poolSurfaceArea += area
+      summary.poolPerimeter += perimeter
+      summary.poolWettedArea += wettedAreaSqft(area, perimeter, avgDepth)
+      summary.poolGallons += poolGallons(area, avgDepth)
+      summary.poolLengthFt = Math.max(summary.poolLengthFt, bounds.width / 12)
+      summary.poolWidthFt = Math.max(summary.poolWidthFt, bounds.height / 12)
       summary.poolDepthShallow = Math.max(summary.poolDepthShallow, shape.depthShallow)
       summary.poolDepthDeep = Math.max(summary.poolDepthDeep, shape.depthDeep)
       summary.poolAvgDepth = (summary.poolDepthShallow + summary.poolDepthDeep) / 2

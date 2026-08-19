@@ -75,6 +75,21 @@ function defaultsFor(
   switch (kind) {
     case ShapeKind.RECTANGLE_POOL:
       return { ...base, kind: ShapeKind.RECTANGLE_POOL, depthShallow: 3, depthDeep: 5 }
+    case ShapeKind.POLYGON_POOL:
+      // Seeded with the bounding-box ring. A real footprint arrives either from
+      // the image pipeline or from the freeform draw tool; both replace it.
+      return {
+        ...base,
+        kind: ShapeKind.POLYGON_POOL,
+        points: [
+          { x: 0, y: 0 },
+          { x: width, y: 0 },
+          { x: width, y: height },
+          { x: 0, y: height },
+        ],
+        depthShallow: 3,
+        depthDeep: 5,
+      }
     case ShapeKind.CONCRETE_DECK:
     case ShapeKind.PAVER_DECK:
     case ShapeKind.GRASS_AREA:

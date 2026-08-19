@@ -25,9 +25,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships OrganizationMember[]
-  exports     Export[]             @relation("ExportGeneratedBy")
-  auditLogs   CommandAuditLog[]
+  memberships  OrganizationMember[]
+  exports      Export[]             @relation("ExportGeneratedBy")
+  auditLogs    CommandAuditLog[]
+  sourceImages SourceImage[]        @relation("SourceImageUploadedBy")
 }
 
 model Organization {
@@ -41,14 +42,18 @@ model Organization {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  members        OrganizationMember[]
-  customers      Customer[]
-  projects       Project[]
-  shapeTemplates ShapeTemplate[]
-  materials      Material[]
-  priceBooks     PriceBook[]
-  appSettings    AppSetting[]
-  auditLogs      CommandAuditLog[]
+  members           OrganizationMember[]
+  customers         Customer[]
+  projects          Project[]
+  shapeTemplates    ShapeTemplate[]
+  materials         Material[]
+  priceBooks        PriceBook[]
+  appSettings       AppSetting[]
+  auditLogs         CommandAuditLog[]
+  sourceImages      SourceImage[]
+  importSessions    ImportSession[]
+  intakeLinks       IntakeLink[]
+  intakeSubmissions IntakeSubmission[]
 }
 
 model OrganizationMember {
@@ -94,30 +99,33 @@ enum ProjectStatus {
 }
 
 model Project {
-  id                String        @id @default(cuid())
-  orgId             String
-  customerId        String?
-  name              String
-  salesperson       String?
-  designer          String?
-  status            ProjectStatus @default(DRAFT)
-  proposalExpiresAt DateTime?
-  internalNotes     String?
-  poolFields        Json          @default("{}")
+  id                   String        @id @default(cuid())
+  orgId                String
+  customerId           String?
+  name                 String
+  salesperson          String?
+  designer             String?
+  status               ProjectStatus @default(DRAFT)
+  proposalExpiresAt    DateTime?
+  internalNotes        String?
+  poolFields           Json          @default("{}")
   // Public read-only proposal share link + customer acceptance.
-  shareToken           String?    @unique
+  shareToken           String?       @unique
   sharedAt             DateTime?
   proposalAcceptedAt   DateTime?
   proposalAcceptedName String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
-  org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  customer    Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  drawing     Drawing?
-  quotes      Quote[]
-  exports     Export[]
-  validations ValidationResult[]
+  org               Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer          Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  drawing           Drawing?
+  quotes            Quote[]
+  exports           Export[]
+  validations       ValidationResult[]
+  sourceImages      SourceImage[]
+  importSessions    ImportSession[]
+  intakeSubmissions IntakeSubmission[]
 
   @@index([orgId])
   @@index([status])
@@ -461,6 +469,7 @@ enum EditableProperty {
 
 enum ShapeKind {
   RECTANGLE_POOL
+  POLYGON_POOL
   CONCRETE_DECK
   PAVER_DECK
   GRASS_AREA
@@ -487,4 +496,163 @@ model StencilDef {
   shapeKind           ShapeKind           @default(STENCIL)
 
   @@index([category])
+}
+
+// ============================================================
+// Image ingestion: source images, analyses, review sessions, intake funnel.
+// Bytes never live in Postgres: `storageKey` addresses a BlobStore object.
+// ============================================================
+
+enum SourceImageKind {
+  SKETCH
+  SITE_PLAN
+  CONCEPT_RENDER
+  SITE_PHOTO
+  SCREENSHOT
+  UNKNOWN
+}
+
+enum ImageOrigin {
+  BUILDER
+  CUSTOMER_INTAKE
+}
+
+model SourceImage {
+  id         String          @id @default(cuid())
+  orgId      String
+  projectId  String?
+  kind       SourceImageKind @default(UNKNOWN)
+  // Opaque key into the configured BlobStore. Never a URL, never bytes.
+  storageKey String
+  mimeType   String
+  bytes      Int
+  // Hex sha256 of the stored bytes. Drives dedupe and the analysis cache.
+  sha256     String
+  widthPx    Int
+  heightPx   Int
+  uploadedBy String?
+  origin     ImageOrigin     @default(BUILDER)
+  createdAt  DateTime        @default(now())
+
+  org      Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project  Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  uploader User?           @relation("SourceImageUploadedBy", fields: [uploadedBy], references: [id], onDelete: SetNull)
+  analyses ImageAnalysis[]
+
+  @@index([orgId])
+  @@index([orgId, sha256])
+  @@index([projectId])
+}
+
+enum AnalysisStage {
+  CLASSIFY
+  EXTRACT
+  CALIBRATE
+  TRANSLATE
+}
+
+enum AnalysisStatus {
+  PENDING
+  OK
+  FAILED
+}
+
+model ImageAnalysis {
+  id               String         @id @default(cuid())
+  sourceImageId    String
+  stage            AnalysisStage
+  // Bumped whenever a prompt or parser changes, so cached rows stay honest.
+  extractorVersion String
+  model            String
+  promptHash       String
+  rawJson          Json           @default("{}")
+  parsedJson       Json           @default("{}")
+  tokensIn         Int            @default(0)
+  tokensOut        Int            @default(0)
+  latencyMs        Int            @default(0)
+  status           AnalysisStatus @default(PENDING)
+  // Correlation ref (`err_<12 hex>`) for a server-logged failure. Never raw
+  // third-party error text: that can carry key fragments, tokens, or PII.
+  errorRef         String?
+  createdAt        DateTime       @default(now())
+
+  sourceImage SourceImage @relation(fields: [sourceImageId], references: [id], onDelete: Cascade)
+
+  // Re-analysis is idempotent and cached on this triple.
+  @@unique([sourceImageId, stage, extractorVersion])
+  @@index([sourceImageId])
+  @@index([status])
+}
+
+enum ImportSessionStatus {
+  DRAFT
+  READY
+  APPLIED
+  DISCARDED
+}
+
+model ImportSession {
+  id                String              @id @default(cuid())
+  orgId             String
+  projectId         String?
+  status            ImportSessionStatus @default(DRAFT)
+  // A `DesignIntent` v1 document (src/modules/imports/intent.ts).
+  designIntentJson  Json                @default("{}")
+  appliedAt         DateTime?
+  // Command ids emitted by `import.intent.apply`, so the batch is traceable
+  // back through CommandAuditLog and coalesces to one undo entry.
+  appliedCommandIds String[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([projectId])
+  @@index([orgId, status, updatedAt])
+}
+
+model IntakeLink {
+  id        String    @id @default(cuid())
+  orgId     String
+  token     String    @unique
+  label     String
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  submissions IntakeSubmission[]
+
+  @@index([orgId])
+  @@index([orgId, active])
+}
+
+enum IntakeSubmissionStatus {
+  NEW
+  REVIEWED
+  CONVERTED
+  DISCARDED
+}
+
+model IntakeSubmission {
+  id           String                 @id @default(cuid())
+  orgId        String
+  intakeLinkId String
+  projectId    String?
+  customerName String?
+  email        String?
+  phone        String?
+  notes        String?
+  status       IntakeSubmissionStatus @default(NEW)
+  createdAt    DateTime               @default(now())
+
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  intakeLink IntakeLink   @relation(fields: [intakeLinkId], references: [id], onDelete: Cascade)
+  project    Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([intakeLinkId])
+  @@index([orgId, status, createdAt])
 }

@@ -12,6 +12,8 @@ function labelFor(shape: Shape | undefined): string {
   switch (shape.kind) {
     case ShapeKind.RECTANGLE_POOL:
       return 'Pool — Rectangle'
+    case ShapeKind.POLYGON_POOL:
+      return 'Pool · Freeform'
     case ShapeKind.CONCRETE_DECK:
       return 'Concrete deck'
     case ShapeKind.PAVER_DECK:

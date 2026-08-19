@@ -13,6 +13,7 @@ import './categories/auth'
 import './categories/settings'
 import './categories/scene'
 import './categories/palette'
+import './categories/import'
 
 let _initialized = false
 

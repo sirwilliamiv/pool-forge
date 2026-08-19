@@ -44,6 +44,9 @@ next-env.d.ts
 # prisma
 prisma/migrations/dev.db*
 
+# local blob store (BlobStore local-disk driver)
+.data/
+
 # docker
 pgdata/
 

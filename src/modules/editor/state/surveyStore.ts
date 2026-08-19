@@ -3,7 +3,11 @@
 import { create } from 'zustand'
 
 export interface SurveyConfig {
-  imageDataUrl: string
+  // Reference to a `SourceImage` row; the bytes live in the BlobStore and are
+  // served through an org-scoped authenticated route. Never a data URL: a
+  // single 12MP photo base64s to roughly 16MB inside `Drawing.rootJson`, on
+  // every save and every load.
+  sourceImageId: string
   // Position + size are in canvas inches (the store-internal unit).
   x: number
   y: number
@@ -18,6 +22,11 @@ export interface SurveyConfig {
   // can compute proportional scale without reloading the image.
   imageNaturalWidthPx: number
   imageNaturalHeightPx: number
+  // Migration bridge, read-only. Drawings saved before the SourceImage
+  // migration carry their raster inline; the loader surfaces it here so those
+  // drawings still open and still show their underlay. `scripts/migrate-survey-images.ts`
+  // clears it. Nothing writes this field.
+  legacyImageDataUrl?: string
 }
 
 interface SurveyState {

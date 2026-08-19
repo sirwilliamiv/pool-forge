@@ -13,6 +13,7 @@ export type CommandCategory =
   | 'settings'
   | 'scene'
   | 'palette'
+  | 'import'
 
 export type CommandContext = {
   userId: string

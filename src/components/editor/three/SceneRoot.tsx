@@ -16,6 +16,7 @@ import { HouseWall } from './objects/HouseWall'
 import { LedLights } from './objects/LedLights'
 import { Loungers } from './objects/Loungers'
 import { PlanOverlay } from './PlanOverlay'
+import { PolygonPool } from './objects/PolygonPool'
 import { PoolWalls } from './objects/PoolWalls'
 import { EllipsePool } from './objects/EllipsePool'
 import { Spa } from './objects/Spa'
@@ -39,6 +40,8 @@ function renderShape(shape: Shape) {
           <TileBand shape={shape} />
         </>
       )
+    case ShapeKind.POLYGON_POOL:
+      return <PolygonPool shape={shape} />
     case ShapeKind.SUN_SHELF:
       return <SunShelf shape={shape} />
     case ShapeKind.BENCH:
