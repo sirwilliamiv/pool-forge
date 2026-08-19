@@ -46,7 +46,30 @@ WAVE 4  ── the business chain + platform debt (4 parallel) ─────�
    T14 Payments + financing   T15 QuickBooks sync
    T16 Mobile / tablet        T17 Registry + audit completion
    T18 Test debt
+
+WAVE I  ── image ingestion (inserted 2026-08-19, runs ahead of Wave 1) ─────┐
+   I0 contract (blocking)                                                  │
+   I1 Ingest    I2 Extraction    I3 Precision                              │
+   I4 Review    I5 Intake funnel                                           │
+   I6 Integration + eval harness ──────────────────────────────────────────┘
 ```
+
+## Wave I — image ingestion
+
+**Spec:** `../specs/2026-08-19-image-ingestion-design.md`
+
+Inserted ahead of Wave 1 by decision on 2026-08-19. Customer photos, ChatGPT
+renderings, and dimensioned graph-paper sketches become measured projects.
+`docs/competitive-analysis.md:85` records why it jumped the queue: across the 21
+competitors surveyed, AI is uncontested.
+
+**Roadmap amendment that Wave 1 must respect:** full auto geometry needs a
+freeform polygon footprint, which **T2 was slated to author**. I0 now owns the
+`POLYGON_POOL` primitive, `lib/geometry/polygon-footprint.ts`, and its renderer;
+**T2 becomes a consumer of them** and its plan is amended. I0 also touches
+`shapes.ts`, `renderers.ts`, and `measurements/engine.ts`. I0 landed first, so
+every Wave 1 track branches from it rather than racing it. This is the accepted
+cost of resequencing.
 
 **Hard dependencies:** T9 needs T1's material slots. T5 needs T2 (rendering a box pool into the proposal is worse than no render). T12 needs T9–T11. T6 unblocks T7's "what exactly did they sign". Everything else is independent.
 

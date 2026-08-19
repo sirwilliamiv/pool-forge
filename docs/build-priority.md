@@ -23,9 +23,28 @@ Known gaps that no item above covers: `HOTKEYS` is never bound to a listener,
 material selection doesn't persist or render, and project / price-book / drawing
 writes still bypass the command registry.
 
+## Wave I — image ingestion (in progress, jumped the queue)
+
+Spec: `superpowers/specs/2026-08-19-image-ingestion-design.md`. Customer photos,
+AI concept renders, and dimensioned graph-paper sketches translated into measured
+projects. Supersedes the deferred "survey image overlay" item below, which was a
+strict subset of it.
+
+Per `docs/competitive-analysis.md:85`, AI is uncontested across all 21 competitors
+surveyed: "Photo→design, AI estimating, auto-camera all uncontested."
+
+- [x] **I0 contract** — ingestion models + migration, `BlobStore`, `POLYGON_POOL`
+      primitive, `import` command category, survey data-URL migration.
+- [ ] **I1 ingest** · **I2 extraction** · **I3 precision** · **I4 review wizard** ·
+      **I5 intake funnel** — parallel tracks over disjoint file sets.
+- [ ] **I6 integration** — end-to-end money path plus the golden-corpus eval harness.
+
+Note: I0 took ownership of the freeform polygon footprint that Wave 1 T2 was
+slated to author. T2 is now a consumer of it; its plan is amended accordingly.
+
 ## Deferred (post-MVP)
 
-- Survey image overlay + scale calibration
+- ~~Survey image overlay + scale calibration~~ (absorbed into Wave I above)
 - Voice agent (the command registry is voice-ready; speech recognition layer not yet)
 - Google OAuth (provider scaffolded but disabled)
 - Electron desktop packaging
