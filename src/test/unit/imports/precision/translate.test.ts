@@ -1,5 +1,3 @@
-import { emptyDesignIntent } from '@/modules/imports/intent'
-import { ShapeKind } from '@/modules/editor/state/shapes'
 import { describe, it, expect } from 'vitest'
 import { emptyDesignIntent, type DesignIntent, type Point } from '@/modules/imports/intent'
 import { footprintFromImageSpace, intentToShapes, type PolygonPoolShape, type TranslatedShape } from '@/modules/imports/precision/translate'
