@@ -65,7 +65,7 @@ test('Chapter 4 — Build it out', async ({ page }) => {
       'Concrete, pavers, travertine or grass. Deck square footage is usually the second biggest number on a quote.',
     )
     await tool(page, 'Deck')
-    await dragOnCanvas(page, { x: 0.26, y: 0.33 }, { x: 0.72, y: 0.68 })
+    await clickOnCanvas(page, { x: 0.5, y: 0.62 })
   }
 
   await say(

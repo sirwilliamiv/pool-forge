@@ -150,6 +150,29 @@ export async function tool(page: Page, label: string): Promise<void> {
   await page.waitForTimeout(600)
 }
 
+/**
+ * Choose a pool family from the toolbar picker.
+ *
+ * The trigger opens a Radix dropdown whose entries are `[role="menuitem"]`,
+ * not buttons, and only selecting one sets `activeTool`. Clicking the trigger
+ * alone leaves the tool inactive, so a later canvas click places nothing and
+ * the chapter records a pool that never appears.
+ */
+export async function pickPoolShape(page: Page, family = 'Rectangle'): Promise<boolean> {
+  const trigger = page.locator('[aria-label="Pool shape"]').first()
+  if ((await trigger.count()) === 0) return false
+  await trigger.click()
+  await page.waitForTimeout(700)
+  const item = page.locator(`[role="menuitem"]:has-text("${family}")`).first()
+  if ((await item.count()) === 0) {
+    await page.keyboard.press('Escape')
+    return false
+  }
+  await item.click()
+  await page.waitForTimeout(700)
+  return (await trigger.getAttribute('aria-pressed')) === 'true'
+}
+
 /** Centre of the canvas, for drag gestures. */
 export async function canvasBox(page: Page) {
   const box = await page.locator('canvas').first().boundingBox()

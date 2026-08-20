@@ -9,6 +9,7 @@ import {
   login,
   note,
   openEditor,
+  pickPoolShape,
   say,
   tool,
 } from './_demo'
@@ -49,21 +50,14 @@ test('Chapter 3 — Draw a pool', async ({ page }) => {
   await say(page, 'Open the editor', 'One 3D scene. The plan view is the same scene under an orthographic camera, not a second drawing.')
   await openEditor(page, href)
 
-  await say(page, 'The pool tool', 'Keyboard R. Pick a shape family, then drag out its size.')
-  await tool(page, 'Pool shape')
+  await say(page, 'The pool tool', 'Keyboard R. It opens a shape family menu.')
+  await say(page, 'Pick a family first', 'The tool only arms once a shape is chosen, then the next click on the canvas places it.')
+  const picked = await pickPoolShape(page, 'Rectangle')
+  if (!picked) note(NAME, 'pool shape picker did not activate the tool')
 
-  // The picker may present shape families; take whichever is offered.
-  const rect = page.locator('button:has-text("Rectangle"), [role="option"]:has-text("Rectangle")').first()
-  if ((await rect.count()) > 0) {
-    await say(page, '17 pool shapes ship in the catalog', 'Rectangle, Roman, Grecian, kidney, lagoon, freeform and more.')
-    await rect.click()
-    await page.waitForTimeout(700)
-  } else {
-    note(NAME, 'pool tool did not present a shape picker')
-  }
-
-  await say(page, 'Drag to size it', 'The footprint is the source of truth for area, perimeter, volume and every price derived from them.')
-  await dragOnCanvas(page, { x: 0.34, y: 0.4 }, { x: 0.62, y: 0.58 })
+  await say(page, 'Click to place it', 'A click drops the pool; dragging the canvas orbits the camera instead.')
+  await clickOnCanvas(page, { x: 0.46, y: 0.48 })
+  await say(page, 'Size it on the right', 'Dimensions are numeric fields in the inspector, so a pool is exact rather than eyeballed.')
 
   const layers = page.locator('text=/LAYERS/i').first()
   if ((await layers.count()) > 0) {

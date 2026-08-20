@@ -20,6 +20,10 @@ const PORT = process.env.DEMO_PORT ?? '3001'
 export default defineConfig({
   testDir: 'src/test/e2e/demo',
   outputDir: 'demo-output',
+  // Keep videos from chapters this run did not touch. Playwright clears the
+  // output directory on every run by default, so re-recording a single chapter
+  // silently deleted the other nine.
+  preserveOutput: 'always',
   fullyParallel: false,
   workers: 1,
   retries: 0,

@@ -51,6 +51,32 @@ is indistinguishable from a broken scene. Confirmed not a product bug: a
 brand-new project with no `Drawing` row renders in 2.9s once the route is warm.
 `00-warmup.spec.ts` exists to absorb this before any chapter records.
 
+### 3. Objects drop in a column, not where you point
+
+`StencilGrid.tsx` computes placement as `pool.x + pool.width + 24`, staggered
+36 inches per object already on the sheet. There is no drag-to-place from the
+panel and no drop target, so chapter 11's thirty-six objects land in a line
+running roughly ninety-six feet down the sheet.
+
+Everything is draggable afterwards, so nothing is blocked. But it is the
+clearest thing standing between this app and a layout a builder would show a
+customer: you can price a yard accurately today without being able to compose
+one.
+
+The same function only anchors to `RECTANGLE_POOL`, so a Grecian or
+pool-and-spa stencil leaves every later object stranded at the origin.
+
+### 4. Placement is a click, not a drag
+
+`ToolGestures.tsx` abandons placement once the pointer moves more than four
+pixels, treating it as a camera orbit. A pool is placed with a single click and
+then sized numerically in the inspector, which matches the note in
+`build-priority.md` that resize and rotate are inspector fields rather than
+on-canvas handles.
+
+Worth knowing because the failure is silent: dragging to "draw" a pool orbits
+the camera and creates nothing, with no error.
+
 ## Harness bugs, not product defects
 
 Recorded here so a later run does not re-report them as findings.
@@ -63,6 +89,7 @@ Recorded here so a later run does not re-report them as findings.
 | Chapters 2 and 9 hanging for ten minutes | A dialog left open intercepted every later click. Overlays are now dismissed explicitly between phases. |
 | Chapter 6 crashing on a selector | Playwright cannot mix a CSS selector and a `text=` engine in one string. |
 | Chapter 9 timing out on the view switcher | The Plan/3D/Section control sits on the bottom edge of the viewport, so a click waits on actionability. Scrolled into view first. |
+| "the pool tool does not activate" | It does. The trigger opens a Radix dropdown whose entries are `[role="menuitem"]`, not buttons, so a lookup for a button never selected a family and the tool never armed. |
 
 ## What the sweep confirmed works
 
