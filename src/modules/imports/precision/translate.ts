@@ -432,3 +432,34 @@ function noteDroppedSite(intent: DesignIntent, warnings: string[]): void {
     )
   }
 }
+
+/**
+ * Convert a normalized image-space outline into an intent-frame footprint in
+ * inches, given the raster size it was measured against and a resolved scale.
+ *
+ * This is what turns a hand calibration into geometry. Setting
+ * `scale.pixelsPerInch` alone leaves `pool.footprint` null, so applying the
+ * import produced the features and no pool at all: the layers panel showed a
+ * spa and a tanning ledge, every computed measurement read zero, and the pool
+ * the user had drawn was simply absent.
+ */
+export function footprintFromImageSpace(
+  poolPolygonNormalized: readonly Point[],
+  widthPx: number,
+  heightPx: number,
+  pixelsPerInch: number,
+): Footprint | null {
+  if (poolPolygonNormalized.length < 3) return null
+  if (!(pixelsPerInch > 0) || !(widthPx > 0) || !(heightPx > 0)) return null
+
+  const points = poolPolygonNormalized.map(p => ({
+    x: (p.x * widthPx) / pixelsPerInch,
+    y: (p.y * heightPx) / pixelsPerInch,
+  }))
+
+  // Rebase to the outline's own top-left so the footprint is local to the
+  // shape, matching what `intentToShapes` expects.
+  const minX = Math.min(...points.map(p => p.x))
+  const minY = Math.min(...points.map(p => p.y))
+  return { points: points.map(p => ({ x: p.x - minX, y: p.y - minY })) }
+}

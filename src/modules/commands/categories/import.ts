@@ -27,7 +27,10 @@ import {
   unreviewedFieldPaths,
   type DesignIntent,
 } from '@/modules/imports/intent'
-import { intentToShapes } from '@/modules/imports/precision/translate'
+import {
+  footprintFromImageSpace,
+  intentToShapes,
+} from '@/modules/imports/precision/translate'
 import {
   parseDrawingPayload,
   serializeDrawingPayload,
@@ -532,16 +535,41 @@ register({
     const loaded = await loadSession(input.sessionId, ctx)
     if (!loaded.ok) return { ok: false, error: loaded.error }
 
-    const intent: DesignIntent = {
-      ...loaded.intent,
-      scale: {
-        pixelsPerInch: input.pixelsPerInch,
-        method: input.method ?? 'manual',
-        confidence: input.confidence ?? 1,
-      },
-    }
+    const scale = {
+      pixelsPerInch: input.pixelsPerInch,
+      method: input.method ?? 'manual',
+      confidence: input.confidence ?? 1,
+    } as const
 
     const { db } = await import('@/lib/db')
+
+    // Setting the scale is only half of calibrating. The extractor's outline is
+    // in normalized image space, and until it is converted to inches there is
+    // no pool footprint, so applying the import created the features and no
+    // pool: a spa and a tanning ledge, every measurement zero, and the pool
+    // itself missing from the drawing.
+    let footprint = loaded.intent.pool.footprint
+    const imageSpace = loaded.intent.imageSpace
+    if (footprint === null && imageSpace !== null) {
+      const image = await db.sourceImage.findFirst({
+        where: { id: imageSpace.sourceImageId, orgId: ctx.orgId },
+        select: { widthPx: true, heightPx: true },
+      })
+      if (image) {
+        footprint = footprintFromImageSpace(
+          imageSpace.poolPolygon,
+          image.widthPx,
+          image.heightPx,
+          input.pixelsPerInch,
+        )
+      }
+    }
+
+    const intent: DesignIntent = {
+      ...loaded.intent,
+      pool: { ...loaded.intent.pool, footprint },
+      scale,
+    }
     const updated = await db.importSession.update({
       where: { id: loaded.id },
       data: { designIntentJson: intent as unknown as object },

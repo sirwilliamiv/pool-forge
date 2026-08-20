@@ -1,10 +1,8 @@
+import { emptyDesignIntent } from '@/modules/imports/intent'
+import { ShapeKind } from '@/modules/editor/state/shapes'
 import { describe, it, expect } from 'vitest'
 import { emptyDesignIntent, type DesignIntent, type Point } from '@/modules/imports/intent'
-import {
-  intentToShapes,
-  type PolygonPoolShape,
-  type TranslatedShape,
-} from '@/modules/imports/precision/translate'
+import { footprintFromImageSpace, intentToShapes, type PolygonPoolShape, type TranslatedShape } from '@/modules/imports/precision/translate'
 import { ShapeKind } from '@/modules/editor/state/shapes'
 import { polygonAreaSqft, type Point as Tuple } from '@/lib/geometry/polygon'
 
@@ -584,5 +582,67 @@ describe('normalization', () => {
       idFactory: (kind, ordinal) => `session42-${kind}-${ordinal}`,
     })
     expect(shapes[0]!.id).toBe('session42-RECTANGLE_POOL-1')
+  })
+})
+
+// Setting a scale is only half of calibrating. The extractor's outline lives in
+// normalized image space, and until it is converted to inches there is no
+// footprint, so applying the import produced the features and no pool: a spa
+// and a tanning ledge in the layers panel, every computed measurement zero, and
+// the pool the user drew simply absent from the drawing.
+describe('footprintFromImageSpace', () => {
+  const square = [
+    { x: 0.25, y: 0.25 },
+    { x: 0.75, y: 0.25 },
+    { x: 0.75, y: 0.75 },
+    { x: 0.25, y: 0.75 },
+  ]
+
+  it('converts normalized points into inches at the given scale', () => {
+    // 0.5 of a 1200px frame is 600px; at 2 px/inch that is 300 inches, 25 ft.
+    const fp = footprintFromImageSpace(square, 1200, 800, 2)
+    expect(fp).not.toBeNull()
+    if (!fp) return
+    const xs = fp.points.map(p => p.x)
+    const ys = fp.points.map(p => p.y)
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(300, 6)
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(200, 6)
+  })
+
+  it('rebases to the outline top-left so the footprint is shape-local', () => {
+    const fp = footprintFromImageSpace(square, 1200, 800, 2)
+    expect(fp).not.toBeNull()
+    if (!fp) return
+    expect(Math.min(...fp.points.map(p => p.x))).toBeCloseTo(0, 6)
+    expect(Math.min(...fp.points.map(p => p.y))).toBeCloseTo(0, 6)
+  })
+
+  it('halving the scale doubles the real size', () => {
+    const a = footprintFromImageSpace(square, 1200, 800, 2)
+    const b = footprintFromImageSpace(square, 1200, 800, 1)
+    expect(a).not.toBeNull()
+    expect(b).not.toBeNull()
+    if (!a || !b) return
+    const widthOf = (f: typeof a) => Math.max(...f.points.map(p => p.x))
+    expect(widthOf(b)).toBeCloseTo(widthOf(a) * 2, 6)
+  })
+
+  it('refuses degenerate input rather than emitting a broken pool', () => {
+    expect(footprintFromImageSpace(square, 1200, 800, 0)).toBeNull()
+    expect(footprintFromImageSpace(square, 0, 800, 2)).toBeNull()
+    expect(footprintFromImageSpace(square.slice(0, 2), 1200, 800, 2)).toBeNull()
+  })
+
+  it('produces a footprint intentToShapes will actually emit a pool from', () => {
+    const fp = footprintFromImageSpace(square, 1200, 800, 2)
+    expect(fp).not.toBeNull()
+    if (!fp) return
+
+    const intent = emptyDesignIntent(['img-1'])
+    intent.scale = { pixelsPerInch: 2, method: 'manual', confidence: 1 }
+    intent.pool = { ...intent.pool, footprint: fp, shapeFamily: 'rectangle' }
+
+    const { shapes } = intentToShapes(intent)
+    expect(shapes.some(s => s.kind === ShapeKind.POLYGON_POOL), 'a pool must be created').toBe(true)
   })
 })
