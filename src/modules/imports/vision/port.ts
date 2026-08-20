@@ -25,6 +25,7 @@ import type { DesignIntent } from '@/modules/imports/intent'
 
 import { detectGrid } from '@/modules/imports/precision/grid'
 import { snapPolygonToInk } from '@/modules/imports/precision/ink'
+import { preferredScale } from '@/modules/imports/precision/scale'
 import type { LabeledDimension } from '@/modules/imports/precision/scale'
 import {
   runPrecisionPipeline,
@@ -207,7 +208,7 @@ async function applyPrecision(
 
   const next: DesignIntent = {
     ...withImageSpace,
-    scale: precision.scale,
+    scale: preferredScale(intent.scale, precision.scale),
     // The overlay shows the snapped outline, so what the user checks is the
     // same geometry the measurements came from.
     imageSpace: {
@@ -282,22 +283,29 @@ export const vertexVisionAnalysisPort: VisionAnalysisPort = {
     // image with no grid, no dimension and no scale bar is a completed
     // calibration with a null result, and the banner is what says so; marking
     // it FAILED would invite a re-run that cannot possibly help.
-    stages.push({
-      stage: 'CALIBRATE',
-      status: 'OK',
-      model: 'deterministic',
-      promptHash: 'n/a',
-      raw: {},
-      parsed: {
-        pixelsPerInch: intent.scale.pixelsPerInch,
-        method: intent.scale.method,
-        confidence: intent.scale.confidence,
-      },
-      tokensIn: 0,
-      tokensOut: 0,
-      latencyMs: 0,
-      errorRef: null,
-    })
+    // Only recorded when a scale actually came out of it. Reporting the stage
+    // Done because it merely ran put a green check directly above a red banner
+    // saying the image has no scale, which is incoherent. Calibration is not
+    // complete until a scale exists, and leaving it open is what points the
+    // user at the Calibrate button.
+    if (intent.scale.pixelsPerInch !== null) {
+      stages.push({
+        stage: 'CALIBRATE',
+        status: 'OK',
+        model: intent.scale.method === 'manual' ? 'manual' : 'deterministic',
+        promptHash: 'n/a',
+        raw: {},
+        parsed: {
+          pixelsPerInch: intent.scale.pixelsPerInch,
+          method: intent.scale.method,
+          confidence: intent.scale.confidence,
+        },
+        tokensIn: 0,
+        tokensOut: 0,
+        latencyMs: 0,
+        errorRef: null,
+      })
+    }
 
     // The final intent is persisted as the TRANSLATE stage so a cache hit can
     // replay it into another session. Without this row the cache knows an image

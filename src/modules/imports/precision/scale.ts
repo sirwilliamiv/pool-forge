@@ -255,3 +255,22 @@ function median(values: readonly number[]): number {
   if (n % 2 === 1) return sorted[mid]!
   return (sorted[mid - 1]! + sorted[mid]!) / 2
 }
+
+/**
+ * Which scale wins when an image is re-analysed.
+ *
+ * A hand calibration outranks everything: the user stood in front of the image
+ * and told us a real distance, and no automatic pass gets to overrule that. A
+ * fresh automatic resolution beats a stale one. Failing both, whatever the
+ * session already had is preserved rather than blanked.
+ *
+ * The bug this exists to prevent: re-analysis overwrote scale unconditionally,
+ * so calibrating and then pressing Re-analyze silently discarded the two points
+ * and told the user again that the image has no scale, while the calibration
+ * record still sat in the analysis log.
+ */
+export function preferredScale(existing: Scale, computed: Scale): Scale {
+  if (existing.method === 'manual' && existing.pixelsPerInch !== null) return existing
+  if (computed.pixelsPerInch !== null) return computed
+  return existing
+}

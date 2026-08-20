@@ -1,15 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { CONFIDENCE_REVIEW_REQUIRED } from '@/modules/imports/intent'
-import {
-  AGREEMENT_TOLERANCE,
-  fromGrid,
-  fromLabeledDimensions,
-  fromManual,
-  fromScaleBar,
-  pickScaleCandidate,
-  resolveScale,
-  type LabeledDimension,
-} from '@/modules/imports/precision/scale'
+import { AGREEMENT_TOLERANCE, fromGrid, fromLabeledDimensions, fromManual, fromScaleBar, pickScaleCandidate, preferredScale, resolveScale, type LabeledDimension } from '@/modules/imports/precision/scale'
 
 /** A horizontal segment `px` long labelled as `realInches`. */
 function dim(px: number, realInches: number): LabeledDimension {
@@ -194,5 +185,42 @@ describe('resolveScale', () => {
     const grid = fromGrid(24, 12) // 2 px/in
     const manual = fromManual(1200, 100) // 12 px/in
     expect(resolveScale([grid, manual]).pixelsPerInch).toBeCloseTo(2, 10)
+  })
+})
+
+// Re-analysis used to overwrite scale unconditionally, so a user who calibrated
+// two points and then pressed Re-analyze silently lost them and was told again
+// that the image has no scale, while the calibration record still sat in the
+// analysis log reading "Done". Data loss, not a display bug.
+describe('preferredScale', () => {
+  const manual = (ppi: number | null) =>
+    ({ pixelsPerInch: ppi, method: 'manual', confidence: 1 }) as const
+  const auto = (ppi: number | null) =>
+    ({ pixelsPerInch: ppi, method: ppi === null ? null : 'grid', confidence: ppi === null ? 0 : 0.9 }) as const
+
+  it('keeps a hand calibration when automatic resolution finds nothing', () => {
+    expect(preferredScale(manual(1.3), auto(null))).toEqual(manual(1.3))
+  })
+
+  it('keeps a hand calibration even when automatic resolution succeeds', () => {
+    // The user looked at the image and told us a real distance. An automatic
+    // pass does not get to overrule that.
+    expect(preferredScale(manual(1.3), auto(2.7))).toEqual(manual(1.3))
+  })
+
+  it('takes a fresh automatic scale when there is no hand calibration', () => {
+    expect(preferredScale(auto(null), auto(2.7))).toEqual(auto(2.7))
+  })
+
+  it('preserves an existing scale rather than blanking it', () => {
+    expect(preferredScale(auto(2.7), auto(null))).toEqual(auto(2.7))
+  })
+
+  it('ignores a manual entry that never resolved', () => {
+    expect(preferredScale(manual(null), auto(2.7))).toEqual(auto(2.7))
+  })
+
+  it('stays null when nothing has ever resolved', () => {
+    expect(preferredScale(auto(null), auto(null)).pixelsPerInch).toBeNull()
   })
 })
