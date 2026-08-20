@@ -121,6 +121,12 @@ This is interactive, so it cannot be scripted in CI. In deployment the runtime
 service account supplies ADC instead, and needs `roles/aiplatform.user` on the
 project named by `GCP_PROJECT_ID`.
 
+**Restart the server after re-authing.** The Google auth library reads ADC once
+and caches the credential in memory, so a running `pnpm dev` keeps presenting
+the expired one and every call fails with `invalid_grant` / `invalid_rapt` long
+after `gcloud auth application-default login` has succeeded. The shell will say
+the token is fine while the app keeps failing. Restart the process.
+
 Confirm before enabling live mode:
 
 ```
