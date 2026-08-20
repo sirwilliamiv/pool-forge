@@ -26,7 +26,8 @@
     "docs:commands": "tsx scripts/gen-commands.ts",
     "electron:dev": "concurrently -k -n web,electron -c blue,green \"PORT=3001 next dev\" \"wait-on http://localhost:3001 && cross-env POOL_FORGE_DEV_URL=http://localhost:3001 electron electron/main.cjs\"",
     "electron:build": "cross-env NEXT_OUTPUT=standalone next build && electron-builder --mac --win --publish never",
-    "electron:pack": "cross-env NEXT_OUTPUT=standalone next build && electron-builder --dir"
+    "electron:pack": "cross-env NEXT_OUTPUT=standalone next build && electron-builder --dir",
+    "demo": "playwright test --config playwright.demo.config.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
