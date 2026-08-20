@@ -97,7 +97,12 @@ export default async function ImportReviewPage({
     status: importSession.status,
     intent,
     touchedFieldPaths: importSession.touchedFieldPaths,
-    images: buildSourceImageViews(intent.sourceImageIds, imageRows, analyses),
+    images: buildSourceImageViews(
+      intent.sourceImageIds,
+      imageRows,
+      analyses,
+      intent.scale.pixelsPerInch,
+    ),
     appliedAtLabel: formatAppliedAt(importSession.appliedAt),
   }
 

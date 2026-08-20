@@ -57,6 +57,16 @@ export function buildSourceImageViews(
   orderedIds: string[],
   rows: SourceImageRow[],
   analyses: ImageAnalysisRow[],
+  /**
+   * The session's resolved scale, or null when it has none.
+   *
+   * Calibration belongs to the session, not to the image, but the analysis
+   * rows are keyed by image. Ingest dedupes identical bytes within an org, so
+   * two sessions share one image, and a calibration performed in the first
+   * showed as Done in the second: a green check directly above a banner saying
+   * the image has no scale. The session is the authority here.
+   */
+  sessionPixelsPerInch: number | null = null,
 ): SourceImageView[] {
   const byId = new Map(rows.map((row) => [row.id, row]))
   const ordered: SourceImageRow[] = []
@@ -94,6 +104,13 @@ export function buildSourceImageViews(
         errorRef: analysis.errorRef,
       }
       stages[stage] = view
+    }
+
+    // Overridden rather than read from the rows: calibration is complete when
+    // this session has a scale, whatever some other session did to the image.
+    stages.CALIBRATE = {
+      status: sessionPixelsPerInch !== null && sessionPixelsPerInch > 0 ? 'OK' : 'PENDING',
+      errorRef: null,
     }
 
     return {

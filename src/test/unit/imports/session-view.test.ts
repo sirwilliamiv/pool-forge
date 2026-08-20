@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildSourceImageViews, formatAppliedAt } from '@/components/imports/session-view'
+import { buildSourceImageViews, formatAppliedAt, type ImageAnalysisRow } from '@/components/imports/session-view'
 
 const IMAGES = [
   { id: 'cm0abc111', kind: 'SKETCH', widthPx: 1600, heightPx: 1200 },
@@ -105,5 +105,40 @@ describe('applied date', () => {
   it('formats a date and passes null through', () => {
     expect(formatAppliedAt(null)).toBeNull()
     expect(formatAppliedAt(new Date('2026-08-19T15:00:00Z'))).toMatch(/2026/)
+  })
+})
+
+// Calibration belongs to the session, not the image. Ingest dedupes identical
+// bytes within an org, so two sessions share one SourceImage, and a calibration
+// done in the first showed as Done in the second: a green check sitting
+// directly above a banner saying the image has no scale.
+describe('calibration status follows the session, not the image', () => {
+  const CALIBRATED: ImageAnalysisRow[] = [
+    {
+      sourceImageId: 'cm0abc111',
+      stage: 'CALIBRATE',
+      status: 'OK',
+      errorRef: null,
+      createdAt: new Date('2026-08-19T20:48:20Z'),
+    },
+  ]
+
+  it('reports PENDING when this session has no scale, despite a stale row', () => {
+    const views = buildSourceImageViews(['cm0abc111'], [IMAGES[0]!], CALIBRATED, null)
+    expect(views[0]?.stages.CALIBRATE.status).toBe('PENDING')
+  })
+
+  it('reports OK once this session has a scale', () => {
+    const views = buildSourceImageViews(['cm0abc111'], [IMAGES[0]!], CALIBRATED, 1.34)
+    expect(views[0]?.stages.CALIBRATE.status).toBe('OK')
+  })
+
+  it('reports OK from the session even with no analysis row at all', () => {
+    const views = buildSourceImageViews(['cm0abc111'], [IMAGES[0]!], [], 2.5)
+    expect(views[0]?.stages.CALIBRATE.status).toBe('OK')
+  })
+
+  it('treats a zero or negative scale as uncalibrated', () => {
+    expect(buildSourceImageViews(['cm0abc111'], [IMAGES[0]!], [], 0)[0]?.stages.CALIBRATE.status).toBe('PENDING')
   })
 })
