@@ -681,6 +681,61 @@ const deckHouse: Stencil[] = [
     shapeKind: ShapeKind.STENCIL,
   },
   {
+    // Site context: scenery a builder places to show the yard in situ.
+    //
+    // These used to be hardcoded into SceneRoot at fixed coordinates, so every
+    // project in the product rendered the same three trees, two loungers and
+    // one wall whether or not they existed on the job. They are catalog objects
+    // now, so the user chooses them, moves them, and deletes them like anything
+    // else, and they show up in Layers.
+    //
+    // None of them price: a tree is not a line item, and scenery must never
+    // reach a customer's total.
+    id: 'site.tree',
+    name: 'Tree',
+    category: StencilCategory.DECK_HOUSE,
+    defaultDimensions: feet(8, 8),
+    defaultFill: '#4E7A34',
+    defaultStroke: SYMBOL_STROKE,
+    measurementBehavior: MeasurementBehavior.NONE,
+    pricingBehavior: PricingBehavior.NONE,
+    exportVisibility: ExportVisibility.CUSTOMER,
+    affectsQuote: false,
+    onConstructionSheet: false,
+    editableProperties: [EditableProperty.ROTATION],
+    shapeKind: ShapeKind.STENCIL,
+  },
+  {
+    id: 'site.lounger',
+    name: 'Lounger',
+    category: StencilCategory.DECK_HOUSE,
+    defaultDimensions: feet(6, 3),
+    defaultFill: '#8B6242',
+    defaultStroke: SYMBOL_STROKE,
+    measurementBehavior: MeasurementBehavior.NONE,
+    pricingBehavior: PricingBehavior.NONE,
+    exportVisibility: ExportVisibility.CUSTOMER,
+    affectsQuote: false,
+    onConstructionSheet: false,
+    editableProperties: [EditableProperty.ROTATION],
+    shapeKind: ShapeKind.STENCIL,
+  },
+  {
+    id: 'site.house-wall',
+    name: 'House wall',
+    category: StencilCategory.DECK_HOUSE,
+    defaultDimensions: feet(40, 2),
+    defaultFill: '#D6D3CD',
+    defaultStroke: SYMBOL_STROKE,
+    measurementBehavior: MeasurementBehavior.NONE,
+    pricingBehavior: PricingBehavior.NONE,
+    exportVisibility: ExportVisibility.BOTH,
+    affectsQuote: false,
+    onConstructionSheet: true,
+    editableProperties: [EditableProperty.LENGTH, EditableProperty.ROTATION],
+    shapeKind: ShapeKind.STENCIL,
+  },
+  {
     id: 'deck.fence',
     name: 'Fence',
     category: StencilCategory.DECK_HOUSE,

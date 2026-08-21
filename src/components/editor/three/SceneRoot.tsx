@@ -83,6 +83,27 @@ function renderStencilShape(shape: Shape) {
   const cz = feet(shape.y + shape.height / 2)
   const pos: [number, number, number] = [cx, 0, cz]
 
+  // Site context, placed by the user rather than baked into the scene.
+  if (id === 'site.tree') {
+    return (
+      <group position={pos}>
+        <Trees trees={[{ x: 0, z: 0, scale: shape.width / 96 }]} />
+      </group>
+    )
+  }
+  if (id === 'site.lounger') {
+    return (
+      <group position={pos}>
+        <Loungers loungers={[{ x: 0, z: 0, rotation: ((shape.rotation ?? 0) * Math.PI) / 180 }]} />
+      </group>
+    )
+  }
+  if (id === 'site.house-wall') {
+    // The wall reads its length from the shape, so a user can size it to the
+    // house they are actually building against.
+    return <HouseWall position={[cx, 7, cz]} size={[feet(shape.width), 14, feet(shape.height)]} />
+  }
+
   if (STEPS_IDS.has(id)) {
     return (
       <group position={pos}>
@@ -137,15 +158,17 @@ export function SceneRoot() {
         ),
       )}
 
-      {flags.showSiteContext ? (
-        <>
-          <HouseWall position={[0, 7, -28]} />
-          <Trees />
-          <Loungers />
-        </>
-      ) : null}
+      {/*
+        The house wall, trees and loungers used to render here unconditionally at
+        fixed coordinates, so every project in the product looked identical and no
+        user could move or remove them. They are catalog stencils now
+        (`site.tree`, `site.lounger`, `site.house-wall`), placed like anything
+        else and listed in Layers.
 
-      {flags.showEquipmentPad ? <EquipmentPad position={[24, 0, -22]} /> : null}
+        The decorative equipment pad went the same way: it is a real quoted line
+        item, and drawing one as scenery on a job that has not got one is worse
+        than drawing nothing.
+      */}
 
       {flags.showPlanOverlay ? <PlanOverlay /> : null}
       {flags.showConstructionOverlay ? <BuildOverlay /> : null}

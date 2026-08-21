@@ -29,6 +29,7 @@ model User {
   exports      Export[]             @relation("ExportGeneratedBy")
   auditLogs    CommandAuditLog[]
   sourceImages SourceImage[]        @relation("SourceImageUploadedBy")
+  sceneTemplates SceneTemplate[]
 }
 
 model Organization {
@@ -46,6 +47,7 @@ model Organization {
   customers         Customer[]
   projects          Project[]
   shapeTemplates    ShapeTemplate[]
+  sceneTemplates    SceneTemplate[]
   materials         Material[]
   priceBooks        PriceBook[]
   appSettings       AppSetting[]
@@ -176,6 +178,34 @@ model DrawingObject {
 // ============================================================
 // Shape templates & materials
 // ============================================================
+
+/// A whole saved scene: the drawing a new project can start from.
+///
+/// Distinct from `ShapeTemplate`, which models one shape. A scene is the set of
+/// objects a builder keeps reaching for, so it is stored as a drawing payload
+/// rather than being forced into the single-shape shape.
+model SceneTemplate {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  description String?
+  /// A `DrawingPayload`: the shapes, and nothing else.
+  payload     Json     @default("{}")
+  /// Kept alongside so a picker can show size without parsing the payload.
+  objectCount Int      @default(0)
+  /// At most one per org. New projects start from it.
+  isDefault   Boolean  @default(false)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator User?        @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, name])
+  @@index([orgId, isDefault])
+  @@index([orgId, updatedAt])
+}
 
 model ShapeTemplate {
   id                  String  @id @default(cuid())

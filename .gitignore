@@ -55,3 +55,9 @@ dist-electron/
 
 # Agent worktrees
 .claude/worktrees/
+
+# Recorded demo output. Build artifacts: `pnpm demo` regenerates them from the
+# specs in src/test/e2e/demo, which are what actually belong in the repo.
+demo-output/
+demo-videos/
+demo-small/
