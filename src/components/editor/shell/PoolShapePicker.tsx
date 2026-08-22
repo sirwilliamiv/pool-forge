@@ -9,18 +9,17 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
+import { stencilsByCategory } from '@/modules/editor/stencils'
+import { StencilCategory } from '@/modules/editor/stencils/types'
 
-interface PoolShape {
-  stencilId: string
-  label: string
-}
-
-const POOL_SHAPES: PoolShape[] = [
-  { stencilId: 'pool.rectangle', label: 'Rectangle' },
-  { stencilId: 'pool.roman', label: 'Roman' },
-  { stencilId: 'pool.grecian', label: 'Grecian' },
-  { stencilId: 'pool.freeform-kidney', label: 'Kidney' },
-]
+// Derived from the catalogue, never listed here.
+//
+// This used to hold its own array of four, while the catalogue held seventeen.
+// A builder reaching for the obvious tool saw a quarter of what exists — every
+// pool-and-spa combination and every step variant was missing — and the two
+// lists had no way of noticing they disagreed. Adding a pool shape to the
+// catalogue now puts it in the picker.
+const POOL_SHAPES = stencilsByCategory()[StencilCategory.POOL_SHAPE]
 
 export function PoolShapePicker() {
   const activeTool = useEditorStore((s) => s.activeTool)
@@ -66,10 +65,12 @@ export function PoolShapePicker() {
           />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" side="top" className="w-44">
+      {/* Seventeen shapes will not fit on screen at once, so the list scrolls
+          rather than running off the bottom of the viewport. */}
+      <DropdownMenuContent align="center" side="top" className="max-h-80 w-56 overflow-y-auto">
         {POOL_SHAPES.map((shape) => (
-          <DropdownMenuItem key={shape.stencilId} onSelect={() => pick(shape.stencilId)}>
-            {shape.label}
+          <DropdownMenuItem key={shape.id} onSelect={() => pick(shape.id)}>
+            {shape.name}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

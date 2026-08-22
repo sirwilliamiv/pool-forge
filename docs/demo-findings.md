@@ -9,6 +9,10 @@ the latter, and calling those defects would be misleading.
 
 ## Real gaps
 
+**Status, 2026-08-22.** Gaps 1, 3 and the missing fit control are fixed; gap 2 is
+a dev-only compile cost and gap 4 is the documented design. See the notes under
+each.
+
 ### 1. The pool tool exposes 4 of 17 pool shapes
 
 `src/components/editor/shell/PoolShapePicker.tsx` hardcodes its own list:
@@ -39,6 +43,10 @@ dead functionality: a builder who reaches for the obvious tool sees a quarter of
 what exists. The fix is to derive the picker from the catalog instead of a local
 array, which also stops the two lists drifting apart again.
 
+**Fixed.** The picker reads `stencilsByCategory()[POOL_SHAPE]`, so all seventeen
+appear and adding one to the catalogue puts it in the tool. The list scrolls,
+since seventeen do not fit on screen at once.
+
 ### 2. The editor's first compile can exceed 60 seconds in dev
 
 The first visit to `/projects/[id]/editor` after a server start compiles a heavy
@@ -65,6 +73,16 @@ one.
 
 The same function only anchors to `RECTANGLE_POOL`, so a Grecian or
 pool-and-spa stencil leaves every later object stranded at the origin.
+
+**Fixed.** `stagingPlacement` anchors to the bounds of everything visible rather
+than to one shape kind, and stages objects in a wrapping block beside the
+drawing instead of a queue: thirty-six objects now span under sixty feet
+instead of ninety-six, and a Grecian pool no longer strands everything at the
+origin. Slot size follows the stencil's own dimensions, so a lanai does not
+overlap its neighbours.
+
+Still not drag-to-place, which is what this really wants. It is a staging area
+rather than a queue, and `canvas.fit` now exists to get back to it.
 
 ### 4. Placement is a click, not a drag
 

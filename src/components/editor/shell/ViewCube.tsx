@@ -1,5 +1,7 @@
 'use client'
 
+import { Maximize } from 'lucide-react'
+
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
 import { useCameraStore } from '@/modules/editor/state/cameraStore'
@@ -22,12 +24,26 @@ export function ViewCube() {
   }
 
   return (
-    <div
-      className="pointer-events-auto h-24 w-24 rounded-pfMd border border-border bg-white p-1 shadow-pfMd"
-      role="group"
-      aria-label="View cube"
-    >
-      <div className="grid h-full w-full grid-cols-3 grid-rows-3 gap-0.5">
+    <div className="pointer-events-auto flex flex-col items-stretch gap-1">
+      {/* Fit to page. There was no control for this at all, so an object staged
+          off to the side of the drawing could only be found by panning for it. */}
+      <button
+        type="button"
+        onClick={() => void dispatch('canvas.fit', {})}
+        title="Fit everything in view"
+        aria-label="Fit everything in view"
+        className="flex h-7 items-center justify-center gap-1 rounded-pfMd border border-border bg-white text-[9px] font-semibold uppercase tracking-wide text-textMuted shadow-pfMd transition hover:bg-rowHover hover:text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent"
+      >
+        <Maximize className="h-3 w-3" aria-hidden />
+        Fit
+      </button>
+
+      <div
+        className="h-24 w-24 rounded-pfMd border border-border bg-white p-1 shadow-pfMd"
+        role="group"
+        aria-label="View cube"
+      >
+        <div className="grid h-full w-full grid-cols-3 grid-rows-3 gap-0.5">
         {FACES.map(({ view, label, className }) => {
           const active = targetView === view
           return (
@@ -47,6 +63,7 @@ export function ViewCube() {
             </button>
           )
         })}
+        </div>
       </div>
     </div>
   )

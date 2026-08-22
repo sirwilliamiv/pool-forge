@@ -10,10 +10,19 @@ import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useViewStore, type FocusTarget } from '@/modules/editor/state/viewStore'
 import { ShapeKind, type Shape } from '@/modules/editor/state/shapes'
 import { getStencil } from '@/modules/editor/stencils'
-import { feet } from '@/lib/three/units'
+import { framingFor } from '@/modules/editor/framing'
+import { visibleBounds } from '@/modules/editor/placement'
 import { useCommandPaletteStore } from './shell/CommandPalette'
 
 let sunStudyRaf: number | null = null
+
+/** Point the camera at the box these shapes occupy. */
+function frameShapes(shapes: Shape[]): void {
+  const box = visibleBounds(shapes)
+  if (!box) return
+  const { pose, target } = framingFor(box)
+  useCameraStore.getState().frameSelection(pose, target)
+}
 
 interface SceneDescription {
   count: number
@@ -92,6 +101,7 @@ const HANDLER_IDS: string[] = [
   'selection.set',
   'camera.set.view',
   'camera.frame.selection',
+  'canvas.fit',
   'mode.set.presentation',
   'view.set.tab',
   'tool.activate',
@@ -389,36 +399,28 @@ export function ClientCommandHandlers() {
       'camera.frame.selection',
       () => {
         const ids = useSelectionStore.getState().selectedIds
-        const shapes = useShapesStore.getState().shapes
-        const selected = shapes.filter((s) => ids.includes(s.id))
+        const selected = useShapesStore.getState().shapes.filter((s) => ids.includes(s.id))
         if (selected.length === 0) {
           useCameraStore.getState().setView('iso')
           return { framed: true }
         }
-        // Combined bbox in inches → feet (1 unit = 1 foot in scene).
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-        for (const s of selected) {
-          if (s.x < minX) minX = s.x
-          if (s.y < minY) minY = s.y
-          if (s.x + s.width > maxX) maxX = s.x + s.width
-          if (s.y + s.height > maxY) maxY = s.y + s.height
-        }
-        const cx = feet((minX + maxX) / 2)
-        const cz = feet((minY + maxY) / 2)
-        const sizeX = feet(maxX - minX)
-        const sizeZ = feet(maxY - minY)
-        const radius = Math.max(8, Math.hypot(sizeX, sizeZ) * 0.7)
-        const distance = Math.max(15, radius * 2.6)
-        // Orbit pose: 35° elevation looking SE, target at bbox center on ground.
-        const elev = 0.5 // ~28°
-        const az = -0.756 // match ISO_DEFAULT azimuth
-        const px = cx + distance * Math.cos(elev) * Math.cos(az)
-        const py = distance * Math.sin(elev)
-        const pz = cz + distance * Math.cos(elev) * Math.sin(az)
-        useCameraStore.getState().frameSelection([px, py, pz], [cx, 0, cz])
+        frameShapes(selected)
         return { framed: true }
       },
     )
+
+    // Fit everything. Registered but never implemented until now, so "show me
+    // everything" reported success and moved nothing — and an object staged off
+    // to the side of the drawing was unreachable without hunting for it.
+    registerClientHandler<unknown, { framed: boolean }>('canvas.fit', () => {
+      const shapes = useShapesStore.getState().shapes.filter((s) => !s.hidden)
+      if (shapes.length === 0) {
+        useCameraStore.getState().setView('iso')
+        return { framed: true }
+      }
+      frameShapes(shapes)
+      return { framed: true }
+    })
 
     registerClientHandler<
       { mode: 'plan' | 'design' | 'build' | 'customer' },
