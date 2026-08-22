@@ -37,6 +37,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   settings: 'Settings',
   scene: 'Scene',
   palette: 'Palette',
+  navigation: 'Navigation',
   import: 'Import',
 }
 

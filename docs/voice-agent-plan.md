@@ -109,27 +109,42 @@ feedback because the store updates before the model has finished speaking, and
 reduces the relay to a pipe with no database access, no Prisma client, and no
 org-scoping logic of its own to get wrong.
 
-### Where it runs, and when that changes
+### Where it runs: Electron first, then a small service
 
-Written as a transport-agnostic module, mounted initially in a **custom Next
-server** that handles the `upgrade` event.
+An earlier draft of this plan said "mount it in a custom Next server". That was
+wrong, and wrong in a way worth recording: `docs/deploy.md` assumes Vercel, and
+**Vercel supports neither custom servers nor long-lived connections**, so that
+proposal quietly discarded the assumed deploy target.
 
-That choice is about auth more than convenience: a same-origin upgrade carries the
-session cookie, so `auth()` validates the handshake before a Gemini session is ever
-opened, and `orgId` is bound to the socket for its lifetime. A separate service
-would have to re-implement session validation to get the same guarantee.
+**Phase 1, Electron.** The desktop build already runs a Node main process with ADC
+available and no browser CSP in the way. The main process can hold the Gemini
+session directly: no ws server, no hosting decision, no ticket auth, no new deploy
+target. The entire loop — tool calls, barge-in, the editor agent — is provable for
+the cost of a day. If the interaction turns out to be awkward, that is discovered
+before any infrastructure exists to regret.
 
-It should not stay there forever. Voice sessions are long-lived, stateful and
-memory-heavy; HTTP instances autoscale on request count and are recycled freely, so
-a scale-down or a deploy drops live calls. **The trigger for extracting it into its
-own service** is concrete: when a deploy dropping in-flight calls stops being
-acceptable, or when concurrent sessions per instance start competing with request
-traffic for memory. Writing it standalone from the start makes that a deployment
-change rather than a rewrite.
+**Phase 2, a separate ws service.** Roughly two hundred lines of `ws` plus
+`@google/genai`, deployed on its own, leaving the web app wherever it is hosted.
 
-Cloud Run terminates a request at its configured timeout, so the relay must survive
-that boundary by design rather than by hoping calls are short. Session resumption
-below is what makes that survivable.
+The auth mechanism is the part worth designing now: a cross-origin WebSocket will
+not reliably carry the next-auth cookie, and re-implementing session validation in
+a second service is how the two drift. So the Next app mints a **short-lived signed
+ticket** (HMAC, 60 second TTL, single use, carrying `userId` / `orgId` /
+`projectId`) which the browser presents on connect and the service verifies with a
+shared secret. The service then needs no database, no session store and no Prisma
+client.
+
+### Cloud Run realities for phase 2
+
+- A WebSocket is **one long request**. The service timeout must exceed the longest
+  call, and CPU and memory bill for its whole duration.
+- `--concurrency` is literally the simultaneous-call ceiling per instance. The
+  default of 80 is far too high for sessions holding audio buffers.
+- **A reconnect does not return to the same instance.** An earlier version of this
+  plan said "the relay keeps the resumption handle" and silently assumed a single
+  process. With more than one instance the handle has to live in shared state, or
+  session affinity has to be switched on. Storing it beside the session record is
+  the simpler of the two.
 
 ### Session lifecycle
 

@@ -13,6 +13,7 @@ export type CommandCategory =
   | 'settings'
   | 'scene'
   | 'palette'
+  | 'navigation'
   | 'import'
 
 export type CommandContext = {
