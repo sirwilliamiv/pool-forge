@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **70**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **71**.
 
 ## Project
 
@@ -493,6 +493,16 @@ Find a project by customer or project name and open it. Reports the matches when
 
 ## Reading the screen
 
+### `page.click` — Press a button on the page
+
+Press a button by its visible text: Save, Create project, Add item, and so on. Use it after page.fill to commit a form — filling fields changes nothing until something saves them. page.read lists the buttons that are actually here.
+
+**Voice examples:**
+- "Save it."
+- "Press create project."
+- "Click add item."
+- "Submit the form."
+
 ### `page.fill` — Fill in the current page
 
 Set form fields on the screen by their visible label. Use it after page.read so the labels are the ones actually on the page. Reports each field separately, so filling four of five is a useful result rather than a failure.
@@ -505,7 +515,7 @@ Set form fields on the screen by their visible label. Use it after page.read so 
 
 ### `page.read` — Read the current page
 
-Read what is currently on screen: headings, the text under them, table rows, and labelled values. Use this to answer any question about what the user is looking at. Pass a query to narrow a long page to the relevant rows rather than reading all of it.
+Read what is currently on screen: headings, the text under them, table rows, labelled values, and the buttons available. Each field says whether it is editable and what kind it is (text, email, date, checkbox, select), so use this before page.fill to learn the exact labels and formats. Pass a query to narrow a long page rather than reading all of it.
 
 **Voice examples:**
 - "What does this page say?"

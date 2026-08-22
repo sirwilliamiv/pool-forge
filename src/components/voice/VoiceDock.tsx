@@ -4,10 +4,19 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
 import { registerClientHandler } from '@/lib/commands/dispatch'
+import { clickOnPage } from '@/modules/editor/page-click'
 import { fillPage, type FillRequest } from '@/modules/editor/page-fill'
 import { readPage } from '@/modules/editor/page-read'
 import { screenForPath } from '@/modules/voice/scope'
 import { useVoiceSession } from '@/modules/voice/client/useVoiceSession'
+
+interface ClickReport {
+  label: string
+  clicked: boolean
+  reason: string | null
+  available: string[] | null
+  needsConfirmation: boolean
+}
 
 interface FillReport {
   results: { label: string; value: string; filled: boolean; reason: string | null }[]
@@ -96,6 +105,20 @@ export function VoiceDock() {
         missed: results.filter(result => !result.filled).length,
       }
     })
+
+    registerClientHandler<{ label: string; confirm?: boolean }, ClickReport>(
+      'page.click',
+      input => {
+        const result = clickOnPage(input.label, input.confirm === true)
+        return {
+          label: result.label,
+          clicked: result.clicked,
+          reason: result.reason ?? null,
+          available: result.available ?? null,
+          needsConfirmation: result.needsConfirmation === true,
+        }
+      },
+    )
   }, [router])
 
   if (status === 'unavailable') return null

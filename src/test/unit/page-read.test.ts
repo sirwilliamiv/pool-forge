@@ -76,13 +76,15 @@ describe('readPage', () => {
       <label for="heat">Heater</label><input id="heat" type="checkbox" checked />
     `)
     const fields = readPage(doc).fields
-    expect(fields).toContainEqual({ label: 'Pool length', value: '32' })
-    expect(fields).toContainEqual({ label: 'Heater', value: 'yes' })
+    expect(fields).toContainEqual(expect.objectContaining({ label: 'Pool length', value: '32' }))
+    expect(fields).toContainEqual(expect.objectContaining({ label: 'Heater', value: 'yes' }))
   })
 
   it('reads definition lists', () => {
     const doc = render(`<dl><dt>Salesperson</dt><dd>Ray</dd></dl>`)
-    expect(readPage(doc).fields).toContainEqual({ label: 'Salesperson', value: 'Ray' })
+    expect(readPage(doc).fields).toContainEqual(
+      expect.objectContaining({ label: 'Salesperson', value: 'Ray' }),
+    )
   })
 
   it('never reads a password field', () => {
@@ -123,5 +125,64 @@ describe('readPage', () => {
 
   it('reads an empty page without throwing', () => {
     expect(readPage(render('')).headings).toEqual([])
+  })
+})
+
+describe('full page context', () => {
+  it('reads a value that is only displayed, not just form controls', () => {
+    // "Who is the customer" used to come back empty on a page showing the
+    // customer's name in plain sight, because only inputs were read.
+    const doc = render(`<dl><dt>Customer</dt><dd>Jane Whitfield</dd></dl>`)
+    const field = readPage(doc).fields.find(f => f.label === 'Customer')
+    expect(field?.value).toBe('Jane Whitfield')
+    expect(field?.editable).toBe(false)
+  })
+
+  it('says which fields can actually be changed', () => {
+    // Promising to change a rendered total is a promise the agent cannot keep.
+    const doc = render(`
+      <label for="n">Name</label><input id="n" value="Phone Demo" />
+      <dl><dt>Total</dt><dd>$41,200</dd></dl>
+    `)
+    const fields = readPage(doc).fields
+    expect(fields.find(f => f.label === 'Name')?.editable).toBe(true)
+    expect(fields.find(f => f.label === 'Total')?.editable).toBe(false)
+  })
+
+  it('reports the kind of each field so values are formatted right', () => {
+    const doc = render(`
+      <label for="e">Email</label><input id="e" type="email" />
+      <label for="d">Expires</label><input id="d" type="date" />
+      <label for="h">Heater</label><input id="h" type="checkbox" />
+    `)
+    const kinds = Object.fromEntries(readPage(doc).fields.map(f => [f.label, f.kind]))
+    expect(kinds['Email']).toBe('email')
+    expect(kinds['Expires']).toBe('date')
+    expect(kinds['Heater']).toBe('checkbox')
+  })
+
+  it('lists what a dropdown will accept', () => {
+    const doc = render(`
+      <label for="s">Status</label>
+      <select id="s"><option>Draft</option><option>Approved</option></select>
+    `)
+    expect(readPage(doc).fields.find(f => f.label === 'Status')?.choices).toEqual(['Draft', 'Approved'])
+  })
+
+  it('lists the buttons, flagging the dangerous ones', () => {
+    const doc = render(`<button>Save</button><button>Delete project</button>`)
+    const actions = readPage(doc).actions
+    expect(actions.find(a => a.label === 'Save')?.destructive).toBe(false)
+    expect(actions.find(a => a.label === 'Delete project')?.destructive).toBe(true)
+  })
+
+  it('does not offer a disabled button as something it can do', () => {
+    const doc = render(`<button disabled>Publish</button><button>Save</button>`)
+    expect(readPage(doc).actions.map(a => a.label)).toEqual(['Save'])
+  })
+
+  it('still never reads a password', () => {
+    const doc = render(`<label for="p">Password</label><input id="p" type="password" value="hunter2" />`)
+    expect(JSON.stringify(readPage(doc))).not.toContain('hunter2')
   })
 })

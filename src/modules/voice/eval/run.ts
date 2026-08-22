@@ -218,13 +218,33 @@ function apply(
       headings: ['Phone Demo', 'Project details'],
       sections: [{ heading: 'Project details', text: 'Salesperson, designer and proposal expiry.' }],
       fields: [
-        { label: 'Salesperson', value: '' },
-        { label: 'Designer', value: '' },
-        { label: 'Proposal expires', value: '' },
+        { label: 'Salesperson', value: '', editable: true, kind: 'text' },
+        { label: 'Designer', value: '', editable: true, kind: 'text' },
+        { label: 'Proposal expires', value: '', editable: true, kind: 'date' },
+        { label: 'Customer', value: 'Jane Whitfield', editable: false, kind: 'display' },
       ],
       tables: [],
+      actions: [
+        { label: 'Save', destructive: false },
+        { label: 'Delete project', destructive: true },
+      ],
       truncated: false,
     }
+  }
+
+  if (commandId === 'page.click') {
+    const label = String(args['label'] ?? '')
+    const destructive = /\b(delete|remove|discard|archive)\b/i.test(label)
+    if (destructive && args['confirm'] !== true) {
+      return {
+        label,
+        clicked: false,
+        reason: `"${label}" will remove something. Ask first.`,
+        available: null,
+        needsConfirmation: true,
+      }
+    }
+    return { label, clicked: true, reason: null, available: null, needsConfirmation: false }
   }
 
   if (commandId === 'page.fill') {

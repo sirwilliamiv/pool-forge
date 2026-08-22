@@ -116,3 +116,60 @@ describe('fillPage', () => {
     expect(fillPage([{ label: 'Name', value: '  Jane  ' }], doc)[0]?.value).toBe('Jane')
   })
 })
+
+describe('dates, numbers and radio groups', () => {
+  it('turns a spoken date into what the input accepts', () => {
+    // A type="date" field takes yyyy-mm-dd and nothing else. Given "March 4th"
+    // it stays empty and reports no error, so the agent would claim it set a
+    // date that was never set.
+    const doc = render(`<label for="d">Proposal expires</label><input id="d" type="date" />`)
+    fillPage([{ label: 'Proposal expires', value: 'March 4 2027' }], doc)
+    expect(doc.querySelector<HTMLInputElement>('#d')?.value).toBe('2027-03-04')
+  })
+
+  it('accepts a date already in machine format', () => {
+    const doc = render(`<label for="d">Expires</label><input id="d" type="date" />`)
+    fillPage([{ label: 'Expires', value: '2027-03-04' }], doc)
+    expect(doc.querySelector<HTMLInputElement>('#d')?.value).toBe('2027-03-04')
+  })
+
+  it('refuses a date it cannot read rather than guessing one', () => {
+    // A wrong expiry on a proposal is worse than a question.
+    const doc = render(`<label for="d">Expires</label><input id="d" type="date" />`)
+    const [result] = fillPage([{ label: 'Expires', value: 'sometime next spring' }], doc)
+    expect(result?.filled).toBe(false)
+    expect(doc.querySelector<HTMLInputElement>('#d')?.value).toBe('')
+  })
+
+  it('strips the words around a number', () => {
+    // "thirty two feet" arrives as text around a number, and a number input
+    // rejects anything else outright and stays silently empty.
+    const doc = render(`<label for="n">Length</label><input id="n" type="number" />`)
+    fillPage([{ label: 'Length', value: '32 feet' }], doc)
+    expect(doc.querySelector<HTMLInputElement>('#n')?.value).toBe('32')
+  })
+
+  it('sets an email field', () => {
+    const doc = render(`<label for="e">Email</label><input id="e" type="email" />`)
+    fillPage([{ label: 'Email', value: 'jane@whitfield.test' }], doc)
+    expect(doc.querySelector<HTMLInputElement>('#e')?.value).toBe('jane@whitfield.test')
+  })
+
+  it('picks a radio by the group name and the option name', () => {
+    // "Set status to approved", not "tick the approved radio button".
+    const doc = render(`
+      <fieldset><legend>Status</legend>
+        <label for="r1">Draft</label><input id="r1" type="radio" name="status" value="draft" />
+        <label for="r2">Approved</label><input id="r2" type="radio" name="status" value="approved" />
+      </fieldset>
+    `)
+    expect(fillPage([{ label: 'Status', value: 'Approved' }], doc)[0]?.filled).toBe(true)
+    expect(doc.querySelector<HTMLInputElement>('#r2')?.checked).toBe(true)
+  })
+
+  it('clears a field when given nothing', () => {
+    const doc = render(`<label for="n">Notes</label><input id="n" value="old" />`)
+    fillPage([{ label: 'Notes', value: '' }], doc)
+    expect(doc.querySelector<HTMLInputElement>('#n')?.value).toBe('')
+  })
+})

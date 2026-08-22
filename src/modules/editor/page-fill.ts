@@ -23,8 +23,90 @@ export interface FillOutcome {
 
 type Fillable = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
 
-const YES = new Set(['yes', 'true', 'on', 'checked', '1'])
-const NO = new Set(['no', 'false', 'off', 'unchecked', '0'])
+const YES = new Set(['yes', 'true', 'on', 'checked', 'tick', 'ticked', '1'])
+const NO = new Set(['no', 'false', 'off', 'unchecked', 'untick', '0'])
+
+/** Input types that want a machine format rather than what a person says. */
+const DATE_TYPES = new Set(['date', 'datetime-local', 'month', 'time'])
+
+const MONTHS = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+]
+
+/**
+ * A spoken date as the input element wants it.
+ *
+ * A `type="date"` field accepts `yyyy-mm-dd` and nothing else: given "March 4th"
+ * or "3/4/2027" it stays empty and reports no error, so the agent would say it
+ * set a date that was never set. Returns null rather than guessing at a string
+ * it cannot read, since a wrong expiry on a proposal is worse than a question.
+ */
+export function toInputDate(spoken: string, type: string): string | null {
+  const text = spoken.trim().toLowerCase()
+  if (!text) return ''
+
+  if (type === 'time') {
+    const match = /^(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?$/.exec(text)
+    if (!match) return null
+    let hour = Number(match[1])
+    const minute = match[2] ?? '00'
+    if (match[3] === 'pm' && hour < 12) hour += 12
+    if (match[3] === 'am' && hour === 12) hour = 0
+    if (hour > 23 || Number(minute) > 59) return null
+    return `${String(hour).padStart(2, '0')}:${minute}`
+  }
+
+  // Already machine-formatted. Passed through untouched so a model that read the
+  // field first and echoed its format is not second-guessed.
+  const iso = /^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(text)
+  if (iso) return type === 'month' ? `${iso[1]}-${iso[2]}` : text.slice(0, 10)
+
+  const parts = parseSpokenDate(text)
+  if (!parts) return null
+  const { year, month, day } = parts
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+
+  const stamp = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  return type === 'month' ? stamp.slice(0, 7) : stamp
+}
+
+function parseSpokenDate(text: string): { year: number; month: number; day: number } | null {
+  const cleaned = text.replace(/(\d+)(st|nd|rd|th)/g, '$1').replace(/,/g, ' ')
+
+  // "4 march 2027" or "march 4 2027"
+  const named = MONTHS.findIndex(month => cleaned.includes(month))
+  if (named >= 0) {
+    const numbers = cleaned.match(/\d+/g)?.map(Number) ?? []
+    const day = numbers.find(value => value <= 31)
+    const year = numbers.find(value => value >= 1_000)
+    if (day === undefined) return null
+    return { year: year ?? new Date().getFullYear(), month: named + 1, day }
+  }
+
+  // "3/4/2027". Read as US order, which is the order the rest of this app uses.
+  const slashes = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/.exec(cleaned.trim())
+  if (slashes) {
+    const year = Number(slashes[3])
+    return {
+      year: year < 100 ? 2_000 + year : year,
+      month: Number(slashes[1]),
+      day: Number(slashes[2]),
+    }
+  }
+
+  return null
+}
 
 /**
  * Set fields by their visible label.
@@ -41,6 +123,14 @@ export function fillPage(requests: FillRequest[], root?: ParentNode): FillOutcom
   const controls = Array.from(scope.querySelectorAll<Fillable>('input, select, textarea'))
 
   return requests.map(request => {
+    // A radio group is addressed by the group's name and the option's own label:
+    // "set status to approved", not "tick the approved radio button".
+    const radio = findRadioInGroup(controls, request)
+    if (radio) {
+      if (!radio.checked) radio.click()
+      return { label: request.label, value: request.value, filled: true }
+    }
+
     const control = findControl(controls, request.label)
     if (!control) {
       return { label: request.label, value: '', filled: false, reason: 'no field with that label' }
@@ -56,6 +146,39 @@ export function fillPage(requests: FillRequest[], root?: ParentNode): FillOutcom
 
     return applyValue(control, request)
   })
+}
+
+/**
+ * A radio inside a group named by the request's label.
+ *
+ * Grouped by the shared `name` or the enclosing fieldset legend, both of which
+ * are how a page says "these three belong together".
+ */
+function findRadioInGroup(controls: Fillable[], request: FillRequest): HTMLInputElement | null {
+  const wantedGroup = normalise(request.label)
+  const wantedOption = normalise(request.value)
+  if (!wantedGroup || !wantedOption) return null
+
+  const radios = controls.filter(
+    (control): control is HTMLInputElement =>
+      control instanceof HTMLInputElement && control.type === 'radio' && !control.disabled,
+  )
+
+  const inGroup = radios.filter(radio => {
+    const groupName = normalise(radio.name)
+    const legend = normalise(radio.closest('fieldset')?.querySelector('legend')?.textContent ?? '')
+    return (
+      (groupName !== '' && (groupName === wantedGroup || groupName.includes(wantedGroup))) ||
+      (legend !== '' && legend.includes(wantedGroup))
+    )
+  })
+
+  return (
+    inGroup.find(radio => normalise(labelOf(radio)) === wantedOption) ??
+    inGroup.find(radio => normalise(labelOf(radio)).includes(wantedOption)) ??
+    inGroup.find(radio => normalise(radio.value) === wantedOption) ??
+    null
+  )
 }
 
 /** Best label match: exact first, then a contains match, so "length" finds "Pool length". */
@@ -78,6 +201,20 @@ function findControl(controls: Fillable[], label: string): Fillable | null {
 function applyValue(control: Fillable, request: FillRequest): FillOutcome {
   const spoken = request.value.trim()
 
+  if (control instanceof HTMLInputElement && DATE_TYPES.has(control.type)) {
+    const iso = toInputDate(spoken, control.type)
+    if (!iso) {
+      return {
+        label: request.label,
+        value: '',
+        filled: false,
+        reason: `could not read "${spoken}" as a ${control.type}`,
+      }
+    }
+    setNatively(control, iso)
+    return { label: request.label, value: control.value, filled: true }
+  }
+
   if (control instanceof HTMLInputElement && (control.type === 'checkbox' || control.type === 'radio')) {
     const wanted = YES.has(spoken.toLowerCase()) ? true : NO.has(spoken.toLowerCase()) ? false : null
     if (wanted === null) {
@@ -85,6 +222,17 @@ function applyValue(control: Fillable, request: FillRequest): FillOutcome {
     }
     if (control.checked !== wanted) control.click()
     return { label: request.label, value: control.checked ? 'yes' : 'no', filled: true }
+  }
+
+  if (control instanceof HTMLInputElement && control.type === 'number' && spoken !== '') {
+    // "thirty two feet" arrives as text around a number. A number input rejects
+    // anything else outright and would silently stay empty.
+    const numeric = spoken.replace(/[^0-9.\-]/g, '')
+    if (numeric === '' || Number.isNaN(Number(numeric))) {
+      return { label: request.label, value: '', filled: false, reason: `"${spoken}" is not a number` }
+    }
+    setNatively(control, numeric)
+    return { label: request.label, value: control.value, filled: true }
   }
 
   if (control instanceof HTMLSelectElement) {

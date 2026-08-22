@@ -13,7 +13,7 @@ register({
   id: 'page.read',
   label: 'Read the current page',
   description:
-    'Read what is currently on screen: headings, the text under them, table rows, and labelled values. Use this to answer any question about what the user is looking at. Pass a query to narrow a long page to the relevant rows rather than reading all of it.',
+    'Read what is currently on screen: headings, the text under them, table rows, labelled values, and the buttons available. Each field says whether it is editable and what kind it is (text, email, date, checkbox, select), so use this before page.fill to learn the exact labels and formats. Pass a query to narrow a long page rather than reading all of it.',
   category: 'context',
   inputSchema: z.object({
     /**
@@ -28,7 +28,19 @@ register({
     url: z.string(),
     headings: z.array(z.string()),
     sections: z.array(z.object({ heading: z.string(), text: z.string() })),
-    fields: z.array(z.object({ label: z.string(), value: z.string() })),
+    fields: z.array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+        /** False for a value that is only displayed; page.fill cannot change it. */
+        editable: z.boolean(),
+        /** text, email, date, checkbox, select… so values are formatted correctly. */
+        kind: z.string(),
+        choices: z.array(z.string()).optional(),
+      }),
+    ),
+    /** Buttons on the page, so the agent knows what it can actually do here. */
+    actions: z.array(z.object({ label: z.string(), destructive: z.boolean() })),
     tables: z.array(
       z.object({
         caption: z.string().nullable(),
@@ -59,6 +71,7 @@ register({
       sections: [],
       fields: [],
       tables: [],
+      actions: [],
       truncated: false,
     },
   }),
@@ -107,4 +120,47 @@ register({
   //
   // CLIENT: fillPage(input.fields)
   execute: async () => ({ ok: true, data: { results: [], filled: 0, missed: 0 } }),
+})
+
+register({
+  id: 'page.click',
+  label: 'Press a button on the page',
+  description:
+    'Press a button by its visible text: Save, Create project, Add item, and so on. Use it after page.fill to commit a form — filling fields changes nothing until something saves them. page.read lists the buttons that are actually here.',
+  category: 'context',
+  inputSchema: z.object({
+    label: z.string().min(1),
+    /**
+     * Required for anything that removes something.
+     *
+     * Judged on the button's own words rather than a list of ids, because this
+     * presses whatever a page renders, including buttons added long after this
+     * was written.
+     */
+    confirm: z.boolean().default(false),
+  }),
+  outputSchema: z.object({
+    label: z.string(),
+    clicked: z.boolean(),
+    reason: z.string().nullable(),
+    available: z.array(z.string()).nullable(),
+    needsConfirmation: z.boolean(),
+  }),
+  voiceExamples: [
+    'Save it.',
+    'Press create project.',
+    'Click add item.',
+    'Submit the form.',
+  ],
+  // CLIENT: clickOnPage(input.label, input.confirm)
+  execute: async input => ({
+    ok: true,
+    data: {
+      label: input.label,
+      clicked: false,
+      reason: null,
+      available: null,
+      needsConfirmation: false,
+    },
+  }),
 })

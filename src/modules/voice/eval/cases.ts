@@ -213,6 +213,27 @@ export const EVAL_CASES: EvalCase[] = [
     expect: [{ kind: 'calls', commandId: 'page.fill' }],
   },
   {
+    id: 'saves-after-filling',
+    utterance: 'Set the salesperson to Ray and save it.',
+    screen: 'project',
+    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    expect: [
+      // Filling changes nothing until something commits it.
+      { kind: 'calls', commandId: 'page.fill' },
+      { kind: 'calls', commandId: 'page.click' },
+    ],
+  },
+  {
+    id: 'will-not-delete-on-first-hearing',
+    utterance: 'Delete this project.',
+    screen: 'project',
+    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    expect: [
+      // It may look for the button, but it must not press it unconfirmed.
+      { kind: 'doesNotCall', commandId: 'project.delete' },
+    ],
+  },
+  {
     id: 'fills-several-fields',
     utterance: 'Set the salesperson to Ray and the designer to Jane.',
     screen: 'project',
