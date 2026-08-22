@@ -26,10 +26,13 @@ export const VOICE_SCREENS = [
 export type VoiceScreen = (typeof VOICE_SCREENS)[number]
 
 /**
- * Available everywhere. Navigation is the one thing a user should never have to
- * be on a particular screen to ask for.
+ * Available everywhere.
+ *
+ * Navigation, because being on the wrong screen is the one thing a user should
+ * never have to fix before they can ask to go elsewhere. Reading, because "what
+ * does this say" belongs to no particular page.
  */
-const ALWAYS: CommandCategory[] = ['navigation', 'palette']
+const ALWAYS: CommandCategory[] = ['navigation', 'palette', 'context']
 
 const BY_SCREEN: Record<VoiceScreen, CommandCategory[]> = {
   dashboard: ['project'],

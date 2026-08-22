@@ -14,6 +14,7 @@ export type CommandCategory =
   | 'scene'
   | 'palette'
   | 'navigation'
+  | 'context'
   | 'import'
 
 export type CommandContext = {

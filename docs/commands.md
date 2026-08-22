@@ -1,16 +1,17 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **70**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **69**.
 
 ## Project
 
 ### `create.project` — Create project
 
-Create a new pool design project for a customer.
+Create a new pool design project. Give the customer name and a customer record is created with it.
 
 **Voice examples:**
 - "Create a new project for the Smith family."
 - "Start a new pool project named Backyard Build."
+- "New job for the Whitfields."
 
 ### `open.project` — Open project
 
@@ -248,13 +249,15 @@ Rename a shape in-canvas (e.g., from the inspector selection card).
 
 ## Measurement
 
-### `calculate.measurements` — Recalculate measurements
+### `calculate.measurements` — Calculate measurements
 
-Recompute area, perimeter, gallons, deck area, and other measurements for the current drawing.
+Report the measured figures for the current design: pool size, surface area, perimeter, gallons, deck area, coping. Read-only.
 
 **Voice examples:**
-- "Recalculate measurements."
-- "Update the numbers."
+- "How big is this pool?"
+- "What is the surface area?"
+- "How many gallons is it?"
+- "How much decking is there?"
 
 ### `set.pool.depth` — Set pool depth
 
@@ -284,11 +287,13 @@ Add a new line item to the active price book.
 
 ### `generate.quote` — Generate quote
 
-Build a quote from the current drawing measurements, selections, and price book.
+Price the current design against the active price book and report the total. Read-only: it prices what is saved, it does not change anything.
 
 **Voice examples:**
-- "Show me the quote."
-- "Generate the quote."
+- "Price this up."
+- "What does this come to?"
+- "How much is this pool?"
+- "Give me the total."
 
 ### `select.equipment` — Select equipment
 
@@ -303,11 +308,13 @@ Choose equipment options (heater, pump, sanitation, lighting, etc.) for the proj
 
 ### `run.validation` — Run validation
 
-Run the validation engine against the current project and return any warnings or blocking errors.
+Check the current design against the validation rules and report what is wrong. Read-only: it reports, it does not fix anything.
 
 **Voice examples:**
+- "Check this for problems."
 - "Run validation."
-- "Check the project for issues."
+- "Is anything wrong with this design?"
+- "What is stopping me sending this?"
 
 ## Export
 
@@ -452,6 +459,51 @@ Open the ⌘K command palette.
 ### `palette.run.suggestion` — Run a palette suggestion
 
 Dispatch a palette suggestion which delegates to an inner command id.
+
+## Navigation
+
+### `nav.focus` — Focus a panel
+
+Bring a panel or section into view and highlight it, for when someone asks to be shown where something is.
+
+**Voice examples:**
+- "Show me the quote."
+- "Highlight the validation issues."
+- "Open the materials panel."
+
+### `nav.goto` — Go to
+
+Navigate to a part of the app. Project-scoped destinations need a project id; if none is given the current project is used.
+
+**Voice examples:**
+- "Go to the price book."
+- "Open customer uploads."
+- "Take me to the editor."
+- "Show me the proposal."
+- "Back to the dashboard."
+
+### `nav.openProject` — Open project by name
+
+Find a project by customer or project name and open it. Reports the matches when more than one fits, rather than guessing.
+
+**Voice examples:**
+- "Open the Whitfield job."
+- "Pull up the Smith residence."
+- "Open the Henderson project in the editor."
+
+## Reading the screen
+
+### `page.read` — Read the current page
+
+Read what is currently on screen: headings, the text under them, table rows, and labelled values. Use this to answer any question about what the user is looking at. Pass a query to narrow a long page to the relevant rows rather than reading all of it.
+
+**Voice examples:**
+- "What does this page say?"
+- "What am I looking at?"
+- "Read me the quote."
+- "What does the salt cell cost?"
+- "How many projects are on this list?"
+- "What is the customer address on here?"
 
 ## Import
 

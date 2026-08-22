@@ -68,12 +68,24 @@ export const EVAL_CASES: EvalCase[] = [
     ],
   },
   {
+    // Sized on purpose. "Add a hot tub" with no size is ambiguous, and the agent
+    // is right to ask rather than guess — this case exists to test that "hot tub"
+    // maps to the spa stencil, not to punish it for asking a good question.
     id: 'add-spa-by-common-name',
-    utterance: 'Add a hot tub.',
+    utterance: 'Add a six by six hot tub.',
     screen: 'editor',
     expect: [
       { kind: 'calls', commandId: 'add.shape' },
       { kind: 'argText', commandId: 'add.shape', path: 'stencilId', equals: 'pool.spa' },
+    ],
+  },
+  {
+    id: 'unsized-spa-asks-first',
+    utterance: 'Add a hot tub.',
+    screen: 'editor',
+    expect: [
+      // No size was given. Asking beats dropping an arbitrary spa on the plan.
+      { kind: 'doesNotCall', commandId: 'add.shape' },
     ],
   },
   {
@@ -155,6 +167,25 @@ export const EVAL_CASES: EvalCase[] = [
     screen: 'editor',
     scene: [POOL_32x16],
     expect: [{ kind: 'calls', commandId: 'calculate.measurements' }],
+  },
+
+  // ---- reading the screen ---------------------------------------------
+  {
+    id: 'reads-the-page',
+    utterance: 'What am I looking at?',
+    screen: 'priceBook',
+    expect: [{ kind: 'calls', commandId: 'page.read' }],
+  },
+  {
+    id: 'reads-a-specific-value',
+    utterance: 'What does the salt cell cost?',
+    screen: 'priceBook',
+    expect: [
+      { kind: 'calls', commandId: 'page.read' },
+      // Narrowed, not read wholesale: a four hundred row price book arriving in
+      // full buries the answer it was asked for.
+      { kind: 'argText', commandId: 'page.read', path: 'query', equals: 'salt cell' },
+    ],
   },
 
   // ---- refusing --------------------------------------------------------

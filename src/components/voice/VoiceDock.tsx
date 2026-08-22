@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 
 import { registerClientHandler } from '@/lib/commands/dispatch'
+import { readPage } from '@/modules/editor/page-read'
 import { screenForPath } from '@/modules/voice/scope'
 import { useVoiceSession } from '@/modules/voice/client/useVoiceSession'
 
@@ -37,6 +38,14 @@ export function VoiceDock() {
     }
     registerClientHandler('nav.goto', go)
     registerClientHandler('nav.openProject', go)
+
+    // Registered here rather than in the editor's handler block: "what does this
+    // say" is a question about whatever screen the user is on, and the editor is
+    // the one screen where it is least needed.
+    registerClientHandler<{ query?: string }, ReturnType<typeof readPage>>(
+      'page.read',
+      input => readPage(undefined, input.query),
+    )
   }, [router])
 
   if (status === 'unavailable') return null

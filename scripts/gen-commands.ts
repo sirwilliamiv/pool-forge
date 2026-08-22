@@ -21,6 +21,8 @@ const CATEGORY_ORDER: CommandCategory[] = [
   'settings',
   'scene',
   'palette',
+  'navigation',
+  'context',
   'import',
 ]
 
@@ -38,6 +40,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   scene: 'Scene',
   palette: 'Palette',
   navigation: 'Navigation',
+  context: 'Reading the screen',
   import: 'Import',
 }
 
