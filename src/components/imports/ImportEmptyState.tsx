@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ImagePlus, Loader2, ScanLine, Upload } from 'lucide-react'
@@ -93,13 +93,16 @@ export function AwaitingImagesState({ project, sessionId }: UploadStateProps) {
   }
 
   const megabytes = Math.round(MAX_IMAGE_BYTES / (1024 * 1024))
+  const { dragging, dropProps } = useFileDrop((files) => void upload(files), uploading)
 
   return (
     <EmptyShell
       project={project}
       icon={<ImagePlus className="h-6 w-6 text-pfAccentStrong" aria-hidden />}
       title="This import has no images yet"
-      body={`Add up to ${MAX_IMAGES_PER_SESSION} images, ${megabytes} MB each. JPEG, PNG, WebP, HEIC, and single-page PDF are read. Location data is stripped before anything is stored or analyzed.`}
+      body={`Drag images in, or choose them. Up to ${MAX_IMAGES_PER_SESSION}, ${megabytes} MB each. JPEG, PNG, WebP, HEIC, and single-page PDF are read. Location data is stripped before anything is stored or analyzed.`}
+      dropProps={dropProps}
+      dragging={dragging}
     >
       <input
         ref={inputRef}
@@ -109,14 +112,29 @@ export function AwaitingImagesState({ project, sessionId }: UploadStateProps) {
         className="hidden"
         onChange={(e) => void upload(e.target.files)}
       />
-      <Button onClick={() => inputRef.current?.click()} disabled={uploading}>
-        {uploading ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        ) : (
-          <Upload className="h-4 w-4" aria-hidden />
-        )}
-        {uploading ? 'Uploading' : 'Choose images'}
-      </Button>
+      {/* A labelled target, not just a page that happens to accept a drop.
+          Somewhere to aim is the difference between discovering the feature and
+          not knowing it exists. */}
+      <div
+        className={
+          'flex w-full flex-col items-center gap-2 rounded-pfLg border-2 border-dashed px-6 py-6 transition ' +
+          (dragging
+            ? 'border-pfAccent bg-pfAccentSoft'
+            : 'border-border bg-transparent hover:border-pfAccent/50')
+        }
+      >
+        <p className="text-[12.5px] text-textMuted">
+          {dragging ? 'Drop to add them' : 'Drag images here'}
+        </p>
+        <Button onClick={() => inputRef.current?.click()} disabled={uploading}>
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Upload className="h-4 w-4" aria-hidden />
+          )}
+          {uploading ? 'Uploading' : 'Choose images'}
+        </Button>
+      </div>
       {error !== null ? (
         <p
           role="alert"
@@ -129,21 +147,110 @@ export function AwaitingImagesState({ project, sessionId }: UploadStateProps) {
   )
 }
 
+/**
+ * Accept files dropped anywhere on the page.
+ *
+ * Dragging an image onto a window whose only affordance is a button is what
+ * people try first, and a browser's default is to navigate away from the app and
+ * open the file on its own — losing the page rather than doing nothing. So the
+ * document-level handlers exist even when the drop lands outside the target:
+ * one to accept it, and one to make sure a near miss is a no-op instead of a
+ * navigation.
+ */
+export function useFileDrop(onFiles: (files: FileList) => void, disabled = false): {
+  dragging: boolean
+  dropProps: {
+    onDragOver: (e: React.DragEvent) => void
+    onDragEnter: (e: React.DragEvent) => void
+    onDragLeave: (e: React.DragEvent) => void
+    onDrop: (e: React.DragEvent) => void
+  }
+} {
+  const [dragging, setDragging] = useState(false)
+  // Counted rather than a boolean: dragging over a child fires leave on the
+  // parent, so a single flag flickers off halfway across the zone.
+  const depth = useRef(0)
+
+  useEffect(() => {
+    const swallow = (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      e.preventDefault()
+    }
+    document.addEventListener('dragover', swallow)
+    document.addEventListener('drop', swallow)
+    return () => {
+      document.removeEventListener('dragover', swallow)
+      document.removeEventListener('drop', swallow)
+    }
+  }, [])
+
+  const hasFiles = (e: React.DragEvent): boolean =>
+    Array.from(e.dataTransfer.types).includes('Files')
+
+  return {
+    dragging,
+    dropProps: {
+      onDragOver: (e) => {
+        if (!hasFiles(e) || disabled) return
+        e.preventDefault()
+        // Tells the cursor this is a copy, not a move or a link.
+        e.dataTransfer.dropEffect = 'copy'
+      },
+      onDragEnter: (e) => {
+        if (!hasFiles(e) || disabled) return
+        e.preventDefault()
+        depth.current += 1
+        setDragging(true)
+      },
+      onDragLeave: (e) => {
+        if (!hasFiles(e) || disabled) return
+        e.preventDefault()
+        depth.current = Math.max(0, depth.current - 1)
+        if (depth.current === 0) setDragging(false)
+      },
+      onDrop: (e) => {
+        if (!hasFiles(e) || disabled) return
+        e.preventDefault()
+        depth.current = 0
+        setDragging(false)
+        if (e.dataTransfer.files.length > 0) onFiles(e.dataTransfer.files)
+      },
+    },
+  }
+}
+
 function EmptyShell({
   project,
   icon,
   title,
   body,
   children,
+  dropProps,
+  dragging = false,
 }: {
   project: ProjectView
   icon: React.ReactNode
   title: string
   body: string
   children: React.ReactNode
+  dropProps?: {
+    onDragOver: (e: React.DragEvent) => void
+    onDragEnter: (e: React.DragEvent) => void
+    onDragLeave: (e: React.DragEvent) => void
+    onDrop: (e: React.DragEvent) => void
+  }
+  dragging?: boolean
 }) {
   return (
-    <div className="flex min-h-[70vh] items-center justify-center px-6 py-16">
+    // The whole panel is the target, not only the dashed box. Aiming at a small
+    // rectangle is a needless miss when the page has nothing else on it.
+    <div
+      {...dropProps}
+      className={
+        'flex min-h-[70vh] items-center justify-center px-6 py-16 transition ' +
+        (dragging ? 'bg-pfAccentSoft/40' : '')
+      }
+    >
       <div className="flex max-w-lg flex-col items-center gap-4 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-pfLg border border-pfAccent/25 bg-pfAccentSoft">
           {icon}

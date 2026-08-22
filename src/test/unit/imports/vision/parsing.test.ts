@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseDimension, parseDimensionToInches, parseScaleLegend } from '@/modules/imports/vision'
+import { isOffsetQualifier, parseDimension, parseDimensionToInches, parseScaleLegend } from '@/modules/imports/vision'
 import { findJsonObject, parseModelJson, stripCodeFences } from '@/modules/imports/vision/json'
 import { fixture } from './helpers'
 
@@ -114,5 +114,56 @@ describe('parseModelJson', () => {
 
   it('strips fences without a language tag', () => {
     expect(stripCodeFences('```\n{"a":1}\n```')).toBe('{"a":1}')
+  })
+})
+
+describe('measurements that describe something', () => {
+  // Found by watching a real analysis. A site plan labelled "5' easement" came
+  // back as "unrecognized dimension format" and the number was lost with it:
+  // the patterns are anchored, so any word after the measurement failed the
+  // whole parse.
+
+  it('reads a dimension that carries a label', () => {
+    const parsed = parseDimension("5' easement")
+    expect(parsed.inches).toBe(60)
+    expect(parsed.qualifier).toBe('easement')
+    expect(parsed.reason).toBeNull()
+  })
+
+  it('reads the common offsets a plat is marked up with', () => {
+    for (const [text, inches] of [
+      ["10' setback", 120],
+      ['3 ft clearance', 36],
+      ['15 ft right-of-way', 180],
+    ] as const) {
+      expect(parseDimension(text).inches, text).toBe(inches)
+    }
+  })
+
+  it('knows which labels mean an offset rather than an object', () => {
+    // A setback is a rule about where you may not build. Deriving scale from one
+    // measures the wrong span, so the caller has to be able to tell them apart.
+    expect(isOffsetQualifier(parseDimension("5' easement").qualifier)).toBe(true)
+    expect(isOffsetQualifier(parseDimension("10' setback").qualifier)).toBe(true)
+    expect(isOffsetQualifier(parseDimension("32' pool").qualifier)).toBe(false)
+    expect(isOffsetQualifier(parseDimension("32'").qualifier)).toBe(false)
+  })
+
+  it('does not mistake the inches half of a dimension for a description', () => {
+    const parsed = parseDimension('4 ft 6 in')
+    expect(parsed.inches).toBe(54)
+    expect(parsed.qualifier).toBeNull()
+  })
+
+  it('still refuses text with no measurement in it', () => {
+    // Fixing the parse must not turn it into a guesser.
+    expect(parseDimension('easement').inches).toBeNull()
+    expect(parseDimension('about a car length').inches).toBeNull()
+  })
+
+  it('keeps a bare number with a label needing a default unit', () => {
+    expect(parseDimension('20 setback').inches).toBeNull()
+    expect(parseDimension('20 setback', { defaultUnit: 'ft' }).inches).toBe(240)
+    expect(parseDimension('20 setback', { defaultUnit: 'ft' }).assumedUnit).toBe(true)
   })
 })

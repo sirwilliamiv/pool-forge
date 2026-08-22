@@ -59,6 +59,7 @@ export { createRecordedClient, type RecordedClient, type RecordedResponse } from
 export { failedAnalysis, hashPrompt, runStructuredCall, type StructuredCallResult } from './runner'
 
 export {
+  isOffsetQualifier,
   parseDimension,
   parseDimensionToInches,
   parseScaleLegend,

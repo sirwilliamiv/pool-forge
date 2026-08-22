@@ -64,14 +64,57 @@ export interface ParsedDimension {
   /** True when `defaultUnit` had to be applied because no unit was written. */
   assumedUnit: boolean
   reason: string | null
+  /**
+   * Words that followed the measurement, verbatim.
+   *
+   * A drawing labels distances with what they are: `5' easement`, `10 ft
+   * setback`, `3' clearance`. The measurement is real and worth reading; the
+   * word changes what it describes. Reported rather than discarded, because a
+   * setback is a legal offset and not the size of anything drawn, and a caller
+   * deriving scale from it would be measuring the wrong span.
+   */
+  qualifier: string | null
+}
+
+/**
+ * Qualifiers that describe an offset rather than an object.
+ *
+ * Not a general vocabulary: only words that mean "this distance is a rule, not a
+ * thing". Anything else is left alone so an unfamiliar label is not silently
+ * demoted.
+ */
+const OFFSET_QUALIFIERS =
+  /\b(easement|setback|set back|right[- ]of[- ]way|row|buffer|clearance|offset|no[- ]build)\b/
+
+/** True when this measurement describes a required distance, not a drawn object. */
+export function isOffsetQualifier(qualifier: string | null): boolean {
+  return qualifier !== null && OFFSET_QUALIFIERS.test(qualifier.toLowerCase())
 }
 
 export function parseDimension(text: string, options: ParseDimensionOptions = {}): ParsedDimension {
-  const defaultUnit = options.defaultUnit ?? null
-  const normalized = normalize(text)
-  if (normalized === '') {
-    return { inches: null, assumedUnit: false, reason: 'empty dimension text' }
+  const full = normalize(text)
+  if (full === '') {
+    return { inches: null, assumedUnit: false, reason: 'empty dimension text', qualifier: null }
   }
+
+  // The whole string first. Splitting before trying this turned `32' 6"` into
+  // `32'` with `6"` mistaken for a description, quietly losing six inches.
+  const whole = parseMeasurement(full, options)
+  if (whole.inches !== null) return { ...whole, qualifier: null }
+
+  // Only now consider that a label followed the measurement. Before this an
+  // ordinary `5' easement` matched none of the anchored patterns and the number
+  // was lost with the word.
+  const { measurement, qualifier } = splitQualifier(full)
+  if (qualifier === null) return { ...whole, qualifier: null }
+
+  const parsed = parseMeasurement(measurement, options)
+  return { ...parsed, qualifier }
+}
+
+/** The patterns, against one string, with no notion of a trailing label. */
+function parseMeasurement(normalized: string, options: ParseDimensionOptions): Omit<ParsedDimension, 'qualifier'> {
+  const defaultUnit = options.defaultUnit ?? null
 
   const feetInches = FEET_INCHES.exec(normalized)
   if (feetInches !== null) {
@@ -98,12 +141,46 @@ export function parseDimension(text: string, options: ParseDimensionOptions = {}
       return { inches: null, assumedUnit: false, reason: 'non-positive dimension value' }
     }
     if (defaultUnit === null) {
-      return { inches: null, assumedUnit: false, reason: 'no unit written and no default unit for this image kind' }
+      return {
+        inches: null,
+        assumedUnit: false,
+        reason: 'no unit written and no default unit for this image kind',
+      }
     }
     return { inches: value * INCHES_PER_UNIT[defaultUnit], assumedUnit: true, reason: null }
   }
 
   return { inches: null, assumedUnit: false, reason: 'unrecognized dimension format' }
+}
+
+/** What a second measurement looks like following the first. */
+const CONTINUATION = /^(?:x|by|\*|×|-|to|\d)/
+
+/**
+ * Take the measurement off the front and keep the rest.
+ *
+ * Only splits where a unit or a number clearly ends, so `4 ft 6 in` stays whole
+ * and `5' easement` becomes `5'` plus `easement`.
+ */
+function splitQualifier(text: string): { measurement: string; qualifier: string | null } {
+  const leading =
+    /^(\d+(?:\.\d+)?\s*(?:'|ft\.?|feet|foot)\s*(?:-|\s)?\s*\d+(?:\.\d+)?\s*(?:"|''|in\.?|inch(?:es)?)?)\s+(.+)$/.exec(text) ??
+    /^(\d+(?:\.\d+)?\s*(?:'|"|''|ft\.?|feet|foot|in\.?|inch(?:es)?|m|meters?|metres?|cm|centimet(?:er|re)s?|yd|yds|yards?))\s+(.+)$/.exec(text) ??
+    /^(\d+(?:\.\d+)?)\s+([a-z].*)$/.exec(text)
+
+  if (!leading) return { measurement: text, qualifier: null }
+  const rest = (leading[2] ?? '').trim()
+  if (rest === '') return { measurement: text, qualifier: null }
+
+  // A trailing unit word is part of the measurement, not a description of it.
+  if (unitFrom(rest) !== null) return { measurement: text, qualifier: null }
+
+  // Neither is the other half of a compound expression. `12 x 24` is two
+  // dimensions and must still be refused rather than read as twelve of
+  // something, which is exactly the guess this parser exists not to make.
+  if (CONTINUATION.test(rest)) return { measurement: text, qualifier: null }
+
+  return { measurement: (leading[1] ?? '').trim(), qualifier: rest }
 }
 
 /** Convenience wrapper for callers that only want the number. */
