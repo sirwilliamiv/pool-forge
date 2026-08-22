@@ -395,6 +395,14 @@ model Export {
   @@index([projectId])
 }
 
+enum CommandSource {
+  UI
+  VOICE
+  API
+  IMPORT
+  CRON
+}
+
 model CommandAuditLog {
   id           String   @id @default(cuid())
   userId       String?
@@ -404,6 +412,10 @@ model CommandAuditLog {
   outputJson   Json     @default("{}")
   success      Boolean  @default(false)
   errorMessage String?
+  /// How the command was triggered. Without it a spoken action and a button
+  /// click are indistinguishable in the log, so "what does the voice agent
+  /// actually get wrong" is unanswerable.
+  source       CommandSource @default(UI)
   ranAt        DateTime @default(now())
 
   user User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -415,6 +427,8 @@ model CommandAuditLog {
   @@index([ranAt])
   @@index([userId, ranAt])
   @@index([orgId, commandId, ranAt])
+  // The eval question: what did voice do, and did it work.
+  @@index([orgId, source, ranAt])
 }
 
 model AppSetting {

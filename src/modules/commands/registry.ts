@@ -35,6 +35,15 @@ export type EditorCommand<I = unknown, O = unknown> = {
   outputSchema: z.ZodType<O>
   permission?: string
   voiceExamples?: string[]
+  /**
+   * Registered but not built yet: `execute` returns "not implemented".
+   *
+   * Declared rather than inferred so the voice layer can leave it out of the
+   * spoken surface. A model handed a tool that always fails will keep trying
+   * it, apologise, and try again, and the user hears the app claim it cannot do
+   * something it never could.
+   */
+  unimplemented?: boolean
   execute: (input: I, ctx: CommandContext) => Promise<CommandResult<O>>
 }
 

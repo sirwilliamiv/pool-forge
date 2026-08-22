@@ -105,6 +105,7 @@ register({
     'Open the Smith project.',
     'Open project 12345.',
   ],
+  unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
 })
 
@@ -123,5 +124,6 @@ register({
     'Save the project.',
     'Save my work.',
   ],
+  unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
 })

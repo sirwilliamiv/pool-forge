@@ -253,6 +253,13 @@ export function buildToolSurface(categories: readonly CommandCategory[]): ToolSu
       refused.push({ name: command.id, reason: 'no voice examples, so it has no spoken form' })
       continue
     }
+    // Offering a tool whose execute returns "not implemented" is worse than not
+    // offering it: the model keeps trying, apologises, and tries again, and the
+    // user hears the app claim it cannot do something it never could.
+    if (command.unimplemented) {
+      refused.push({ name: command.id, reason: 'registered but not built yet' })
+      continue
+    }
     const declaration = toDeclaration(command)
     if (isRefused(declaration)) refused.push(declaration)
     else tools.push(declaration)

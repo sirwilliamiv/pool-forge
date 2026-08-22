@@ -17,5 +17,6 @@ register({
     'Update the default deck material to pavers.',
     'Change my company default coping color.',
   ],
+  unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
 })

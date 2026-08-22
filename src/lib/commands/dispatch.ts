@@ -47,16 +47,26 @@ export function _resetClientHandlersForTest(): void {
   _clientHandlers.clear()
 }
 
+/**
+ * How the action was triggered, for the audit row.
+ *
+ * Mirrors the Prisma `CommandSource` enum. Declared as a plain union rather than
+ * imported so the browser bundle does not pull in the Prisma client for the sake
+ * of five strings.
+ */
+export type DispatchSource = 'UI' | 'VOICE' | 'API' | 'IMPORT' | 'CRON'
+
 export async function dispatch<I, O>(
   id: string,
   input: I,
+  source: DispatchSource = 'UI',
 ): Promise<DispatchResult<O>> {
   let res: Response
   try {
     res = await fetch('/api/commands', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, input }),
+      body: JSON.stringify({ id, input, source }),
     })
   } catch (err) {
     return {
@@ -121,11 +131,15 @@ export async function dispatch<I, O>(
  * the popup blocker if it waited on the round-trip (the export commands — their
  * server half still writes the Export row, it just doesn't gate the tab).
  */
-export function dispatchEphemeral<I, O>(id: string, input: I): DispatchResult<O> {
+export function dispatchEphemeral<I, O>(
+  id: string,
+  input: I,
+  source: DispatchSource = 'UI',
+): DispatchResult<O> {
   void fetch('/api/commands', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ id, input }),
+    body: JSON.stringify({ id, input, source }),
   }).catch(() => {
     // Audit is best-effort for ephemeral actions.
   })

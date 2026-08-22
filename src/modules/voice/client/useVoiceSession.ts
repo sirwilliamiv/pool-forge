@@ -138,7 +138,7 @@ export function useVoiceSession(screen: VoiceScreen, projectId?: string): UseVoi
         setError(reason)
       }),
       current.onToolCall(event => {
-        void runToolCall(current, event)
+        void runToolCall(current, event, projectId)
       }),
     ]
 
@@ -180,9 +180,15 @@ export function useVoiceSession(screen: VoiceScreen, projectId?: string): UseVoi
  * scopes to the org and writes the audit row, and then runs the client handler
  * so the editor store updates before the model has finished its sentence.
  */
-async function runToolCall(bridge: VoiceBridge, event: VoiceToolCallEvent): Promise<void> {
+async function runToolCall(
+  bridge: VoiceBridge,
+  event: VoiceToolCallEvent,
+  projectId: string | undefined,
+): Promise<void> {
   try {
-    const result = await dispatch(event.commandId, event.args)
+    // Labelled VOICE so the audit log can answer "what did the agent actually
+    // do, and did it work" — which is the whole basis of evaluating it.
+    const result = await dispatch(event.commandId, withProjectId(event.args, projectId), 'VOICE')
     bridge.respond({
       requestId: event.requestId,
       outcome: result.ok
@@ -195,6 +201,21 @@ async function runToolCall(bridge: VoiceBridge, event: VoiceToolCallEvent): Prom
       outcome: { ok: false, summary: `${event.commandId} could not be completed.` },
     })
   }
+}
+
+/**
+ * Fill in the project from the URL when the model left it out.
+ *
+ * The model cannot know a project id: nobody speaks one, and asking it to
+ * remember one across a conversation is asking it to invent one. The browser
+ * knows exactly which project is open, so it supplies it. Zod strips unknown
+ * keys, so adding it to a command that takes no project is harmless.
+ */
+function withProjectId(args: unknown, projectId: string | undefined): unknown {
+  if (!projectId || !args || typeof args !== 'object' || Array.isArray(args)) return args
+  const record = args as Record<string, unknown>
+  if (typeof record['projectId'] === 'string' && record['projectId']) return args
+  return { ...record, projectId }
 }
 
 /**

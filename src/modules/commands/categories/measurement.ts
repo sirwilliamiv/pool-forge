@@ -20,6 +20,7 @@ register({
     'Set the shallow end to three feet.',
     'Set the deep end to five and a half feet.',
   ],
+  unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
 })
 
@@ -43,26 +44,57 @@ register({
     'Resize the selected pool to two hundred thirty eight square feet.',
     'Make the pool three hundred square feet.',
   ],
+  unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
 })
 
 register({
   id: 'calculate.measurements',
-  label: 'Recalculate measurements',
-  description: 'Recompute area, perimeter, gallons, deck area, and other measurements for the current drawing.',
+  label: 'Calculate measurements',
+  description:
+    'Report the measured figures for the current design: pool size, surface area, perimeter, gallons, deck area, coping. Read-only.',
   category: 'measurement',
   inputSchema: z.object({
     projectId: z.string(),
   }),
   outputSchema: z.object({
-    poolArea: z.number(),
-    perimeter: z.number(),
+    hasPool: z.boolean(),
+    poolLengthFt: z.number(),
+    poolWidthFt: z.number(),
+    poolSurfaceArea: z.number(),
+    poolPerimeter: z.number(),
+    poolGallons: z.number(),
+    poolAvgDepth: z.number(),
     deckArea: z.number(),
-    gallons: z.number(),
+    copingLinearFeet: z.number(),
   }),
   voiceExamples: [
-    'Recalculate measurements.',
-    'Update the numbers.',
+    'How big is this pool?',
+    'What is the surface area?',
+    'How many gallons is it?',
+    'How much decking is there?',
   ],
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+
+    const { loadProjectSnapshot } = await import('@/modules/projects/snapshot')
+    const snapshot = await loadProjectSnapshot(input.projectId, ctx.orgId)
+    if (!snapshot) return { ok: false, error: 'That project is not in this organisation.' }
+
+    const m = snapshot.measurements
+    return {
+      ok: true,
+      data: {
+        hasPool: m.hasPool,
+        poolLengthFt: m.poolLengthFt,
+        poolWidthFt: m.poolWidthFt,
+        poolSurfaceArea: m.poolSurfaceArea,
+        poolPerimeter: m.poolPerimeter,
+        poolGallons: m.poolGallons,
+        poolAvgDepth: m.poolAvgDepth,
+        deckArea: m.deckArea,
+        copingLinearFeet: m.copingLinearFeet,
+      },
+    }
+  },
 })

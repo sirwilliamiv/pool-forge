@@ -29,16 +29,29 @@ const EVERY_CATEGORY: CommandCategory[] = [
 describe('voice tool surface', () => {
   it('covers the overwhelming majority of the registry', () => {
     const { tools, refused } = buildToolSurface(EVERY_CATEGORY)
-    expect(tools.length).toBeGreaterThan(50)
+    expect(tools.length).toBeGreaterThan(40)
     // Every command is accounted for: published or refused with a stated reason.
     const registered = all().filter(c => EVERY_CATEGORY.includes(c.category)).length
     expect(tools.length + refused.length).toBe(registered)
+    for (const entry of refused) expect(entry.reason).toBeTruthy()
   })
 
   it('gives every refusal a reason a human can act on', () => {
     const { refused } = buildToolSurface(EVERY_CATEGORY)
     for (const entry of refused) {
       expect(entry.reason.length, `${entry.name} refused without explanation`).toBeGreaterThan(10)
+    }
+  })
+
+  it('never publishes a command that cannot run', () => {
+    // A tool whose execute returns "not implemented" is worse than a missing
+    // one: the model keeps trying it, apologises, and tries again.
+    const { tools } = buildToolSurface(EVERY_CATEGORY)
+    const published = new Set(tools.map(tool => tool.name))
+    for (const command of all()) {
+      if (command.unimplemented) {
+        expect(published.has(command.id), `${command.id} is a stub but is offered by voice`).toBe(false)
+      }
     }
   })
 

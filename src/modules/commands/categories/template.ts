@@ -18,6 +18,7 @@ register({
     'Apply the standard rectangle pool template.',
     'Drop in the kidney pool template.',
   ],
+  unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
 })
 
@@ -38,5 +39,6 @@ register({
     'Save this as a template called Standard Backyard.',
     'Save shape as a template.',
   ],
+  unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
 })

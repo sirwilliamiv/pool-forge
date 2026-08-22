@@ -6,6 +6,8 @@
 // `CommandAuditLog` row, so the shared behaviour lives here rather than being
 // copied and drifting.
 
+import { CommandSource } from '@prisma/client'
+
 import { get } from './registry'
 import type { CommandContext, CommandResult } from './registry'
 
@@ -21,6 +23,7 @@ async function writeAudit(args: {
   ctx: CommandContext
   input: unknown
   result: CommandResult
+  source: CommandSource
 }): Promise<void> {
   try {
     const { db } = await import('@/lib/db')
@@ -33,6 +36,7 @@ async function writeAudit(args: {
         outputJson: (args.result.ok ? args.result.data : {}) as object,
         success: args.result.ok,
         errorMessage: args.result.ok ? null : args.result.error,
+        source: args.source,
       },
     })
   } catch (err) {
@@ -49,11 +53,12 @@ export async function dispatchCommand<T = unknown>(
   commandId: string,
   input: unknown,
   ctx: CommandContext,
+  source: CommandSource = CommandSource.UI,
 ): Promise<CommandResult<T>> {
   const command = get(commandId)
   if (!command) {
     const result = { ok: false as const, error: `unknown command: ${commandId}` }
-    await writeAudit({ commandId, ctx, input, result })
+    await writeAudit({ commandId, ctx, input, result, source })
     return result
   }
 
@@ -65,7 +70,7 @@ export async function dispatchCommand<T = unknown>(
         .map((i) => `${i.path.join('.')}: ${i.message}`)
         .join('; ')}`,
     }
-    await writeAudit({ commandId, ctx, input, result })
+    await writeAudit({ commandId, ctx, input, result, source })
     return result
   }
 
@@ -76,6 +81,6 @@ export async function dispatchCommand<T = unknown>(
     result = { ok: false, error: err instanceof Error ? err.message : 'unknown error' }
   }
 
-  await writeAudit({ commandId, ctx, input: parsed.data, result })
+  await writeAudit({ commandId, ctx, input: parsed.data, result, source })
   return result as CommandResult<T>
 }
