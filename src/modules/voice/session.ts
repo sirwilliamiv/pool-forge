@@ -46,6 +46,16 @@ export interface SessionOptions {
   config?: VoiceConfig
   /** Injected so tests can drive the whole session without a network. */
   connect?: LiveConnect
+  /**
+   * How a screen name becomes a tool surface.
+   *
+   * Defaults to reading the local command registry, which is right in the web
+   * app and in tests. The Electron main process overrides it: registering every
+   * command there would drag Prisma and next-auth into the process that owns
+   * the microphone, for nothing but a list of names and schemas. The renderer
+   * already has the registry, so it sends the surfaces at handshake.
+   */
+  resolveScope?: (screen: VoiceScreen) => ScreenScope
 }
 
 /** The slice of the Live API this module uses, so it can be faked in tests. */
@@ -126,7 +136,8 @@ export async function startVoiceSession(
   const config = options.config ?? loadVoiceConfig()
   const log = host.log ?? (() => {})
 
-  let scope = scopeFor(options.screen)
+  const resolveScope = options.resolveScope ?? scopeFor
+  let scope = resolveScope(options.screen)
   let live: LiveSession | null = null
   let closed = false
   let resumptionHandle: string | undefined
@@ -170,17 +181,22 @@ export async function startVoiceSession(
     // Destructive commands do not run on first hearing. Voice misrecognition
     // plus an apply or a delete is how a drawing disappears, so the model is
     // told to confirm out loud and the call only lands on the second pass.
-    if (isDestructive(name) && !isConfirmed(args)) {
-      awaitingConfirmation = { commandId: name, args }
-      log('voice_awaiting_confirmation', { name })
-      return respond(call, {
-        ok: false,
-        summary:
-          'This will change or remove work that cannot be recovered. Tell the user exactly what will be lost, and call this again with confirm set to true only after they clearly agree.',
-      })
+    // Destructive commands do not run on first hearing, and a confirmation only
+    // counts against a call this session already refused. Without that pairing a
+    // model could send `confirm: true` straight away and the user would never
+    // hear what it was about to destroy.
+    if (isDestructive(name)) {
+      if (!isConfirmed(args) || awaitingConfirmation?.commandId !== name) {
+        awaitingConfirmation = { commandId: name, args }
+        log('voice_awaiting_confirmation', { name })
+        return respond(call, {
+          ok: false,
+          summary:
+            'This will change or remove work that cannot be recovered. Tell the user exactly what will be lost, and call this again with confirm set to true only after they clearly agree.',
+        })
+      }
+      awaitingConfirmation = null
     }
-
-    if (awaitingConfirmation?.commandId === name) awaitingConfirmation = null
 
     try {
       const outcome = await host.runCommand(name, args)
@@ -309,7 +325,7 @@ export async function startVoiceSession(
     },
     setScreen(next) {
       if (next === scope.screen) return
-      scope = scopeFor(next)
+      scope = resolveScope(next)
       log('voice_screen_changed', { screen: next, tools: scope.surface.tools.length })
       // The tool surface is fixed at connect, so changing it means reconnecting.
       // The resumption handle carries the conversation across, so the user keeps

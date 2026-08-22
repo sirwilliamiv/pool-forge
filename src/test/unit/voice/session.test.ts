@@ -177,13 +177,31 @@ describe('voice session', () => {
     await session.close()
   })
 
-  it('runs the destructive command once it carries a confirmation', async () => {
+  it('runs the destructive command once it has been announced and confirmed', async () => {
     const run = vi.fn(async () => ok)
     const { host } = hostWith(run)
     const session = await startVoiceSession(host, { screen: 'import', config: CONFIG, connect: h.connect })
 
-    h.emit({ toolCall: { functionCalls: [{ id: 'c2', name: 'import.intent.apply', args: { sessionId: 's', projectId: 'p', confirm: true } }] } })
+    const args = { sessionId: 's', projectId: 'p' }
+    h.emit({ toolCall: { functionCalls: [{ id: 'c1', name: 'import.intent.apply', args }] } })
+    await vi.waitFor(() => expect(h.toolResponses).toHaveLength(1))
+
+    h.emit({ toolCall: { functionCalls: [{ id: 'c2', name: 'import.intent.apply', args: { ...args, confirm: true } }] } })
     await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(1))
+    await session.close()
+  })
+
+  it('will not accept a confirmation for something it never refused', async () => {
+    // Otherwise the confirmation is worthless: a model could send `confirm: true`
+    // on the first call and the user would never hear what was about to go.
+    const run = vi.fn(async () => ok)
+    const { host } = hostWith(run)
+    const session = await startVoiceSession(host, { screen: 'import', config: CONFIG, connect: h.connect })
+
+    h.emit({ toolCall: { functionCalls: [{ id: 'c1', name: 'import.intent.apply', args: { sessionId: 's', projectId: 'p', confirm: true } }] } })
+    await vi.waitFor(() => expect(h.toolResponses).toHaveLength(1))
+
+    expect(run, 'a self-issued confirmation must not count').not.toHaveBeenCalled()
     await session.close()
   })
 

@@ -1,8 +1,36 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { app, BrowserWindow, shell, Menu, dialog } = require('electron')
+const { app, BrowserWindow, shell, Menu, dialog, ipcMain, systemPreferences } = require('electron')
 const path = require('node:path')
+const fs = require('node:fs')
 const { spawn } = require('node:child_process')
 const http = require('node:http')
+
+const { installVoiceHost } = require('./voice/host.cjs')
+
+// `next dev` reads .env for the web process; the main process is separate and
+// would otherwise start with no GCP project and voice quietly disabled.
+function loadDotEnv() {
+  for (const name of ['.env.local', '.env']) {
+    const file = path.join(app.getAppPath(), name)
+    let text
+    try {
+      text = fs.readFileSync(file, 'utf8')
+    } catch {
+      continue
+    }
+    for (const line of text.split('\n')) {
+      const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line)
+      if (!match) continue
+      const key = match[1]
+      if (process.env[key] !== undefined) continue
+      // Values from Secret Manager and from editors alike arrive with quotes or
+      // a trailing newline; both break header and comparison use downstream.
+      process.env[key] = match[2].trim().replace(/^["']|["']$/g, '')
+    }
+  }
+}
+
+loadDotEnv()
 
 const IS_DEV = !app.isPackaged
 const DEV_URL = process.env.POOL_FORGE_DEV_URL || 'http://localhost:3001'
@@ -65,7 +93,14 @@ async function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, 'voice', 'preload.cjs'),
     },
+  })
+
+  // getUserMedia inside the renderer is denied by default and fails silently,
+  // which looks exactly like a broken microphone. Grant audio, refuse the rest.
+  mainWindow.webContents.session.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(permission === 'media' || permission === 'audioCapture')
   })
 
   // Open external links in the user's default browser instead of new windows.
@@ -113,8 +148,25 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   buildMenu()
+
+  // macOS gates the microphone at the OS level as well. Asking here means the
+  // prompt appears once at launch rather than in the middle of a sentence.
+  if (process.platform === 'darwin') {
+    try {
+      await systemPreferences.askForMediaAccess('microphone')
+    } catch (err) {
+      console.log('[voice] microphone access request failed:', err && err.message)
+    }
+  }
+
+  installVoiceHost({
+    ipcMain,
+    getWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null),
+    log: (event, fields) => console.log(`[voice] ${event}`, JSON.stringify(fields)),
+  })
+
   void createWindow()
 
   app.on('activate', () => {

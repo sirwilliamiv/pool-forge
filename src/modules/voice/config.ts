@@ -14,7 +14,7 @@ import { z } from 'zod'
  * problem. `pnpm voice:models` probes what the configured project can actually
  * reach.
  */
-export const DEFAULT_LIVE_MODEL = 'gemini-live-2.5-flash-preview-native-audio'
+export const DEFAULT_LIVE_MODEL = 'gemini-live-2.5-flash-native-audio'
 
 /** Live audio is 16 kHz mono PCM16 in, 24 kHz out. Not negotiable by config. */
 export const INPUT_SAMPLE_RATE = 16_000

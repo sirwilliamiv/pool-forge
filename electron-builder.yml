@@ -8,6 +8,8 @@ files:
   - electron/**/*
   - package.json
   - "!**/.next/cache/**"
+  # Built by `pnpm voice:build`; the maps are for local debugging only.
+  - "!electron/voice/*.map"
 extraResources:
   - from: .next/standalone
     to: standalone
@@ -23,6 +25,10 @@ mac:
   artifactName: "${productName}-${version}-${arch}.${ext}"
   hardenedRuntime: false
   gatekeeperAssess: false
+  extendInfo:
+    # Without this string macOS kills the app the first time it asks for the
+    # microphone, rather than showing a prompt.
+    NSMicrophoneUsageDescription: Pool Forge uses the microphone so you can design and price a pool by talking to it.
 win:
   target:
     - target: nsis
