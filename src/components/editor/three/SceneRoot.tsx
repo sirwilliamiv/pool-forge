@@ -27,7 +27,68 @@ import { TileBand } from './objects/TileBand'
 import { Trees } from './objects/Trees'
 import { Water } from './objects/Water'
 
-function renderShape(shape: Shape) {
+/** Shapes a deck must be cut around: anything you would fall into. */
+const CUT_INTO_DECK = new Set<ShapeKind>([
+  ShapeKind.RECTANGLE_POOL,
+  ShapeKind.POLYGON_POOL,
+  ShapeKind.SPA,
+])
+
+const DECK_KINDS = new Set<ShapeKind>([
+  ShapeKind.CONCRETE_DECK,
+  ShapeKind.PAVER_DECK,
+  ShapeKind.GRASS_AREA,
+])
+
+interface DeckCutout {
+  kind: 'rect' | 'circle'
+  x: number
+  z: number
+  width?: number
+  height?: number
+  radius?: number
+}
+
+/**
+ * Holes for the pools a deck sits over.
+ *
+ * `Deck` has always accepted cutouts; nothing ever computed any, so a deck laid
+ * around a pool rendered as a solid slab straight over the water. That is what
+ * a deck drawn large enough to surround a pool always is, and it is the first
+ * thing the voice agent builds, so the pool simply vanished.
+ */
+export function cutoutsFor(deck: Shape, shapes: Shape[]): DeckCutout[] {
+  const deckLeft = deck.x
+  const deckTop = deck.y
+  const cutouts: DeckCutout[] = []
+
+  for (const other of shapes) {
+    if (other.hidden || !CUT_INTO_DECK.has(other.kind)) continue
+
+    // Only cut what actually overlaps: an unrelated spa across the yard would
+    // otherwise punch a hole in open concrete.
+    const overlaps =
+      other.x < deckLeft + deck.width &&
+      other.x + other.width > deckLeft &&
+      other.y < deckTop + deck.height &&
+      other.y + other.height > deckTop
+    if (!overlaps) continue
+
+    // Deck-local, since the mesh is built around the deck's own centre.
+    const x = feet(other.x + other.width / 2 - (deckLeft + deck.width / 2))
+    const z = feet(other.y + other.height / 2 - (deckTop + deck.height / 2))
+
+    if (other.displayHint?.['poolShape'] === 'ellipse') {
+      cutouts.push({ kind: 'circle', x, z, radius: feet(Math.max(other.width, other.height) / 2) })
+    } else {
+      cutouts.push({ kind: 'rect', x, z, width: feet(other.width), height: feet(other.height) })
+    }
+  }
+
+  return cutouts
+}
+
+function renderShape(shape: Shape, shapes: Shape[]) {
   switch (shape.kind) {
     case ShapeKind.RECTANGLE_POOL:
       return shape.displayHint?.poolShape === 'ellipse' ? (
@@ -56,7 +117,7 @@ function renderShape(shape: Shape) {
     case ShapeKind.CONCRETE_DECK:
     case ShapeKind.PAVER_DECK:
     case ShapeKind.GRASS_AREA:
-      return <Deck shape={shape} />
+      return <Deck shape={shape} cutouts={cutoutsFor(shape, shapes)} />
     case ShapeKind.STENCIL:
       return renderStencilShape(shape)
   }
@@ -142,6 +203,20 @@ function renderStencilShape(shape: Shape) {
   return <GenericStencil shape={shape} />
 }
 
+/**
+ * Changes that alter where a hole goes.
+ *
+ * `Deck` memoises its geometry on the cutouts array, which is rebuilt every
+ * render, so the key has to change when a pool moves or the deck keeps its
+ * stale slab.
+ */
+function cutoutKey(shapes: Shape[]): string {
+  return shapes
+    .filter(shape => CUT_INTO_DECK.has(shape.kind) && !shape.hidden)
+    .map(shape => `${shape.id}:${shape.x}:${shape.y}:${shape.width}:${shape.height}`)
+    .join('|')
+}
+
 export function SceneRoot() {
   const shapes = useShapesStore((s) => s.shapes)
   const flags = usePresentationFlags()
@@ -151,9 +226,11 @@ export function SceneRoot() {
       {shapes.map((shape) =>
         shape.hidden ? null : (
           <group
-            key={`${shape.id}-${shape.width}-${shape.height}-${shape.rotation ?? 0}`}
+            key={`${shape.id}-${shape.width}-${shape.height}-${shape.rotation ?? 0}-${
+              DECK_KINDS.has(shape.kind) ? cutoutKey(shapes) : ''
+            }`}
           >
-            {renderShape(shape)}
+            {renderShape(shape, shapes)}
           </group>
         ),
       )}
