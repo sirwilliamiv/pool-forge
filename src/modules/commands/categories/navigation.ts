@@ -169,32 +169,12 @@ register({
   },
 })
 
-register({
-  id: 'nav.setView',
-  label: 'Change the view',
-  description: 'Switch the editor between the plan, 3D and section views of the same scene.',
-  category: 'navigation',
-  inputSchema: z.object({ view: z.enum(['plan', '3d', 'section']) }),
-  outputSchema: z.object({ view: z.string() }),
-  voiceExamples: ['Switch to plan view.', 'Show me the 3D.', 'Give me a section.'],
-  execute: async input => ({ ok: true, data: { view: input.view } }),
-})
-
-register({
-  id: 'nav.setMode',
-  label: 'Change the mode',
-  description:
-    'Switch the editor between plan, design, build and customer presentation modes.',
-  category: 'navigation',
-  inputSchema: z.object({ mode: z.enum(['plan', 'design', 'build', 'customer']) }),
-  outputSchema: z.object({ mode: z.string() }),
-  voiceExamples: [
-    'Put it in customer mode.',
-    'Switch to build mode.',
-    'Show me what the customer sees.',
-  ],
-  execute: async input => ({ ok: true, data: { mode: input.mode } }),
-})
+// `nav.setView` and `nav.setMode` used to live here. They were removed: the
+// canvas category already registers `view.set.tab` and `mode.set.presentation`,
+// which do exactly the same thing and, unlike these, have client handlers wired
+// up. Two commands for one action is not redundancy the model tolerates well —
+// it picks one, and picking the unwired one produces a confident "done" with
+// nothing on screen.
 
 register({
   id: 'nav.focus',
@@ -202,19 +182,14 @@ register({
   description:
     'Bring a panel or section into view and highlight it, for when someone asks to be shown where something is.',
   category: 'navigation',
+  // Only panels that exist. An earlier version listed 'measurements' and
+  // 'sunStudy', which have no panel to bring forward, so the command would have
+  // reported success and highlighted nothing.
   inputSchema: z.object({
-    target: z.enum([
-      'layers',
-      'stencils',
-      'materials',
-      'quote',
-      'specs',
-      'validation',
-      'measurements',
-      'sunStudy',
-    ]),
+    target: z.enum(['layers', 'stencils', 'materials', 'design', 'specs', 'quote', 'validation']),
   }),
   outputSchema: z.object({ target: z.string() }),
   voiceExamples: ['Show me the quote.', 'Highlight the validation issues.', 'Open the materials panel.'],
+  // CLIENT: useViewStore.getState().focusPanel(input.target)
   execute: async input => ({ ok: true, data: { target: input.target } }),
 })

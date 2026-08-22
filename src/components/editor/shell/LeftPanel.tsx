@@ -7,6 +7,7 @@ import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { LayersTree } from './layers/LayersTree'
 import { StencilGrid } from './stencils/StencilGrid'
 import { MaterialGrid, type RawMaterial } from './materials/MaterialGrid'
+import { focusRing, useFocusFlash } from './useFocusFlash'
 
 const TABS: { id: LeftTab; label: string }[] = [
   { id: 'layers', label: 'Layers' },
@@ -30,9 +31,12 @@ export function LeftPanel({ materials = [] }: LeftPanelProps) {
   const viewMode = useViewStore((s) => s.viewMode)
   const setViewMode = useViewStore((s) => s.setViewMode)
   const [search, setSearch] = useState('')
+  const flashing = useFocusFlash(leftTab)
 
   return (
-    <aside className="flex h-full min-h-0 w-[248px] flex-col overflow-hidden border-r border-borderLight bg-white">
+    <aside
+      className={`flex h-full min-h-0 w-[248px] flex-col overflow-hidden border-r border-borderLight bg-white transition-shadow ${focusRing(flashing)}`}
+    >
       <div className="flex items-center gap-3 border-b border-borderLight px-3">
         {TABS.map((tab) => {
           const active = tab.id === leftTab

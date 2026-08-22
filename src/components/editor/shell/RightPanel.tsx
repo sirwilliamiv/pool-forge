@@ -6,6 +6,7 @@ import { useViewStore, type RightTab } from '@/modules/editor/state/viewStore'
 import type { QuoteSummary } from '@/modules/pricing/engine'
 import { SpecsTab } from './inspector/SpecsTab'
 import { QuoteTab } from './inspector/QuoteTab'
+import { focusRing, useFocusFlash } from './useFocusFlash'
 
 export interface RightPanelProps {
   selectionCardSlot?: ReactNode
@@ -34,9 +35,12 @@ export function RightPanel({
 }: RightPanelProps) {
   const rightTab = useViewStore((s) => s.rightTab)
   const setRightTab = useViewStore((s) => s.setRightTab)
+  const flashing = useFocusFlash(rightTab)
 
   return (
-    <aside className="flex h-full min-h-0 w-[296px] flex-col overflow-hidden border-l border-borderLight bg-white">
+    <aside
+      className={`flex h-full min-h-0 w-[296px] flex-col overflow-hidden border-l border-borderLight bg-white transition-shadow ${focusRing(flashing)}`}
+    >
       <div className="flex items-center gap-3 border-b border-borderLight px-3">
         {TABS.map((tab) => {
           const active = tab.id === rightTab

@@ -10,6 +10,7 @@ import {
 import { useMemo, useState } from 'react'
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
+import { focusRing, useFocusFlash } from './useFocusFlash'
 import type {
   ValidationItem,
   ValidationLevel,
@@ -42,6 +43,8 @@ export function ValidationDock({ validationResult }: ValidationDockProps) {
     [validationResult],
   )
 
+  const flashing = useFocusFlash('validation')
+
   async function jumpTo(item: ItemWithFix) {
     if (!item.targetId) return
     await dispatch('selection.set', { ids: [item.targetId] })
@@ -52,6 +55,7 @@ export function ValidationDock({ validationResult }: ValidationDockProps) {
       className={cn(
         'pointer-events-auto rounded-pfMd border border-border bg-white shadow-pfMd transition-all',
         expanded ? 'w-[280px]' : 'w-auto',
+        focusRing(flashing),
       )}
     >
       <button

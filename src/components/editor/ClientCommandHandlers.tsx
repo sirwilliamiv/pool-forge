@@ -7,7 +7,7 @@ import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useSunStore } from '@/modules/editor/state/sunStore'
-import { useViewStore } from '@/modules/editor/state/viewStore'
+import { useViewStore, type FocusTarget } from '@/modules/editor/state/viewStore'
 import { ShapeKind, type Shape } from '@/modules/editor/state/shapes'
 import { getStencil } from '@/modules/editor/stencils'
 import { feet } from '@/lib/three/units'
@@ -99,6 +99,8 @@ const HANDLER_IDS: string[] = [
   // scene category
   'sun.set.time',
   'sun.run.study',
+  // navigation category
+  'nav.focus',
   // palette category
   'palette.open',
 ]
@@ -333,6 +335,14 @@ export function ClientCommandHandlers() {
         if (input.ids.length === 0) useSelectionStore.getState().clear()
         else useSelectionStore.getState().selectMany(input.ids)
         return { selectedIds: input.ids }
+      },
+    )
+
+    registerClientHandler<{ target: FocusTarget }, { target: FocusTarget }>(
+      'nav.focus',
+      (input) => {
+        useViewStore.getState().focusPanel(input.target)
+        return { target: input.target }
       },
     )
 

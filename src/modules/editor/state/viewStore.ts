@@ -5,6 +5,16 @@ export type PresentationMode = 'plan' | 'design' | 'build' | 'customer'
 export type LeftTab = 'layers' | 'stencils' | 'materials'
 export type RightTab = 'design' | 'specs' | 'quote'
 
+/**
+ * A panel the user asked to be shown.
+ *
+ * "Show me the quote" has to do something visible beyond switching a tab that
+ * may already be open, so the panel flashes. The nonce is what makes asking
+ * twice in a row work: the target has not changed, so without it React sees no
+ * state change and nothing happens the second time.
+ */
+export type FocusTarget = LeftTab | RightTab | 'validation'
+
 export interface ViewState {
   viewMode: ViewMode
   presentationMode: PresentationMode
@@ -14,6 +24,9 @@ export interface ViewState {
   setPresentationMode: (m: PresentationMode) => void
   setLeftTab: (t: LeftTab) => void
   setRightTab: (t: RightTab) => void
+  focusedPanel: FocusTarget | null
+  focusNonce: number
+  focusPanel: (t: FocusTarget) => void
 }
 
 export const useViewStore = create<ViewState>((set) => ({
@@ -25,6 +38,24 @@ export const useViewStore = create<ViewState>((set) => ({
   setPresentationMode: (presentationMode) => set({ presentationMode }),
   setLeftTab: (leftTab) => set({ leftTab }),
   setRightTab: (rightTab) => set({ rightTab }),
+  focusedPanel: null,
+  focusNonce: 0,
+  focusPanel: (focusedPanel) =>
+    set(state => {
+      const next: Partial<ViewState> = {
+        focusedPanel,
+        focusNonce: state.focusNonce + 1,
+      }
+      // Bring it into view as well as highlight it: being told where something
+      // is helps nobody if it is behind another tab.
+      if (focusedPanel === 'layers' || focusedPanel === 'stencils' || focusedPanel === 'materials') {
+        next.leftTab = focusedPanel
+      }
+      if (focusedPanel === 'design' || focusedPanel === 'specs' || focusedPanel === 'quote') {
+        next.rightTab = focusedPanel
+      }
+      return next
+    }),
 }))
 
 export interface PresentationFlags {
