@@ -221,7 +221,9 @@ export async function startVoiceSession(
 
     try {
       const outcome = await host.runCommand(name, args)
-      log('voice_tool_ran', { name, ok: outcome.ok })
+      // The summary is what the model hears, so it is also the only thing that
+      // explains a refusal when reading logs after the fact.
+      log('voice_tool_ran', { name, ok: outcome.ok, summary: outcome.summary })
       return respond(call, outcome)
     } catch (error) {
       // The model reads this aloud, so it must be a sentence, and it must never

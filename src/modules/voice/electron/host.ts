@@ -104,9 +104,14 @@ export function installVoiceHost(deps: HostDeps): { dispose: () => Promise<void>
     if (!request) return { ok: false, error: 'Voice could not start.' }
 
     if (!voiceEnabled(env)) {
-      // A clear sentence rather than a dead button: this is a configuration
-      // state, not a failure, and the user can act on it.
-      return { ok: false, error: 'Voice is turned off. Set VOICE_LIVE and GCP_PROJECT_ID to enable it.' }
+      // Named variables belong in the log, not on screen. A user reading this
+      // cannot act on an env var name, and a screen that recites configuration
+      // keys is one screen-share away from leaking the rest of the file.
+      log('voice_disabled', {
+        hasFlag: Boolean(env['VOICE_LIVE']),
+        hasProject: Boolean(env['GCP_PROJECT_ID']),
+      })
+      return { ok: false, error: 'Voice is not set up on this machine yet.' }
     }
 
     await stop()

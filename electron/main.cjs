@@ -10,23 +10,37 @@ const { installVoiceHost } = require('./voice/host.cjs')
 // `next dev` reads .env for the web process; the main process is separate and
 // would otherwise start with no GCP project and voice quietly disabled.
 function loadDotEnv() {
-  for (const name of ['.env.local', '.env']) {
-    const file = path.join(app.getAppPath(), name)
-    let text
-    try {
-      text = fs.readFileSync(file, 'utf8')
-    } catch {
-      continue
+  // `app.getAppPath()` points inside the asar in a packaged build and at the
+  // launch directory in dev, which is not reliably the repo root. The directory
+  // above this file is, in both cases, where the env files sit.
+  const roots = [path.join(__dirname, '..'), app.getAppPath(), process.cwd()]
+  const seen = new Set()
+
+  for (const root of roots) {
+    for (const name of ['.env.local', '.env']) {
+      const file = path.join(root, name)
+      if (seen.has(file)) continue
+      seen.add(file)
+      loadEnvFile(file)
     }
-    for (const line of text.split('\n')) {
-      const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line)
-      if (!match) continue
-      const key = match[1]
-      if (process.env[key] !== undefined) continue
-      // Values from Secret Manager and from editors alike arrive with quotes or
-      // a trailing newline; both break header and comparison use downstream.
-      process.env[key] = match[2].trim().replace(/^["']|["']$/g, '')
-    }
+  }
+}
+
+function loadEnvFile(file) {
+  let text
+  try {
+    text = fs.readFileSync(file, 'utf8')
+  } catch {
+    return
+  }
+  for (const line of text.split('\n')) {
+    const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line)
+    if (!match) continue
+    const key = match[1]
+    if (process.env[key] !== undefined) continue
+    // Values from Secret Manager and from editors alike arrive with quotes or
+    // a trailing newline; both break header and comparison use downstream.
+    process.env[key] = match[2].trim().replace(/^["']|["']$/g, '')
   }
 }
 
@@ -95,6 +109,17 @@ async function createWindow() {
       nodeIntegration: false,
       preload: path.join(__dirname, 'voice', 'preload.cjs'),
     },
+  })
+
+  // Without this the renderer's console is invisible from the terminal, so a
+  // preload that failed to load or a component that threw looks identical to a
+  // feature nobody clicked.
+  mainWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+    const tag = level >= 2 ? 'error' : 'log'
+    console.log(`[renderer:${tag}] ${message}${sourceId ? ` (${sourceId}:${line})` : ''}`)
+  })
+  mainWindow.webContents.on('preload-error', (_e, preloadPath, error) => {
+    console.log(`[preload] failed: ${preloadPath}: ${error && error.message}`)
   })
 
   // getUserMedia inside the renderer is denied by default and fails silently,

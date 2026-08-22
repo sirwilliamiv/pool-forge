@@ -118,7 +118,11 @@ describe('electron voice host', () => {
     install({ env: { GCP_PROJECT_ID: 'test-project' } })
     return ipc.invoke(VOICE_CHANNELS.start, { screen: 'editor', surfaces: surfaces() }).then(result => {
       expect(result).toMatchObject({ ok: false })
-      expect(String((result as { error: string }).error)).toMatch(/turned off/i)
+      const message = String((result as { error: string }).error)
+      expect(message).toMatch(/not set up/i)
+      // Configuration keys belong in the log. A screen that recites env var
+      // names is one screen-share away from leaking the rest of the file.
+      expect(message).not.toMatch(/VOICE_LIVE|GCP_PROJECT_ID|VERTEX_/)
       expect(startSession).not.toHaveBeenCalled()
     })
   })

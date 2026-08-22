@@ -25,31 +25,27 @@ function parseStatus(raw: string | undefined): ProjectStatus | undefined {
 
 async function createProjectAction(input: { name: string; customerName: string }) {
   'use server'
+  // Through the registry, not around it. This used to hold its own Prisma
+  // transaction, which meant the button and the voice agent created projects by
+  // two different code paths and only one of them wrote an audit row.
   const session = await auth()
   const orgId = session?.user?.orgId
   const userId = session?.user?.id
   if (!session || !orgId || !userId) return { ok: false, error: 'Not authenticated' }
-  const trimmedName = input.name.trim()
-  if (!trimmedName) return { ok: false, error: 'Project name required' }
 
-  const project = await db.$transaction(async (tx) => {
-    let customerId: string | undefined
-    if (input.customerName.trim()) {
-      const customer = await tx.customer.create({
-        data: { orgId, name: input.customerName.trim() },
-      })
-      customerId = customer.id
-    }
-    return tx.project.create({
-      data: {
-        orgId,
-        name: trimmedName,
-        ...(customerId ? { customerId } : {}),
-      },
-    })
-  })
+  const { initCommands } = await import('@/modules/commands/init')
+  const { dispatchCommand } = await import('@/modules/commands/dispatch')
+  initCommands()
 
-  return { ok: true, id: project.id }
+  const customerName = input.customerName.trim()
+  const result = await dispatchCommand<{ projectId: string }>(
+    'create.project',
+    { name: input.name, ...(customerName ? { customerName } : {}) },
+    { userId, orgId },
+  )
+
+  if (!result.ok) return { ok: false, error: result.error }
+  return { ok: true, id: result.data.projectId }
 }
 
 export default async function DashboardPage({
