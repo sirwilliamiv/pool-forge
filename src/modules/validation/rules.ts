@@ -37,7 +37,98 @@ function isBlank(v: unknown): boolean {
 // contractor-facing packet while checking nothing is a liability, and an
 // always-fail warning trains users to ignore the dock. Reinstate any of them
 // only with a real check against geometry/selections.
+/**
+ * Slope a deck can be walked on.
+ *
+ * Two percent is the usual drainage fall; above five a paved surface is
+ * uncomfortable and above eight it is a ramp with rules of its own. These are
+ * warnings rather than errors because a designer may genuinely intend a terrace.
+ */
+const WALKABLE_SLOPE_PCT = 5
+const STEEP_SLOPE_PCT = 15
+
+/** Above this, moving the dirt is a line item nobody should discover late. */
+const NOTABLE_EARTHWORK_YARDS = 50
+
+/**
+ * Whether this design says anything about the ground.
+ *
+ * A flat site is not a graded site that happens to be level: nobody entered an
+ * elevation, so there is nothing to check and nothing worth reporting.
+ */
+function isGraded(ctx: { measurements: { cutYards: number; fillYards: number; maxSlopePct: number } }): boolean {
+  const { cutYards, fillYards, maxSlopePct } = ctx.measurements
+  return cutYards > 0 || fillYards > 0 || maxSlopePct > 0
+}
+
 export const ALL_RULES: ValidationRule[] = [
+  // ────────────────── Site grading ──────────────────
+  {
+    id: 'grade.slope.walkable',
+    level: 'warn',
+    category: 'grade',
+    passMessage: 'Site slope is within a walkable fall',
+    appliesTo: isGraded,
+    check(ctx) {
+      const slope = ctx.measurements.maxSlopePct
+      if (slope <= WALKABLE_SLOPE_PCT) return null
+      const level = slope > STEEP_SLOPE_PCT ? 'error' : 'warn'
+      return fail(
+        'grade.slope.walkable',
+        level,
+        'grade',
+        `The site falls at ${slope}% at its steepest`,
+        {
+          suggestedFix:
+            slope > STEEP_SLOPE_PCT
+              ? 'This needs terracing or a retaining wall, not a single graded pad'
+              : 'Consider a step or a retaining wall rather than a continuous fall',
+        },
+      )
+    },
+  },
+  {
+    id: 'grade.earthwork.priced',
+    level: 'warn',
+    category: 'grade',
+    passMessage: 'Earthwork is accounted for',
+    appliesTo: isGraded,
+    check(ctx) {
+      const moved = ctx.measurements.cutYards + ctx.measurements.fillYards
+      if (moved < NOTABLE_EARTHWORK_YARDS) return null
+      // Not an error: the volume may well be priced under a lump sum. It is
+      // worth saying out loud because discovering it on site is expensive.
+      return fail(
+        'grade.earthwork.priced',
+        'warn',
+        'grade',
+        `${Math.round(moved)} cubic yards of earth is being moved`,
+        {
+          suggestedFix: 'Check the price book has an earthwork line, or the haulage is unbilled',
+        },
+      )
+    },
+  },
+  {
+    id: 'grade.fill.under.pool',
+    level: 'warn',
+    category: 'grade',
+    passMessage: 'Pool is not sitting on deep fill',
+    appliesTo: isGraded,
+    check(ctx) {
+      // A pool bearing on fill needs compaction or piers. Cheap to say now,
+      // very expensive to find out after the shell is in.
+      if (!ctx.measurements.hasPool) return null
+      if (ctx.measurements.fillYards < NOTABLE_EARTHWORK_YARDS) return null
+      return fail(
+        'grade.fill.under.pool',
+        'warn',
+        'grade',
+        'The design brings in a substantial amount of fill',
+        { suggestedFix: 'Confirm bearing under the shell: compacted fill or piers' },
+      )
+    },
+  },
   // ────────────────── Project-level ──────────────────
   {
     id: 'customer.name.required',

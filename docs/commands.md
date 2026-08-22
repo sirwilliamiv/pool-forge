@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **76**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **84**.
 
 ## Project
 
@@ -251,6 +251,15 @@ Apply a material or finish to a shape.
 **Voice examples:**
 - "Change the deck to pavers."
 - "Set the pool finish to pebble."
+
+### `shape.elevation.set` — Raise or lower an object
+
+Set how high an object sits above the ground beneath it, in FEET. Negative sinks it. This is how a raised deck, a sunken patio or a spa above a pool is expressed.
+
+**Voice examples:**
+- "Raise the deck eighteen inches."
+- "Drop the patio a foot."
+- "Put the spa eighteen inches above the pool."
 
 ### `shape.hide` — Toggle layer visibility
 
@@ -560,6 +569,68 @@ Read what is currently on screen: headings, the text under them, table rows, lab
 - "What does the salt cell cost?"
 - "How many projects are on this list?"
 - "What is the customer address on here?"
+
+## Site grading
+
+### `grade.base.set` — Set the datum
+
+Set the height the site sits at everywhere no shot has been taken. Usually zero, meaning the house pad.
+
+**Voice examples:**
+- "Set the datum to zero."
+- "Everything starts a foot below the house."
+
+### `grade.describe` — Describe the site grading
+
+Read back the site elevations: every recorded height, the datum, the steepest slope, and the cut and fill between the existing and finished ground. Read-only. Call this before changing anything, since the other commands need point ids.
+
+**Voice examples:**
+- "How much does this site fall?"
+- "What is the cut and fill?"
+- "How many yards of dirt are we moving?"
+- "Read me the elevations."
+
+### `grade.enable` — Turn site grading on or off
+
+Switch elevations on for this site. A flat site needs none, so this is off until the first shot is taken.
+
+**Voice examples:**
+- "Turn on grading."
+- "This site is not flat."
+- "Switch elevations off."
+
+### `grade.falloff.set` — Set how the ground blends
+
+How sharply each measured height dominates the ground around it. Two reads as a natural fall; higher makes each shot a flat pad with a steeper break between them.
+
+**Voice examples:**
+- "Make the slope blend more smoothly."
+- "I want flatter pads between the shots."
+
+### `grade.point.add` — Record an elevation
+
+Record a measured height at a point on the site. Coordinates are in INCHES from the drawing origin, the same as every shape; elevation is in FEET relative to the datum, so a spot three feet below the house pad is -3.
+
+**Voice examples:**
+- "The back fence is three feet lower than the house."
+- "Record the ground at the patio door as zero."
+- "Put a spot elevation of minus two at the far corner."
+
+### `grade.point.remove` — Remove an elevation
+
+Delete a recorded height.
+
+**Voice examples:**
+- "Forget that elevation."
+- "Delete the shot at the back fence."
+
+### `grade.point.update` — Change an elevation
+
+Move a recorded height, or change what it reads.
+
+**Voice examples:**
+- "Make that corner four feet down instead."
+- "The back fence is lower than I said."
 
 ## Import
 

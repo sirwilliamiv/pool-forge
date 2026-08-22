@@ -1,5 +1,10 @@
 'use client'
 
+import { useMemo } from 'react'
+
+import { elevationAt, type SiteGrade } from '@/modules/editor/grade/model'
+import { visibleBounds } from '@/modules/editor/placement'
+import { useGradeStore } from '@/modules/editor/state/gradeStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { usePresentationFlags } from '@/modules/editor/state/viewStore'
 import { type Shape, ShapeKind } from '@/modules/editor/state/shapes'
@@ -24,8 +29,24 @@ import { Spillover } from './objects/Spillover'
 import { Steps } from './objects/Steps'
 import { SunShelf } from './objects/SunShelf'
 import { TileBand } from './objects/TileBand'
+import { Terrain } from './objects/Terrain'
 import { Trees } from './objects/Trees'
 import { Water } from './objects/Water'
+
+/**
+ * How high an object stands, in scene units.
+ *
+ * Its own `elevationFt` on top of the ground beneath its centre. A flat site
+ * leaves everything at zero, which is exactly where it used to be, so nothing
+ * moves until somebody grades the site.
+ */
+function groundUnder(shape: Shape, grade: SiteGrade | null): number {
+  const own = shape.elevationFt ?? 0
+  if (!grade) return feet(own * 12)
+  const centreX = shape.x + shape.width / 2
+  const centreY = shape.y + shape.height / 2
+  return feet((elevationAt(grade, centreX, centreY) + own) * 12)
+}
 
 /** Shapes a deck must be cut around: anything you would fall into. */
 const CUT_INTO_DECK = new Set<ShapeKind>([
@@ -224,15 +245,46 @@ function cutoutKey(shapes: Shape[]): string {
 export function SceneRoot() {
   const shapes = useShapesStore((s) => s.shapes)
   const flags = usePresentationFlags()
+  const existing = useGradeStore((s) => s.existing)
+  const finished = useGradeStore((s) => s.finished)
+
+  // The ground the objects stand on. Sized to the drawing with a margin, so the
+  // lawn reaches past the fence rather than stopping at the last object.
+  const terrainBounds = useMemo(() => {
+    const box = visibleBounds(shapes)
+    const margin = 240
+    if (!box) return { x: -600, y: -600, width: 1_200, height: 1_200 }
+    return {
+      x: box.x - margin,
+      y: box.y - margin,
+      width: box.width + margin * 2,
+      height: box.height + margin * 2,
+    }
+  }, [shapes])
+
+  const graded = finished.enabled || existing.enabled
+  const surface = finished.enabled ? finished : existing
 
   return (
     <group name="scene-root">
+      {graded && (
+        <Terrain
+          grade={surface}
+          bounds={terrainBounds}
+          existing={finished.enabled && existing.enabled ? existing : undefined}
+        />
+      )}
       {shapes.map((shape) =>
         shape.hidden ? null : (
           <group
             key={`${shape.id}-${shape.width}-${shape.height}-${shape.rotation ?? 0}-${
               DECK_KINDS.has(shape.kind) ? cutoutKey(shapes) : ''
             }`}
+            // Standing on the ground rather than at zero. The height is taken
+            // at the object's centre, so a deck on a slope sits at the level of
+            // its middle rather than tilting with the lawn — which is what a
+            // built deck does.
+            position={[0, groundUnder(shape, graded ? surface : null), 0]}
           >
             {renderShape(shape, shapes)}
           </group>

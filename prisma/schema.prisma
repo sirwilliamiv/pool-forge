@@ -272,6 +272,8 @@ model PriceBook {
 }
 
 enum PriceCategory {
+  /// Moving earth: excavation out, fill in, and hauling either way.
+  EARTHWORK
   POOL
   SPA
   DECK
@@ -295,6 +297,8 @@ enum UnitType {
   EACH
   LUMP
   HOUR
+  /// Cubic yards, for earthwork. Cut and fill are sold by the yard.
+  CUYD
 }
 
 model PriceBookItem {

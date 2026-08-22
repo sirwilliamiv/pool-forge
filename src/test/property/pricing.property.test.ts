@@ -49,6 +49,9 @@ const measurements: fc.Arbitrary<MeasurementSummary> = fc.record({
   spaCount: fc.nat({ max: 4 }),
   hasPool: fc.boolean(),
   hasDeck: fc.boolean(),
+  cutYards: measure,
+  fillYards: measure,
+  maxSlopePct: fc.double({ min: 0, max: 100, noNaN: true }),
 })
 
 const selections = fc.record({

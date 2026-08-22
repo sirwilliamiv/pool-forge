@@ -82,6 +82,20 @@ function quantityForItem(
   sel: PricingSelections,
 ): QuantityResult {
   switch (item.category) {
+    case PriceCategory.EARTHWORK:
+      // Cut and fill are different jobs at different rates, so the unit decides
+      // which one this line is selling. A cubic-yard line with no grade prices
+      // at zero rather than guessing a volume.
+      if (item.unitType === UnitType.CUYD) {
+        const isFill = /\bfill|import|bring in\b/i.test(item.name)
+        return isFill
+          ? { quantity: m.fillYards, source: 'Fill volume' }
+          : { quantity: m.cutYards, source: 'Cut volume' }
+      }
+      return {
+        quantity: m.cutYards + m.fillYards > 0 ? 1 : 0,
+        source: 'Earthwork present',
+      }
     case PriceCategory.POOL:
       return item.unitType === UnitType.SQFT
         ? { quantity: m.poolSurfaceArea, source: 'Pool surface area' }

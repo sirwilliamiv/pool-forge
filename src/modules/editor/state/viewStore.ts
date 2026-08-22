@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type ViewMode = 'plan' | '3d' | 'section'
 export type PresentationMode = 'plan' | 'design' | 'build' | 'customer'
-export type LeftTab = 'layers' | 'stencils' | 'materials'
+export type LeftTab = 'layers' | 'stencils' | 'materials' | 'grade'
 export type RightTab = 'design' | 'specs' | 'quote'
 
 /**

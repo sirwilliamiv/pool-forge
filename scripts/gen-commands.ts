@@ -23,6 +23,7 @@ const CATEGORY_ORDER: CommandCategory[] = [
   'palette',
   'navigation',
   'context',
+  'grade',
   'import',
 ]
 
@@ -41,6 +42,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   palette: 'Palette',
   navigation: 'Navigation',
   context: 'Reading the screen',
+  grade: 'Site grading',
   import: 'Import',
 }
 

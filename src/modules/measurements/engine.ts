@@ -8,6 +8,7 @@ import {
   type Shape,
 } from '@/modules/editor/state/shapes'
 import { getStencil } from '@/modules/editor/stencils'
+import { cutFillBetween, maxSlope, type Bounds, type SiteGrade } from '@/modules/editor/grade/model'
 import { MeasurementBehavior } from '@/modules/editor/stencils/types'
 import {
   poolGallons,
@@ -40,9 +41,24 @@ export interface MeasurementSummary {
   spaCount: number
   hasPool: boolean
   hasDeck: boolean
+  /**
+   * Earthwork, in cubic yards.
+   *
+   * Cut and fill are kept apart rather than netted: a yard out is haulage and a
+   * yard in is material, so a site that balances on paper still bills for both.
+   * Zero on a flat site, which is what every drawing made before grading
+   * existed reports.
+   */
+  cutYards: number
+  fillYards: number
+  /** Steepest fall on the site, as a percentage. */
+  maxSlopePct: number
 }
 
 const EMPTY_SUMMARY: MeasurementSummary = {
+  cutYards: 0,
+  fillYards: 0,
+  maxSlopePct: 0,
   poolSurfaceArea: 0,
   poolPerimeter: 0,
   poolGallons: 0,
@@ -133,6 +149,32 @@ export function distanceToSetback(shape: Shape, _shapes: Shape[]): SetbackInfo {
     required: `req. ${formatFtIn(worst.required)}`,
     violated: worst.dist < worst.required,
     edge: worst.edge,
+  }
+}
+
+/**
+ * Earthwork for a site, folded into the same summary everything else reads.
+ *
+ * Separate from `computeMeasurements` because the grade is not part of the shape
+ * list, and because a caller with no grade must get the same answer as before:
+ * zero, not a guess.
+ */
+export function withEarthwork(
+  summary: MeasurementSummary,
+  grade: { existing: SiteGrade; finished: SiteGrade } | null | undefined,
+  bounds: Bounds | null,
+): MeasurementSummary {
+  if (!grade || !bounds) return summary
+  if (!grade.existing.enabled && !grade.finished.enabled) return summary
+
+  const earthwork = cutFillBetween(grade.existing, grade.finished, bounds)
+  const surface = grade.finished.enabled ? grade.finished : grade.existing
+
+  return {
+    ...summary,
+    cutYards: earthwork.cutYards,
+    fillYards: earthwork.fillYards,
+    maxSlopePct: Math.round(maxSlope(surface, bounds) * 1000) / 10,
   }
 }
 

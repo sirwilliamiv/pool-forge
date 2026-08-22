@@ -38,7 +38,7 @@ const BY_SCREEN: Record<VoiceScreen, CommandCategory[]> = {
   dashboard: ['project'],
   project: ['project', 'export'],
   // The editor is the whole point: this is where a pool gets built by voice.
-  editor: ['canvas', 'shape', 'measurement', 'pricing', 'validation', 'scene', 'template'],
+  editor: ['canvas', 'shape', 'measurement', 'pricing', 'validation', 'scene', 'template', 'grade'],
   import: ['import'],
   priceBook: ['pricing', 'settings'],
   settings: ['settings', 'template'],

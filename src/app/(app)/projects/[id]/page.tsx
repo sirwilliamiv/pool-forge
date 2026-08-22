@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { revalidatePath } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
 import type { ProjectStatus, Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
@@ -97,6 +98,12 @@ async function saveProjectAction(
       data: customerId ? { ...projectData, customer: { connect: { id: customerId } } } : projectData,
     })
   })
+
+  // Without this the dashboard and the project's own header keep serving a
+  // cached name. It happens to look fine in dev, where there is no full route
+  // cache, and would be stale in production.
+  revalidatePath('/dashboard')
+  revalidatePath(`/projects/${projectId}`)
 
   return { ok: true }
 }

@@ -61,6 +61,16 @@ export type ProjectFormInput = {
 
 type SaveAction = (projectId: string, input: ProjectFormInput['initial']) => Promise<{ ok: boolean; error?: string }>
 
+/**
+ * How long to wait after the last keystroke before saving.
+ *
+ * Long enough not to write on every character, short enough that clicking away
+ * from a field you have just typed into does not lose it.
+ */
+const AUTOSAVE_DELAY_MS = 900
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
 export function ProjectForm({
   projectId,
   initial,
@@ -68,22 +78,75 @@ export function ProjectForm({
 }: ProjectFormInput & { saveAction: SaveAction }) {
   const [pending, startTransition] = React.useTransition()
   const [form, setForm] = React.useState(initial)
+  const [saveState, setSaveState] = React.useState<SaveState>('idle')
   const router = useRouter()
 
-  function update<K extends keyof ProjectFormInput['initial']>(key: K, value: ProjectFormInput['initial'][K]) {
-    setForm((prev) => ({ ...prev, [key]: value }))
-  }
+  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** The last values written, so an unchanged form does not save on every render. */
+  const lastSaved = React.useRef(initial)
+  /** Nothing has been edited yet, so hydration must not trigger a write. */
+  const dirty = React.useRef(false)
 
-  function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    startTransition(async () => {
-      const res = await saveAction(projectId, form)
+  const save = React.useCallback(
+    async (values: ProjectFormInput['initial'], announce: boolean) => {
+      setSaveState('saving')
+      const res = await saveAction(projectId, values)
       if (!res.ok) {
+        setSaveState('error')
         toast.error(res.error ?? 'Failed to save')
         return
       }
-      toast.success('Project saved')
+      lastSaved.current = values
+      setSaveState('saved')
+      if (announce) toast.success('Project saved')
+      // So the header, the dashboard and anything else reading the name agree
+      // with the field the user just typed into.
       router.refresh()
+    },
+    [projectId, router, saveAction],
+  )
+
+  function update<K extends keyof ProjectFormInput['initial']>(key: K, value: ProjectFormInput['initial'][K]) {
+    dirty.current = true
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // Autosave. The editor has saved continuously from the start; this form did
+  // not, so a name typed and then navigated away from was simply lost, and the
+  // save looked broken when it was never asked to run.
+  React.useEffect(() => {
+    if (!dirty.current) return
+    if (JSON.stringify(form) === JSON.stringify(lastSaved.current)) return
+
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      timer.current = null
+      void save(form, false)
+    }, AUTOSAVE_DELAY_MS)
+
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [form, save])
+
+  // A pending edit must not die with the page. Leaving during the debounce
+  // window is exactly when someone types a name and immediately clicks away.
+  React.useEffect(() => {
+    return () => {
+      if (!timer.current) return
+      clearTimeout(timer.current)
+      void saveAction(projectId, form)
+    }
+  }, [form, projectId, saveAction])
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = null
+    }
+    startTransition(() => {
+      void save(form, true)
     })
   }
 
@@ -232,9 +295,16 @@ export function ProjectForm({
 
       <Separator />
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Save'}
+      <div className="flex items-center justify-end gap-3">
+        {/* Said out loud, because an autosaving form that shows nothing leaves
+            the user unsure whether their typing went anywhere. */}
+        <span aria-live="polite" className="text-sm text-muted-foreground">
+          {saveState === 'saving' && 'Saving…'}
+          {saveState === 'saved' && 'Saved'}
+          {saveState === 'error' && 'Not saved'}
+        </span>
+        <Button type="submit" disabled={pending || saveState === 'saving'}>
+          {pending || saveState === 'saving' ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </form>

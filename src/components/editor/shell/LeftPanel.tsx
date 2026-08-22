@@ -6,6 +6,7 @@ import { useViewStore, type LeftTab, type ViewMode } from '@/modules/editor/stat
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { LayersTree } from './layers/LayersTree'
 import { StencilGrid } from './stencils/StencilGrid'
+import { GradePanel } from './GradePanel'
 import { MaterialGrid, type RawMaterial } from './materials/MaterialGrid'
 import { focusRing, useFocusFlash } from './useFocusFlash'
 
@@ -13,6 +14,7 @@ const TABS: { id: LeftTab; label: string }[] = [
   { id: 'layers', label: 'Layers' },
   { id: 'stencils', label: 'Stencils' },
   { id: 'materials', label: 'Materials' },
+  { id: 'grade', label: 'Grade' },
 ]
 
 const VIEW_MODES: { id: ViewMode; label: string }[] = [
@@ -82,6 +84,7 @@ export function LeftPanel({ materials = [] }: LeftPanelProps) {
         {leftTab === 'layers' ? <LayersTab /> : null}
         {leftTab === 'stencils' ? <StencilGrid search={search} /> : null}
         {leftTab === 'materials' ? <MaterialGrid materials={materials} searchQuery={search} /> : null}
+        {leftTab === 'grade' ? <GradePanel /> : null}
       </div>
 
       <div className="border-t border-borderLight px-3 py-2">

@@ -5,6 +5,8 @@ import { registerClientHandler, unregisterClientHandler } from '@/lib/commands/d
 import { useCameraStore } from '@/modules/editor/state/cameraStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
+import { cutFillBetween, maxSlope, type SiteGrade } from '@/modules/editor/grade/model'
+import { useGradeStore } from '@/modules/editor/state/gradeStore'
 import { useHistoryStore } from '@/modules/editor/state/historyStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useSunStore } from '@/modules/editor/state/sunStore'
@@ -36,6 +38,36 @@ function frameShapes(shapes: Shape[]): void {
   if (!box) return
   const { pose, target } = framingFor(box)
   useCameraStore.getState().frameSelection(pose, target)
+}
+
+interface GradeSurfaceDescription {
+  baseElevationFt: number
+  points: { id: string; x: number; y: number; elevationFt: number; label: string | null }[]
+}
+
+interface GradeDescription {
+  enabled: boolean
+  existing: GradeSurfaceDescription
+  finished: GradeSurfaceDescription
+  cutYards: number
+  fillYards: number
+  netYards: number
+  reliefFt: number
+  maxSlopePct: number
+}
+
+/** Ids and labels, so the agent can refer to a shot rather than guess at one. */
+function describeSurface(surface: SiteGrade): GradeSurfaceDescription {
+  return {
+    baseElevationFt: surface.baseElevationFt,
+    points: surface.points.map((point) => ({
+      id: point.id,
+      x: point.x,
+      y: point.y,
+      elevationFt: point.elevationFt,
+      label: point.label ?? null,
+    })),
+  }
 }
 
 interface SceneDescription {
@@ -128,6 +160,15 @@ const HANDLER_IDS: string[] = [
   'pool.trim.set',
   'edit.undo',
   'edit.redo',
+  // grade category
+  'grade.enable',
+  'grade.point.add',
+  'grade.point.update',
+  'grade.point.remove',
+  'grade.base.set',
+  'grade.falloff.set',
+  'grade.describe',
+  'shape.elevation.set',
   // scene category
   'sun.set.time',
   'sun.run.study',
@@ -432,6 +473,114 @@ export function ClientCommandHandlers() {
       history.redo()
       return { redone: true, shapeCount: useShapesStore.getState().shapes.length }
     })
+
+    // ---------- grade ----------
+    registerClientHandler<{ enabled: boolean }, { enabled: boolean }>('grade.enable', (input) => {
+      useGradeStore.getState().setEnabled(input.enabled)
+      return { enabled: input.enabled }
+    })
+
+    registerClientHandler<
+      { surface: 'existing' | 'finished'; x: number; y: number; elevationFt: number; label?: string; fixed?: boolean },
+      { pointId: string; surface: string; count: number }
+    >('grade.point.add', (input) => {
+      const store = useGradeStore.getState()
+      // The surface comes with the command rather than from a mode, so a spoken
+      // instruction cannot be ambiguous about whether it describes what is there
+      // or what is wanted.
+      store.setEditing(input.surface)
+      const pointId = useGradeStore.getState().addPoint({
+        x: input.x,
+        y: input.y,
+        elevationFt: input.elevationFt,
+        kind: input.fixed ? 'fixed' : input.surface,
+        ...(input.label ? { label: input.label } : {}),
+      })
+      return {
+        pointId,
+        surface: input.surface,
+        count: useGradeStore.getState()[input.surface].points.length,
+      }
+    })
+
+    registerClientHandler<
+      { surface: 'existing' | 'finished'; pointId: string; x?: number; y?: number; elevationFt?: number; label?: string },
+      { pointId: string }
+    >('grade.point.update', (input) => {
+      const store = useGradeStore.getState()
+      store.setEditing(input.surface)
+      if (!store[input.surface].points.some((p) => p.id === input.pointId)) {
+        throw new Error(`There is no elevation with id ${input.pointId} on the ${input.surface} ground.`)
+      }
+      const patch: Record<string, unknown> = {}
+      if (input.x !== undefined) patch.x = input.x
+      if (input.y !== undefined) patch.y = input.y
+      if (input.elevationFt !== undefined) patch.elevationFt = input.elevationFt
+      if (input.label !== undefined) patch.label = input.label
+      useGradeStore.getState().updatePoint(input.pointId, patch)
+      return { pointId: input.pointId }
+    })
+
+    registerClientHandler<{ surface: 'existing' | 'finished'; pointId: string }, { pointId: string }>(
+      'grade.point.remove',
+      (input) => {
+        const store = useGradeStore.getState()
+        store.setEditing(input.surface)
+        if (!store[input.surface].points.some((p) => p.id === input.pointId)) {
+          throw new Error(`There is no elevation with id ${input.pointId} to remove.`)
+        }
+        useGradeStore.getState().removePoint(input.pointId)
+        return { pointId: input.pointId }
+      },
+    )
+
+    registerClientHandler<
+      { surface: 'existing' | 'finished'; elevationFt: number },
+      { surface: string; elevationFt: number }
+    >('grade.base.set', (input) => {
+      useGradeStore.getState().setEditing(input.surface)
+      useGradeStore.getState().setBaseElevation(input.elevationFt)
+      return { surface: input.surface, elevationFt: input.elevationFt }
+    })
+
+    registerClientHandler<
+      { surface: 'existing' | 'finished'; falloff: number },
+      { surface: string; falloff: number }
+    >('grade.falloff.set', (input) => {
+      useGradeStore.getState().setEditing(input.surface)
+      useGradeStore.getState().setFalloff(input.falloff)
+      return { surface: input.surface, falloff: useGradeStore.getState()[input.surface].falloff }
+    })
+
+    registerClientHandler<unknown, GradeDescription>('grade.describe', () => {
+      const { existing, finished } = useGradeStore.getState()
+      const bounds = visibleBounds(useShapesStore.getState().shapes) ?? {
+        x: -600,
+        y: -600,
+        width: 1_200,
+        height: 1_200,
+      }
+      const earthwork = cutFillBetween(existing, finished, bounds)
+      return {
+        enabled: existing.enabled || finished.enabled,
+        existing: describeSurface(existing),
+        finished: describeSurface(finished),
+        cutYards: earthwork.cutYards,
+        fillYards: earthwork.fillYards,
+        netYards: earthwork.netYards,
+        reliefFt: earthwork.reliefFt,
+        maxSlopePct: Math.round(maxSlope(finished.enabled ? finished : existing, bounds) * 1000) / 10,
+      }
+    })
+
+    registerClientHandler<{ id: string; elevationFt: number }, { id: string; elevationFt: number }>(
+      'shape.elevation.set',
+      (input) => {
+        requireShape(input.id)
+        useShapesStore.getState().updateShape(input.id, { elevationFt: input.elevationFt })
+        return { id: input.id, elevationFt: input.elevationFt }
+      },
+    )
 
     // The one read in the registry. Every other command takes an id, so without
     // this the voice agent can add objects forever and never touch one again.

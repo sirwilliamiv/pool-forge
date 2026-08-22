@@ -33,6 +33,14 @@ export interface ShapeBase {
   hidden: boolean
   name?: string
   displayHint?: DisplayHint
+  /**
+   * Height above the ground beneath it, in feet.
+   *
+   * Absent means sitting on grade, which is what almost everything does. A
+   * raised deck, a sunken patio or a spa spilling into a pool is this field:
+   * before it existed they all rendered at the same height as the lawn.
+   */
+  elevationFt?: number
 }
 
 export interface RectanglePool extends ShapeBase {

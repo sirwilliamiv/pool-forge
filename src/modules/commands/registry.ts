@@ -15,6 +15,7 @@ export type CommandCategory =
   | 'palette'
   | 'navigation'
   | 'context'
+  | 'grade'
   | 'import'
 
 export type CommandContext = {

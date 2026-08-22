@@ -5,6 +5,7 @@ import { EditorPersistence } from '@/components/editor/EditorPersistence'
 import { ExportCommandHandlers } from '@/components/exports/ExportCommandHandlers'
 import { R3FCanvas } from '@/lib/three/r3f-canvas'
 import type { Shape } from '@/modules/editor/state/shapes'
+import type { SiteGrade } from '@/modules/editor/grade/model'
 import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
 import type { ValidationReport } from '@/modules/validation/types'
 import { CanvasOverlay } from './CanvasOverlay'
@@ -48,7 +49,12 @@ export interface EditorLayoutProps {
     email?: string | null | undefined
     image?: string | null | undefined
   }
-  initial: { shapes: Shape[]; survey?: SurveyConfig | null }
+  initial: {
+    shapes: Shape[]
+    survey?: SurveyConfig | null
+    /** Absent on any drawing made before grading existed: that means flat. */
+    grade?: { existing: SiteGrade; finished: SiteGrade } | null
+  }
   validationReport: ValidationReport | null
   quoteDock: QuoteDockData | null
   inspectorQuote: QuoteSummary | undefined
