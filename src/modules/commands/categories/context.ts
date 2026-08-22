@@ -11,6 +11,7 @@ import { register } from '@/modules/commands/registry'
 
 register({
   id: 'page.read',
+  runsOn: 'client',
   label: 'Read the current page',
   description:
     'Read what is currently on screen: headings, the text under them, table rows, labelled values, and the buttons available. Each field says whether it is editable and what kind it is (text, email, date, checkbox, select), so use this before page.fill to learn the exact labels and formats. Pass a query to narrow a long page rather than reading all of it.',
@@ -79,6 +80,7 @@ register({
 
 register({
   id: 'page.fill',
+  runsOn: 'client',
   label: 'Fill in the current page',
   description:
     'Set form fields on the screen by their visible label. Use it after page.read so the labels are the ones actually on the page. Reports each field separately, so filling four of five is a useful result rather than a failure.',
@@ -124,6 +126,7 @@ register({
 
 register({
   id: 'page.click',
+  runsOn: 'client',
   label: 'Press a button on the page',
   description:
     'Press a button by its visible text: Save, Create project, Add item, and so on. Use it after page.fill to commit a form — filling fields changes nothing until something saves them. page.read lists the buttons that are actually here.',

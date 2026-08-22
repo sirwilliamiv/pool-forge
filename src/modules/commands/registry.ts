@@ -46,6 +46,21 @@ export type EditorCommand<I = unknown, O = unknown> = {
    * something it never could.
    */
   unimplemented?: boolean
+  /**
+   * Where the work actually happens.
+   *
+   * `'client'` means the server `execute` only validates and echoes, and the
+   * change is applied by a handler registered through `registerClientHandler`.
+   * Declared rather than inferred so a test can prove the handler exists.
+   *
+   * This is the single most common defect in this codebase: a command that is
+   * registered, offered to the voice agent, reports success, and does nothing.
+   * It has shipped at least a dozen times — zoom, pan, fit, navigation, delete,
+   * project creation — and every instance was found by a person using the app
+   * and being told something happened that had not. A missing handler is now a
+   * failing test rather than a confident lie.
+   */
+  runsOn?: 'server' | 'client'
   execute: (input: I, ctx: CommandContext) => Promise<CommandResult<O>>
 }
 

@@ -24,6 +24,7 @@ function stencilIdHelp(): string {
 
 register({
   id: 'add.shape',
+  runsOn: 'client',
   label: 'Add shape',
   description:
     'Drop a stencil onto the canvas at the given coordinates. Coordinates and sizes are in INCHES: multiply feet by 12.',
@@ -55,6 +56,7 @@ register({
 
 register({
   id: 'select.shape',
+  runsOn: 'client',
   label: 'Select shape',
   description: 'Select one or more shapes on the canvas.',
   category: 'shape',
@@ -76,6 +78,7 @@ register({
 
 register({
   id: 'move.shape',
+  runsOn: 'client',
   label: 'Move shape',
   description: 'Translate the given shape by an absolute or relative position.',
   category: 'shape',
@@ -107,6 +110,7 @@ register({
 
 register({
   id: 'resize.shape',
+  runsOn: 'client',
   label: 'Resize shape',
   description: 'Resize a shape to explicit width and height, in INCHES: multiply feet by 12.',
   category: 'shape',
@@ -133,6 +137,7 @@ register({
 
 register({
   id: 'rotate.shape',
+  runsOn: 'client',
   label: 'Rotate shape',
   description: 'Rotate a shape by a given angle in degrees.',
   category: 'shape',
@@ -161,6 +166,7 @@ register({
 
 register({
   id: 'delete.shape',
+  runsOn: 'client',
   label: 'Delete shape',
   description: 'Remove one or more shapes from the canvas.',
   category: 'shape',
@@ -181,6 +187,7 @@ register({
 
 register({
   id: 'duplicate.shape',
+  runsOn: 'client',
   label: 'Duplicate shape',
   description: 'Duplicate a shape and place it adjacent to the original.',
   category: 'shape',
@@ -207,6 +214,7 @@ register({
 
 register({
   id: 'pool.flip',
+  runsOn: 'client',
   label: 'Flip shape',
   description: 'Mirror a shape across its X or Y axis.',
   category: 'shape',
@@ -226,6 +234,7 @@ register({
 
 register({
   id: 'pool.shape.set',
+  runsOn: 'client',
   label: 'Set pool footprint',
   description: 'Switch a pool between a rectangular and an elliptical footprint.',
   category: 'shape',
@@ -242,6 +251,7 @@ register({
 
 register({
   id: 'pool.lock.ratio',
+  runsOn: 'client',
   label: 'Lock aspect ratio',
   description: 'Constrain L/W proportion when resizing.',
   category: 'shape',
@@ -261,6 +271,7 @@ register({
 
 register({
   id: 'shape.rename',
+  runsOn: 'client',
   label: 'Rename shape',
   description: 'Rename a shape in-canvas (e.g., from the inspector selection card).',
   category: 'shape',
@@ -280,6 +291,7 @@ register({
 
 register({
   id: 'set.shape.material',
+  runsOn: 'client',
   label: 'Set shape material',
   description: 'Apply a material or finish to a shape.',
   category: 'shape',
@@ -306,6 +318,7 @@ register({
 
 register({
   id: 'pool.geometry.update',
+  runsOn: 'client',
   label: 'Update pool geometry',
   // Unlike add.shape and resize.shape, this one is in FEET: the client half
   // multiplies by twelve. Sibling commands disagreeing about units is exactly
@@ -341,6 +354,7 @@ register({
 
 register({
   id: 'pool.material.set',
+  runsOn: 'client',
   label: 'Set pool material slot',
   description: 'Apply a material to a specific surface slot of the selected pool (interior, coping, or tile band).',
   category: 'shape',
@@ -370,6 +384,7 @@ register({
 
 register({
   id: 'shape.hide',
+  runsOn: 'client',
   label: 'Toggle layer visibility',
   description: 'Hide or show a shape on the canvas without deleting it.',
   category: 'shape',
@@ -388,6 +403,7 @@ register({
 
 register({
   id: 'shape.lock',
+  runsOn: 'client',
   label: 'Toggle layer lock',
   description: 'Lock or unlock a shape so it cannot be moved or edited from the canvas.',
   category: 'shape',
@@ -406,6 +422,7 @@ register({
 
 register({
   id: 'pool.depth.set',
+  runsOn: 'client',
   label: 'Update pool depth profile',
   description:
     'Patch the depth profile of the selected pool. Depths are in FEET; sun-shelf and bubbler heights are in INCHES, since those are spoken in inches.',
@@ -434,6 +451,7 @@ register({
 
 register({
   id: 'pool.trim.set',
+  runsOn: 'client',
   label: 'Show or hide the pool trim',
   description:
     "Turn the pool's concrete coping border or its waterline tile band on or off. These are part of the pool itself rather than separate objects, so they cannot be deleted — this is how they come off.",
@@ -463,6 +481,7 @@ register({
 
 register({
   id: 'edit.undo',
+  runsOn: 'client',
   label: 'Undo',
   description:
     'Undo the last change to the drawing. Use it as soon as something was done that the user did not want, rather than trying to reconstruct what was there.',
@@ -476,6 +495,7 @@ register({
 
 register({
   id: 'edit.redo',
+  runsOn: 'client',
   label: 'Redo',
   description: 'Redo the change that was just undone.',
   category: 'canvas',

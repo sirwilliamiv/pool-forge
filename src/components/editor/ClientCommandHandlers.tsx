@@ -157,6 +157,9 @@ const HANDLER_IDS: string[] = [
   'view.set.tab',
   'tool.activate',
   'scene.describe',
+  'canvas.zoom.in',
+  'canvas.zoom.out',
+  'canvas.pan',
   'pool.trim.set',
   'edit.undo',
   'edit.redo',
@@ -473,6 +476,32 @@ export function ClientCommandHandlers() {
       history.redo()
       return { redone: true, shapeCount: useShapesStore.getState().shapes.length }
     })
+
+    // ---------- canvas view ----------
+    // These were registered, offered to the voice agent, and did nothing. The
+    // agent called canvas.zoom.out during a real session, was told it succeeded,
+    // and the view never moved.
+    registerClientHandler<{ step?: number }, { zoom: number }>('canvas.zoom.in', (input) => {
+      const store = useEditorStore.getState()
+      store.setZoom(store.zoom * (input.step ?? 1.2))
+      return { zoom: useEditorStore.getState().zoom }
+    })
+
+    registerClientHandler<{ step?: number }, { zoom: number }>('canvas.zoom.out', (input) => {
+      const store = useEditorStore.getState()
+      store.setZoom(store.zoom / (input.step ?? 1.2))
+      return { zoom: useEditorStore.getState().zoom }
+    })
+
+    registerClientHandler<{ dx?: number; dy?: number }, { panX: number; panY: number }>(
+      'canvas.pan',
+      (input) => {
+        const store = useEditorStore.getState()
+        store.setPan(store.panX + (input.dx ?? 0), store.panY + (input.dy ?? 0))
+        const after = useEditorStore.getState()
+        return { panX: after.panX, panY: after.panY }
+      },
+    )
 
     // ---------- grade ----------
     registerClientHandler<{ enabled: boolean }, { enabled: boolean }>('grade.enable', (input) => {

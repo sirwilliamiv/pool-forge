@@ -18,6 +18,7 @@ const surface = z
 
 register({
   id: 'grade.enable',
+  runsOn: 'client',
   label: 'Turn site grading on or off',
   description:
     'Switch elevations on for this site. A flat site needs none, so this is off until the first shot is taken.',
@@ -30,6 +31,7 @@ register({
 
 register({
   id: 'grade.point.add',
+  runsOn: 'client',
   label: 'Record an elevation',
   description:
     'Record a measured height at a point on the site. Coordinates are in INCHES from the drawing origin, the same as every shape; elevation is in FEET relative to the datum, so a spot three feet below the house pad is -3.',
@@ -56,6 +58,7 @@ register({
 
 register({
   id: 'grade.point.update',
+  runsOn: 'client',
   label: 'Change an elevation',
   description: 'Move a recorded height, or change what it reads.',
   category: 'grade',
@@ -74,6 +77,7 @@ register({
 
 register({
   id: 'grade.point.remove',
+  runsOn: 'client',
   label: 'Remove an elevation',
   description: 'Delete a recorded height.',
   category: 'grade',
@@ -85,6 +89,7 @@ register({
 
 register({
   id: 'grade.base.set',
+  runsOn: 'client',
   label: 'Set the datum',
   description:
     'Set the height the site sits at everywhere no shot has been taken. Usually zero, meaning the house pad.',
@@ -97,6 +102,7 @@ register({
 
 register({
   id: 'grade.falloff.set',
+  runsOn: 'client',
   label: 'Set how the ground blends',
   description:
     'How sharply each measured height dominates the ground around it. Two reads as a natural fall; higher makes each shot a flat pad with a steeper break between them.',
@@ -109,6 +115,7 @@ register({
 
 register({
   id: 'grade.describe',
+  runsOn: 'client',
   label: 'Describe the site grading',
   description:
     'Read back the site elevations: every recorded height, the datum, the steepest slope, and the cut and fill between the existing and finished ground. Read-only. Call this before changing anything, since the other commands need point ids.',
@@ -170,6 +177,7 @@ register({
 
 register({
   id: 'shape.elevation.set',
+  runsOn: 'client',
   label: 'Raise or lower an object',
   description:
     'Set how high an object sits above the ground beneath it, in FEET. Negative sinks it. This is how a raised deck, a sunken patio or a spa above a pool is expressed.',

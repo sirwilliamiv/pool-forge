@@ -8,6 +8,7 @@ import { register } from '@/modules/commands/registry'
 
 register({
   id: 'palette.open',
+  runsOn: 'client',
   label: 'Open command palette',
   description: 'Open the ⌘K command palette.',
   category: 'palette',

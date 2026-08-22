@@ -66,6 +66,7 @@ const PATHS: Record<Destination, (projectId?: string) => string> = {
 
 register({
   id: 'nav.goto',
+  runsOn: 'client',
   label: 'Go to',
   description:
     'Navigate to a part of the app. Project-scoped destinations need a project id; if none is given the current project is used.',
@@ -101,6 +102,7 @@ register({
 
 register({
   id: 'nav.openProject',
+  runsOn: 'client',
   label: 'Open project by name',
   description:
     'Find a project by customer or project name and open it. Reports the matches when more than one fits, rather than guessing.',
@@ -178,6 +180,7 @@ register({
 
 register({
   id: 'nav.focus',
+  runsOn: 'client',
   label: 'Focus a panel',
   description:
     'Bring a panel or section into view and highlight it, for when someone asks to be shown where something is.',

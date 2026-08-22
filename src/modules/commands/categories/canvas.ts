@@ -8,6 +8,7 @@ import { register } from '@/modules/commands/registry'
 
 register({
   id: 'canvas.zoom.in',
+  runsOn: 'client',
   label: 'Zoom in',
   description: 'Increase the canvas zoom level.',
   category: 'canvas',
@@ -27,6 +28,7 @@ register({
 
 register({
   id: 'canvas.zoom.out',
+  runsOn: 'client',
   label: 'Zoom out',
   description: 'Decrease the canvas zoom level.',
   category: 'canvas',
@@ -46,6 +48,7 @@ register({
 
 register({
   id: 'canvas.fit',
+  runsOn: 'client',
   label: 'Fit to page',
   description: 'Fit all drawing content to the visible canvas.',
   category: 'canvas',
@@ -63,6 +66,7 @@ register({
 
 register({
   id: 'canvas.pan',
+  runsOn: 'client',
   label: 'Pan canvas',
   description: 'Pan the canvas viewport by a relative offset.',
   category: 'canvas',
@@ -84,6 +88,7 @@ register({
 
 register({
   id: 'selection.set',
+  runsOn: 'client',
   label: 'Set selection',
   description: 'Replace the current selection with the given shape ids.',
   category: 'canvas',
@@ -105,6 +110,7 @@ register({
 
 register({
   id: 'camera.set.view',
+  runsOn: 'client',
   label: 'Snap camera to view',
   description: 'Snap the camera to a canonical view (top, front, left, right, iso).',
   category: 'canvas',
@@ -124,6 +130,7 @@ register({
 
 register({
   id: 'camera.frame.selection',
+  runsOn: 'client',
   label: 'Frame selection',
   description: 'Frame the current selection in the viewport.',
   category: 'canvas',
@@ -143,6 +150,7 @@ register({
 
 register({
   id: 'mode.set.presentation',
+  runsOn: 'client',
   label: 'Set presentation mode',
   description: 'Switch the presentation mode (plan, design, build, customer).',
   category: 'canvas',
@@ -163,6 +171,7 @@ register({
 
 register({
   id: 'tool.activate',
+  runsOn: 'client',
   label: 'Activate tool',
   description: 'Set the active editor tool by id (matches Toolbar IDs / hotkeys).',
   category: 'canvas',
@@ -183,6 +192,7 @@ register({
 
 register({
   id: 'view.set.tab',
+  runsOn: 'client',
   label: 'Set view tab',
   description: 'Switch the canvas view tab (plan, 3d, section).',
   category: 'canvas',
@@ -203,6 +213,7 @@ register({
 
 register({
   id: 'scene.describe',
+  runsOn: 'client',
   label: 'Describe what is on the canvas',
   description:
     'Read back everything currently on the canvas: each object with its id, name, kind, position and size in inches, plus which objects are selected. Call this before moving, resizing, deleting or positioning anything relative to something else. Every other command needs an id, and this is the only way to learn one.',
