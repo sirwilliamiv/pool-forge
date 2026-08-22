@@ -38,3 +38,14 @@ await build({
   outfile: `${OUT}/preload.cjs`,
   external: ['electron'],
 })
+
+// The relay, as its own deployable. Same session core as the desktop host, which
+// is the point: a second transport is a socket and a message shape, not a second
+// implementation of the agent.
+await mkdir('services/voice-relay/dist', { recursive: true })
+await build({
+  ...shared,
+  entryPoints: ['src/modules/voice/relay/main.ts'],
+  outfile: 'services/voice-relay/dist/main.cjs',
+  external: ['@google/genai', 'ws'],
+})

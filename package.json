@@ -25,6 +25,7 @@
     "db:studio": "prisma studio",
     "docs:commands": "tsx scripts/gen-commands.ts",
     "voice:build": "node scripts/build-voice-host.mjs",
+    "voice:relay": "pnpm voice:build && node services/voice-relay/dist/main.cjs",
     "voice:models": "tsx scripts/probe-live-models.ts",
     "voice:smoke": "tsx scripts/voice-smoke.ts",
     "voice:eval": "tsx scripts/voice-eval.ts",
@@ -86,6 +87,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.169.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.3",
     "@vitest/ui": "^2.1.5",
     "autoprefixer": "^10.4.20",
@@ -104,7 +106,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5",
-    "wait-on": "^9.0.5"
+    "wait-on": "^9.0.5",
+    "ws": "^8.21.3"
   },
   "packageManager": "pnpm@10.7.1"
 }

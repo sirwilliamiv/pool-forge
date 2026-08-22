@@ -13,6 +13,7 @@ import {
 } from '../bridge'
 import type { VoiceScreen } from '../scope'
 import { startCapture, VoicePlayback, type CaptureHandle } from './audio'
+import { createWebSocketBridge, relayUrl } from './wsBridge'
 
 // The browser half of the voice agent.
 //
@@ -61,8 +62,16 @@ export function useVoiceSession(
   const [transcript, setTranscript] = useState<TranscriptLine[]>([])
 
   useEffect(() => {
-    bridge.current = getVoiceBridge()
-    setStatus(bridge.current ? 'idle' : 'unavailable')
+    // The desktop build exposes a bridge on `window`; the web build reaches the
+    // relay over a socket. Neither is checked for here beyond "is one available",
+    // which is the whole reason both satisfy the same interface.
+    const local = getVoiceBridge()
+    if (local) {
+      bridge.current = local
+      setStatus('idle')
+      return
+    }
+    setStatus(relayUrl() ? 'idle' : 'unavailable')
   }, [])
 
   // Set when a turn ends, so the next fragment starts a new caption line rather
@@ -115,8 +124,7 @@ export function useVoiceSession(
   }, [releaseBudget, teardown])
 
   const start = useCallback(async () => {
-    const current = bridge.current
-    if (!current || status === 'live' || status === 'starting') return
+    if (status === 'live' || status === 'starting') return
 
     setError(null)
     setStatus('starting')
@@ -131,7 +139,9 @@ export function useVoiceSession(
 
     let started: CaptureHandle
     try {
-      started = await startCapture(frame => current.sendAudio(frame))
+      // Buffered until the transport exists: capture has to start inside the
+      // click, and the socket cannot be opened until the budget is claimed.
+      started = await startCapture(frame => bridge.current?.sendAudio(frame))
     } catch {
       await teardown()
       setStatus('error')
@@ -159,7 +169,28 @@ export function useVoiceSession(
       )
       return
     }
-    budgetId.current = budget.data.sessionId
+    const sessionId = budget.data.sessionId
+    if (!sessionId) {
+      await teardown()
+      setStatus('error')
+      setError('Voice could not start.')
+      return
+    }
+    budgetId.current = sessionId
+
+    // Built after the budget is claimed, because the ticket names the session it
+    // is allowed to spend and is only valid for a minute.
+    const current =
+      bridge.current ??
+      (await createWebSocketBridge(() => fetchTicket(sessionId, projectId, projectName)))
+
+    if (!current) {
+      await teardown()
+      await releaseBudget()
+      setStatus('unavailable')
+      return
+    }
+    bridge.current = current
 
     let surfaces: Record<VoiceScreen, SerializedScope>
     try {
@@ -286,6 +317,27 @@ function summarize(commandId: string, data: unknown): string {
   const id = record['shapeId'] ?? record['id']
   const idPart = typeof id === 'string' ? ` (id ${id})` : ''
   return `${commandId} completed${idPart}.`
+}
+
+/**
+ * A pass for the relay socket.
+ *
+ * Minted by the app, which knows the session; checked by the relay, which does
+ * not and should not need to.
+ */
+async function fetchTicket(
+  sessionId: string,
+  projectId: string | undefined,
+  projectName: string | undefined,
+): Promise<string> {
+  const response = await fetch('/api/voice/ticket', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ sessionId, projectId, projectName }),
+  })
+  const body = (await response.json()) as { ok?: boolean; ticket?: string }
+  if (!response.ok || !body.ok || !body.ticket) throw new Error('no ticket')
+  return body.ticket
 }
 
 async function fetchSurfaces(): Promise<Record<VoiceScreen, SerializedScope>> {

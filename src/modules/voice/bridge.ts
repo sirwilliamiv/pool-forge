@@ -3,6 +3,8 @@ import type { ToolSurface } from './tools'
 import type { CommandCategory } from '@/modules/commands/registry'
 import type { VoiceScreen } from './scope'
 
+export type { VoiceScreen }
+
 // The contract between the process that owns the microphone and the one that
 // owns the app.
 //
