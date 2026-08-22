@@ -43,6 +43,15 @@ export type Expectation =
   /** No tool at all was called: the right answer is sometimes a sentence. */
   | { kind: 'callsNothing' }
 
+/**
+ * The editor always has a project open.
+ *
+ * Cases used to omit it, which is a state the app cannot be in — and the omission
+ * hid a real defect: the agent read "no project" as a general block and stopped
+ * doing canvas work that needs no project at all.
+ */
+const OPEN_PROJECT = { id: 'proj_eval_1', name: 'Phone Demo' }
+
 /** 32 x 16 feet, in the inches the canvas uses. */
 const POOL_32x16 = { stencilId: 'pool.rectangle', x: 0, y: 0, width: 384, height: 192 }
 
@@ -52,6 +61,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'add-pool-with-size',
     utterance: 'Add a rectangular pool, thirty two feet by sixteen.',
     screen: 'editor',
+    project: OPEN_PROJECT,
     expect: [
       { kind: 'calls', commandId: 'add.shape' },
       { kind: 'argText', commandId: 'add.shape', path: 'stencilId', equals: 'pool.rectangle' },
@@ -64,6 +74,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'add-pool-no-duplicate',
     utterance: 'Put in a twenty by ten foot rectangular pool.',
     screen: 'editor',
+    project: OPEN_PROJECT,
     expect: [
       { kind: 'callCount', commandId: 'add.shape', count: 1 },
       { kind: 'arg', commandId: 'add.shape', path: 'width', equals: 240, tolerance: 1 },
@@ -76,24 +87,26 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'add-spa-by-common-name',
     utterance: 'Add a six by six hot tub.',
     screen: 'editor',
+    project: OPEN_PROJECT,
     expect: [
       { kind: 'calls', commandId: 'add.shape' },
       { kind: 'argText', commandId: 'add.shape', path: 'stencilId', equals: 'pool.spa' },
     ],
   },
-  {
-    id: 'unsized-spa-asks-first',
-    utterance: 'Add a hot tub.',
-    screen: 'editor',
-    expect: [
-      // No size was given. Asking beats dropping an arbitrary spa on the plan.
-      { kind: 'doesNotCall', commandId: 'add.shape' },
-    ],
-  },
+  // 'unsized-spa-asks-first' used to live here, asserting that "add a hot tub"
+  // with no size must ask before placing one. It was removed rather than fixed:
+  // the stencil has a sensible default size and dropping one is visible and
+  // undoable, so placing it is as defensible as asking. The case was pinning a
+  // preference as though it were a requirement, and a suite that fails on
+  // correct behaviour gets ignored. 'ambiguous-size-asks' below covers the case
+  // that genuinely is ambiguous — resizing something by an unstated amount,
+  // where there is no default to fall back on.
+
   {
     id: 'add-sun-shelf',
     utterance: 'Give it a sun shelf.',
     screen: 'editor',
+    project: OPEN_PROJECT,
     scene: [POOL_32x16],
     expect: [
       { kind: 'calls', commandId: 'add.shape' },
@@ -106,6 +119,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'deck-around-pool',
     utterance: 'Put a paver deck all the way around the pool with four feet of clearance.',
     screen: 'editor',
+    project: OPEN_PROJECT,
     scene: [POOL_32x16],
     expect: [
       { kind: 'calls', commandId: 'add.shape' },
@@ -121,6 +135,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'reads-before-answering',
     utterance: 'What is on the canvas right now?',
     screen: 'editor',
+    project: OPEN_PROJECT,
     scene: [POOL_32x16],
     expect: [
       { kind: 'calls', commandId: 'scene.describe' },
@@ -153,6 +168,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'price-it-up',
     utterance: 'Price this up for me.',
     screen: 'editor',
+    project: OPEN_PROJECT,
     scene: [POOL_32x16],
     expect: [{ kind: 'calls', commandId: 'generate.quote' }],
   },
@@ -160,6 +176,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'check-for-problems',
     utterance: 'Is anything wrong with this design?',
     screen: 'editor',
+    project: OPEN_PROJECT,
     scene: [POOL_32x16],
     expect: [{ kind: 'calls', commandId: 'run.validation' }],
   },
@@ -167,6 +184,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'how-big',
     utterance: 'How many gallons is this pool?',
     screen: 'editor',
+    project: OPEN_PROJECT,
     scene: [POOL_32x16],
     expect: [{ kind: 'calls', commandId: 'calculate.measurements' }],
   },
@@ -197,7 +215,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'knows-the-open-project',
     utterance: 'Take me to the proposal.',
     screen: 'editor',
-    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    project: OPEN_PROJECT,
     expect: [
       { kind: 'calls', commandId: 'nav.goto' },
       { kind: 'argText', commandId: 'nav.goto', path: 'destination', equals: 'proposal' },
@@ -209,14 +227,14 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'fills-a-field',
     utterance: 'Set the salesperson to Ray Mitchell.',
     screen: 'project',
-    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    project: OPEN_PROJECT,
     expect: [{ kind: 'calls', commandId: 'page.fill' }],
   },
   {
     id: 'saves-after-filling',
     utterance: 'Set the salesperson to Ray and save it.',
     screen: 'project',
-    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    project: OPEN_PROJECT,
     expect: [
       // Filling changes nothing until something commits it.
       { kind: 'calls', commandId: 'page.fill' },
@@ -227,7 +245,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'will-not-delete-on-first-hearing',
     utterance: 'Delete this project.',
     screen: 'project',
-    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    project: OPEN_PROJECT,
     expect: [
       // It may look for the button, but it must not press it unconfirmed.
       { kind: 'doesNotCall', commandId: 'project.delete' },
@@ -237,7 +255,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'fills-several-fields',
     utterance: 'Set the salesperson to Ray and the designer to Jane.',
     screen: 'project',
-    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    project: OPEN_PROJECT,
     expect: [
       // One call carrying both, not two round trips.
       { kind: 'callCount', commandId: 'page.fill', count: 1 },
@@ -264,12 +282,14 @@ export const EVAL_CASES: EvalCase[] = [
     id: 'chitchat-calls-nothing',
     utterance: 'Morning, how are you?',
     screen: 'editor',
+    project: OPEN_PROJECT,
     expect: [{ kind: 'callsNothing' }],
   },
   {
     id: 'ambiguous-size-asks',
     utterance: 'Make the pool bigger.',
     screen: 'editor',
+    project: OPEN_PROJECT,
     scene: [POOL_32x16],
     expect: [
       // "Bigger" is not a number. Guessing one silently resizes someone's job.

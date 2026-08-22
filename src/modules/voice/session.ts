@@ -241,7 +241,14 @@ export async function startVoiceSession(
         'Use that id for anything that needs a project. Never ask which project they mean while one is open.',
       )
     } else {
-      lines.push('No project is open, so anything project-scoped needs one chosen first.')
+      // Deliberately narrow. An earlier wording said project-scoped work needed
+      // a project "chosen first", and the model read that as a general block:
+      // it stopped adding shapes to the canvas, which needs no project id at
+      // all, and answered "I can't do that without a project open".
+      lines.push(
+        'No project id is available. Only tools that take a projectId are affected — ask which project for those.',
+        'Everything else, including anything on the canvas, works normally and needs no project.',
+      )
     }
     return lines.join(' ')
   }

@@ -28,8 +28,15 @@ export interface CaseResult {
 /** How long to wait for a turn to finish before calling it hung. */
 const TURN_TIMEOUT_MS = 30_000
 
-/** Quiet period after the last event that means the model has finished. */
-const SETTLE_MS = 3_500
+/**
+ * Quiet period after the last event that means the model has finished.
+ *
+ * Five seconds, not three. A turn that reads the page and then fills it pauses
+ * between the two calls, and a shorter window scored that pause as "the model
+ * did nothing" — which showed up as flakiness in the harness rather than in the
+ * agent.
+ */
+const SETTLE_MS = 5_000
 
 interface SceneShape {
   id: string

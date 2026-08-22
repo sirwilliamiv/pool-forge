@@ -245,10 +245,15 @@ describe('voice session', () => {
     await session.close()
   })
 
-  it('says plainly when no project is open', async () => {
+  it('says no project is available without implying everything is blocked', async () => {
+    // An earlier wording said project-scoped work needed a project "chosen
+    // first", and the model read it as a general block: it stopped adding shapes
+    // to the canvas, which needs no project id at all. The eval caught it.
     const { host } = hostWith(async () => ok)
     const session = await startVoiceSession(host, { screen: 'dashboard', config: CONFIG, connect: h.connect })
-    expect(JSON.stringify(h.lastConfig?.['systemInstruction'])).toMatch(/No project is open/i)
+    const instruction = JSON.stringify(h.lastConfig?.['systemInstruction'])
+    expect(instruction).toMatch(/No project id is available/i)
+    expect(instruction).toMatch(/canvas.*works normally|works normally/i)
     await session.close()
   })
 
