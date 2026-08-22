@@ -75,7 +75,27 @@ register({
         if (input.salesperson) data.salesperson = input.salesperson
         if (input.designer) data.designer = input.designer
 
-        return tx.project.create({ data, select: { id: true, name: true } })
+          const created = await tx.project.create({ data, select: { id: true, name: true } })
+
+        // Start from the organisation's default scene when it has one. Doing it
+        // here rather than on first open means the drawing exists before anyone
+        // looks at it, so the editor, the proposal and the quote all agree from
+        // the moment the project is created.
+        const starting = await tx.sceneTemplate.findFirst({
+          where: { orgId, isDefault: true },
+          select: { payload: true },
+        })
+        if (starting) {
+          await tx.drawing.create({
+            data: {
+              projectId: created.id,
+              scale: 1,
+              rootJson: starting.payload as never,
+            },
+          })
+        }
+
+        return created
       })
     } catch (error) {
       // A named error rather than the raw Prisma text, which carries table and

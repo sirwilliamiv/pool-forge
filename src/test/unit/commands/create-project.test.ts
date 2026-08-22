@@ -123,6 +123,62 @@ describe.skipIf(!reachable)('create.project', () => {
     expect(await db.customer.count({ where: { orgId: orgA } })).toBe(before)
   })
 
+  it('starts a new project from the default scene when the org has one', async () => {
+    // Applied at creation rather than on first open, so the editor, the quote
+    // and the proposal all agree from the moment the project exists.
+    const payload = { shapes: [{ id: 's1', kind: 'RECTANGLE_POOL', x: 0, y: 0, width: 384, height: 192 }] }
+    const template = await db.sceneTemplate.create({
+      data: {
+        orgId: orgA,
+        name: `Default ${RUN}`,
+        payload: payload as never,
+        objectCount: 1,
+        isDefault: true,
+      },
+    })
+
+    const result = await create({ name: `Templated ${RUN}` }, ctxA)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const drawing = await db.drawing.findUnique({
+      where: { projectId: result.data.projectId },
+      select: { rootJson: true },
+    })
+    expect((drawing?.rootJson as { shapes?: unknown[] })?.shapes).toHaveLength(1)
+
+    await db.sceneTemplate.delete({ where: { id: template.id } })
+  })
+
+  it('starts empty when the org has no default scene', async () => {
+    const result = await create({ name: `Empty ${RUN}` }, ctxA)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const drawing = await db.drawing.findUnique({ where: { projectId: result.data.projectId } })
+    expect(drawing).toBeNull()
+  })
+
+  it('does not use another organisation default scene', async () => {
+    // The starting scene is org property. Borrowing one would put another
+    // company's layout into this company's new job.
+    const theirs = await db.sceneTemplate.create({
+      data: {
+        orgId: orgB,
+        name: `Theirs ${RUN}`,
+        payload: { shapes: [{ id: 'x' }] } as never,
+        objectCount: 1,
+        isDefault: true,
+      },
+    })
+
+    const result = await create({ name: `Clean ${RUN}` }, ctxA)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(await db.drawing.findUnique({ where: { projectId: result.data.projectId } })).toBeNull()
+
+    await db.sceneTemplate.delete({ where: { id: theirs.id } })
+  })
+
   it('refuses when there is no organisation on the context', async () => {
     const result = await create({ name: `Anon ${RUN}` }, { userId: 'u', orgId: 'anonymous' })
     expect(result.ok).toBe(false)

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ChevronRight, MessageSquare, Play, Share2, Upload } from 'lucide-react'
 import { SaveStatus } from '@/components/editor/SaveStatus'
+import { SceneTemplateMenu } from '@/components/editor/shell/SceneTemplateMenu'
 import { runExportCommand } from '@/components/exports/ExportCommandHandlers'
 import {
   DropdownMenu,
@@ -61,6 +62,8 @@ export function HeaderBar({ orgName, customerName, projectName, projectId, user 
       <SaveStatus />
 
       <div className="flex-1" />
+
+      <SceneTemplateMenu projectId={projectId} />
 
       <div className="flex items-center -space-x-1.5" aria-label="Collaborators">
         <span
