@@ -311,6 +311,97 @@ describe('voice session', () => {
     await session.close()
   })
 
+  it('stops a runaway loop instead of billing for it forever', async () => {
+    // Observed in a real session: add, add, add, undo, undo, undo, and round
+    // again without pause, filling the canvas and billing continuously. Nothing
+    // in the loop fails, so nothing in the loop stops.
+    const run = vi.fn(async () => ok)
+    const { host } = hostWith(run)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+
+    // Vary the arguments, so this is caught by the volume rule rather than by
+    // the identical-call rule.
+    for (let i = 0; i < 30; i++) {
+      h.emit({ toolCall: { functionCalls: [{ id: `c${i}`, name: 'add.shape', args: { stencilId: 'site.lounger', x: i } }] } })
+    }
+    await vi.waitFor(() => expect(h.toolResponses.length).toBe(30))
+
+    expect(run.mock.calls.length, 'the loop must not run unbounded').toBeLessThanOrEqual(14)
+    // Refusals return synchronously while the calls that run await the client,
+    // so they do not arrive last; what matters is that they arrived.
+    const summaries = h.toolResponses.map(entry => String(entry.response['summary']))
+    expect(summaries.some(text => /stop/i.test(text))).toBe(true)
+    await session.close()
+  })
+
+  it('refuses the same action repeated with the same arguments', async () => {
+    const run = vi.fn(async () => ok)
+    const { host } = hostWith(run)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+
+    const args = { stencilId: 'site.lounger', x: 10, y: 20 }
+    for (let i = 0; i < 5; i++) {
+      h.emit({ toolCall: { functionCalls: [{ id: `r${i}`, name: 'add.shape', args }] } })
+    }
+    await vi.waitFor(() => expect(h.toolResponses.length).toBe(5))
+
+    // Twice is a person asking for a second one. A third is a loop.
+    expect(run).toHaveBeenCalledTimes(2)
+    await session.close()
+  })
+
+  it('does not care about argument order when spotting a repeat', async () => {
+    // Key order varies between calls, so comparing raw JSON would make every
+    // repeat look new and the guard would never fire.
+    const run = vi.fn(async () => ok)
+    const { host } = hostWith(run)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+
+    h.emit({ toolCall: { functionCalls: [{ id: 'a', name: 'add.shape', args: { x: 1, stencilId: 'site.tree' } }] } })
+    h.emit({ toolCall: { functionCalls: [{ id: 'b', name: 'add.shape', args: { stencilId: 'site.tree', x: 1 } }] } })
+    h.emit({ toolCall: { functionCalls: [{ id: 'c', name: 'add.shape', args: { x: 1, stencilId: 'site.tree' } }] } })
+    await vi.waitFor(() => expect(h.toolResponses.length).toBe(3))
+
+    expect(run).toHaveBeenCalledTimes(2)
+    await session.close()
+  })
+
+  it('lets the user unstick it by saying something', async () => {
+    // The user speaking is the only thing that clears the guard. Clearing it on
+    // the model's own turns would let a loop reset its own budget by talking to
+    // itself, which is exactly what a loop does.
+    const run = vi.fn(async () => ok)
+    const { host } = hostWith(run)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+
+    const args = { stencilId: 'site.lounger' }
+    for (let i = 0; i < 4; i++) {
+      h.emit({ toolCall: { functionCalls: [{ id: `x${i}`, name: 'add.shape', args }] } })
+    }
+    await vi.waitFor(() => expect(h.toolResponses.length).toBe(4))
+    expect(run).toHaveBeenCalledTimes(2)
+
+    h.emit({ serverContent: { inputTranscription: { text: 'add one more lounger' } } })
+    h.emit({ toolCall: { functionCalls: [{ id: 'after', name: 'add.shape', args }] } })
+    await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(3))
+    await session.close()
+  })
+
+  it('does not let the model clear the guard by talking', async () => {
+    const run = vi.fn(async () => ok)
+    const { host } = hostWith(run)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+
+    const args = { stencilId: 'site.lounger' }
+    for (let i = 0; i < 3; i++) {
+      h.emit({ toolCall: { functionCalls: [{ id: `y${i}`, name: 'add.shape', args }] } })
+      h.emit({ serverContent: { outputTranscription: { text: "I've added a lounger." } } })
+    }
+    await vi.waitFor(() => expect(h.toolResponses.length).toBe(3))
+    expect(run).toHaveBeenCalledTimes(2)
+    await session.close()
+  })
+
   it('passes model audio to the host and flags barge-in', async () => {
     const bag = hostWith(async () => ok) as unknown as {
       host: SessionHost

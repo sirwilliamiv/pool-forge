@@ -308,15 +308,39 @@ function withProjectId(args: unknown, projectId: string | undefined): unknown {
  * What the model is told happened.
  *
  * A bare "Done." is too weak a signal: a model that cannot tell its call landed
- * re-issues it, and the observable result is the same object added to the canvas
- * twice. Naming the command and handing back the new id gives it something to
- * refer to instead.
+ * re-issues it, and the observable result is the same object added twice. But
+ * naming the command is not enough either. Watching a real session, undo
+ * reported only "edit.undo completed" three times in a row, so the model could
+ * not tell whether it had gone back one step or three, retried the add, and ran
+ * add-add-add-undo-undo-undo round and round.
+ *
+ * So the outcome carries the numbers that say where things now stand.
  */
 function summarize(commandId: string, data: unknown): string {
   const record = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+  const parts: string[] = []
+
   const id = record['shapeId'] ?? record['id']
-  const idPart = typeof id === 'string' ? ` (id ${id})` : ''
-  return `${commandId} completed${idPart}.`
+  if (typeof id === 'string' && id) parts.push(`id ${id}`)
+
+  // Undo and redo are the ones that were unreadable, and the state after them is
+  // the only thing that makes the next decision obvious.
+  if (record['undone'] === true) parts.push('undone')
+  if (record['undone'] === false) parts.push('there was nothing to undo')
+  if (record['redone'] === true) parts.push('redone')
+  if (record['redone'] === false) parts.push('there was nothing to redo')
+  if (typeof record['shapeCount'] === 'number') {
+    parts.push(`${record['shapeCount']} object${record['shapeCount'] === 1 ? '' : 's'} on the canvas now`)
+  }
+
+  if (Array.isArray(record['deletedNames']) && record['deletedNames'].length > 0) {
+    parts.push(`removed ${record['deletedNames'].join(', ')}`)
+  }
+  if (typeof record['count'] === 'number') parts.push(`${record['count']} found`)
+  if (typeof record['filled'] === 'number') parts.push(`${record['filled']} field(s) filled`)
+  if (typeof record['total'] === 'number') parts.push(`total ${record['total']}`)
+
+  return parts.length > 0 ? `${commandId}: ${parts.join(', ')}.` : `${commandId} completed.`
 }
 
 /**

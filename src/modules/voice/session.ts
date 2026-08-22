@@ -132,6 +132,27 @@ export interface LiveServerMessageLike {
 const MAX_RECONNECT_ATTEMPTS = 5
 const RECONNECT_BACKOFF_MS = 500
 
+/**
+ * Actions allowed between two things the user says.
+ *
+ * A model that has misread its own result will retry, and with tools that all
+ * report success it will retry forever: observed running add, add, add, undo,
+ * undo, undo and round again, billing continuously and filling the canvas.
+ * A person asking for one thing does not need dozens of actions to get it, so
+ * the count since they last spoke is the signal that something has come
+ * unstuck.
+ */
+const MAX_CALLS_PER_USER_TURN = 14
+
+/**
+ * Times the same action with the same arguments may run before it is refused.
+ *
+ * Two is deliberate rather than one: asking for a second lounger is a normal
+ * thing to do. A third identical call with no word from the user in between is
+ * not a request, it is a loop.
+ */
+const MAX_IDENTICAL_CALLS = 2
+
 const SYSTEM_PROMPT = `You are the voice assistant inside Pool Forge, software pool builders use to design a pool, price it, and produce a proposal.
 
 You act by calling tools. Never claim to have done something you did not call a tool for.
@@ -201,6 +222,10 @@ export async function startVoiceSession(
   let awaitingConfirmation: { commandId: string; args: unknown } | null = null
   /** Consecutive failed reconnects, reset by a session that reaches setup. */
   let reconnectAttempts = 0
+  /** Actions run since the user last said anything. */
+  let callsThisTurn = 0
+  /** How often each exact action has run since then. */
+  let repeats = new Map<string, number>()
 
   const connect: LiveConnect = options.connect ?? (await defaultConnect(config))
 
@@ -290,6 +315,30 @@ export async function startVoiceSession(
       awaitingConfirmation = null
     }
 
+    // Loop guard. Checked after scope and confirmation, so a refusal here is
+    // always about repetition rather than about permission.
+    const signature = `${name}:${stableKey(args)}`
+    const seen = repeats.get(signature) ?? 0
+    callsThisTurn += 1
+
+    if (callsThisTurn > MAX_CALLS_PER_USER_TURN) {
+      log('voice_loop_broken', { name, callsThisTurn })
+      return respond(call, {
+        ok: false,
+        summary:
+          'You have run a lot of actions since the user last spoke, and something has gone wrong. Stop, describe what is actually on the canvas now, and ask them what they want. Do not call another tool until they answer.',
+      })
+    }
+
+    if (seen >= MAX_IDENTICAL_CALLS) {
+      log('voice_repeat_refused', { name, seen })
+      return respond(call, {
+        ok: false,
+        summary: `You have already run ${name} with these exact arguments ${seen} times and it succeeded each time. It is done. Say what you see and stop, or ask the user what they wanted instead.`,
+      })
+    }
+    repeats.set(signature, seen + 1)
+
     try {
       const outcome = await host.runCommand(name, args)
       // The summary is what the model hears, so it is also the only thing that
@@ -344,6 +393,11 @@ export async function startVoiceSession(
     }
     if (content?.inputTranscription?.text) {
       host.onTranscript?.(content.inputTranscription.text, 'user')
+      // The user speaking is the only thing that clears the loop guard. Clearing
+      // it on the model's own turns would let it reset its own budget by talking
+      // to itself, which is precisely what a loop does.
+      callsThisTurn = 0
+      repeats = new Map()
     }
     if (content?.turnComplete) host.onTurnComplete?.()
 
@@ -481,6 +535,23 @@ export async function startVoiceSession(
       return scope.categories
     },
   }
+}
+
+/**
+ * A stable key for a set of arguments.
+ *
+ * Key order varies between calls even when the arguments are identical, so
+ * JSON.stringify alone would make a repeat look like a new action and the loop
+ * guard would never fire.
+ */
+function stableKey(args: unknown): string {
+  if (!args || typeof args !== 'object') return String(args)
+  if (Array.isArray(args)) return `[${args.map(stableKey).join(',')}]`
+  const record = args as Record<string, unknown>
+  return `{${Object.keys(record)
+    .sort()
+    .map(key => `${key}:${stableKey(record[key])}`)
+    .join(',')}}`
 }
 
 /** A confirmation flag the model set after checking with the user. */
