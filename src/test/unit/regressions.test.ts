@@ -266,3 +266,46 @@ describe('a mutation aimed at an id that is not on the canvas', () => {
     expect(result.ok).toBe(false)
   })
 })
+
+describe('resizing a pool to a target area', () => {
+  // Registered with voice examples and never implemented, so the agent was
+  // offered nothing and "make the pool six hundred square feet" went nowhere.
+  beforeEach(() => {
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ ok: true, data: {} })))
+    useShapesStore.getState().clear()
+    render(createElement(ClientCommandHandlers))
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('hits the area asked for', async () => {
+    const id = useShapesStore.getState().addShape(ShapeKind.RECTANGLE_POOL, 0, 0, {
+      width: 384,
+      height: 192,
+    })
+    await dispatch('set.pool.targetArea', { id, targetAreaSqft: 600 })
+
+    const shape = useShapesStore.getState().shapes.find((s) => s.id === id)!
+    expect((shape.width / 12) * (shape.height / 12)).toBeCloseTo(600, 0)
+  })
+
+  it('keeps the pool the same shape', async () => {
+    // Scaling one side would reach the number and turn a 2:1 pool into a
+    // corridor, which is not what anyone means by "make it bigger".
+    const id = useShapesStore.getState().addShape(ShapeKind.RECTANGLE_POOL, 0, 0, {
+      width: 384,
+      height: 192,
+    })
+    await dispatch('set.pool.targetArea', { id, targetAreaSqft: 600 })
+
+    const shape = useShapesStore.getState().shapes.find((s) => s.id === id)!
+    expect(shape.width / shape.height).toBeCloseTo(2, 3)
+  })
+
+  it('refuses a shape that is not there', async () => {
+    expect((await dispatch('set.pool.targetArea', { id: 'ghost', targetAreaSqft: 600 })).ok).toBe(false)
+  })
+})

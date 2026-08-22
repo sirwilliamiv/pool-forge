@@ -246,6 +246,13 @@ register({
     id: z.string(),
     poolShape: z.enum(['rectangle', 'ellipse']),
   }),
+  // It had none, so the converter refused it and the agent could not reach a
+  // capability that was already built and working.
+  voiceExamples: [
+    'Make that pool an oval.',
+    'Turn it into a rectangle instead.',
+    'Round the pool off.',
+  ],
   execute: async (input) => ({ ok: true, data: { id: input.id, poolShape: input.poolShape } }),
 })
 
@@ -324,15 +331,19 @@ register({
   // multiplies by twelve. Sibling commands disagreeing about units is exactly
   // what a model reading these schemas cold gets wrong, so every field says so.
   description:
-    'Update length, width, average depth, shallow/deep depth, or slope of the selected pool. All measurements are in FEET.',
+    'Update the selected pool: length, width, average depth, shallow and deep depth, or floor slope. Every field is named with its unit and every one is in FEET.',
   category: 'shape',
+  // The unit lives in the field name, not only in the description. Told that
+  // these are feet while add.shape next door says to multiply feet by twelve,
+  // a model sent 360 for "thirty feet" and reported back "the pool is now 30
+  // feet long". A field called lengthFt cannot be misread that way.
   inputSchema: z.object({
     id: z.string(),
-    length: z.number().positive().optional().describe('Length in feet.'),
-    width: z.number().positive().optional().describe('Width in feet.'),
-    avgDepth: z.number().positive().optional().describe('Average depth in feet.'),
-    shallowDepth: z.number().positive().optional().describe('Shallow end depth in feet.'),
-    deepDepth: z.number().positive().optional().describe('Deep end depth in feet.'),
+    lengthFt: z.number().positive().optional().describe('Length in feet, not inches.'),
+    widthFt: z.number().positive().optional().describe('Width in feet, not inches.'),
+    avgDepthFt: z.number().positive().optional().describe('Average depth in feet.'),
+    shallowDepthFt: z.number().positive().optional().describe('Shallow end depth in feet.'),
+    deepDepthFt: z.number().positive().optional().describe('Deep end depth in feet.'),
     slope: z.number().optional().describe('Floor slope, rise over run.'),
   }),
   outputSchema: z.object({

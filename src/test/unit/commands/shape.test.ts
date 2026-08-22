@@ -156,9 +156,20 @@ describe('shape commands — input validation rejects bad input', () => {
     expect(r.success).toBe(false)
   })
 
-  it('pool.geometry.update rejects negative length', () => {
+  it('pool.geometry.update rejects a negative length', () => {
     const c = cmd('pool.geometry.update')
-    const r = c.inputSchema.safeParse({ id: 's1', length: -5 })
-    expect(r.success).toBe(false)
+    expect(c.inputSchema.safeParse({ id: 's1', lengthFt: -5 }).success).toBe(false)
+    expect(c.inputSchema.safeParse({ id: 's1', lengthFt: 30 }).success).toBe(true)
+  })
+
+  it('pool.geometry.update ignores a field name that no longer exists', () => {
+    // Zod strips unknown keys, so the old `length` parses cleanly and carries
+    // nothing. On its own that is a command reporting success and doing
+    // nothing, which is why the handler refuses an input it recognises no
+    // fields in rather than quietly succeeding.
+    const c = cmd('pool.geometry.update')
+    const parsed = c.inputSchema.safeParse({ id: 's1', length: 30 })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(Object.keys(parsed.data as object)).not.toContain("lengthFt")
   })
 })

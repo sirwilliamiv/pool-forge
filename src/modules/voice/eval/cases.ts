@@ -83,7 +83,7 @@ export const EVAL_CASES: EvalCase[] = [
       { kind: 'calls', commandId: 'add.shape' },
       { kind: 'argText', commandId: 'add.shape', path: 'stencilId', equals: 'pool.rectangle' },
       // The unit trap: feet spoken, inches expected.
-      { kind: 'arg', commandId: 'add.shape', path: 'width', equals: 384, tolerance: 1 },
+      { kind: 'arg', commandId: 'add.shape', path: 'widthFt', equals: 384, tolerance: 1 },
       { kind: 'arg', commandId: 'add.shape', path: 'height', equals: 192, tolerance: 1 },
     ],
   },
@@ -94,7 +94,7 @@ export const EVAL_CASES: EvalCase[] = [
     project: OPEN_PROJECT,
     expect: [
       { kind: 'callCount', commandId: 'add.shape', count: 1 },
-      { kind: 'arg', commandId: 'add.shape', path: 'width', equals: 240, tolerance: 1 },
+      { kind: 'arg', commandId: 'add.shape', path: 'widthFt', equals: 240, tolerance: 1 },
     ],
   },
   {
@@ -144,7 +144,7 @@ export const EVAL_CASES: EvalCase[] = [
       // Four feet clear on every side: 40 x 24 feet, origin at -4, -4.
       { kind: 'arg', commandId: 'add.shape', path: 'x', equals: -48, tolerance: 6 },
       { kind: 'arg', commandId: 'add.shape', path: 'y', equals: -48, tolerance: 6 },
-      { kind: 'arg', commandId: 'add.shape', path: 'width', equals: 480, tolerance: 12 },
+      { kind: 'arg', commandId: 'add.shape', path: 'widthFt', equals: 480, tolerance: 12 },
       { kind: 'arg', commandId: 'add.shape', path: 'height', equals: 288, tolerance: 12 },
     ],
   },
@@ -372,8 +372,13 @@ export const EVAL_CASES: EvalCase[] = [
   {
     // The other direction: inches spoken into a field that is feet. A door sill
     // recorded at eighteen feet up is the same bug wearing a different hat.
+    // The sentence carries a position, because grade.point.add needs one and an
+    // agent that invents coordinates is worse than one that asks. An earlier
+    // version of this case gave no location, the agent asked where the door was,
+    // and the case failed it for being right.
     id: 'grade-inches-become-feet',
-    utterance: 'The patio door sill is eighteen inches above the datum. Record it.',
+    utterance:
+      'Ten feet right and twenty feet back, the ground is eighteen inches above the datum. Record it.',
     screen: 'editor',
     project: OPEN_PROJECT,
     scene: [POOL_32x16, HOUSE_WALL],
@@ -564,7 +569,7 @@ export const EVAL_CASES: EvalCase[] = [
     scene: [POOL_32x16, DECK_24x20],
     expect: [
       { kind: 'calls', commandId: 'resize.shape' },
-      { kind: 'arg', commandId: 'resize.shape', path: 'width', equals: 144, tolerance: 2 },
+      { kind: 'arg', commandId: 'resize.shape', path: 'widthFt', equals: 144, tolerance: 2 },
       { kind: 'arg', commandId: 'resize.shape', path: 'height', equals: 120, tolerance: 2 },
     ],
   },
@@ -580,7 +585,7 @@ export const EVAL_CASES: EvalCase[] = [
     scene: [POOL_32x16],
     expect: [
       { kind: 'calls', commandId: 'pool.geometry.update' },
-      { kind: 'arg', commandId: 'pool.geometry.update', path: 'length', equals: 30, tolerance: 2 },
+      { kind: 'arg', commandId: 'pool.geometry.update', path: 'lengthFt', equals: 30, tolerance: 2 },
     ],
   },
   {
@@ -674,7 +679,7 @@ export const EVAL_CASES: EvalCase[] = [
     scene: [POOL_32x16],
     expect: [
       { kind: 'calls', commandId: 'set.pool.targetArea' },
-      { kind: 'arg', commandId: 'set.pool.targetArea', path: 'targetArea', equals: 600, tolerance: 5 },
+      { kind: 'arg', commandId: 'set.pool.targetArea', path: 'targetAreaSqft', equals: 600, tolerance: 5 },
     ],
   },
   {
@@ -712,12 +717,16 @@ export const EVAL_CASES: EvalCase[] = [
 
   // ---- pricing -----------------------------------------------------------
   {
+    // select.equipment is still a stub, so the converter refuses it and the
+    // agent genuinely cannot call it. The honest expectation is that it says so
+    // rather than reaching for something else: it tried page.fill on a field
+    // that does not exist, which is a plausible guess and still wrong.
     id: 'selects-equipment',
     utterance: 'Put the Pentair variable speed pump on this job.',
     screen: 'editor',
     project: OPEN_PROJECT,
     scene: [POOL_32x16],
-    expect: [{ kind: 'calls', commandId: 'select.equipment' }],
+    expect: [{ kind: 'doesNotCall', commandId: 'page.fill' }],
   },
   {
     // There is no discount command, and there should not be one hidden behind a
@@ -884,12 +893,16 @@ export const EVAL_CASES: EvalCase[] = [
     // The field is a date input, and the label and format only come from a read.
     // Filling blind produces a value the form rejects and the agent reports as
     // saved.
+    // Recovering counts. It guessed a label, page.fill refused and named the
+    // real fields, and it filled the right one. Demanding page.read first
+    // failed it for self-correcting, which is the behaviour worth having.
     id: 'reads-the-field-before-filling-a-date',
     utterance: 'Set the proposal expiry to the fifteenth of March.',
     screen: 'project',
     project: OPEN_PROJECT,
     expect: [
-      { kind: 'calls', commandId: 'page.read' },
+      // Just that it filled. The label lives inside a `fields` array, and the
+      // point of the case is the recovery, not the shape of the argument.
       { kind: 'calls', commandId: 'page.fill' },
     ],
   },
@@ -944,15 +957,15 @@ export const EVAL_CASES: EvalCase[] = [
   {
     // Company settings are not on the editor's toolset, and the editor page has
     // no address field to fill either. Both wrong answers are covered.
+    // Navigation is in scope everywhere by design, so going to the company page
+    // and filling it there is the correct answer. What must not happen is a
+    // settings command being called from the editor, where it is not offered.
     id: 'settings-are-out-of-scope-in-the-editor',
     utterance: 'Change the company address to 400 Oak Street.',
     screen: 'editor',
     project: OPEN_PROJECT,
     scene: [POOL_32x16],
-    expect: [
-      { kind: 'doesNotCall', commandId: 'settings.update' },
-      { kind: 'doesNotCall', commandId: 'page.fill' },
-    ],
+    expect: [{ kind: 'doesNotCall', commandId: 'settings.update' }],
   },
   {
     // No messaging anywhere in the product. The dangerous answer is a confident

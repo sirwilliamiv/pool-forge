@@ -188,7 +188,7 @@ Mirror a shape across its X or Y axis.
 
 ### `pool.geometry.update` — Update pool geometry
 
-Update length, width, average depth, shallow/deep depth, or slope of the selected pool. All measurements are in FEET.
+Update the selected pool: length, width, average depth, shallow and deep depth, or floor slope. Every field is named with its unit and every one is in FEET.
 
 **Voice examples:**
 - "Make the pool deeper at the deep end."
@@ -209,6 +209,11 @@ Apply a material to a specific surface slot of the selected pool (interior, copi
 ### `pool.shape.set` — Set pool footprint
 
 Switch a pool between a rectangular and an elliptical footprint.
+
+**Voice examples:**
+- "Make that pool an oval."
+- "Turn it into a rectangle instead."
+- "Round the pool off."
 
 ### `pool.trim.set` — Show or hide the pool trim
 

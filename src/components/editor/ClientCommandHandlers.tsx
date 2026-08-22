@@ -157,6 +157,7 @@ const HANDLER_IDS: string[] = [
   'view.set.tab',
   'tool.activate',
   'scene.describe',
+  'set.pool.targetArea',
   'canvas.zoom.in',
   'canvas.zoom.out',
   'canvas.pan',
@@ -356,11 +357,11 @@ export function ClientCommandHandlers() {
     registerClientHandler<
       {
         id: string
-        length?: number
-        width?: number
-        avgDepth?: number
-        shallowDepth?: number
-        deepDepth?: number
+        lengthFt?: number
+        widthFt?: number
+        avgDepthFt?: number
+        shallowDepthFt?: number
+        deepDepthFt?: number
         slope?: number
       },
       { id: string }
@@ -372,13 +373,21 @@ export function ClientCommandHandlers() {
         depthShallow: number
         depthDeep: number
       }> = {}
-      if (input.length != null) patch.width = input.length * 12
-      if (input.width != null) patch.height = input.width * 12
-      if (input.shallowDepth != null) patch.depthShallow = input.shallowDepth
-      if (input.deepDepth != null) patch.depthDeep = input.deepDepth
-      if (Object.keys(patch).length > 0) {
-        useShapesStore.getState().updateShape(input.id, patch)
+      // Feet in, inches on the canvas. The names carry the unit so this
+      // conversion cannot be applied twice or not at all.
+      if (input.lengthFt != null) patch.width = input.lengthFt * 12
+      if (input.widthFt != null) patch.height = input.widthFt * 12
+      if (input.shallowDepthFt != null) patch.depthShallow = input.shallowDepthFt
+      if (input.deepDepthFt != null) patch.depthDeep = input.deepDepthFt
+      // Nothing recognised means nothing to do, and saying "done" to that is
+      // the same lie in a new place: Zod strips unknown keys, so a caller using
+      // an old field name parses cleanly and carries no values at all.
+      if (Object.keys(patch).length === 0) {
+        throw new Error(
+          'No geometry was given. Use lengthFt, widthFt, shallowDepthFt or deepDepthFt, all in feet.',
+        )
       }
+      useShapesStore.getState().updateShape(input.id, patch)
       return { id: input.id }
     })
 
@@ -438,9 +447,15 @@ export function ClientCommandHandlers() {
       const patch: Partial<{ depthShallow: number; depthDeep: number }> = {}
       if (input.shallowDepth != null) patch.depthShallow = input.shallowDepth
       if (input.deepDepth != null) patch.depthDeep = input.deepDepth
-      if (Object.keys(patch).length > 0) {
-        useShapesStore.getState().updateShape(input.id, patch)
+      // Nothing recognised means nothing to do, and saying "done" to that is
+      // the same lie in a new place: Zod strips unknown keys, so a caller using
+      // an old field name parses cleanly and carries no values at all.
+      if (Object.keys(patch).length === 0) {
+        throw new Error(
+          'No geometry was given. Use lengthFt, widthFt, shallowDepthFt or deepDepthFt, all in feet.',
+        )
       }
+      useShapesStore.getState().updateShape(input.id, patch)
       return { id: input.id }
     })
 
@@ -490,6 +505,31 @@ export function ClientCommandHandlers() {
       if (!history.canRedo()) return { redone: false, shapeCount: useShapesStore.getState().shapes.length }
       history.redo()
       return { redone: true, shapeCount: useShapesStore.getState().shapes.length }
+    })
+
+    registerClientHandler<
+      { id: string; targetAreaSqft: number },
+      { id: string; widthFt: number; lengthFt: number; areaSqft: number }
+    >('set.pool.targetArea', (input) => {
+      requireShape(input.id)
+      const shape = useShapesStore.getState().shapes.find((s) => s.id === input.id)!
+      const currentSqft = (shape.width / 12) * (shape.height / 12)
+      if (currentSqft <= 0) throw new Error('That shape has no area to scale.')
+
+      // Both sides by the square root, which is the only resize that reaches a
+      // target area without changing the pool's proportions. Scaling one side
+      // would turn a 2:1 pool into a corridor to hit the same number.
+      const factor = Math.sqrt(input.targetAreaSqft / currentSqft)
+      const width = shape.width * factor
+      const height = shape.height * factor
+      useShapesStore.getState().updateShape(input.id, { width, height })
+
+      return {
+        id: input.id,
+        lengthFt: Math.round((width / 12) * 10) / 10,
+        widthFt: Math.round((height / 12) * 10) / 10,
+        areaSqft: Math.round((width / 12) * (height / 12) * 10) / 10,
+      }
     })
 
     // ---------- canvas view ----------

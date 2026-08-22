@@ -29,23 +29,27 @@ register({
   label: 'Resize pool by target area',
   description: 'Scale a pool proportionally to match a target surface area.',
   category: 'measurement',
+  runsOn: 'client',
   inputSchema: z.object({
     id: z.string(),
-    targetArea: z.number().positive(),
+    targetAreaSqft: z.number().positive().describe('Target surface area in square feet.'),
   }),
   outputSchema: z.object({
     id: z.string(),
-    width: z.number(),
-    height: z.number(),
-    area: z.number(),
-    perimeter: z.number(),
+    widthFt: z.number(),
+    lengthFt: z.number(),
+    areaSqft: z.number(),
   }),
   voiceExamples: [
     'Resize the selected pool to two hundred thirty eight square feet.',
     'Make the pool three hundred square feet.',
   ],
-  unimplemented: true,
-  execute: async () => ({ ok: false, error: 'not implemented' }),
+  // CLIENT: scale both sides by sqrt(target / current), which is the only
+  // resize that hits an area without changing the pool's proportions.
+  execute: async input => ({
+    ok: true,
+    data: { id: input.id, widthFt: 0, lengthFt: 0, areaSqft: input.targetAreaSqft },
+  }),
 })
 
 register({

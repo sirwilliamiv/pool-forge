@@ -477,7 +477,7 @@ function apply(commandId: string, args: Record<string, unknown>, world: World): 
         stencilId: String(args['stencilId'] ?? ''),
         x: num('x') ?? 0,
         y: num('y') ?? 0,
-        ...(num('width') !== undefined ? { width: num('width') as number } : {}),
+        ...(num('widthFt') !== undefined ? { width: num('widthFt') as number } : {}),
         ...(num('height') !== undefined ? { height: num('height') as number } : {}),
       },
       world.nextShapeId(),
@@ -779,7 +779,7 @@ function apply(commandId: string, args: Record<string, unknown>, world: World): 
     return { id: target.id, x: target.x, y: target.y }
   }
   if (commandId === 'resize.shape') {
-    target.width = num('width') ?? target.width
+    target.width = num('widthFt') ?? target.width
     target.height = num('height') ?? target.height
     return { id: target.id, width: target.width, height: target.height }
   }
@@ -824,8 +824,8 @@ function apply(commandId: string, args: Record<string, unknown>, world: World): 
   // the input is what lets a follow-up scene.describe expose a model that passed
   // 360 when it meant 30 feet.
   if (commandId === 'pool.geometry.update') {
-    if (num('length') !== undefined) target.width = (num('length') as number) * 12
-    if (num('width') !== undefined) target.height = (num('width') as number) * 12
+    if (num('lengthFt') !== undefined) target.width = (num('lengthFt') as number) * 12
+    if (num('widthFt') !== undefined) target.height = (num('widthFt') as number) * 12
     return {
       id: target.id,
       lengthFt: round(target.width / 12),

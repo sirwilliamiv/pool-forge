@@ -64,11 +64,18 @@ export function GeometrySection() {
   const avg = (shallow + deep) / 2
   const slope = lengthFt > 0 ? Math.max(0, deep - shallow) / lengthFt : 0
 
-  function pushGeom(patch: { length?: number; width?: number; avgDepth?: number; shallowDepth?: number; deepDepth?: number; slope?: number }) {
-    if (shape!.displayHint?.lockedRatio && (patch.length != null || patch.width != null)) {
+  function pushGeom(patch: {
+    lengthFt?: number
+    widthFt?: number
+    avgDepthFt?: number
+    shallowDepthFt?: number
+    deepDepthFt?: number
+    slope?: number
+  }) {
+    if (shape!.displayHint?.lockedRatio && (patch.lengthFt != null || patch.widthFt != null)) {
       const ratio = widthFt > 0 ? lengthFt / widthFt : 1
-      if (patch.length != null) patch.width = patch.length / ratio
-      else if (patch.width != null) patch.length = patch.width * ratio
+      if (patch.lengthFt != null) patch.widthFt = patch.lengthFt / ratio
+      else if (patch.widthFt != null) patch.lengthFt = patch.widthFt * ratio
     }
     void dispatch('pool.geometry.update', { id: shape!.id, ...patch })
   }
@@ -122,14 +129,14 @@ export function GeometrySection() {
       }
     >
       <div className="grid grid-cols-3 gap-1.5 px-3 py-2">
-        <NumberField prefix="L" suffix="ft" value={lengthFt} onCommit={(n) => pushGeom({ length: n })} />
-        <NumberField prefix="W" suffix="ft" value={widthFt} onCommit={(n) => pushGeom({ width: n })} />
-        <NumberField prefix="D̄" suffix="ft" value={avg} onCommit={(n) => pushGeom({ avgDepth: n })} />
+        <NumberField prefix="L" suffix="ft" value={lengthFt} onCommit={(n) => pushGeom({ lengthFt: n })} />
+        <NumberField prefix="W" suffix="ft" value={widthFt} onCommit={(n) => pushGeom({ widthFt: n })} />
+        <NumberField prefix="D̄" suffix="ft" value={avg} onCommit={(n) => pushGeom({ avgDepthFt: n })} />
       </div>
       {pool ? (
         <div className="grid grid-cols-3 gap-1.5 px-3 pb-2">
-          <NumberField prefix="Sh" suffix="ft" value={shallow} onCommit={(n) => pushGeom({ shallowDepth: n })} />
-          <NumberField prefix="Dp" suffix="ft" value={deep} onCommit={(n) => pushGeom({ deepDepth: n })} />
+          <NumberField prefix="Sh" suffix="ft" value={shallow} onCommit={(n) => pushGeom({ shallowDepthFt: n })} />
+          <NumberField prefix="Dp" suffix="ft" value={deep} onCommit={(n) => pushGeom({ deepDepthFt: n })} />
           <NumberField prefix="Sl" suffix=":1" value={slope === 0 ? 0 : 1 / slope} onCommit={(n) => pushGeom({ slope: n })} />
         </div>
       ) : null}
