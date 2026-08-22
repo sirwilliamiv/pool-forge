@@ -13,6 +13,11 @@ export interface DisplayHint {
   // Pool footprint shape. Absent or 'rectangle' = the default box footprint;
   // 'ellipse' measures and renders the pool as an oval within its bounding box.
   poolShape?: 'rectangle' | 'ellipse'
+  // The concrete border and the waterline tile are part of the pool's own mesh
+  // rather than separate objects, so they have no id and cannot be deleted.
+  // Absent means present, because a real pool has both.
+  coping?: boolean
+  tileBand?: boolean
 }
 
 export interface ShapeBase {

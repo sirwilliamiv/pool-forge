@@ -97,8 +97,12 @@ function renderShape(shape: Shape, shapes: Shape[]) {
         <>
           <PoolWalls shape={shape} />
           <Water shape={shape} />
-          <Coping shape={shape} />
-          <TileBand shape={shape} />
+          {/* Coping is the concrete border. It used to render unconditionally,
+              so it belonged to no shape, had no id, and nothing could remove it:
+              asked to take it off, the agent called a command that succeeded and
+              the concrete stayed. Default on, because a real pool has coping. */}
+          {shape.displayHint?.coping !== false && <Coping shape={shape} />}
+          {shape.displayHint?.tileBand !== false && <TileBand shape={shape} />}
         </>
       )
     case ShapeKind.POLYGON_POOL:

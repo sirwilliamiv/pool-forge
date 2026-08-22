@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **73**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **76**.
 
 ## Project
 
@@ -78,6 +78,24 @@ Decrease the canvas zoom level.
 **Voice examples:**
 - "Zoom out."
 - "Zoom out a bit."
+
+### `edit.redo` — Redo
+
+Redo the change that was just undone.
+
+**Voice examples:**
+- "Redo that."
+- "Actually put it back."
+
+### `edit.undo` — Undo
+
+Undo the last change to the drawing. Use it as soon as something was done that the user did not want, rather than trying to reconstruct what was there.
+
+**Voice examples:**
+- "Undo that."
+- "Undo."
+- "Put it back."
+- "That was wrong, undo it."
 
 ### `mode.set.presentation` — Set presentation mode
 
@@ -191,6 +209,16 @@ Apply a material to a specific surface slot of the selected pool (interior, copi
 ### `pool.shape.set` — Set pool footprint
 
 Switch a pool between a rectangular and an elliptical footprint.
+
+### `pool.trim.set` — Show or hide the pool trim
+
+Turn the pool's concrete coping border or its waterline tile band on or off. These are part of the pool itself rather than separate objects, so they cannot be deleted — this is how they come off.
+
+**Voice examples:**
+- "Get rid of the concrete around the pool."
+- "Remove the coping."
+- "Put the coping back."
+- "Take the waterline tile off."
 
 ### `resize.shape` — Resize shape
 

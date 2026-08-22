@@ -208,6 +208,32 @@ export const EVAL_CASES: EvalCase[] = [
     ],
   },
 
+  // ---- putting mistakes right -------------------------------------------
+  {
+    // A misheard sentence deleted a pool during a real session, and the agent
+    // could only ask whether the user had an undo button.
+    id: 'undoes-a-mistake',
+    utterance: 'No, I didn\'t want that. Undo it.',
+    screen: 'editor',
+    project: OPEN_PROJECT,
+    scene: [POOL_32x16],
+    expect: [{ kind: 'calls', commandId: 'edit.undo' }],
+  },
+  {
+    // Coping is part of the pool's own mesh, so it has no id and delete cannot
+    // touch it. The agent called delete three times, each succeeded, and the
+    // concrete never moved.
+    id: 'removes-coping-without-deleting',
+    utterance: 'Get rid of the concrete border around the pool.',
+    screen: 'editor',
+    project: OPEN_PROJECT,
+    scene: [POOL_32x16],
+    expect: [
+      { kind: 'calls', commandId: 'pool.trim.set' },
+      { kind: 'doesNotCall', commandId: 'delete.shape' },
+    ],
+  },
+
   // ---- knowing what is open --------------------------------------------
   {
     // The agent used to answer "I can't go to the proposal page until I know

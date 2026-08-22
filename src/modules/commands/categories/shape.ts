@@ -431,3 +431,56 @@ register({
   //   (Wave 0 added the column). Persistence layer round-trips depthProfile.
   execute: async (input) => ({ ok: true, data: { id: input.id } }),
 })
+
+register({
+  id: 'pool.trim.set',
+  label: 'Show or hide the pool trim',
+  description:
+    "Turn the pool's concrete coping border or its waterline tile band on or off. These are part of the pool itself rather than separate objects, so they cannot be deleted — this is how they come off.",
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    coping: z.boolean().optional().describe('The concrete border around the pool edge.'),
+    tileBand: z.boolean().optional().describe('The tile band at the waterline.'),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    coping: z.boolean(),
+    tileBand: z.boolean(),
+  }),
+  voiceExamples: [
+    'Get rid of the concrete around the pool.',
+    'Remove the coping.',
+    'Put the coping back.',
+    'Take the waterline tile off.',
+  ],
+  // CLIENT: merge into the shape's displayHint; SceneRoot reads it.
+  execute: async input => ({
+    ok: true,
+    data: { id: input.id, coping: input.coping ?? true, tileBand: input.tileBand ?? true },
+  }),
+})
+
+register({
+  id: 'edit.undo',
+  label: 'Undo',
+  description:
+    'Undo the last change to the drawing. Use it as soon as something was done that the user did not want, rather than trying to reconstruct what was there.',
+  category: 'canvas',
+  inputSchema: z.object({}),
+  outputSchema: z.object({ undone: z.boolean(), shapeCount: z.number() }),
+  voiceExamples: ['Undo that.', 'Undo.', 'Put it back.', 'That was wrong, undo it.'],
+  // CLIENT: useHistoryStore.getState().undo()
+  execute: async () => ({ ok: true, data: { undone: false, shapeCount: 0 } }),
+})
+
+register({
+  id: 'edit.redo',
+  label: 'Redo',
+  description: 'Redo the change that was just undone.',
+  category: 'canvas',
+  inputSchema: z.object({}),
+  outputSchema: z.object({ redone: z.boolean(), shapeCount: z.number() }),
+  voiceExamples: ['Redo that.', 'Actually put it back.'],
+  execute: async () => ({ ok: true, data: { redone: false, shapeCount: 0 } }),
+})

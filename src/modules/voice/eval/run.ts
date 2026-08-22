@@ -271,6 +271,11 @@ function apply(
     return { count: scene.length, selectedIds: [], shapes: scene, bounds: boundsOf(scene) }
   }
 
+  if (commandId === 'edit.undo') return { undone: true, shapeCount: scene.length }
+  if (commandId === 'pool.trim.set') {
+    return { id: args['id'] ?? null, coping: args['coping'] !== false, tileBand: args['tileBand'] !== false }
+  }
+
   const target = scene.find(shape => shape.id === args['id'])
   if (target) {
     if (commandId === 'move.shape') {

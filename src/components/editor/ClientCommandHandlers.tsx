@@ -5,6 +5,7 @@ import { registerClientHandler, unregisterClientHandler } from '@/lib/commands/d
 import { useCameraStore } from '@/modules/editor/state/cameraStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
+import { useHistoryStore } from '@/modules/editor/state/historyStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useViewStore, type FocusTarget } from '@/modules/editor/state/viewStore'
@@ -15,6 +16,19 @@ import { visibleBounds } from '@/modules/editor/placement'
 import { useCommandPaletteStore } from './shell/CommandPalette'
 
 let sunStudyRaf: number | null = null
+
+/**
+ * Fail loudly when a command names a shape that is not there.
+ *
+ * Every mutation used to echo back the id it was given, so a command against a
+ * deleted or misremembered id reported success and changed nothing. The agent
+ * then told the user the deck was gone while they were looking at it, three
+ * times in a row, and had no way to tell it was wrong.
+ */
+function requireShape(id: string): void {
+  const shape = useShapesStore.getState().shapes.find((s) => s.id === id)
+  if (!shape) throw new Error(`There is nothing on the canvas with id ${id}.`)
+}
 
 /** Point the camera at the box these shapes occupy. */
 function frameShapes(shapes: Shape[]): void {
@@ -41,6 +55,11 @@ interface SceneDescription {
     hidden: boolean
   }[]
   bounds: { x: number; y: number; width: number; height: number } | null
+}
+
+/** The name a person would use, for saying out loud what was removed. */
+function defaultLabelFor(shape: Shape): string {
+  return nameFor(shape) ?? shape.kind
 }
 
 /** Only stencil-backed shapes carry an id; the typed kinds do not. */
@@ -106,6 +125,9 @@ const HANDLER_IDS: string[] = [
   'view.set.tab',
   'tool.activate',
   'scene.describe',
+  'pool.trim.set',
+  'edit.undo',
+  'edit.redo',
   // scene category
   'sun.set.time',
   'sun.run.study',
@@ -180,6 +202,7 @@ export function ClientCommandHandlers() {
       const cur = useShapesStore.getState().shapes.find((s) => s.id === input.id)
       const x = input.relative ? (cur?.x ?? 0) + input.x : input.x
       const y = input.relative ? (cur?.y ?? 0) + input.y : input.y
+      requireShape(input.id)
       useShapesStore.getState().updateShape(input.id, { x, y })
       return { id: input.id, x, y }
     })
@@ -188,6 +211,7 @@ export function ClientCommandHandlers() {
       { id: string; width: number; height: number },
       { id: string; width: number; height: number }
     >('resize.shape', (input) => {
+      requireShape(input.id)
       useShapesStore
         .getState()
         .updateShape(input.id, { width: input.width, height: input.height })
@@ -198,18 +222,41 @@ export function ClientCommandHandlers() {
       { id: string; degrees: number; relative?: boolean },
       { id: string; degrees: number }
     >('rotate.shape', (input) => {
+      requireShape(input.id)
       const cur = useShapesStore.getState().shapes.find((s) => s.id === input.id)
       const rotation = input.relative ? (cur?.rotation ?? 0) + input.degrees : input.degrees
       useShapesStore.getState().updateShape(input.id, { rotation })
       return { id: input.id, degrees: rotation }
     })
 
-    registerClientHandler<{ ids: string[] }, { deletedIds: string[] }>(
+    registerClientHandler<
+      { ids: string[] },
+      { deletedIds: string[]; deletedNames: string[]; notFound: string[] }
+    >(
       'delete.shape',
       (input) => {
-        useShapesStore.getState().removeShapes(input.ids)
+        // Report what was actually removed, and by name. Echoing the requested
+        // ids meant deleting something that was not there looked identical to
+        // deleting something that was, and the agent kept insisting a deck had
+        // gone while the user was looking at it.
+        const before = useShapesStore.getState().shapes
+        const present = before.filter((s) => input.ids.includes(s.id))
+        const missing = input.ids.filter((id) => !before.some((s) => s.id === id))
+
+        if (present.length === 0) {
+          throw new Error(
+            `Nothing on the canvas matches ${input.ids.join(', ')}. Read the scene again before deleting.`,
+          )
+        }
+
+        useShapesStore.getState().removeShapes(present.map((s) => s.id))
         useSelectionStore.getState().clear()
-        return { deletedIds: input.ids }
+
+        return {
+          deletedIds: present.map((s) => s.id),
+          deletedNames: present.map((s) => s.name ?? defaultLabelFor(s)),
+          notFound: missing,
+        }
       },
     )
 
@@ -355,6 +402,36 @@ export function ClientCommandHandlers() {
         return { target: input.target }
       },
     )
+
+    registerClientHandler<
+      { id: string; coping?: boolean; tileBand?: boolean },
+      { id: string; coping: boolean; tileBand: boolean }
+    >('pool.trim.set', (input) => {
+      requireShape(input.id)
+      const shape = useShapesStore.getState().shapes.find((s) => s.id === input.id)
+      const hint = { ...(shape?.displayHint ?? {}) }
+      if (input.coping !== undefined) hint.coping = input.coping
+      if (input.tileBand !== undefined) hint.tileBand = input.tileBand
+      useShapesStore.getState().updateShape(input.id, { displayHint: hint })
+      return { id: input.id, coping: hint.coping !== false, tileBand: hint.tileBand !== false }
+    })
+
+    // Undo is the difference between a wrong command being a mistake and being
+    // a loss. Without it the agent deleted a pool it was not asked to and could
+    // only ask the user whether *they* had an undo button.
+    registerClientHandler<unknown, { undone: boolean; shapeCount: number }>('edit.undo', () => {
+      const history = useHistoryStore.getState()
+      if (!history.canUndo()) return { undone: false, shapeCount: useShapesStore.getState().shapes.length }
+      history.undo()
+      return { undone: true, shapeCount: useShapesStore.getState().shapes.length }
+    })
+
+    registerClientHandler<unknown, { redone: boolean; shapeCount: number }>('edit.redo', () => {
+      const history = useHistoryStore.getState()
+      if (!history.canRedo()) return { redone: false, shapeCount: useShapesStore.getState().shapes.length }
+      history.redo()
+      return { redone: true, shapeCount: useShapesStore.getState().shapes.length }
+    })
 
     // The one read in the registry. Every other command takes an id, so without
     // this the voice agent can add objects forever and never touch one again.
