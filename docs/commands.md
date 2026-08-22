@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **71**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **73**.
 
 ## Project
 
@@ -428,6 +428,14 @@ Update an organization-scoped application setting by key.
 **Voice examples:**
 - "Update the default deck material to pavers."
 - "Change my company default coping color."
+
+### `voice.session.begin` — Begin a voice session
+
+Claim a voice session slot for this organization, or report why one is not available.
+
+### `voice.session.end` — End a voice session
+
+Release a voice session slot and record how long it ran.
 
 ## Scene
 

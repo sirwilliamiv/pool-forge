@@ -52,6 +52,8 @@ export function useVoiceSession(
   const capture = useRef<CaptureHandle | null>(null)
   const playback = useRef<VoicePlayback | null>(null)
   const unsubscribes = useRef<(() => void)[]>([])
+  /** The budget slot this session holds, released on stop. */
+  const budgetId = useRef<string | null>(null)
   const lineId = useRef(0)
 
   const [status, setStatus] = useState<VoiceStatus>('unavailable')
@@ -96,11 +98,21 @@ export function useVoiceSession(
     await currentPlayback?.close()
   }, [])
 
+  const releaseBudget = useCallback(async () => {
+    const held = budgetId.current
+    budgetId.current = null
+    // Fire and forget on the way out: a failed release costs a slot for the
+    // staleness window, where blocking teardown on it would leave the microphone
+    // open while the request retried.
+    if (held) void dispatch('voice.session.end', { sessionId: held })
+  }, [])
+
   const stop = useCallback(async () => {
     await teardown()
     await bridge.current?.stop()
+    await releaseBudget()
     setStatus(bridge.current ? 'idle' : 'unavailable')
-  }, [teardown])
+  }, [releaseBudget, teardown])
 
   const start = useCallback(async () => {
     const current = bridge.current
@@ -128,11 +140,33 @@ export function useVoiceSession(
     }
     capture.current = started
 
+    // Claim a session slot before opening a socket. A Live session bills
+    // continuously for as long as it is open, so the ceiling has to be checked
+    // before the meter starts, not after.
+    const budget = await dispatch<Record<string, never>, {
+      allowed: boolean
+      sessionId: string | null
+      message: string | null
+    }>('voice.session.begin', {})
+
+    if (!budget.ok || !budget.data.allowed) {
+      await teardown()
+      setStatus('idle')
+      setError(
+        budget.ok
+          ? (budget.data.message ?? 'Voice is not available right now.')
+          : 'Voice could not start.',
+      )
+      return
+    }
+    budgetId.current = budget.data.sessionId
+
     let surfaces: Record<VoiceScreen, SerializedScope>
     try {
       surfaces = await fetchSurfaces()
     } catch {
       await teardown()
+      await releaseBudget()
       setStatus('error')
       setError('Could not load the list of things voice can do here.')
       return
@@ -147,6 +181,7 @@ export function useVoiceSession(
       current.onTranscript(event => addLine(event.role, event.text)),
       current.onClosed(reason => {
         void teardown()
+        void releaseBudget()
         setStatus('idle')
         setError(reason)
       }),
@@ -162,13 +197,14 @@ export function useVoiceSession(
 
     if (!result.ok) {
       await teardown()
+      await releaseBudget()
       setStatus('error')
       setError(result.ref ? `${result.error ?? 'Voice could not start.'} (${result.ref})` : result.error ?? 'Voice could not start.')
       return
     }
 
     setStatus('live')
-  }, [addLine, projectId, projectName, screen, status, teardown])
+  }, [addLine, projectId, projectName, releaseBudget, screen, status, teardown])
 
   // Moving between screens swaps what the agent can do, and moving between
   // projects swaps what it is talking about. Both without ending the call.
@@ -185,8 +221,9 @@ export function useVoiceSession(
     return () => {
       void teardown()
       void bridge.current?.stop()
+      void releaseBudget()
     }
-  }, [teardown])
+  }, [releaseBudget, teardown])
 
   return { status, error, transcript, start, stop }
 }

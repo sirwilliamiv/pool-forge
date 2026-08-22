@@ -28,6 +28,7 @@ model User {
   memberships  OrganizationMember[]
   exports      Export[]             @relation("ExportGeneratedBy")
   auditLogs    CommandAuditLog[]
+  voiceSessions VoiceSession[]
   sourceImages SourceImage[]        @relation("SourceImageUploadedBy")
   sceneTemplates SceneTemplate[]
 }
@@ -52,6 +53,7 @@ model Organization {
   priceBooks        PriceBook[]
   appSettings       AppSetting[]
   auditLogs         CommandAuditLog[]
+  voiceSessions     VoiceSession[]
   sourceImages      SourceImage[]
   importSessions    ImportSession[]
   intakeLinks       IntakeLink[]
@@ -393,6 +395,28 @@ model Export {
   generatedBy User?   @relation("ExportGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
 
   @@index([projectId])
+}
+
+/// One voice session, open or finished.
+///
+/// Rows rather than a counter: a counter cannot answer "which sessions are open
+/// right now" after a crash, and the concurrency check needs exactly that.
+model VoiceSession {
+  id        String    @id @default(cuid())
+  orgId     String
+  userId    String?
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  /// Filled in when the session closes. Billing is by the second.
+  seconds   Int       @default(0)
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  /// The concurrency check: open sessions for one org.
+  @@index([orgId, endedAt])
+  /// The daily-minutes check.
+  @@index([orgId, startedAt])
 }
 
 enum CommandSource {
