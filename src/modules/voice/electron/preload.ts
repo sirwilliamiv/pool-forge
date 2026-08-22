@@ -33,8 +33,9 @@ const bridge: VoiceBridge = {
   sendAudio: frame => {
     ipcRenderer.send(VOICE_CHANNELS.audio, frame)
   },
-  setScreen: screen => {
-    ipcRenderer.send(VOICE_CHANNELS.screen, screen satisfies VoiceScreenMessage)
+  setScreen: (screen, context) => {
+    const message: VoiceScreenMessage = context === undefined ? { screen } : { screen, context }
+    ipcRenderer.send(VOICE_CHANNELS.screen, message)
   },
   stop: () => ipcRenderer.invoke(VOICE_CHANNELS.stop),
   respond: (message: VoiceToolResultMessage) => {

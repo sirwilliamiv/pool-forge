@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **69**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **70**.
 
 ## Project
 
@@ -492,6 +492,16 @@ Find a project by customer or project name and open it. Reports the matches when
 - "Open the Henderson project in the editor."
 
 ## Reading the screen
+
+### `page.fill` — Fill in the current page
+
+Set form fields on the screen by their visible label. Use it after page.read so the labels are the ones actually on the page. Reports each field separately, so filling four of five is a useful result rather than a failure.
+
+**Voice examples:**
+- "Set the project name to Whitfield residence."
+- "Put thirty two in the pool length."
+- "Tick the heater box."
+- "Set the customer name to Jane Whitfield and the address to fourteen Oak Street."
 
 ### `page.read` — Read the current page
 

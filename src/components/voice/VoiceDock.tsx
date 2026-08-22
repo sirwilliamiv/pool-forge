@@ -1,18 +1,50 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { registerClientHandler } from '@/lib/commands/dispatch'
+import { fillPage, type FillRequest } from '@/modules/editor/page-fill'
 import { readPage } from '@/modules/editor/page-read'
 import { screenForPath } from '@/modules/voice/scope'
 import { useVoiceSession } from '@/modules/voice/client/useVoiceSession'
+
+interface FillReport {
+  results: { label: string; value: string; filled: boolean; reason: string | null }[]
+  filled: number
+  missed: number
+}
 
 // The microphone, and what it heard.
 //
 // Rendered in the app shell rather than per page so a session survives
 // navigation: the agent's first useful trick is "take me to the price book",
 // which would end the call if this unmounted on the way.
+
+/**
+ * The project's name as the page shows it.
+ *
+ * Read from the document rather than threaded through props: the dock is
+ * mounted in the shell, which knows the route and nothing about the project.
+ */
+function useProjectName(projectId: string | undefined): string | undefined {
+  const [name, setName] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (!projectId) {
+      setName(undefined)
+      return
+    }
+    // After paint, so the heading has rendered.
+    const timer = setTimeout(() => {
+      const heading = document.querySelector('main h1, header a[href^="/projects/"]')
+      setName(heading?.textContent?.trim() || undefined)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [projectId])
+
+  return name
+}
 
 /** `/projects/<id>/...` is the only place a project id lives in a URL. */
 function projectIdFrom(pathname: string): string | undefined {
@@ -25,7 +57,11 @@ export function VoiceDock() {
   const screen = useMemo(() => screenForPath(pathname), [pathname])
   const projectId = useMemo(() => projectIdFrom(pathname), [pathname])
 
-  const { status, error, transcript, start, stop } = useVoiceSession(screen, projectId)
+  // The project name comes from the page itself. The dock sits in the shell and
+  // has no props, and the agent saying "the Phone Demo project" rather than a
+  // cuid is the difference between it sounding aware and sounding lost.
+  const projectName = useProjectName(projectId)
+  const { status, error, transcript, start, stop } = useVoiceSession(screen, projectId, projectName)
 
   // The navigation commands resolve a path and let the client route. Registering
   // the handlers here means `nav.goto` works from the command palette too, and
@@ -46,6 +82,20 @@ export function VoiceDock() {
       'page.read',
       input => readPage(undefined, input.query),
     )
+
+    registerClientHandler<{ fields: FillRequest[] }, FillReport>('page.fill', input => {
+      const results = fillPage(input.fields).map(({ reason, ...rest }) => ({
+        ...rest,
+        // Explicit null rather than an absent key: the model is told what went
+        // wrong, and "reason omitted" reads as "no reason" to a schema.
+        reason: reason ?? null,
+      }))
+      return {
+        results,
+        filled: results.filter(result => result.filled).length,
+        missed: results.filter(result => !result.filled).length,
+      }
+    })
   }, [router])
 
   if (status === 'unavailable') return null

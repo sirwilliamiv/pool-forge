@@ -226,6 +226,60 @@ describe('voice session', () => {
     await session.close()
   })
 
+  it('tells the model which project is open instead of making it ask', async () => {
+    // Without this the agent refuses project-scoped requests before trying them
+    // — "I can't go to the proposal page until I know which project you mean" —
+    // while the browser held the id the whole time.
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, {
+      screen: 'editor',
+      config: CONFIG,
+      connect: h.connect,
+      projectId: 'proj_123',
+      projectName: 'Phone Demo',
+    })
+
+    const instruction = JSON.stringify(h.lastConfig?.['systemInstruction'])
+    expect(instruction).toContain('proj_123')
+    expect(instruction).toContain('Phone Demo')
+    await session.close()
+  })
+
+  it('says plainly when no project is open', async () => {
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, { screen: 'dashboard', config: CONFIG, connect: h.connect })
+    expect(JSON.stringify(h.lastConfig?.['systemInstruction'])).toMatch(/No project is open/i)
+    await session.close()
+  })
+
+  it('reconnects when the project changes, not only the screen', async () => {
+    // Opening a different job mid-conversation has to change what the agent
+    // thinks it is looking at, or it answers about the previous one.
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, {
+      screen: 'editor',
+      config: CONFIG,
+      connect: h.connect,
+      projectId: 'proj_a',
+    })
+    expect(h.connections).toBe(1)
+
+    session.setScreen('editor', { projectId: 'proj_b' })
+    await vi.waitFor(() => expect(h.connections).toBe(2))
+    expect(JSON.stringify(h.lastConfig?.['systemInstruction'])).toContain('proj_b')
+    await session.close()
+  })
+
+  it('names the transcription language rather than letting it be detected', async () => {
+    // An empty transcription config means automatic detection, which returned an
+    // English sentence transliterated into Devanagari.
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+    const input = h.lastConfig?.['inputAudioTranscription'] as { languageCodes?: string[] }
+    expect(input?.languageCodes).toEqual(['en-US'])
+    await session.close()
+  })
+
   it('pins the language rather than letting the model detect one', async () => {
     // A native-audio model left to detect drifts mid-conversation and drops a
     // Japanese word into an English answer, which reads as a broken app.

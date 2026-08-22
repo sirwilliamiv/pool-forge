@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import {
   VOICE_CHANNELS,
   type SerializedScope,
+  type VoiceScreenMessage,
   type VoiceStartRequest,
   type VoiceStartResult,
   type VoiceToolResultMessage,
@@ -55,6 +56,30 @@ export function installVoiceHost(deps: HostDeps): { dispose: () => Promise<void>
 
   let session: VoiceSession | null = null
   let pendingTools = new Map<string, (outcome: CommandOutcome) => void>()
+
+  // Transcription arrives in fragments. Buffered per speaker and flushed at the
+  // turn boundary, so the log holds whole sentences rather than syllables.
+  const transcript = (() => {
+    let role: 'user' | 'model' | null = null
+    let buffer = ''
+
+    const emit = (): void => {
+      const text = buffer.trim()
+      if (text) log('voice_said', { role, text })
+      buffer = ''
+    }
+
+    return {
+      push(next: 'user' | 'model', text: string): void {
+        if (next !== role) {
+          emit()
+          role = next
+        }
+        buffer += text
+      },
+      flush: emit,
+    }
+  })()
 
   function send(channel: string, ...args: unknown[]): void {
     deps.getWindow()?.send(channel, ...args)
@@ -124,14 +149,24 @@ export function installVoiceHost(deps: HostDeps): { dispose: () => Promise<void>
         resolveScope,
       }
       if (request.projectId !== undefined) options.projectId = request.projectId
+      if (request.projectName !== undefined) options.projectName = request.projectName
 
       session = await start(
         {
           onAudio: chunk => send(VOICE_CHANNELS.audioOut, toTransferable(chunk)),
           runCommand,
-          onTranscript: (text, role) => send(VOICE_CHANNELS.transcript, { text, role }),
+          onTranscript: (text, role) => {
+            send(VOICE_CHANNELS.transcript, { text, role })
+            // Logged as well as forwarded. Tool calls alone say what the agent
+            // did, never what was asked of it, so a request it handled badly or
+            // refused outright leaves no trace at all.
+            transcript.push(role, text)
+          },
+          onTurnComplete: () => {
+            send(VOICE_CHANNELS.turnComplete)
+            transcript.flush()
+          },
           onInterrupted: () => send(VOICE_CHANNELS.interrupted),
-          onTurnComplete: () => send(VOICE_CHANNELS.turnComplete),
           onClosed: reason => {
             session = null
             send(VOICE_CHANNELS.closed, reason)
@@ -157,8 +192,9 @@ export function installVoiceHost(deps: HostDeps): { dispose: () => Promise<void>
   })
 
   deps.ipcMain.on(VOICE_CHANNELS.screen, (_event, ...args) => {
-    const screen = args[0] as VoiceScreen | undefined
-    if (screen && session) session.setScreen(screen)
+    const message = args[0] as VoiceScreenMessage | undefined
+    if (!message?.screen || !session) return
+    session.setScreen(message.screen, message.context)
   })
 
   deps.ipcMain.on(VOICE_CHANNELS.toolResult, (_event, ...args) => {

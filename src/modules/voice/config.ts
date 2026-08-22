@@ -25,6 +25,39 @@ export const DEFAULT_LIVE_MODEL = 'gemini-live-2.5-flash-native-audio'
  */
 export const SPEECH_LANGUAGE = 'en-US'
 
+/**
+ * Terms the recogniser is told to expect.
+ *
+ * Pool trade vocabulary is exactly what a general ASR model mangles: "Grecian",
+ * "coping" and "lanai" are not words most speech is about, and a misheard
+ * stencil name becomes a wrong object on a drawing.
+ */
+export const SPEECH_VOCABULARY = [
+  'Grecian',
+  'Roman',
+  'kidney',
+  'freeform',
+  'coping',
+  'paver',
+  'travertine',
+  'lanai',
+  'spa',
+  'sun shelf',
+  'tanning ledge',
+  'swim out',
+  'bubbler',
+  'deco drain',
+  'salt cell',
+  'skimmer',
+  'waterline tile',
+  'setback',
+  'screen enclosure',
+  'equipment pad',
+  'shallow end',
+  'deep end',
+  'spillover',
+]
+
 /** Live audio is 16 kHz mono PCM16 in, 24 kHz out. Not negotiable by config. */
 export const INPUT_SAMPLE_RATE = 16_000
 export const OUTPUT_SAMPLE_RATE = 24_000

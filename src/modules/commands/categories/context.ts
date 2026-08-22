@@ -63,3 +63,48 @@ register({
     },
   }),
 })
+
+register({
+  id: 'page.fill',
+  label: 'Fill in the current page',
+  description:
+    'Set form fields on the screen by their visible label. Use it after page.read so the labels are the ones actually on the page. Reports each field separately, so filling four of five is a useful result rather than a failure.',
+  category: 'context',
+  inputSchema: z.object({
+    fields: z
+      .array(
+        z.object({
+          /** The visible label, as a person would say it. */
+          label: z.string().min(1),
+          /** Checkboxes take yes or no; dropdowns take one of their choices. */
+          value: z.string(),
+        }),
+      )
+      .min(1)
+      .max(20),
+  }),
+  outputSchema: z.object({
+    results: z.array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+        filled: z.boolean(),
+        reason: z.string().nullable(),
+      }),
+    ),
+    filled: z.number(),
+    missed: z.number(),
+  }),
+  voiceExamples: [
+    'Set the project name to Whitfield residence.',
+    'Put thirty two in the pool length.',
+    'Tick the heater box.',
+    'Set the customer name to Jane Whitfield and the address to fourteen Oak Street.',
+  ],
+  // Client-side, and deliberately through the real controls rather than a store:
+  // whatever validation, formatting and save behaviour the form already has then
+  // applies unchanged, so a voice-filled field and a typed one are the same field.
+  //
+  // CLIENT: fillPage(input.fields)
+  execute: async () => ({ ok: true, data: { results: [], filled: 0, missed: 0 } }),
+})

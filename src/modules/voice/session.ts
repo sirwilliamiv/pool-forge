@@ -1,6 +1,12 @@
 import type { CommandCategory } from '@/modules/commands/registry'
 
-import { loadVoiceConfig, MAX_BUFFERED_FRAMES, SPEECH_LANGUAGE, type VoiceConfig } from './config'
+import {
+  loadVoiceConfig,
+  MAX_BUFFERED_FRAMES,
+  SPEECH_LANGUAGE,
+  SPEECH_VOCABULARY,
+  type VoiceConfig,
+} from './config'
 import { scopeFor, type ScreenScope, type VoiceScreen } from './scope'
 import { isDestructive } from './tools'
 
@@ -49,8 +55,17 @@ export interface CommandOutcome {
 
 export interface SessionOptions {
   screen: VoiceScreen
-  /** Bound at connect and never taken from the wire afterwards. */
+  /**
+   * The project the user has open.
+   *
+   * Told to the model, not only used by the client. Without it the agent refuses
+   * project-scoped requests before trying them — "I can't go to the proposal
+   * page until I know which project you're referring to" — while the browser was
+   * holding the id the whole time.
+   */
   projectId?: string
+  /** What the user calls that project, so it can say the name back. */
+  projectName?: string
   config?: VoiceConfig
   /** Injected so tests can drive the whole session without a network. */
   connect?: LiveConnect
@@ -130,6 +145,12 @@ How to behave:
 - You only have the tools for the screen the user is on. If something is not available here, say so and offer to navigate there instead of pretending.
 - Before anything destructive, say exactly what will be lost and wait for a clear yes.`
 
+/** What the user is looking at, as the model needs to hear it. */
+export interface SessionContext {
+  projectId?: string
+  projectName?: string
+}
+
 export interface VoiceSession {
   /** Microphone audio, PCM16 at 16 kHz. */
   sendAudio(chunk: Uint8Array): void
@@ -143,7 +164,7 @@ export interface VoiceSession {
   /** The microphone was turned off. */
   endAudio(): void
   /** Move to a different screen: swaps the toolset mid-conversation. */
-  setScreen(screen: VoiceScreen): void
+  setScreen(screen: VoiceScreen, context?: SessionContext): void
   close(): Promise<void>
   readonly scope: ScreenScope
   readonly categories: CommandCategory[]
@@ -164,6 +185,9 @@ export async function startVoiceSession(
 
   const resolveScope = options.resolveScope ?? scopeFor
   let scope = resolveScope(options.screen)
+  let context: SessionContext = {}
+  if (options.projectId !== undefined) context.projectId = options.projectId
+  if (options.projectName !== undefined) context.projectName = options.projectName
   let live: LiveSession | null = null
   let closed = false
   /** Guards against a close event arriving while a reconnect is already in flight. */
@@ -181,7 +205,7 @@ export async function startVoiceSession(
   function liveConfig(): Record<string, unknown> {
     return {
       responseModalities: ['AUDIO'],
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\n\n${contextPrompt()}` }] },
       // Pinned, not detected. Left to itself the model switches language
       // mid-sentence and drops a Japanese word into an English answer.
       speechConfig: { languageCode: SPEECH_LANGUAGE },
@@ -191,9 +215,35 @@ export async function startVoiceSession(
       sessionResumption: resumptionHandle ? { handle: resumptionHandle } : {},
       // A builder talking through a whole job will outrun the window otherwise.
       contextWindowCompression: { slidingWindow: {} },
-      inputAudioTranscription: {},
-      outputAudioTranscription: {},
+      // An empty config means automatic language detection, which is how an
+      // English sentence came back transliterated into Devanagari. The language
+      // is named, and the trade vocabulary is handed over with it.
+      inputAudioTranscription: {
+        languageCodes: [SPEECH_LANGUAGE],
+        customVocabulary: SPEECH_VOCABULARY,
+      },
+      outputAudioTranscription: { languageCodes: [SPEECH_LANGUAGE] },
     }
+  }
+
+  /**
+   * What the user currently has open.
+   *
+   * Appended to the system prompt rather than left implicit. A tool argument the
+   * client fills in silently is still an argument the model believes it has to
+   * ask for.
+   */
+  function contextPrompt(): string {
+    const lines = [`The user is on the ${scope.screen} screen.`]
+    if (context.projectId) {
+      lines.push(
+        `They have a project open: id "${context.projectId}"${context.projectName ? `, called "${context.projectName}"` : ''}.`,
+        'Use that id for anything that needs a project. Never ask which project they mean while one is open.',
+      )
+    } else {
+      lines.push('No project is open, so anything project-scoped needs one chosen first.')
+    }
+    return lines.join(' ')
   }
 
   async function handleToolCall(call: { id?: string; name?: string; args?: Record<string, unknown> }) {
@@ -275,8 +325,11 @@ export async function startVoiceSession(
     for (const part of content?.modelTurn?.parts ?? []) {
       const data = part.inlineData?.data
       if (data) host.onAudio(base64ToBytes(data))
-      if (part.text) host.onTranscript?.(part.text, 'model')
     }
+    // Captions come from `outputTranscription` alone. Model turn text parts are
+    // for a text-modality response; in an audio session they arrive rarely and
+    // malformed, and one of them put a bare "{}" in the middle of a sentence
+    // on screen.
     if (content?.outputTranscription?.text) {
       host.onTranscript?.(content.outputTranscription.text, 'model')
     }
@@ -390,8 +443,12 @@ export async function startVoiceSession(
     endAudio() {
       live?.sendRealtimeInput({ audioStreamEnd: true })
     },
-    setScreen(next) {
-      if (next === scope.screen) return
+    setScreen(next, nextContext) {
+      const contextChanged =
+        nextContext !== undefined &&
+        (nextContext.projectId !== context.projectId || nextContext.projectName !== context.projectName)
+      if (next === scope.screen && !contextChanged) return
+      if (nextContext) context = nextContext
       scope = resolveScope(next)
       log('voice_screen_changed', { screen: next, tools: scope.surface.tools.length })
       // The tool surface is fixed at connect, so changing it means reconnecting.

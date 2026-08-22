@@ -30,6 +30,7 @@ export const VOICE_CHANNELS = {
 export interface VoiceStartRequest {
   screen: VoiceScreen
   projectId?: string
+  projectName?: string
   /**
    * Every screen's tool surface, computed by the renderer.
    *
@@ -65,8 +66,17 @@ export interface VoiceToolResultMessage {
   outcome: CommandOutcome
 }
 
-/** What `setScreen` puts on the wire. Named so both sides agree it is bare. */
-export type VoiceScreenMessage = VoiceScreen
+/** What `setScreen` puts on the wire. */
+export interface VoiceScreenMessage {
+  screen: VoiceScreen
+  context?: VoiceContextMessage
+}
+
+/** What the user has open, told to the model rather than only used by the client. */
+export interface VoiceContextMessage {
+  projectId?: string
+  projectName?: string
+}
 
 export interface VoiceTranscriptEvent {
   text: string
@@ -78,7 +88,7 @@ export interface VoiceBridge {
   available: true
   start(request: VoiceStartRequest): Promise<VoiceStartResult>
   sendAudio(frame: ArrayBuffer): void
-  setScreen(screen: VoiceScreen): void
+  setScreen(screen: VoiceScreen, context?: VoiceContextMessage): void
   stop(): Promise<void>
   /** Register the handler that runs commands. Returns an unsubscribe. */
   onToolCall(handler: (event: VoiceToolCallEvent) => void): () => void

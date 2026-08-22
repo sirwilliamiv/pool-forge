@@ -8,6 +8,7 @@ import {
   getVoiceBridge,
   type SerializedScope,
   type VoiceBridge,
+  type VoiceStartRequest,
   type VoiceToolCallEvent,
 } from '../bridge'
 import type { VoiceScreen } from '../scope'
@@ -42,7 +43,11 @@ export interface UseVoiceSession {
 /** How many lines of transcript to keep on screen. */
 const TRANSCRIPT_LIMIT = 40
 
-export function useVoiceSession(screen: VoiceScreen, projectId?: string): UseVoiceSession {
+export function useVoiceSession(
+  screen: VoiceScreen,
+  projectId?: string,
+  projectName?: string,
+): UseVoiceSession {
   const bridge = useRef<VoiceBridge | null>(null)
   const capture = useRef<CaptureHandle | null>(null)
   const playback = useRef<VoicePlayback | null>(null)
@@ -150,9 +155,9 @@ export function useVoiceSession(screen: VoiceScreen, projectId?: string): UseVoi
       }),
     ]
 
-    const request = projectId === undefined
-      ? { screen, surfaces }
-      : { screen, surfaces, projectId }
+    const request: VoiceStartRequest = { screen, surfaces }
+    if (projectId !== undefined) request.projectId = projectId
+    if (projectName !== undefined) request.projectName = projectName
     const result = await current.start(request)
 
     if (!result.ok) {
@@ -163,12 +168,17 @@ export function useVoiceSession(screen: VoiceScreen, projectId?: string): UseVoi
     }
 
     setStatus('live')
-  }, [addLine, projectId, screen, status, teardown])
+  }, [addLine, projectId, projectName, screen, status, teardown])
 
-  // Moving between screens swaps what the agent can do without ending the call.
+  // Moving between screens swaps what the agent can do, and moving between
+  // projects swaps what it is talking about. Both without ending the call.
   useEffect(() => {
-    if (status === 'live') bridge.current?.setScreen(screen)
-  }, [screen, status])
+    if (status !== 'live') return
+    const context: { projectId?: string; projectName?: string } = {}
+    if (projectId !== undefined) context.projectId = projectId
+    if (projectName !== undefined) context.projectName = projectName
+    bridge.current?.setScreen(screen, context)
+  }, [projectId, projectName, screen, status])
 
   // A session outlives the component only as a bill, so end it on unmount.
   useEffect(() => {
