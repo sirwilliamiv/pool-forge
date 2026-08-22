@@ -6,10 +6,9 @@
 // `CommandAuditLog` row, so the shared behaviour lives here rather than being
 // copied and drifting.
 
-import { CommandSource } from '@prisma/client'
-
 import { get } from './registry'
 import type { CommandContext, CommandResult } from './registry'
+import { DEFAULT_COMMAND_SOURCE, type CommandSourceValue } from './source'
 
 const ANONYMOUS = 'anonymous'
 
@@ -23,7 +22,7 @@ async function writeAudit(args: {
   ctx: CommandContext
   input: unknown
   result: CommandResult
-  source: CommandSource
+  source: CommandSourceValue
 }): Promise<void> {
   try {
     const { db } = await import('@/lib/db')
@@ -53,7 +52,7 @@ export async function dispatchCommand<T = unknown>(
   commandId: string,
   input: unknown,
   ctx: CommandContext,
-  source: CommandSource = CommandSource.UI,
+  source: CommandSourceValue = DEFAULT_COMMAND_SOURCE,
 ): Promise<CommandResult<T>> {
   const command = get(commandId)
   if (!command) {

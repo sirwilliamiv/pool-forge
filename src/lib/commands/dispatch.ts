@@ -47,14 +47,10 @@ export function _resetClientHandlersForTest(): void {
   _clientHandlers.clear()
 }
 
-/**
- * How the action was triggered, for the audit row.
- *
- * Mirrors the Prisma `CommandSource` enum. Declared as a plain union rather than
- * imported so the browser bundle does not pull in the Prisma client for the sake
- * of five strings.
- */
-export type DispatchSource = 'UI' | 'VOICE' | 'API' | 'IMPORT' | 'CRON'
+import type { CommandSourceValue } from '@/modules/commands/source'
+
+/** How the action was triggered, for the audit row. */
+export type DispatchSource = CommandSourceValue
 
 export async function dispatch<I, O>(
   id: string,

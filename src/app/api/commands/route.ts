@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
-import { CommandSource } from '@prisma/client'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import {
+  COMMAND_SOURCES,
+  DEFAULT_COMMAND_SOURCE,
+  type CommandSourceValue,
+} from '@/modules/commands/source'
 import { initCommands } from '@/modules/commands/init'
 import { get } from '@/modules/commands/registry'
 import type { CommandContext, CommandResult } from '@/modules/commands/registry'
@@ -19,7 +23,7 @@ const requestSchema = z.object({
    * nothing else. It grants no permission and changes no behaviour, which is why
    * an unrecognised value is simply ignored rather than rejected.
    */
-  source: z.nativeEnum(CommandSource).optional(),
+  source: z.enum(COMMAND_SOURCES).optional(),
 })
 
 async function writeAudit(args: {
@@ -28,7 +32,7 @@ async function writeAudit(args: {
   commandId: string
   input: unknown
   result: CommandResult | { ok: false; error: string }
-  source: CommandSource
+  source: CommandSourceValue
 }): Promise<void> {
   try {
     await db.commandAuditLog.create({
@@ -66,7 +70,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const { id, input } = parsed.data
-  const source = parsed.data.source ?? CommandSource.UI
+  const source = parsed.data.source ?? DEFAULT_COMMAND_SOURCE
   const command = get(id)
 
   // Resolve session (Track B may not be wired up yet — fall back gracefully).
