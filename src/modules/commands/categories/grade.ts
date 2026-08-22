@@ -33,13 +33,18 @@ register({
   id: 'grade.point.add',
   runsOn: 'client',
   label: 'Record an elevation',
+  // Feet throughout, and named so. The rest of the canvas is inches, but a
+  // grade is spoken entirely in feet — "three feet down at the back fence" —
+  // and asking a model to convert one axis and not another is the trap that
+  // sent 360 to a command expecting 30. Told the coordinates were inches, it
+  // refused to place "ten feet right and twenty feet back" at all.
   description:
-    'Record a measured height at a point on the site. Coordinates are in INCHES from the drawing origin, the same as every shape; elevation is in FEET relative to the datum, so a spot three feet below the house pad is -3.',
+    'Record a measured height at a point on the site. Every number is in FEET: xFt and yFt are measured from the drawing origin, and elevationFt is relative to the datum, so a spot three feet below the house pad is -3.',
   category: 'grade',
   inputSchema: z.object({
     surface,
-    x: z.number().describe('Distance from the left edge, in inches.'),
-    y: z.number().describe('Distance from the top edge, in inches.'),
+    xFt: z.number().describe('Feet right of the drawing origin. Negative is left.'),
+    yFt: z.number().describe('Feet back from the drawing origin. Negative is forward.'),
     elevationFt: z.number().describe('Height in feet. Negative is below the datum.'),
     label: z.string().max(60).optional().describe('What this shot is, e.g. "back fence" or "door sill".'),
     fixed: z
@@ -65,8 +70,8 @@ register({
   inputSchema: z.object({
     surface,
     pointId: z.string().min(1),
-    x: z.number().optional(),
-    y: z.number().optional(),
+    xFt: z.number().optional(),
+    yFt: z.number().optional(),
     elevationFt: z.number().optional(),
     label: z.string().max(60).optional(),
   }),

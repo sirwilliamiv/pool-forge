@@ -42,8 +42,8 @@ export function GradePanel() {
     // yard drawn away from zero would be off screen.
     void dispatch('grade.point.add', {
       surface: editing,
-      x: Math.round(bounds.x + bounds.width / 2),
-      y: Math.round(bounds.y + bounds.height / 2),
+      xFt: Math.round((bounds.x + bounds.width / 2) / 12),
+      yFt: Math.round((bounds.y + bounds.height / 2) / 12),
       elevationFt: 0,
     })
   }

@@ -614,7 +614,7 @@ How sharply each measured height dominates the ground around it. Two reads as a 
 
 ### `grade.point.add` — Record an elevation
 
-Record a measured height at a point on the site. Coordinates are in INCHES from the drawing origin, the same as every shape; elevation is in FEET relative to the datum, so a spot three feet below the house pad is -3.
+Record a measured height at a point on the site. Every number is in FEET: xFt and yFt are measured from the drawing origin, and elevationFt is relative to the datum, so a spot three feet below the house pad is -3.
 
 **Voice examples:**
 - "The back fence is three feet lower than the house."

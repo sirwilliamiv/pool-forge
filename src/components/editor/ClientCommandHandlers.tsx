@@ -565,7 +565,7 @@ export function ClientCommandHandlers() {
     })
 
     registerClientHandler<
-      { surface: 'existing' | 'finished'; x: number; y: number; elevationFt: number; label?: string; fixed?: boolean },
+      { surface: 'existing' | 'finished'; xFt: number; yFt: number; elevationFt: number; label?: string; fixed?: boolean },
       { pointId: string; surface: string; count: number }
     >('grade.point.add', (input) => {
       const store = useGradeStore.getState()
@@ -574,8 +574,9 @@ export function ClientCommandHandlers() {
       // or what is wanted.
       store.setEditing(input.surface)
       const pointId = useGradeStore.getState().addPoint({
-        x: input.x,
-        y: input.y,
+        // Feet on the wire, inches in the store, converted in exactly one place.
+        x: input.xFt * 12,
+        y: input.yFt * 12,
         elevationFt: input.elevationFt,
         kind: input.fixed ? 'fixed' : input.surface,
         ...(input.label ? { label: input.label } : {}),
@@ -588,7 +589,7 @@ export function ClientCommandHandlers() {
     })
 
     registerClientHandler<
-      { surface: 'existing' | 'finished'; pointId: string; x?: number; y?: number; elevationFt?: number; label?: string },
+      { surface: 'existing' | 'finished'; pointId: string; xFt?: number; yFt?: number; elevationFt?: number; label?: string },
       { pointId: string }
     >('grade.point.update', (input) => {
       const store = useGradeStore.getState()
@@ -597,8 +598,8 @@ export function ClientCommandHandlers() {
         throw new Error(`There is no elevation with id ${input.pointId} on the ${input.surface} ground.`)
       }
       const patch: Record<string, unknown> = {}
-      if (input.x !== undefined) patch.x = input.x
-      if (input.y !== undefined) patch.y = input.y
+      if (input.xFt !== undefined) patch.x = input.xFt * 12
+      if (input.yFt !== undefined) patch.y = input.yFt * 12
       if (input.elevationFt !== undefined) patch.elevationFt = input.elevationFt
       if (input.label !== undefined) patch.label = input.label
       useGradeStore.getState().updatePoint(input.pointId, patch)

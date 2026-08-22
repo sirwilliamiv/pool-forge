@@ -789,7 +789,7 @@ describe('grade.point.add', () => {
     // describes the ground as found or as intended.
     const result = await run<{ pointId: string; surface: string; count: number }>(
       'grade.point.add',
-      { surface: 'finished', x: 120, y: 240, elevationFt: 2.5, label: 'NE corner' },
+      { surface: 'finished', xFt: 10, yFt: 20, elevationFt: 2.5, label: 'NE corner' },
     )
 
     const grade = useGradeStore.getState()
@@ -811,7 +811,7 @@ describe('grade.point.add', () => {
     // The grade panel writes to whichever surface is being edited. If the
     // command wrote to one and left the panel pointed at the other, the user's
     // next click would land on the wrong ground.
-    await run('grade.point.add', { surface: 'finished', x: 0, y: 0, elevationFt: 1 })
+    await run('grade.point.add', { surface: 'finished', xFt: 0, yFt: 0, elevationFt: 1 })
 
     expect(useGradeStore.getState().editing).toBe('finished')
   })
@@ -819,7 +819,7 @@ describe('grade.point.add', () => {
   it('the first shot switches grading on by itself', async () => {
     // Making someone enable grading separately is a step with no decision in
     // it: adding an elevation is what a person means by "the site is not flat".
-    await run('grade.point.add', { surface: 'existing', x: 0, y: 0, elevationFt: -1 })
+    await run('grade.point.add', { surface: 'existing', xFt: 0, yFt: 0, elevationFt: -1 })
 
     expect(useGradeStore.getState().existing.enabled).toBe(true)
   })
@@ -829,8 +829,8 @@ describe('grade.point.add', () => {
     // as an ordinary shot would let the surface solver drift it.
     await run('grade.point.add', {
       surface: 'finished',
-      x: 10,
-      y: 10,
+      xFt: 10,
+      yFt: 10,
       elevationFt: 0,
       fixed: true,
     })
@@ -839,12 +839,12 @@ describe('grade.point.add', () => {
   })
 
   it('accumulates shots rather than replacing the last one', async () => {
-    await run('grade.point.add', { surface: 'existing', x: 0, y: 0, elevationFt: 0 })
+    await run('grade.point.add', { surface: 'existing', xFt: 0, yFt: 0, elevationFt: 0 })
 
     const result = await run<{ count: number }>('grade.point.add', {
       surface: 'existing',
-      x: 100,
-      y: 0,
+      xFt: 100,
+      yFt: 0,
       elevationFt: 1.5,
     })
 

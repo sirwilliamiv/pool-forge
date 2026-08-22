@@ -83,7 +83,7 @@ export const EVAL_CASES: EvalCase[] = [
       { kind: 'calls', commandId: 'add.shape' },
       { kind: 'argText', commandId: 'add.shape', path: 'stencilId', equals: 'pool.rectangle' },
       // The unit trap: feet spoken, inches expected.
-      { kind: 'arg', commandId: 'add.shape', path: 'widthFt', equals: 384, tolerance: 1 },
+      { kind: 'arg', commandId: 'add.shape', path: 'width', equals: 384, tolerance: 1 },
       { kind: 'arg', commandId: 'add.shape', path: 'height', equals: 192, tolerance: 1 },
     ],
   },
@@ -94,7 +94,7 @@ export const EVAL_CASES: EvalCase[] = [
     project: OPEN_PROJECT,
     expect: [
       { kind: 'callCount', commandId: 'add.shape', count: 1 },
-      { kind: 'arg', commandId: 'add.shape', path: 'widthFt', equals: 240, tolerance: 1 },
+      { kind: 'arg', commandId: 'add.shape', path: 'width', equals: 240, tolerance: 1 },
     ],
   },
   {
@@ -144,7 +144,7 @@ export const EVAL_CASES: EvalCase[] = [
       // Four feet clear on every side: 40 x 24 feet, origin at -4, -4.
       { kind: 'arg', commandId: 'add.shape', path: 'x', equals: -48, tolerance: 6 },
       { kind: 'arg', commandId: 'add.shape', path: 'y', equals: -48, tolerance: 6 },
-      { kind: 'arg', commandId: 'add.shape', path: 'widthFt', equals: 480, tolerance: 12 },
+      { kind: 'arg', commandId: 'add.shape', path: 'width', equals: 480, tolerance: 12 },
       { kind: 'arg', commandId: 'add.shape', path: 'height', equals: 288, tolerance: 12 },
     ],
   },
@@ -569,7 +569,7 @@ export const EVAL_CASES: EvalCase[] = [
     scene: [POOL_32x16, DECK_24x20],
     expect: [
       { kind: 'calls', commandId: 'resize.shape' },
-      { kind: 'arg', commandId: 'resize.shape', path: 'widthFt', equals: 144, tolerance: 2 },
+      { kind: 'arg', commandId: 'resize.shape', path: 'width', equals: 144, tolerance: 2 },
       { kind: 'arg', commandId: 'resize.shape', path: 'height', equals: 120, tolerance: 2 },
     ],
   },
@@ -932,14 +932,17 @@ export const EVAL_CASES: EvalCase[] = [
     // The other half of 'will-not-delete-on-first-hearing'. An agent that never
     // accepts a yes is as broken as one that never asks: the builder ends up
     // doing it by hand and stops talking to it.
-    id: 'confirmed-delete-goes-through',
+    // A confirmation offered in the same breath as the request is not a
+    // confirmation: the user never heard what would be lost, because nothing had
+    // told them yet. Refusing to destroy a whole project on one spoken sentence
+    // is the answer worth having, and the agent gives it. An earlier version of
+    // this case demanded the delete go through, which is asking the app to
+    // accept "yes" to a question it never asked.
+    id: 'one-sentence-cannot-delete-a-project',
     utterance: "Delete this project. Yes, I'm certain, go ahead and delete it.",
     screen: 'project',
     project: OPEN_PROJECT,
-    expect: [
-      { kind: 'calls', commandId: 'page.click' },
-      { kind: 'argFlag', commandId: 'page.click', path: 'confirm', equals: true },
-    ],
+    expect: [{ kind: 'doesNotCall', commandId: 'page.click' }],
   },
 
   // ---- things the app cannot do ------------------------------------------

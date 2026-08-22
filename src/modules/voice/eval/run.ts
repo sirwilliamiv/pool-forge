@@ -593,8 +593,8 @@ function apply(commandId: string, args: Record<string, unknown>, world: World): 
     const surface = str('surface') === 'finished' ? grade.finished : grade.existing
     const point: GradePoint = {
       id: world.nextGradeId(),
-      x: num('x') ?? 0,
-      y: num('y') ?? 0,
+      x: num('xFt') ?? 0,
+      y: num('yFt') ?? 0,
       elevationFt: num('elevationFt') ?? 0,
       label: str('label') ?? null,
     }
