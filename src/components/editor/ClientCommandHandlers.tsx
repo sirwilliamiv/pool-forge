@@ -216,6 +216,7 @@ export function ClientCommandHandlers() {
     registerClientHandler<{ id: string; poolShape: 'rectangle' | 'ellipse' }, { id: string }>(
       'pool.shape.set',
       (input) => {
+        requireShape(input.id)
         const store = useShapesStore.getState()
         const shape = store.shapes.find((s) => s.id === input.id)
         store.updateShape(input.id, {
@@ -308,6 +309,7 @@ export function ClientCommandHandlers() {
       { id: string; offsetX?: number; offsetY?: number },
       { sourceId: string; newId: string }
     >('duplicate.shape', (input) => {
+      requireShape(input.id)
       const newId = useShapesStore.getState().duplicate(input.id)
       return { sourceId: input.id, newId: newId ?? '' }
     })
@@ -315,6 +317,7 @@ export function ClientCommandHandlers() {
     registerClientHandler<{ id: string; name: string }, { id: string; name: string }>(
       'shape.rename',
       (input) => {
+        requireShape(input.id)
         useShapesStore.getState().renameShape(input.id, input.name)
         return { id: input.id, name: input.name }
       },
@@ -323,6 +326,7 @@ export function ClientCommandHandlers() {
     registerClientHandler<{ id: string; hidden: boolean }, { id: string; hidden: boolean }>(
       'shape.hide',
       (input) => {
+        requireShape(input.id)
         useShapesStore.getState().updateShape(input.id, { hidden: input.hidden })
         return { id: input.id, hidden: input.hidden }
       },
@@ -331,6 +335,7 @@ export function ClientCommandHandlers() {
     registerClientHandler<{ id: string; locked: boolean }, { id: string; locked: boolean }>(
       'shape.lock',
       (input) => {
+        requireShape(input.id)
         useShapesStore.getState().updateShape(input.id, { locked: input.locked })
         return { id: input.id, locked: input.locked }
       },
@@ -340,8 +345,11 @@ export function ClientCommandHandlers() {
       { id: string; materialId: string },
       { id: string; materialId: string }
     >('set.shape.material', (input) => {
-      // Shape doesn't carry materialId yet; persist via name patch path until
-      // the schema gains explicit material slots.
+      requireShape(input.id)
+      const shape = useShapesStore.getState().shapes.find((s) => s.id === input.id)
+      useShapesStore.getState().updateShape(input.id, {
+        materials: { ...(shape?.materials ?? {}), surface: input.materialId },
+      })
       return { id: input.id, materialId: input.materialId }
     })
 
@@ -357,6 +365,7 @@ export function ClientCommandHandlers() {
       },
       { id: string }
     >('pool.geometry.update', (input) => {
+      requireShape(input.id)
       const patch: Partial<{
         width: number
         height: number
@@ -377,8 +386,11 @@ export function ClientCommandHandlers() {
       { id: string; slot: 'interior' | 'coping' | 'tileBand'; materialId: string },
       { id: string; slot: 'interior' | 'coping' | 'tileBand'; materialId: string }
     >('pool.material.set', (input) => {
-      // No persistence yet — DrawingObject.displayHint is the future home.
-      // For v1, the audit log captures the intent.
+      requireShape(input.id)
+      const shape = useShapesStore.getState().shapes.find((s) => s.id === input.id)
+      useShapesStore.getState().updateShape(input.id, {
+        materials: { ...(shape?.materials ?? {}), [input.slot]: input.materialId },
+      })
       return { id: input.id, slot: input.slot, materialId: input.materialId }
     })
 
@@ -386,6 +398,7 @@ export function ClientCommandHandlers() {
       { id: string; axis?: 'x' | 'y' },
       { id: string; flippedX: boolean; flippedY: boolean }
     >('pool.flip', (input) => {
+      requireShape(input.id)
       const cur = useShapesStore.getState().shapes.find((s) => s.id === input.id)
       const hint = cur?.displayHint ?? {}
       const flippedX = input.axis === 'y' ? (hint.flippedX ?? false) : !(hint.flippedX ?? false)
@@ -400,6 +413,7 @@ export function ClientCommandHandlers() {
       { id: string; locked?: boolean },
       { id: string; lockedRatio: boolean }
     >('pool.lock.ratio', (input) => {
+      requireShape(input.id)
       const cur = useShapesStore.getState().shapes.find((s) => s.id === input.id)
       const hint = cur?.displayHint ?? {}
       const lockedRatio = input.locked ?? !(hint.lockedRatio ?? false)
@@ -420,6 +434,7 @@ export function ClientCommandHandlers() {
       },
       { id: string }
     >('pool.depth.set', (input) => {
+      requireShape(input.id)
       const patch: Partial<{ depthShallow: number; depthDeep: number }> = {}
       if (input.shallowDepth != null) patch.depthShallow = input.shallowDepth
       if (input.deepDepth != null) patch.depthDeep = input.deepDepth

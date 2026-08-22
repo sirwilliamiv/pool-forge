@@ -41,6 +41,15 @@ export interface ShapeBase {
    * before it existed they all rendered at the same height as the lawn.
    */
   elevationFt?: number
+  /**
+   * Chosen materials, by surface.
+   *
+   * `set.shape.material` and `pool.material.set` used to return their own input
+   * and persist nothing, with a comment saying the audit log captured the
+   * intent. A builder who set a cobalt interior was told it worked, saw no
+   * change, and the only record was a log of what they had asked for.
+   */
+  materials?: { interior?: string; coping?: string; tileBand?: string; surface?: string }
 }
 
 export interface RectanglePool extends ShapeBase {

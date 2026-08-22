@@ -120,3 +120,48 @@ Recorded here so a later run does not re-report them as findings.
   respond.
 - All four document entry points are present on the project page.
 - A brand-new project with no drawing row opens the editor cleanly.
+
+## Regression cover, 2026-08-22
+
+Every defect this project found by hand should be a test that would have caught
+it. The audit below is the state after that sweep. `src/test/unit/regressions.test.ts`
+holds the ones that had no cover at all; the rest are guarded next to the code
+they belong to.
+
+| Defect, as the user hit it | Guarded by |
+|---|---|
+| The pool tool showed 4 of 17 shapes | `unit/regressions.test.ts` (new) |
+| Every generic stencil was called "Stencil" in the layers panel | `unit/regressions.test.ts` (new) |
+| A Grecian or pool-and-spa stranded every later object at the origin | `unit/three/placement.test.ts` |
+| Thirty-six objects ran ninety-six feet down the sheet | `unit/three/placement.test.ts` |
+| The deck was a solid slab over the water | `unit/three/deck-cutouts.test.ts` |
+| `canvas.fit` was registered and never implemented | `unit/commands/wiring.test.ts`, `unit/three/framing.test.ts`, `unit/commands/handler-behaviour.test.ts` |
+| Coping had no id, so nothing could remove it | `unit/three/shape-commands.test.ts`, `unit/commands/handler-behaviour.test.ts` |
+| `delete.shape` echoed the ids it was asked to delete | `unit/commands/handler-behaviour.test.ts` |
+| move / resize / rotate succeeded against an unknown id | `unit/commands/handler-behaviour.test.ts`, `unit/regressions.test.ts` (sweep) |
+| A voice loop of add/add/add/undo/undo/undo | `unit/voice/session.test.ts` |
+| A typed project name was lost on navigation | `unit/project-form.test.tsx` |
+| "5' easement" was rejected as an unreadable dimension | `unit/imports/vision/parsing.test.ts` |
+| A missed drop navigated the browser away from the app | `unit/imports/file-drop.test.tsx` |
+
+### Still broken: eleven more commands that report success and change nothing
+
+The unknown-id fix reached five commands. Eleven others still accept an id that
+is not on the canvas, return ok, and change nothing:
+
+```
+shape.rename · shape.hide · shape.lock · duplicate.shape · pool.shape.set
+pool.flip · pool.lock.ratio · pool.geometry.update · pool.depth.set
+set.shape.material · pool.material.set
+```
+
+Each is a sentence the app will say to someone that is not true, and every one
+is offered to the voice agent. The sweep in `unit/regressions.test.ts` pins the
+list: it should only ever get shorter, and adding a new shape mutation without a
+guard fails it.
+
+`set.shape.material` and `pool.material.set` are worse than the rest. Both are
+pure echoes that persist nothing for a shape that *is* there, so a builder who
+picks a Cobalt interior is told it is set, sees no change on the drawing, and
+finds no record of it anywhere but the audit log. The handlers say so in a
+comment; nothing said so to the user.

@@ -71,6 +71,12 @@ function defaultsFor(
     zIndex: z,
     locked: false,
     hidden: false,
+    // Kept whatever kind this became. It used to be written only in the STENCIL
+    // branch, so every shape with a dedicated mesh — a pool, a spa, a sun shelf,
+    // a deck — arrived with no catalogue id, and the panel and the voice agent
+    // both fell back to reading the raw enum: "SUN_SHELF" rather than
+    // "Sun shelf". Exactly backwards, since those are the objects that matter.
+    ...(opts?.stencilId ? { stencilId: opts.stencilId } : {}),
   }
   switch (kind) {
     case ShapeKind.RECTANGLE_POOL:
