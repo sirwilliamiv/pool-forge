@@ -81,7 +81,13 @@ export async function runCase(testCase: EvalCase, config?: VoiceConfig): Promise
       },
       log: () => {},
     },
-    { screen: testCase.screen, config: resolved },
+    {
+      screen: testCase.screen,
+      config: resolved,
+      ...(testCase.project
+        ? { projectId: testCase.project.id, projectName: testCase.project.name }
+        : {}),
+    },
   )
 
   session.sendText(testCase.utterance)
@@ -200,6 +206,38 @@ function apply(
     )
     scene.push(shape)
     return { shapeId: shape.id }
+  }
+
+  // A stand-in page, so a case about filling a field is graded on whether the
+  // agent reached for the right tool with the right labels rather than on an
+  // empty document telling it there is nothing to fill.
+  if (commandId === 'page.read') {
+    return {
+      title: 'Phone Demo',
+      url: '/projects/proj_eval_1',
+      headings: ['Phone Demo', 'Project details'],
+      sections: [{ heading: 'Project details', text: 'Salesperson, designer and proposal expiry.' }],
+      fields: [
+        { label: 'Salesperson', value: '' },
+        { label: 'Designer', value: '' },
+        { label: 'Proposal expires', value: '' },
+      ],
+      tables: [],
+      truncated: false,
+    }
+  }
+
+  if (commandId === 'page.fill') {
+    const requested = Array.isArray(args['fields'])
+      ? (args['fields'] as { label?: string; value?: string }[])
+      : []
+    const results = requested.map(field => ({
+      label: String(field.label ?? ''),
+      value: String(field.value ?? ''),
+      filled: true,
+      reason: null,
+    }))
+    return { results, filled: results.length, missed: 0 }
   }
 
   if (commandId === 'scene.describe') {

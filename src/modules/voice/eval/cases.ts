@@ -17,6 +17,8 @@ export interface EvalCase {
   /** What a builder actually says. */
   utterance: string
   screen: VoiceScreen
+  /** A project the user has open, as the session would report it. */
+  project?: { id: string; name: string }
   /** Shapes already on the canvas when the utterance is spoken. */
   scene?: { stencilId: string; x: number; y: number; width?: number; height?: number }[]
   /**
@@ -185,6 +187,39 @@ export const EVAL_CASES: EvalCase[] = [
       // Narrowed, not read wholesale: a four hundred row price book arriving in
       // full buries the answer it was asked for.
       { kind: 'argText', commandId: 'page.read', path: 'query', equals: 'salt cell' },
+    ],
+  },
+
+  // ---- knowing what is open --------------------------------------------
+  {
+    // The agent used to answer "I can't go to the proposal page until I know
+    // which project you're referring to" while the browser held the id.
+    id: 'knows-the-open-project',
+    utterance: 'Take me to the proposal.',
+    screen: 'editor',
+    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    expect: [
+      { kind: 'calls', commandId: 'nav.goto' },
+      { kind: 'argText', commandId: 'nav.goto', path: 'destination', equals: 'proposal' },
+    ],
+  },
+
+  // ---- filling in the screen -------------------------------------------
+  {
+    id: 'fills-a-field',
+    utterance: 'Set the salesperson to Ray Mitchell.',
+    screen: 'project',
+    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    expect: [{ kind: 'calls', commandId: 'page.fill' }],
+  },
+  {
+    id: 'fills-several-fields',
+    utterance: 'Set the salesperson to Ray and the designer to Jane.',
+    screen: 'project',
+    project: { id: 'proj_eval_1', name: 'Phone Demo' },
+    expect: [
+      // One call carrying both, not two round trips.
+      { kind: 'callCount', commandId: 'page.fill', count: 1 },
     ],
   },
 
