@@ -27,6 +27,7 @@
     "voice:build": "node scripts/build-voice-host.mjs",
     "voice:models": "tsx scripts/probe-live-models.ts",
     "voice:smoke": "tsx scripts/voice-smoke.ts",
+    "voice:eval": "tsx scripts/voice-eval.ts",
     "electron:dev": "pnpm voice:build && concurrently -k -n web,electron -c blue,green \"PORT=3001 next dev\" \"wait-on http://localhost:3001 && cross-env POOL_FORGE_DEV_URL=http://localhost:3001 electron electron/main.cjs\"",
     "electron:build": "pnpm voice:build && cross-env NEXT_OUTPUT=standalone next build && electron-builder --mac --win --publish never",
     "electron:pack": "pnpm voice:build && cross-env NEXT_OUTPUT=standalone next build && electron-builder --dir",
