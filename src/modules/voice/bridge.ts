@@ -23,6 +23,7 @@ export const VOICE_CHANNELS = {
   toolCall: 'voice:tool-call',
   transcript: 'voice:transcript',
   interrupted: 'voice:interrupted',
+  turnComplete: 'voice:turn-complete',
   closed: 'voice:closed',
 } as const
 
@@ -84,6 +85,7 @@ export interface VoiceBridge {
   onAudio(handler: (frame: ArrayBuffer) => void): () => void
   onTranscript(handler: (event: VoiceTranscriptEvent) => void): () => void
   onInterrupted(handler: () => void): () => void
+  onTurnComplete(handler: () => void): () => void
   onClosed(handler: (reason: string) => void): () => void
   respond(message: VoiceToolResultMessage): void
 }

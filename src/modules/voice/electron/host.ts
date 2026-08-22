@@ -131,6 +131,7 @@ export function installVoiceHost(deps: HostDeps): { dispose: () => Promise<void>
           runCommand,
           onTranscript: (text, role) => send(VOICE_CHANNELS.transcript, { text, role }),
           onInterrupted: () => send(VOICE_CHANNELS.interrupted),
+          onTurnComplete: () => send(VOICE_CHANNELS.turnComplete),
           onClosed: reason => {
             session = null
             send(VOICE_CHANNELS.closed, reason)

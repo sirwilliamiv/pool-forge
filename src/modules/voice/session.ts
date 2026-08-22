@@ -1,6 +1,6 @@
 import type { CommandCategory } from '@/modules/commands/registry'
 
-import { loadVoiceConfig, MAX_BUFFERED_FRAMES, type VoiceConfig } from './config'
+import { loadVoiceConfig, MAX_BUFFERED_FRAMES, SPEECH_LANGUAGE, type VoiceConfig } from './config'
 import { scopeFor, type ScreenScope, type VoiceScreen } from './scope'
 import { isDestructive } from './tools'
 
@@ -26,6 +26,14 @@ export interface SessionHost {
   onTranscript?(text: string, role: 'user' | 'model'): void
   /** The model was cut off. Stop playback and drop anything queued. */
   onInterrupted?(): void
+  /**
+   * The model finished a turn.
+   *
+   * Transcription arrives in fragments with no separators, so without this the
+   * caption for two answers runs together as one sentence: "...trying to do?I'm
+   * sorry, I can't see a form".
+   */
+  onTurnComplete?(): void
   /** Terminal: the session is over and will not resume. */
   onClosed?(reason: string): void
   /** Structured logging hook, so this module never reaches for console directly. */
@@ -114,6 +122,7 @@ const SYSTEM_PROMPT = `You are the voice assistant inside Pool Forge, software p
 You act by calling tools. Never claim to have done something you did not call a tool for.
 
 How to behave:
+- Always speak and write in English, whatever you think you heard. Never switch language mid-sentence.
 - Be brief. This is spoken, so one or two sentences, no lists, no markdown.
 - Use the units a builder uses: feet and inches, never metres.
 - When a request is ambiguous, ask rather than guess. Opening the wrong customer's job or resizing the wrong pool costs more than a question.
@@ -173,6 +182,9 @@ export async function startVoiceSession(
     return {
       responseModalities: ['AUDIO'],
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      // Pinned, not detected. Left to itself the model switches language
+      // mid-sentence and drops a Japanese word into an English answer.
+      speechConfig: { languageCode: SPEECH_LANGUAGE },
       tools: [{ functionDeclarations: scope.surface.tools }],
       // Resumption is what lets a dropped socket or a server-side GoAway look
       // like nothing happened. The handle never leaves this process.
@@ -271,6 +283,7 @@ export async function startVoiceSession(
     if (content?.inputTranscription?.text) {
       host.onTranscript?.(content.inputTranscription.text, 'user')
     }
+    if (content?.turnComplete) host.onTurnComplete?.()
 
     for (const call of message.toolCall?.functionCalls ?? []) {
       void handleToolCall(call)

@@ -16,6 +16,15 @@ import { z } from 'zod'
  */
 export const DEFAULT_LIVE_MODEL = 'gemini-live-2.5-flash-native-audio'
 
+/**
+ * Language for speech in and out.
+ *
+ * Pinned rather than auto-detected. A native-audio model left to detect will
+ * drift mid-conversation and answer an English question with a Japanese word in
+ * the middle of the sentence, which reads as the app being broken.
+ */
+export const SPEECH_LANGUAGE = 'en-US'
+
 /** Live audio is 16 kHz mono PCM16 in, 24 kHz out. Not negotiable by config. */
 export const INPUT_SAMPLE_RATE = 16_000
 export const OUTPUT_SAMPLE_RATE = 24_000

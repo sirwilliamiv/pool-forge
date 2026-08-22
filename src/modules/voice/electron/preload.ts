@@ -44,6 +44,7 @@ const bridge: VoiceBridge = {
   onAudio: handler => subscribe<ArrayBuffer>(VOICE_CHANNELS.audioOut, handler),
   onTranscript: handler => subscribe<VoiceTranscriptEvent>(VOICE_CHANNELS.transcript, handler),
   onInterrupted: handler => subscribe<undefined>(VOICE_CHANNELS.interrupted, () => handler()),
+  onTurnComplete: handler => subscribe<undefined>(VOICE_CHANNELS.turnComplete, () => handler()),
   onClosed: handler => subscribe<string>(VOICE_CHANNELS.closed, handler),
 }
 

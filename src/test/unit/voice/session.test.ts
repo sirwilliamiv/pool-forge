@@ -226,6 +226,32 @@ describe('voice session', () => {
     await session.close()
   })
 
+  it('pins the language rather than letting the model detect one', async () => {
+    // A native-audio model left to detect drifts mid-conversation and drops a
+    // Japanese word into an English answer, which reads as a broken app.
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+    expect((h.lastConfig?.['speechConfig'] as { languageCode?: string })?.languageCode).toBe('en-US')
+    await session.close()
+  })
+
+  it('tells the host when a turn ends', async () => {
+    // Transcription arrives in fragments with no separators, so without a turn
+    // boundary two answers run together as one sentence on screen.
+    let turns = 0
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(
+      { ...host, onTurnComplete: () => { turns += 1 } },
+      { screen: 'editor', config: CONFIG, connect: h.connect },
+    )
+
+    h.emit({ serverContent: { outputTranscription: { text: 'Done.' } } })
+    expect(turns).toBe(0)
+    h.emit({ serverContent: { turnComplete: true } })
+    expect(turns).toBe(1)
+    await session.close()
+  })
+
   it('passes model audio to the host and flags barge-in', async () => {
     const bag = hostWith(async () => ok) as unknown as {
       host: SessionHost

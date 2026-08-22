@@ -58,6 +58,10 @@ export function useVoiceSession(screen: VoiceScreen, projectId?: string): UseVoi
     setStatus(bridge.current ? 'idle' : 'unavailable')
   }, [])
 
+  // Set when a turn ends, so the next fragment starts a new caption line rather
+  // than continuing the last answer's sentence.
+  const startNewLine = useRef(false)
+
   const addLine = useCallback((role: 'user' | 'model', text: string) => {
     if (!text.trim()) return
     setTranscript(previous => {
@@ -65,11 +69,12 @@ export function useVoiceSession(screen: VoiceScreen, projectId?: string): UseVoi
       // The Live API streams transcription in fragments. Appending to the last
       // line of the same speaker reads as speech; one line per fragment reads as
       // a stutter.
-      if (last?.role === role) {
+      if (last?.role === role && !startNewLine.current) {
         const merged = [...previous]
         merged[merged.length - 1] = { ...last, text: last.text + text }
         return merged.slice(-TRANSCRIPT_LIMIT)
       }
+      startNewLine.current = false
       lineId.current += 1
       return [...previous, { id: lineId.current, role, text }].slice(-TRANSCRIPT_LIMIT)
     })
@@ -131,6 +136,9 @@ export function useVoiceSession(screen: VoiceScreen, projectId?: string): UseVoi
     unsubscribes.current = [
       current.onAudio(frame => playback.current?.enqueue(frame)),
       current.onInterrupted(() => playback.current?.flush()),
+      current.onTurnComplete(() => {
+        startNewLine.current = true
+      }),
       current.onTranscript(event => addLine(event.role, event.text)),
       current.onClosed(reason => {
         void teardown()
