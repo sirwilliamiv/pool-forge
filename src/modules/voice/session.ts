@@ -61,6 +61,7 @@ export interface SessionOptions {
 /** The slice of the Live API this module uses, so it can be faked in tests. */
 export interface LiveSession {
   sendRealtimeInput(input: { audio?: { data: string; mimeType: string }; audioStreamEnd?: boolean }): void
+  sendClientContent(content: { turns: { role: string; parts: { text: string }[] }[]; turnComplete: boolean }): void
   sendToolResponse(response: { functionResponses: FunctionResponse[] }): void
   close(): void
 }
@@ -99,6 +100,15 @@ export interface LiveServerMessageLike {
   sessionResumptionUpdate?: { newHandle?: string; resumable?: boolean }
 }
 
+/**
+ * How many times a dropped session is reopened before giving up.
+ *
+ * A rejected `setup` fails the same way forever, so an uncapped retry is a loop
+ * that reopens the socket as fast as the network allows.
+ */
+const MAX_RECONNECT_ATTEMPTS = 5
+const RECONNECT_BACKOFF_MS = 500
+
 const SYSTEM_PROMPT = `You are the voice assistant inside Pool Forge, software pool builders use to design a pool, price it, and produce a proposal.
 
 You act by calling tools. Never claim to have done something you did not call a tool for.
@@ -114,6 +124,13 @@ How to behave:
 export interface VoiceSession {
   /** Microphone audio, PCM16 at 16 kHz. */
   sendAudio(chunk: Uint8Array): void
+  /**
+   * A typed turn, treated exactly like a spoken one.
+   *
+   * The same agent for someone in a noisy plant room or who would rather not
+   * talk, and the only way to exercise tool calling without a microphone.
+   */
+  sendText(text: string): void
   /** The microphone was turned off. */
   endAudio(): void
   /** Move to a different screen: swaps the toolset mid-conversation. */
@@ -140,11 +157,15 @@ export async function startVoiceSession(
   let scope = resolveScope(options.screen)
   let live: LiveSession | null = null
   let closed = false
+  /** Guards against a close event arriving while a reconnect is already in flight. */
+  let reconnecting = false
   let resumptionHandle: string | undefined
   /** Frames captured before the socket is ready, capped so a stall cannot grow. */
   const pending: Uint8Array[] = []
   /** Set when the model has proposed something destructive and awaits a yes. */
   let awaitingConfirmation: { commandId: string; args: unknown } | null = null
+  /** Consecutive failed reconnects, reset by a session that reaches setup. */
+  let reconnectAttempts = 0
 
   const connect: LiveConnect = options.connect ?? (await defaultConnect(config))
 
@@ -225,6 +246,9 @@ export async function startVoiceSession(
 
   function onMessage(message: LiveServerMessageLike): void {
     if (message.setupComplete) {
+      // Setup is the only proof the connection is usable: a socket that opens
+      // and is then rejected over the config never gets here.
+      reconnectAttempts = 0
       log('voice_ready', { screen: scope.screen, tools: scope.surface.tools.length })
       flushPending()
     }
@@ -288,20 +312,44 @@ export async function startVoiceSession(
   }
 
   async function reconnect(reason: string): Promise<void> {
-    if (closed) return
-    log('voice_reconnecting', { reason, hasHandle: Boolean(resumptionHandle) })
+    if (closed || reconnecting) return
+    reconnecting = true
     try {
-      live?.close()
-    } catch {
-      // Already gone; the point was to stop it delivering more messages.
-    }
-    live = null
-    try {
-      await open()
-    } catch (error) {
-      closed = true
-      log('voice_reconnect_failed', { error: String(error).slice(0, 200) })
-      host.onClosed?.('The voice session ended and could not be restarted.')
+      // A config the server rejects fails identically every time, so retrying
+      // is a loop that reopens the socket as fast as the network allows and
+      // bills for every attempt. Give up rather than storm.
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        closed = true
+        log('voice_reconnect_exhausted', { reason, attempts: reconnectAttempts })
+        host.onClosed?.('The voice session ended and could not be restarted.')
+        return
+      }
+
+      const attempt = reconnectAttempts++
+      log('voice_reconnecting', { reason, attempt, hasHandle: Boolean(resumptionHandle) })
+      try {
+        live?.close()
+      } catch {
+        // Already gone; the point was to stop it delivering more messages.
+      }
+      live = null
+
+      // Backoff from the second attempt on. The first is immediate because the
+      // common case is a clean handover the user should never notice.
+      if (attempt > 0) {
+        await new Promise(resolve => setTimeout(resolve, RECONNECT_BACKOFF_MS * 2 ** (attempt - 1)))
+        if (closed) return
+      }
+
+      try {
+        await open()
+      } catch (error) {
+        log('voice_reconnect_failed', { attempt, error: String(error).slice(0, 200) })
+        reconnecting = false
+        await reconnect(reason)
+      }
+    } finally {
+      reconnecting = false
     }
   }
 
@@ -319,6 +367,10 @@ export async function startVoiceSession(
         return
       }
       live.sendRealtimeInput({ audio: { data: bytesToBase64(chunk), mimeType: 'audio/pcm;rate=16000' } })
+    },
+    sendText(text) {
+      if (closed || !live || !text.trim()) return
+      live.sendClientContent({ turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true })
     },
     endAudio() {
       live?.sendRealtimeInput({ audioStreamEnd: true })

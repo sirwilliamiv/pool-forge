@@ -29,11 +29,20 @@ async function runOk<I>(id: string, input: I): Promise<unknown> {
 describe('shape commands — execute returns ok', () => {
   it('add.shape', async () => {
     const data = (await runOk('add.shape', {
-      stencilId: 'rect-pool',
+      stencilId: 'pool.rectangle',
       x: 0,
       y: 0,
     })) as { shapeId: string }
     expect(typeof data.shapeId).toBe('string')
+  })
+
+  it('add.shape rejects a stencil id that does not exist', () => {
+    // An unknown id does not fail loudly downstream: addShape falls back to a
+    // generic STENCIL kind and drops a blank rectangle on the canvas. Catching
+    // it at the schema is what keeps a model from inventing one.
+    const schema = cmd('add.shape').inputSchema
+    expect(schema.safeParse({ stencilId: 'rectangle_pool', x: 0, y: 0 }).success).toBe(false)
+    expect(schema.safeParse({ stencilId: 'pool.rectangle', x: 0, y: 0 }).success).toBe(true)
   })
 
   it('select.shape echoes ids', async () => {

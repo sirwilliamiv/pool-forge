@@ -73,6 +73,7 @@ describe('electron voice host', () => {
 
   const fakeSession: VoiceSession = {
     sendAudio: vi.fn(),
+    sendText: vi.fn(),
     endAudio: vi.fn(),
     setScreen: vi.fn(),
     close: vi.fn(async () => {}),

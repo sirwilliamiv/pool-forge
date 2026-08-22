@@ -101,8 +101,15 @@ describe('voice tool surface', () => {
     // Voice misrecognition plus a destructive command is how a drawing is lost.
     expect(isDestructive('template.scene.apply')).toBe(true)
     expect(isDestructive('import.intent.apply')).toBe(true)
-    expect(isDestructive('delete.shape')).toBe(true)
+    expect(isDestructive('project.delete')).toBe(true)
     expect(isDestructive('set.pool.length')).toBe(false)
+  })
+
+  it('does not gate what undo can bring back', () => {
+    // The test is "can the user get it back", not "does it sound alarming".
+    // Confirming a shape delete costs the agent the ability to correct its own
+    // mistake, and buys nothing that Cmd+Z did not already provide.
+    expect(isDestructive('delete.shape')).toBe(false)
   })
 })
 

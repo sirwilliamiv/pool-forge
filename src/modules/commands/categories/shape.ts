@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { register } from '@/modules/commands/registry'
+import { STENCILS } from '@/modules/editor/stencils'
 
 // Server `execute` for shape commands records intent and echoes input so the
 // CommandAuditLog row is meaningful. The actual `useShapesStore` mutation is
@@ -7,17 +8,36 @@ import { register } from '@/modules/commands/registry'
 // `registerClientHandler` in src/lib/commands/dispatch.ts. The consumer track
 // (E for inspector, D for selection, H for palette) registers the handler.
 
+/**
+ * Every stencil the catalogue actually has.
+ *
+ * Derived, not written out: a hand-kept list would drift the first time a
+ * stencil was added, and a stencil missing from here is one voice cannot place.
+ */
+const STENCIL_IDS = STENCILS.map(stencil => stencil.id) as [string, ...string[]]
+
+/** Ids paired with their names, so the model can match what a person said. */
+function stencilIdHelp(): string {
+  const named = STENCILS.map(stencil => `${stencil.id} (${stencil.name})`).join(', ')
+  return `Which stencil to place. One of: ${named}`
+}
+
 register({
   id: 'add.shape',
   label: 'Add shape',
-  description: 'Drop a stencil onto the canvas at the given coordinates.',
+  description:
+    'Drop a stencil onto the canvas at the given coordinates. Coordinates and sizes are in INCHES: multiply feet by 12.',
   category: 'shape',
   inputSchema: z.object({
-    stencilId: z.string(),
-    x: z.number(),
-    y: z.number(),
-    width: z.number().positive().optional(),
-    height: z.number().positive().optional(),
+    // An enum, not a string. An unknown id does not fail: `addShape` falls back
+    // to a generic STENCIL kind, so a hallucinated id silently drops a blank
+    // rectangle on the canvas that looks like the app is broken. Offering the
+    // real ids means a wrong guess cannot be expressed.
+    stencilId: z.enum(STENCIL_IDS).describe(stencilIdHelp()),
+    x: z.number().describe('Distance from the left edge, in inches.'),
+    y: z.number().describe('Distance from the top edge, in inches.'),
+    width: z.number().positive().optional().describe('Width in inches. 32 feet is 384.'),
+    height: z.number().positive().optional().describe('Height in inches. 16 feet is 192.'),
     displayHint: z.record(z.unknown()).optional(),
   }),
   outputSchema: z.object({
@@ -88,7 +108,7 @@ register({
 register({
   id: 'resize.shape',
   label: 'Resize shape',
-  description: 'Resize a shape to explicit width and height.',
+  description: 'Resize a shape to explicit width and height, in INCHES: multiply feet by 12.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
@@ -287,16 +307,20 @@ register({
 register({
   id: 'pool.geometry.update',
   label: 'Update pool geometry',
-  description: 'Update length, width, average depth, shallow/deep depth, or slope of the selected pool.',
+  // Unlike add.shape and resize.shape, this one is in FEET: the client half
+  // multiplies by twelve. Sibling commands disagreeing about units is exactly
+  // what a model reading these schemas cold gets wrong, so every field says so.
+  description:
+    'Update length, width, average depth, shallow/deep depth, or slope of the selected pool. All measurements are in FEET.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    length: z.number().positive().optional(),
-    width: z.number().positive().optional(),
-    avgDepth: z.number().positive().optional(),
-    shallowDepth: z.number().positive().optional(),
-    deepDepth: z.number().positive().optional(),
-    slope: z.number().optional(),
+    length: z.number().positive().optional().describe('Length in feet.'),
+    width: z.number().positive().optional().describe('Width in feet.'),
+    avgDepth: z.number().positive().optional().describe('Average depth in feet.'),
+    shallowDepth: z.number().positive().optional().describe('Shallow end depth in feet.'),
+    deepDepth: z.number().positive().optional().describe('Deep end depth in feet.'),
+    slope: z.number().optional().describe('Floor slope, rise over run.'),
   }),
   outputSchema: z.object({
     id: z.string(),
@@ -383,15 +407,16 @@ register({
 register({
   id: 'pool.depth.set',
   label: 'Update pool depth profile',
-  description: 'Patch the depth profile (shallow, deep, slope, sun-shelf elevation, bubbler height) of the selected pool.',
+  description:
+    'Patch the depth profile of the selected pool. Depths are in FEET; sun-shelf and bubbler heights are in INCHES, since those are spoken in inches.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    shallowDepth: z.number().optional(),
-    deepDepth: z.number().optional(),
-    slope: z.number().optional(),
-    sunShelfElevation: z.number().optional(),
-    bubblerHeight: z.number().optional(),
+    shallowDepth: z.number().optional().describe('Shallow end depth in feet.'),
+    deepDepth: z.number().optional().describe('Deep end depth in feet.'),
+    slope: z.number().optional().describe('Floor slope, rise over run.'),
+    sunShelfElevation: z.number().optional().describe('Sun shelf height above the floor, in inches.'),
+    bubblerHeight: z.number().optional().describe('Bubbler height above the water, in inches.'),
   }),
   outputSchema: z.object({
     id: z.string(),

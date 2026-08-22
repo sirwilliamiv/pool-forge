@@ -200,3 +200,50 @@ register({
   //   useViewStore.getState().setViewMode(input.tab)
   execute: async (input) => ({ ok: true, data: { tab: input.tab } }),
 })
+
+register({
+  id: 'scene.describe',
+  label: 'Describe what is on the canvas',
+  description:
+    'Read back everything currently on the canvas: each object with its id, name, kind, position and size in inches, plus which objects are selected. Call this before moving, resizing, deleting or positioning anything relative to something else. Every other command needs an id, and this is the only way to learn one.',
+  category: 'canvas',
+  inputSchema: z.object({
+    includeHidden: z.boolean().optional(),
+  }),
+  outputSchema: z.object({
+    count: z.number(),
+    selectedIds: z.array(z.string()),
+    shapes: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        kind: z.string(),
+        stencilId: z.string().nullable(),
+        x: z.number(),
+        y: z.number(),
+        width: z.number(),
+        height: z.number(),
+        rotation: z.number(),
+        locked: z.boolean(),
+        hidden: z.boolean(),
+      }),
+    ),
+    bounds: z
+      .object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() })
+      .nullable(),
+  }),
+  voiceExamples: [
+    'What is on the canvas?',
+    'What have we got so far?',
+    'Where is the pool?',
+    'How big is the deck?',
+  ],
+  // The only read in the registry, and the reason the rest are usable by voice:
+  // every mutating command takes an id, and without a way to list what exists
+  // the agent can add objects forever but never touch one again. Positioning is
+  // the same problem — "a deck around the pool" needs the pool's actual extent,
+  // not a guess at the origin.
+  //
+  // CLIENT: read useShapesStore/useSelectionStore and return the summary.
+  execute: async () => ({ ok: true, data: { count: 0, selectedIds: [], shapes: [], bounds: null } }),
+})

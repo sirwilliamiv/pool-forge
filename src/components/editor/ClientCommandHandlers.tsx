@@ -8,12 +8,61 @@ import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useViewStore } from '@/modules/editor/state/viewStore'
-import { ShapeKind } from '@/modules/editor/state/shapes'
+import { ShapeKind, type Shape } from '@/modules/editor/state/shapes'
 import { getStencil } from '@/modules/editor/stencils'
 import { feet } from '@/lib/three/units'
 import { useCommandPaletteStore } from './shell/CommandPalette'
 
 let sunStudyRaf: number | null = null
+
+interface SceneDescription {
+  count: number
+  selectedIds: string[]
+  shapes: {
+    id: string
+    name: string
+    kind: string
+    stencilId: string | null
+    x: number
+    y: number
+    width: number
+    height: number
+    rotation: number
+    locked: boolean
+    hidden: boolean
+  }[]
+  bounds: { x: number; y: number; width: number; height: number } | null
+}
+
+/** Only stencil-backed shapes carry an id; the typed kinds do not. */
+function stencilIdOf(shape: Shape): string | undefined {
+  return 'stencilId' in shape ? shape.stencilId : undefined
+}
+
+/** The catalogue name, so the agent says "sun shelf" rather than "stencil". */
+function nameFor(shape: Shape): string | undefined {
+  const id = stencilIdOf(shape)
+  return id ? getStencil(id)?.name : undefined
+}
+
+/** Extent of everything on the canvas, so "around the pool" has a number behind it. */
+function boundsOf(
+  shapes: { x: number; y: number; width: number; height: number }[],
+): SceneDescription['bounds'] {
+  const first = shapes[0]
+  if (!first) return null
+  let minX = first.x
+  let minY = first.y
+  let maxX = first.x + first.width
+  let maxY = first.y + first.height
+  for (const shape of shapes) {
+    minX = Math.min(minX, shape.x)
+    minY = Math.min(minY, shape.y)
+    maxX = Math.max(maxX, shape.x + shape.width)
+    maxY = Math.max(maxY, shape.y + shape.height)
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+}
 
 // Single mount point for client-side command handlers. Each command's server
 // `execute` records the audit row; the matching handler here applies the
@@ -46,6 +95,7 @@ const HANDLER_IDS: string[] = [
   'mode.set.presentation',
   'view.set.tab',
   'tool.activate',
+  'scene.describe',
   // scene category
   'sun.set.time',
   'sun.run.study',
@@ -283,6 +333,37 @@ export function ClientCommandHandlers() {
         if (input.ids.length === 0) useSelectionStore.getState().clear()
         else useSelectionStore.getState().selectMany(input.ids)
         return { selectedIds: input.ids }
+      },
+    )
+
+    // The one read in the registry. Every other command takes an id, so without
+    // this the voice agent can add objects forever and never touch one again.
+    registerClientHandler<{ includeHidden?: boolean }, SceneDescription>(
+      'scene.describe',
+      (input) => {
+        const all = useShapesStore.getState().shapes
+        const shapes = input.includeHidden ? all : all.filter((shape) => !shape.hidden)
+        return {
+          count: shapes.length,
+          selectedIds: useSelectionStore.getState().selectedIds,
+          shapes: shapes.map((shape) => ({
+            id: shape.id,
+            // The name a person would use. An unnamed stencil falls back to the
+            // catalogue name rather than the bare kind, so the agent says
+            // "sun shelf" instead of "stencil".
+            name: shape.name ?? nameFor(shape) ?? shape.kind,
+            kind: shape.kind,
+            stencilId: stencilIdOf(shape) ?? null,
+            x: shape.x,
+            y: shape.y,
+            width: shape.width,
+            height: shape.height,
+            rotation: shape.rotation,
+            locked: shape.locked,
+            hidden: shape.hidden,
+          })),
+          bounds: boundsOf(shapes),
+        }
       },
     )
 

@@ -32,6 +32,7 @@ interface Harness {
   /** Push a server message into the session. */
   emit: (message: LiveServerMessageLike) => void
   sentAudio: string[]
+  sentText: string[]
   toolResponses: { name: string; response: Record<string, unknown> }[]
   closes: number
   connections: number
@@ -43,6 +44,7 @@ function harness(): Harness {
     connect: null as never,
     emit: () => {},
     sentAudio: [],
+    sentText: [],
     toolResponses: [],
     closes: 0,
     connections: 0,
@@ -56,6 +58,11 @@ function harness(): Harness {
     const session: LiveSession = {
       sendRealtimeInput: input => {
         if (input.audio) state.sentAudio.push(input.audio.data)
+      },
+      sendClientContent: content => {
+        for (const turn of content.turns) {
+          for (const part of turn.parts) state.sentText.push(part.text)
+        }
       },
       sendToolResponse: response => {
         for (const fr of response.functionResponses) {

@@ -186,7 +186,7 @@ async function runToolCall(bridge: VoiceBridge, event: VoiceToolCallEvent): Prom
     bridge.respond({
       requestId: event.requestId,
       outcome: result.ok
-        ? { ok: true, summary: 'Done.', data: result.data }
+        ? { ok: true, summary: summarize(event.commandId, result.data), data: result.data }
         : { ok: false, summary: result.error },
     })
   } catch {
@@ -195,6 +195,21 @@ async function runToolCall(bridge: VoiceBridge, event: VoiceToolCallEvent): Prom
       outcome: { ok: false, summary: `${event.commandId} could not be completed.` },
     })
   }
+}
+
+/**
+ * What the model is told happened.
+ *
+ * A bare "Done." is too weak a signal: a model that cannot tell its call landed
+ * re-issues it, and the observable result is the same object added to the canvas
+ * twice. Naming the command and handing back the new id gives it something to
+ * refer to instead.
+ */
+function summarize(commandId: string, data: unknown): string {
+  const record = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+  const id = record['shapeId'] ?? record['id']
+  const idPart = typeof id === 'string' ? ` (id ${id})` : ''
+  return `${commandId} completed${idPart}.`
 }
 
 async function fetchSurfaces(): Promise<Record<VoiceScreen, SerializedScope>> {

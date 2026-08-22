@@ -78,6 +78,68 @@ function collapseNullable(node: unknown): unknown {
 const ALLOWED_TYPES = new Set(['object', 'string', 'number', 'integer', 'boolean', 'array'])
 
 /**
+ * Keywords the Vertex `Schema` message defines. Everything else is rejected.
+ *
+ * Not cosmetic: the Live API refuses the whole `setup` message over one unknown
+ * keyword, so a single `.positive()` in one command's Zod schema takes down the
+ * entire session with `Unknown name "exclusiveMinimum"`. It closes the socket
+ * during setup, which reads like a model or auth problem rather than a schema
+ * one. Found by opening a real session; no fake can produce it.
+ */
+const ALLOWED_KEYWORDS = new Set([
+  'type',
+  'format',
+  'title',
+  'description',
+  'nullable',
+  'default',
+  'items',
+  'minItems',
+  'maxItems',
+  'enum',
+  'properties',
+  'required',
+  'minProperties',
+  'maxProperties',
+  'minimum',
+  'maximum',
+  'minLength',
+  'maxLength',
+  'pattern',
+  'example',
+  'propertyOrdering',
+])
+
+/**
+ * Drop keywords the Live API does not define.
+ *
+ * Dropping a constraint here loses nothing: the argument still goes through the
+ * command's Zod schema at dispatch, which is the check that actually protects
+ * the data. All this decides is how much the model is told up front.
+ */
+export function pruneKeywords(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(pruneKeywords)
+  if (!node || typeof node !== 'object') return node
+
+  const pruned: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+    if (!ALLOWED_KEYWORDS.has(key)) continue
+    // `properties` maps names to schemas, so its keys are user data, not
+    // keywords, and must not be filtered against the keyword list.
+    pruned[key] =
+      key === 'properties' && value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(
+            Object.entries(value as Record<string, unknown>).map(([name, schema]) => [
+              name,
+              pruneKeywords(schema),
+            ]),
+          )
+        : pruneKeywords(value)
+  }
+  return pruned
+}
+
+/**
  * Reject anything the Live API cannot express.
  *
  * `anyOf` / `oneOf` / `allOf` are the polymorphic shapes that silently become
@@ -150,8 +212,13 @@ function toDeclaration(command: EditorCommand): VoiceTool | RefusedTool {
 
   json = collapseNullable(json) as Record<string, unknown>
 
+  // Order matters: `describable` must judge the shape after collapsing nullable
+  // unions, and pruning must come last so it cannot hide an `anyOf` that should
+  // have refused the command outright.
   const problem = describable(json)
   if (problem) return { name: command.id, reason: problem }
+
+  json = pruneKeywords(json) as Record<string, unknown>
 
   const properties = (json['properties'] as Record<string, unknown> | undefined) ?? {}
   const required = Array.isArray(json['required']) ? (json['required'] as string[]) : undefined
@@ -196,14 +263,19 @@ export function buildToolSurface(categories: readonly CommandCategory[]): ToolSu
 }
 
 /**
- * Commands that change or destroy something the user cannot easily get back.
+ * Commands that destroy something undo cannot bring back.
  *
  * Voice misrecognition plus a destructive command is how somebody loses a
  * drawing, so these are confirmed out loud before they run rather than being
  * dispatched on the first hearing.
+ *
+ * The test is "can the user get it back", not "does it sound alarming".
+ * `delete.shape` is deliberately absent: the editor keeps history, so a wrongly
+ * deleted object is one Cmd+Z away, and gating it stops the agent correcting
+ * its own mistake — which it tries to do, and which is worth more than a
+ * confirmation on something already reversible.
  */
 const DESTRUCTIVE = new Set([
-  'delete.shape',
   'import.session.discard',
   'import.intent.apply',
   'template.scene.apply',
