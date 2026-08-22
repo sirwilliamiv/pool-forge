@@ -1,5 +1,20 @@
 # Voice agent — plan
 
+> **Status, 2026-08-22.** All five build steps are done, including the relay.
+> The desktop build is running against `gemini-live-2.5-flash-native-audio` on
+> `pool-forge-prod`; the web build works through `services/voice-relay` once
+> `VOICE_TICKET_SECRET` and `NEXT_PUBLIC_VOICE_RELAY_URL` are set. What remains
+> is a deployment decision, not code: the relay has no host yet, and the
+> resumption handle lives in-process, which means one instance until it moves to
+> shared state. Both are recorded in `services/voice-relay/README.md`.
+>
+> Verified by `pnpm voice:eval` (22 cases against the real model) rather than by
+> the unit suite. Several defects that a fully green suite never saw were found
+> by reading the live conversation log: a model id that does not exist on Vertex,
+> a schema keyword that made the API reject every tool at once, an agent that
+> refused project work while the browser held the project id, and transcription
+> silently switching language.
+
 `CLAUDE.md` says the command registry exists so the app is "voice-ready without a
 rewrite". This is the collection on that bet: **60 of the 64 registered commands
 already carry `voiceExamples`, a Zod input schema, and a real `execute`.** The
