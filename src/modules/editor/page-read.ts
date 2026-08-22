@@ -10,6 +10,8 @@
 // and label/value pairs. A model handed "Salt cell $412.00 Heater $2,150.00"
 // with no shape to it will answer confidently and wrongly about which is which.
 
+import { labelForElement } from './page-labels'
+
 export interface PageTable {
   caption: string | null
   headers: string[]
@@ -221,6 +223,22 @@ function readFields(scope: ParentNode, matches: (text: string) => boolean): Page
     push(field)
   }
 
+  // A component library select is a button with role="combobox" and a hidden
+  // native select beside it. The hidden one is skipped as aria-hidden, so
+  // without this the field is invisible: on the project page that was "Status".
+  for (const node of Array.from(scope.querySelectorAll('[role="combobox"]'))) {
+    if (isHidden(node)) continue
+    const element = node as HTMLElement
+    const label = labelForElement(element)
+    if (!label) continue
+    push({
+      label,
+      value: clean(element.textContent),
+      editable: (element as HTMLButtonElement).disabled !== true,
+      kind: 'select',
+    })
+  }
+
   for (const node of Array.from(scope.querySelectorAll('[contenteditable="true"]'))) {
     if (isHidden(node)) continue
     const label = clean(node.getAttribute('aria-label') ?? node.getAttribute('data-voice-label') ?? '')
@@ -305,20 +323,9 @@ function normaliseLabel(text: string): string {
   return text.replace(/[\s:*]+/g, ' ').trim().toLowerCase()
 }
 
-function labelFor(control: HTMLInputElement): string {
-  const aria = control.getAttribute('aria-label')
-  if (aria) return clean(aria)
-
-  const id = control.getAttribute('id')
-  if (id) {
-    const label = control.ownerDocument?.querySelector(`label[for="${CSS.escape(id)}"]`)
-    if (label) return clean(label.textContent)
-  }
-
-  const wrapping = control.closest('label')
-  if (wrapping) return clean(wrapping.textContent)
-
-  return clean(control.getAttribute('placeholder') ?? '')
+/** Shared with the filler, so a field the reader names is one the filler can address. */
+function labelFor(control: HTMLElement): string {
+  return labelForElement(control)
 }
 
 /** Text between a heading and the next one, which is what the heading is about. */

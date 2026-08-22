@@ -21,6 +21,8 @@ export interface FillOutcome {
   reason?: string
 }
 
+import { labelForElement } from './page-labels'
+
 type Fillable = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
 
 const YES = new Set(['yes', 'true', 'on', 'checked', 'tick', 'ticked', '1'])
@@ -115,14 +117,28 @@ function parseSpokenDate(text: string): { year: number; month: number; day: numb
  * a useful outcome the model can describe, where an all-or-nothing failure
  * leaves the user with no idea which parts landed.
  */
-export function fillPage(requests: FillRequest[], root?: ParentNode): FillOutcome[] {
+export async function fillPage(requests: FillRequest[], root?: ParentNode): Promise<FillOutcome[]> {
   const doc = root ?? (typeof document === 'undefined' ? null : document)
   if (!doc) return requests.map(r => ({ ...r, filled: false, reason: 'no page' }))
 
   const scope = (doc as Document).querySelector?.('main') ?? doc
+  const outcomes: FillOutcome[] = []
+  // Sequential, not concurrent: a component-library select opens a menu, and two
+  // of them opening at once fight over the same overlay.
+  for (const request of requests) {
+    outcomes.push(await fillOne(request, doc as Document, scope))
+  }
+  return outcomes
+}
+
+async function fillOne(
+  request: FillRequest,
+  doc: Document,
+  scope: ParentNode,
+): Promise<FillOutcome> {
   const controls = Array.from(scope.querySelectorAll<Fillable>('input, select, textarea'))
 
-  return requests.map(request => {
+  {
     // A radio group is addressed by the group's name and the option's own label:
     // "set status to approved", not "tick the approved radio button".
     const radio = findRadioInGroup(controls, request)
@@ -133,6 +149,11 @@ export function fillPage(requests: FillRequest[], root?: ParentNode): FillOutcom
 
     const control = findControl(controls, request.label)
     if (!control) {
+      // Not a native control. It may still be a select the user can see: a
+      // component library renders those as a button, and its real <select> is
+      // hidden, so this is the only way to reach "Status" on the project page.
+      const combo = findComboBox(scope, request.label)
+      if (combo) return openAndPick(combo, request, doc)
       return { label: request.label, value: '', filled: false, reason: 'no field with that label' }
     }
     // Never fill a credential, and never fight a control the page disabled.
@@ -145,7 +166,76 @@ export function fillPage(requests: FillRequest[], root?: ParentNode): FillOutcom
     }
 
     return applyValue(control, request)
-  })
+  }
+}
+
+/** A component-library select: a button that says what is chosen. */
+function findComboBox(scope: ParentNode, label: string): HTMLElement | null {
+  const wanted = normalise(label)
+  const boxes = Array.from(scope.querySelectorAll<HTMLElement>('[role="combobox"]'))
+    .filter(box => (box as HTMLButtonElement).disabled !== true)
+    .map(box => ({ box, text: normalise(labelOf(box)) }))
+
+  return (
+    boxes.find(entry => entry.text === wanted)?.box ??
+    boxes.find(entry => entry.text.includes(wanted))?.box ??
+    null
+  )
+}
+
+/**
+ * Open the menu, click the matching option, and confirm what was chosen.
+ *
+ * A component library select cannot be set by assigning a value: the visible
+ * control is a button, its state lives in the component, and the hidden native
+ * select is aria-hidden and not wired to it. Clicking is what a user does and
+ * the only thing the component reliably listens to.
+ */
+async function openAndPick(
+  combo: HTMLElement,
+  request: FillRequest,
+  doc: Document,
+): Promise<FillOutcome> {
+  const before = clean(combo.textContent)
+  combo.click()
+
+  // Options render into a portal outside the control, so they are searched for
+  // document-wide and only after the menu has had a frame to appear.
+  const option = await waitForOption(doc, request.value)
+  if (!option) {
+    const offered = Array.from(doc.querySelectorAll('[role="option"]'))
+      .map(node => clean(node.textContent))
+      .filter(Boolean)
+      .slice(0, 8)
+    // Leave the menu as it was found rather than open over the page.
+    combo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    return {
+      label: request.label,
+      value: before,
+      filled: false,
+      reason: `not one of the choices${offered.length ? `: ${offered.join(', ')}` : ''}`,
+    }
+  }
+
+  option.click()
+  return { label: request.label, value: clean(option.textContent), filled: true }
+}
+
+async function waitForOption(doc: Document, value: string): Promise<HTMLElement | null> {
+  const wanted = normalise(value)
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const options = Array.from(doc.querySelectorAll<HTMLElement>('[role="option"]'))
+    const match =
+      options.find(node => normalise(node.textContent ?? '') === wanted) ??
+      options.find(node => normalise(node.textContent ?? '').includes(wanted))
+    if (match) return match
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+  return null
+}
+
+function clean(text: string | null): string {
+  return (text ?? '').replace(/\s+/g, ' ').trim()
 }
 
 /**
@@ -284,20 +374,9 @@ function setNatively(control: Fillable, value: string): void {
   control.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
-function labelOf(control: Fillable): string {
-  const aria = control.getAttribute('aria-label')
-  if (aria) return aria
-
-  const id = control.getAttribute('id')
-  if (id) {
-    const label = control.ownerDocument?.querySelector(`label[for="${CSS.escape(id)}"]`)
-    if (label?.textContent) return label.textContent
-  }
-
-  const wrapping = control.closest('label')
-  if (wrapping?.textContent) return wrapping.textContent
-
-  return control.getAttribute('placeholder') ?? control.getAttribute('name') ?? ''
+/** Shared with the reader, so every field it names is one this can address. */
+function labelOf(control: HTMLElement): string {
+  return labelForElement(control)
 }
 
 function normalise(text: string): string {

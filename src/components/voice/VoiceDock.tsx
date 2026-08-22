@@ -92,8 +92,11 @@ export function VoiceDock() {
       input => readPage(undefined, input.query),
     )
 
-    registerClientHandler<{ fields: FillRequest[] }, FillReport>('page.fill', input => {
-      const results = fillPage(input.fields).map(({ reason, ...rest }) => ({
+    // Async because a component-library select has to be opened and clicked;
+    // its value cannot be assigned.
+    registerClientHandler<{ fields: FillRequest[] }, FillReport>('page.fill', async input => {
+      const outcomes = await fillPage(input.fields)
+      const results = outcomes.map(({ reason, ...rest }) => ({
         ...rest,
         // Explicit null rather than an absent key: the model is told what went
         // wrong, and "reason omitted" reads as "no reason" to a schema.

@@ -186,3 +186,30 @@ describe('full page context', () => {
     expect(JSON.stringify(readPage(doc))).not.toContain('hunter2')
   })
 })
+
+describe('labels the way this app actually renders them', () => {
+  it('names a field whose label is a sibling with no htmlFor', async () => {
+    // Without this the reader saw the input and could not say what it was, so
+    // the agent listed a field it had no name for and could not fill.
+    const doc = render(`<div class="space-y-2"><label>Salesperson</label><input value="Ray" /></div>`)
+    const field = readPage(doc).fields.find(f => f.label === 'Salesperson')
+    expect(field?.value).toBe('Ray')
+    expect(field?.editable).toBe(true)
+  })
+
+  it('reads a component-library select, which renders as a button', async () => {
+    // Its real <select> is hidden and aria-hidden, so this is the only way the
+    // field is visible at all. On the project page that field was "Status".
+    const doc = render(`
+      <div class="space-y-2">
+        <label>Status</label>
+        <button type="button" role="combobox">Draft</button>
+        <select aria-hidden="true"><option>Draft</option></select>
+      </div>
+    `)
+    const field = readPage(doc).fields.find(f => f.label === 'Status')
+    expect(field?.value).toBe('Draft')
+    expect(field?.kind).toBe('select')
+    expect(field?.editable).toBe(true)
+  })
+})
