@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { ProjectStatus } from '@prisma/client'
 import { register } from '@/modules/commands/registry'
 
 register({
@@ -146,4 +147,132 @@ register({
   ],
   unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
+})
+
+/**
+ * A plain tuple, not `z.nativeEnum(ProjectStatus)`.
+ *
+ * The imported Prisma enum object is undefined in some server runtimes, so
+ * building a schema from it throws at module load and takes every command in
+ * the registry down with it. That has already happened once here, to
+ * `CommandSource`. Prisma accepts the literal string for an enum column, so
+ * nothing needs converting at the write.
+ */
+const PROJECT_STATUSES = [
+  'DRAFT',
+  'READY_FOR_REVIEW',
+  'PROPOSAL_SENT',
+  'APPROVED',
+  'CONSTRUCTION_READY',
+  'ARCHIVED',
+] as const satisfies readonly ProjectStatus[]
+
+const ProjectStatusSchema = z.enum(PROJECT_STATUSES)
+
+/**
+ * Where a project sits on the pipeline, so acceptance can move it forward
+ * without ever moving it back.
+ *
+ * ARCHIVED is deliberately absent: it is off the pipeline, not a point on it,
+ * and it is a decision the builder made explicitly. A late signature on an
+ * archived job records the acceptance and leaves the archive alone; revoking
+ * the share link is how you stop accepting.
+ */
+const PIPELINE_RANK = {
+  DRAFT: 0,
+  READY_FOR_REVIEW: 1,
+  PROPOSAL_SENT: 2,
+  APPROVED: 3,
+  CONSTRUCTION_READY: 4,
+} as const satisfies Partial<Record<ProjectStatus, number>>
+
+/**
+ * The status a signed acceptance implies, unless the project is already
+ * further along. Exported so a test can state the rule rather than restate the
+ * implementation.
+ */
+export function statusAfterAcceptance(current: ProjectStatus): ProjectStatus {
+  const rank = (PIPELINE_RANK as Partial<Record<ProjectStatus, number>>)[current]
+  if (rank === undefined) return current
+  return rank < PIPELINE_RANK.APPROVED ? 'APPROVED' : current
+}
+
+register({
+  id: 'project.proposal.accept',
+  label: 'Record proposal acceptance',
+  description:
+    "Record a customer's signed acceptance of a shared proposal and advance the project to Approved. Idempotent: a second acceptance keeps the first signature.",
+  category: 'project',
+  inputSchema: z.object({
+    projectId: z.string().min(1),
+    /** The name the customer typed. Never an id, never an email. */
+    acceptedName: z.string().trim().min(1).max(120),
+  }),
+  outputSchema: z.object({
+    projectId: z.string(),
+    status: ProjectStatusSchema,
+    previousStatus: ProjectStatusSchema,
+    statusChanged: z.boolean(),
+    acceptedName: z.string(),
+    acceptedAt: z.string(),
+    alreadyAccepted: z.boolean(),
+  }),
+  voiceExamples: ['Mark the Rivera proposal as accepted by Dana Reyes.'],
+  // The acceptance itself arrives on the PUBLIC share route, which has no
+  // session. `ctx.orgId` there is read off the project the share token
+  // resolved to, never off anything the caller sent, so this query's org
+  // filter is a genuine check that the token and the project agree rather
+  // than a tautology.
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { db } = await import('@/lib/db')
+
+    const project = await db.project.findFirst({
+      where: { id: input.projectId, orgId },
+      select: {
+        id: true,
+        status: true,
+        proposalAcceptedAt: true,
+        proposalAcceptedName: true,
+      },
+    })
+    if (!project) return { ok: false, error: 'Proposal not found' }
+
+    const acceptedName = input.acceptedName.trim()
+    const previousStatus = project.status
+    const nextStatus = statusAfterAcceptance(previousStatus)
+
+    // A second signature does not overwrite the first: the first one is the
+    // one the customer's copy of the proposal shows.
+    const alreadyAccepted = project.proposalAcceptedAt !== null
+    const acceptedAt = project.proposalAcceptedAt ?? new Date()
+    const recordedName = alreadyAccepted
+      ? (project.proposalAcceptedName ?? acceptedName)
+      : acceptedName
+
+    // updateMany keeps the org filter on the write, not only on the read.
+    await db.project.updateMany({
+      where: { id: project.id, orgId },
+      data: {
+        proposalAcceptedAt: acceptedAt,
+        proposalAcceptedName: recordedName,
+        status: nextStatus,
+      },
+    })
+
+    return {
+      ok: true,
+      data: {
+        projectId: project.id,
+        status: nextStatus,
+        previousStatus,
+        statusChanged: nextStatus !== previousStatus,
+        acceptedName: recordedName,
+        acceptedAt: acceptedAt.toISOString(),
+        alreadyAccepted,
+      },
+    }
+  },
 })

@@ -1,7 +1,7 @@
 'use client'
 
-import { AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react'
-import type { DesignIntent } from '@/modules/imports/intent'
+import { AlertCircle, ArrowRight, CheckCircle2, CircleDashed } from 'lucide-react'
+import { fieldsRequiringReview, type DesignIntent } from '@/modules/imports/intent'
 import { cn } from '@/lib/utils'
 import { confidenceFor } from './gates'
 import { INTENT_GROUP_META, fieldByPath, groupForPath, labelForPath } from './intent-fields'
@@ -13,6 +13,13 @@ import { INTENT_GROUP_META, fieldByPath, groupForPath, labelForPath } from './in
 // A path with no field row still lists, still names its group, and still says
 // why: silently hiding a blocker is how a user reaches a server rejection they
 // could not have predicted.
+//
+// An empty queue is NOT automatically good news. Before anything has been read
+// there are no confidence scores, so "every low-confidence field has been
+// reviewed" was true of the empty set and shown over fifteen fields reading
+// "Not read / Not scored" — a green tick claiming a review nobody performed of
+// data nobody extracted. Three states, and the difference between them is
+// whether the extractor scored anything at all.
 
 export interface ReviewQueueProps {
   intent: DesignIntent
@@ -20,12 +27,43 @@ export interface ReviewQueueProps {
   onJump: (path: string) => void
 }
 
+/**
+ * How many fields the extractor actually read and scored.
+ *
+ * `fieldConfidence` is only written for a field an extractor produced a value
+ * for, so an empty map means nothing was read: no review is possible, let alone
+ * complete.
+ */
+export function scoredFieldCount(intent: DesignIntent): number {
+  return Object.keys(intent.fieldConfidence).length
+}
+
 export function ReviewQueue({ intent, unreviewed, onJump }: ReviewQueueProps) {
-  if (unreviewed.length === 0) {
+  const scored = scoredFieldCount(intent)
+
+  if (scored === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-pfMd border border-emerald-600/20 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
-        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span>Every low-confidence field has been reviewed.</span>
+      <div className="flex items-start gap-2 rounded-pfMd border border-border bg-rowHover px-3 py-2 text-[11.5px] text-textMuted">
+        <CircleDashed className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span>
+          <span className="font-medium text-foreground">Nothing to review yet.</span> No field has
+          been read from this image, so none has a confidence score. Run the analysis, or fill the
+          fields in yourself, and anything read with low confidence will be listed here.
+        </span>
+      </div>
+    )
+  }
+
+  if (unreviewed.length === 0) {
+    const reviewed = fieldsRequiringReview(intent).length
+    return (
+      <div className="flex items-start gap-2 rounded-pfMd border border-emerald-600/20 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
+        <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span>
+          {reviewed === 0
+            ? `All ${scored} ${scored === 1 ? 'field' : 'fields'} read from this image scored above the review threshold. None needs your confirmation.`
+            : `All ${reviewed} low-confidence ${reviewed === 1 ? 'field' : 'fields'} of the ${scored} read from this image ${reviewed === 1 ? 'has' : 'have'} been reviewed.`}
+        </span>
       </div>
     )
   }

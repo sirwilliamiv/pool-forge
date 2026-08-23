@@ -1,6 +1,7 @@
 'use server'
 
 import { randomBytes } from 'node:crypto'
+import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 
@@ -55,6 +56,20 @@ export async function unshareProject(projectId: string): Promise<{ ok: boolean; 
 /**
  * Public: record customer acceptance of a shared proposal. No auth — the
  * unguessable token is the capability. Idempotent once accepted.
+ *
+ * Two things this function is careful about.
+ *
+ * The org is derived from the project the share token resolved to, never from
+ * anything the caller sent. There is no `orgId` or `projectId` parameter to
+ * forge: the only input from the wire is the token, and the token is looked up
+ * on a unique column. That is what makes it safe to run an org-scoped command
+ * with no session behind it.
+ *
+ * The write goes through the command registry rather than straight to Prisma,
+ * because acceptance is a user-driven state change like any other: it belongs
+ * in `CommandAuditLog` beside the status changes a builder makes by hand.
+ * Signing used to write two columns and move nothing, so a signed proposal sat
+ * at Draft and the builder found out by chance.
  */
 export async function acceptProposal(
   token: string,
@@ -67,14 +82,28 @@ export async function acceptProposal(
 
   const project = await db.project.findUnique({
     where: { shareToken: t },
-    select: { id: true, proposalAcceptedAt: true },
+    select: { id: true, orgId: true },
   })
   if (!project) return { ok: false, error: 'Proposal not found' }
-  if (project.proposalAcceptedAt) return { ok: true }
 
-  await db.project.update({
-    where: { id: project.id },
-    data: { proposalAcceptedAt: new Date(), proposalAcceptedName: acceptedName },
-  })
+  const { initCommands } = await import('@/modules/commands/init')
+  const { dispatchCommand } = await import('@/modules/commands/dispatch')
+  initCommands()
+
+  const result = await dispatchCommand<{ status: string }>(
+    'project.proposal.accept',
+    { projectId: project.id, acceptedName },
+    // No user: the signer is a customer, not a member of the org. The audit
+    // row stores a null userId and the org taken off the project.
+    { userId: 'anonymous', orgId: project.orgId, projectId: project.id },
+    'API',
+  )
+  if (!result.ok) return { ok: false, error: result.error }
+
+  // The builder's own views are cached, and a status that only moves after the
+  // next hard reload is a status the builder does not see move.
+  revalidatePath('/dashboard')
+  revalidatePath(`/projects/${project.id}`)
+
   return { ok: true }
 }

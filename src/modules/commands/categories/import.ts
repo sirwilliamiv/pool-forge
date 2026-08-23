@@ -124,8 +124,10 @@ function poolFieldsFromIntent(existing: unknown, intent: DesignIntent): PoolFiel
       (intent.deck.material === 'unknown' ? null : intent.deck.material),
   )
   assign('poolType', intent.pool.shapeFamily === 'unknown' ? null : intent.pool.shapeFamily)
-  assign('depthShallow', intent.pool.depthShallowFt === null ? null : String(intent.pool.depthShallowFt))
-  assign('depthDeep', intent.pool.depthDeepFt === null ? null : String(intent.pool.depthDeepFt))
+  // Depth is not copied here. The imported depths go onto the pool shape itself
+  // (see `precision/translate.ts`), which is the only place depth is allowed to
+  // live: a second free-text copy on the project is what let one pool report
+  // three different depths at once.
 
   if (intent.enclosure.present && intent.enclosure.kind !== 'none') {
     next.screenSelected = true

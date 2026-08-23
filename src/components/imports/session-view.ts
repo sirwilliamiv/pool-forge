@@ -8,7 +8,9 @@
 import {
   ANALYSIS_STAGES,
   emptyStages,
+  UNROUTABLE_STOP,
   type AnalysisStageName,
+  type PipelineStop,
   type SourceImageView,
   type StageState,
   type StageView,
@@ -113,6 +115,25 @@ export function buildSourceImageViews(
       errorRef: null,
     }
 
+    // Classification routes the image to an extractor, so `UNKNOWN` after a
+    // completed CLASSIFY is not "still to come", it is "there was nothing to
+    // call". The ledger used to render that as two rows of NOT RUN beside a
+    // finished Classify and no explanation anywhere on the screen, which is
+    // indistinguishable from an analysis nobody has started.
+    const blocked: PipelineStop | null =
+      stages.CLASSIFY.status === 'OK' && row.kind === 'UNKNOWN' ? UNROUTABLE_STOP : null
+
+    if (blocked) {
+      for (const stage of ANALYSIS_STAGES) {
+        if (stage === blocked.afterStage) continue
+        // A stage that did somehow complete (a manual calibration, say) keeps
+        // its own result: only stages with nothing to show are marked skipped.
+        if (stages[stage].status === 'PENDING') {
+          stages[stage] = { status: 'BLOCKED', errorRef: null }
+        }
+      }
+    }
+
     return {
       id: row.id,
       label: `${kindLabel} ${index}`,
@@ -120,6 +141,7 @@ export function buildSourceImageViews(
       widthPx: row.widthPx,
       heightPx: row.heightPx,
       stages,
+      blocked,
     }
   })
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Check } from 'lucide-react'
 import type { ProjectStatus } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
@@ -111,6 +112,23 @@ export default async function DashboardPage({
                   <ProjectCardMenu projectId={p.id} projectName={p.name} />
                 </div>
                 <StatusDropdown projectId={p.id} status={p.status} />
+                {p.proposalAcceptedAt ? (
+                  // The signature has to reach the builder without being looked
+                  // for. The status moves to Approved on acceptance, but
+                  // "Approved" alone does not say who signed or when, and a
+                  // builder scanning the board should not have to open a project
+                  // to find out a customer said yes.
+                  <p className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-900">
+                    <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">
+                      Accepted by {p.proposalAcceptedName ?? 'the customer'} on{' '}
+                      {p.proposalAcceptedAt.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  </p>
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-1 text-sm text-muted-foreground">
                 <Link href={`/projects/${p.id}`} className="block hover:underline">

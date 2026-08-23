@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Check, Info, Loader2, MinusCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -28,6 +28,7 @@ const STATE_STYLES: Record<StageState, string> = {
   RUNNING: 'border-pfAccent/40 bg-pfAccentSoft text-sky-900',
   OK: 'border-emerald-600/25 bg-emerald-50 text-emerald-800',
   FAILED: 'border-pfError/30 bg-errorSoft text-red-800',
+  BLOCKED: 'border-amber-500/30 bg-amber-50 text-amber-900',
 }
 
 const STATE_WORDS: Record<StageState, string> = {
@@ -35,21 +36,46 @@ const STATE_WORDS: Record<StageState, string> = {
   RUNNING: 'Running',
   OK: 'Done',
   FAILED: 'Failed',
+  BLOCKED: 'Skipped',
 }
 
 export function stageCompletion(image: SourceImageView): {
   done: number
   total: number
   failedStage: AnalysisStageName | null
+  skipped: number
 } {
   let done = 0
+  let skipped = 0
   let failedStage: AnalysisStageName | null = null
   for (const stage of ANALYSIS_STAGES) {
     const view = image.stages[stage]
     if (view.status === 'OK') done += 1
+    if (view.status === 'BLOCKED') skipped += 1
     if (view.status === 'FAILED' && failedStage === null) failedStage = stage
   }
-  return { done, total: ANALYSIS_STAGES.length, failedStage }
+  return { done, total: ANALYSIS_STAGES.length, failedStage, skipped }
+}
+
+/**
+ * What the analyse button says.
+ *
+ * It used to read "Re-analyze" the moment any stage had completed, which after
+ * a run that gave up at Classify announced a finished job over an empty
+ * extraction. Completion is all stages, and nothing less is allowed to sound
+ * like it.
+ */
+export function analyzeButtonLabel(args: {
+  analyzing: boolean
+  complete: boolean
+  stopped: boolean
+  started: boolean
+}): string {
+  if (args.analyzing) return 'Analyzing'
+  if (args.complete) return 'Re-analyze'
+  if (args.stopped) return 'Try again'
+  if (args.started) return 'Finish analysis'
+  return 'Analyze image'
 }
 
 export function ExtractionProgress({
@@ -58,9 +84,10 @@ export function ExtractionProgress({
   error,
   onAnalyze,
 }: ExtractionProgressProps) {
-  const { done, total, failedStage } = stageCompletion(image)
+  const { done, total, failedStage, skipped } = stageCompletion(image)
   const complete = done === total
   const started = done > 0 || failedStage !== null
+  const stopped = image.blocked !== null || failedStage !== null
 
   return (
     <section
@@ -74,14 +101,25 @@ export function ExtractionProgress({
           </h3>
           <span className="text-[10.5px] tabular-nums text-textFaint">
             {done} of {total} stages
+            {skipped > 0 ? (
+              <span className="text-amber-800">
+                {' · stopped after '}
+                {STAGE_LABELS[image.blocked?.afterStage ?? 'CLASSIFY']}
+              </span>
+            ) : null}
           </span>
         </div>
 
         <ol className="flex flex-1 items-center gap-1.5">
           {ANALYSIS_STAGES.map((stage) => {
             const view = image.stages[stage]
+            // A re-run clears a previous stop, so a skipped stage spins too:
+            // leaving it greyed out while the model is being called again reads
+            // as "still not being attempted".
             const status: StageState =
-              analyzing && view.status === 'PENDING' ? 'RUNNING' : view.status
+              analyzing && (view.status === 'PENDING' || view.status === 'BLOCKED')
+                ? 'RUNNING'
+                : view.status
             return (
               <li key={stage} className="min-w-0 flex-1">
                 <div
@@ -97,6 +135,8 @@ export function ExtractionProgress({
                     <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
                   ) : status === 'FAILED' ? (
                     <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+                  ) : status === 'BLOCKED' ? (
+                    <MinusCircle className="h-3 w-3 shrink-0" aria-hidden />
                   ) : (
                     <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden />
                   )}
@@ -113,7 +153,7 @@ export function ExtractionProgress({
         <Button
           size="sm"
           variant={complete ? 'outline' : 'default'}
-          onClick={() => onAnalyze(complete)}
+          onClick={() => onAnalyze(complete || stopped)}
           disabled={analyzing}
         >
           {analyzing ? (
@@ -121,9 +161,24 @@ export function ExtractionProgress({
           ) : (
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           )}
-          {analyzing ? 'Analyzing' : started ? 'Re-analyze' : 'Analyze image'}
+          {analyzeButtonLabel({ analyzing, complete, stopped, started })}
         </Button>
       </div>
+
+      {image.blocked !== null ? (
+        <div
+          role="status"
+          className="mt-2 rounded-pfXs border border-amber-500/30 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900"
+        >
+          <p className="flex gap-1.5">
+            <Info className="mt-px h-3 w-3 shrink-0" aria-hidden />
+            <span>
+              <span className="font-semibold">{image.blocked.headline}</span>{' '}
+              {image.blocked.detail}
+            </span>
+          </p>
+        </div>
+      ) : null}
 
       {failedStage !== null || error !== null ? (
         <div
@@ -166,6 +221,7 @@ export function SourceImageTabs({ images, activeId, onSelect }: SourceImageTabsP
     >
       {images.map((image) => {
         const { done, total, failedStage } = stageCompletion(image)
+        const stoppedEarly = image.blocked !== null
         const active = image.id === activeId
         return (
           <button
@@ -187,9 +243,11 @@ export function SourceImageTabs({ images, activeId, onSelect }: SourceImageTabsP
                 'rounded-full px-1.5 py-px text-[9.5px] tabular-nums',
                 failedStage !== null
                   ? 'bg-errorSoft text-red-700'
-                  : done === total
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-rowHover text-textFaint',
+                  : stoppedEarly
+                    ? 'bg-amber-50 text-amber-800'
+                    : done === total
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-rowHover text-textFaint',
               )}
             >
               {done}/{total}

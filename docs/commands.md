@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **84**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **86**.
 
 ## Project
 
@@ -20,6 +20,13 @@ Open an existing project by id.
 **Voice examples:**
 - "Open the Smith project."
 - "Open project 12345."
+
+### `project.proposal.accept` — Record proposal acceptance
+
+Record a customer's signed acceptance of a shared proposal and advance the project to Approved. Idempotent: a second acceptance keeps the first signature.
+
+**Voice examples:**
+- "Mark the Rivera proposal as accepted by Dana Reyes."
 
 ### `save.project` — Save project
 
@@ -470,6 +477,10 @@ Update an organization-scoped application setting by key.
 **Voice examples:**
 - "Update the default deck material to pavers."
 - "Change my company default coping color."
+
+### `settings.voice.set` — Change voice safety settings
+
+Turn the confirmation dialog for destructive voice actions on or off for this organization.
 
 ### `voice.session.begin` — Begin a voice session
 

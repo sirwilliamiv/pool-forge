@@ -24,8 +24,10 @@ vi.mock('sonner', () => ({
 
 import { dispatch } from '@/lib/commands/dispatch'
 import { ImportReviewScreen } from '@/components/imports/ImportReviewScreen'
+import { analyzeButtonLabel } from '@/components/imports/ExtractionProgress'
+import { UNROUTABLE_STOP } from '@/components/imports/types'
 import { fieldDomId } from '@/components/imports/intent-fields'
-import type { DesignIntent } from '@/modules/imports/intent'
+import { emptyDesignIntent, type DesignIntent } from '@/modules/imports/intent'
 import { PROJECT, reviewableIntent, sessionView } from './intent-fixture'
 
 const dispatchMock = vi.mocked(dispatch)
@@ -149,7 +151,37 @@ describe('the unreviewed field list', () => {
         })}
       />,
     )
-    expect(screen.getByText('Every low-confidence field has been reviewed.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'All 2 low-confidence fields of the 4 read from this image have been reviewed.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  // The defect a product owner filed: this banner said every low-confidence
+  // field had been reviewed while the same screen said 0 of 3 stages had run
+  // and all fifteen fields read "Not read / Not scored". It was true of the
+  // empty set and meaningless. A success state over nothing is a lie about the
+  // one thing the screen exists to establish.
+  it('never claims a completed review when nothing has been read', () => {
+    render(
+      <ImportReviewScreen project={PROJECT} session={sessionView(emptyDesignIntent(['img_1']))} />,
+    )
+    expect(screen.queryByText(/have been reviewed/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/scored above the review threshold/i)).not.toBeInTheDocument()
+    expect(screen.getByText('Nothing to review yet.')).toBeInTheDocument()
+  })
+
+  it('says so plainly when everything read scored above the threshold', () => {
+    const confident = reviewableIntent({
+      fieldConfidence: { 'pool.lengthFt': 0.97, 'pool.widthFt': 0.95 },
+    })
+    render(<ImportReviewScreen project={PROJECT} session={sessionView(confident)} />)
+    expect(
+      screen.getByText(
+        'All 2 fields read from this image scored above the review threshold. None needs your confirmation.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('jumps to the field it names, the way the validation dock does', () => {
@@ -168,6 +200,68 @@ describe('the unreviewed field list', () => {
       'deck.material',
       'pool.depthDeepFt',
     ])
+  })
+})
+
+// The second half of the same defect: the ledger read "1 of 3 stages, Classify
+// DONE, Extract NOT RUN, Calibrate NOT RUN" with no error anywhere on screen,
+// and the button relabelled itself "Re-analyze" as though the job were done.
+describe('a run that stopped after classify', () => {
+  function stoppedSession() {
+    const session = sessionView(emptyDesignIntent(['img_1']))
+    const image = session.images[0]!
+    return {
+      ...session,
+      images: [
+        {
+          ...image,
+          kindLabel: 'Image',
+          stages: {
+            CLASSIFY: { status: 'OK' as const, errorRef: null },
+            EXTRACT: { status: 'BLOCKED' as const, errorRef: null },
+            CALIBRATE: { status: 'BLOCKED' as const, errorRef: null },
+          },
+          blocked: UNROUTABLE_STOP,
+        },
+      ],
+    }
+  }
+
+  it('says which stages were skipped rather than leaving them as not-run', () => {
+    render(<ImportReviewScreen project={PROJECT} session={stoppedSession()} />)
+    const ledger = screen.getByRole('region', { name: /Extraction progress/i })
+    expect(within(ledger).getAllByText('Skipped')).toHaveLength(2)
+    expect(within(ledger).queryByText('Not run')).not.toBeInTheDocument()
+    expect(within(ledger).getByText(/stopped after Classify/)).toBeInTheDocument()
+  })
+
+  it('explains why it stopped instead of showing an empty screen', () => {
+    render(<ImportReviewScreen project={PROJECT} session={stoppedSession()} />)
+    expect(screen.getByText(UNROUTABLE_STOP.headline)).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(UNROUTABLE_STOP.detail.slice(0, 40)))).toBeInTheDocument()
+  })
+
+  it('does not label the button as if the run had finished', () => {
+    render(<ImportReviewScreen project={PROJECT} session={stoppedSession()} />)
+    expect(screen.queryByRole('button', { name: /Re-analyze/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument()
+  })
+})
+
+describe('the analyse button label', () => {
+  const base = { analyzing: false, complete: false, stopped: false, started: false }
+
+  it('offers a first run when nothing has happened', () => {
+    expect(analyzeButtonLabel(base)).toBe('Analyze image')
+  })
+
+  it('only says re-analyze once every stage is done', () => {
+    expect(analyzeButtonLabel({ ...base, complete: true, started: true })).toBe('Re-analyze')
+  })
+
+  it('never says re-analyze after a partial run', () => {
+    expect(analyzeButtonLabel({ ...base, started: true, stopped: true })).toBe('Try again')
+    expect(analyzeButtonLabel({ ...base, started: true })).not.toBe('Re-analyze')
   })
 })
 

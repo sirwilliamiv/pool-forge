@@ -142,3 +142,51 @@ describe('calibration status follows the session, not the image', () => {
     expect(buildSourceImageViews(['cm0abc111'], [IMAGES[0]!], [], 0)[0]?.stages.CALIBRATE.status).toBe('PENDING')
   })
 })
+
+// A run that classified the image and then stopped, because classification is
+// what picks the extractor and it declined to pick one. The ledger has to say
+// "skipped", not "not run": a product owner read three NOT RUN rows beside a
+// finished Classify, was given no error and no explanation, and concluded the
+// feature was simply broken.
+describe('a pipeline that stopped after classify', () => {
+  const UNROUTABLE = [{ id: 'cm0abc111', kind: 'UNKNOWN', widthPx: 600, heightPx: 400 }]
+  const CLASSIFIED: ImageAnalysisRow[] = [
+    {
+      sourceImageId: 'cm0abc111',
+      stage: 'CLASSIFY',
+      status: 'OK',
+      errorRef: null,
+      createdAt: new Date('2026-08-23T00:51:22Z'),
+    },
+  ]
+
+  it('marks the stages that never ran as blocked, and says where it stopped', () => {
+    const view = buildSourceImageViews(['cm0abc111'], UNROUTABLE, CLASSIFIED)[0]
+    expect(view?.stages.CLASSIFY.status).toBe('OK')
+    expect(view?.stages.EXTRACT.status).toBe('BLOCKED')
+    expect(view?.stages.CALIBRATE.status).toBe('BLOCKED')
+    expect(view?.blocked?.afterStage).toBe('CLASSIFY')
+    expect(view?.blocked?.headline).toMatch(/did not run/i)
+  })
+
+  it('leaves an image nobody has analysed yet alone', () => {
+    const view = buildSourceImageViews(['cm0abc111'], UNROUTABLE, [])[0]
+    expect(view?.blocked).toBeNull()
+    expect(view?.stages.EXTRACT.status).toBe('PENDING')
+  })
+
+  it('leaves a routed image alone', () => {
+    const view = buildSourceImageViews(['cm0abc111'], [IMAGES[0]!], CLASSIFIED)[0]
+    expect(view?.blocked).toBeNull()
+    expect(view?.stages.EXTRACT.status).toBe('PENDING')
+  })
+
+  it('does not overwrite a stage that did complete', () => {
+    // A manual calibration on an unroutable image is a real result and keeps
+    // its own status; only Extract, which truly never ran, is marked skipped.
+    const view = buildSourceImageViews(['cm0abc111'], UNROUTABLE, CLASSIFIED, 1.2)[0]
+    expect(view?.stages.CALIBRATE.status).toBe('OK')
+    expect(view?.stages.EXTRACT.status).toBe('BLOCKED')
+    expect(view?.blocked).not.toBeNull()
+  })
+})

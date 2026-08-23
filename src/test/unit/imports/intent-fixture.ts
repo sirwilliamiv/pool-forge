@@ -78,6 +78,7 @@ export function sessionView(
         widthPx: 1600,
         heightPx: 1200,
         stages: emptyStages(),
+        blocked: null,
       },
     ],
     appliedAtLabel: null,

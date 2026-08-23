@@ -223,6 +223,19 @@ async function applyPrecision(
   return next
 }
 
+/**
+ * The one sentence the builder gets when classification declined to route the
+ * image. Kept next to the early return it explains.
+ */
+export const UNROUTABLE_WARNING =
+  'This image was not recognised as a sketch, site plan, concept render, site photo, or screenshot, so extraction and calibration never ran and no field was read from it.'
+
+/** Appends a warning without duplicating it when the image is re-analysed. */
+function withWarning(intent: DesignIntent, warning: string): DesignIntent {
+  if (intent.warnings.includes(warning)) return intent
+  return { ...intent, warnings: [...intent.warnings, warning] }
+}
+
 export const vertexVisionAnalysisPort: VisionAnalysisPort = {
   extractorVersion: VISION_PORT_VERSION,
 
@@ -250,11 +263,16 @@ export const vertexVisionAnalysisPort: VisionAnalysisPort = {
 
     // An image nobody could classify is surfaced to the builder rather than run
     // through an extractor chosen at random.
+    //
+    // Returning here used to be silent: one CLASSIFY row, no extraction, no
+    // warning, and a review screen that read "1 of 3 stages" with every field
+    // empty and nothing anywhere saying why. The stop is a result, so it is
+    // reported like one.
     if (classification.kind === 'UNKNOWN') {
       return {
         extractorVersion: VISION_PORT_VERSION,
         kind: 'UNKNOWN',
-        intent: request.intent,
+        intent: withWarning(request.intent, UNROUTABLE_WARNING),
         stages,
       }
     }

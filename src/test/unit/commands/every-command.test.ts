@@ -272,6 +272,10 @@ const EXERCISES: Record<string, Exercise> = {
   },
   'open.project': { kind: 'stub' },
   'save.project': { kind: 'stub' },
+  'project.proposal.accept': {
+    kind: 'server',
+    why: 'Advances ProjectStatus and stamps the signature through Prisma, org-scoped. Covered by projects/proposal-acceptance.test.ts against the real DB, including the public share route that dispatches it with no session.',
+  },
 
   // ---------- canvas / camera / view ----------
   'canvas.zoom.in': {
@@ -619,8 +623,18 @@ const EXERCISES: Record<string, Exercise> = {
     notUndoable: CHROME_NOT_DRAWING,
   },
   'palette.run.suggestion': {
-    kind: 'server',
-    why: 'A wrapper that records the suggestion and delegates to an inner command id; the delegation is done by the palette, which this harness does not mount.',
+    // Was declared 'server', on the grounds that the palette did the
+    // delegating. It did not: nothing dispatched the inner command, so every
+    // suggestion in the product reported success and changed nothing. The
+    // delegation is a client handler now, and this exercises it end to end.
+    kind: 'mutates',
+    input: async () => ({
+      suggestionId: 'validation.depths',
+      innerCommandId: 'nav.focus',
+      innerInput: { target: 'validation' },
+    }),
+    notUndoable:
+      'It focuses a panel through its inner command. Panel focus is chrome, not part of the drawing, so history does not carry it.',
   },
 
   // ---------- import ----------
