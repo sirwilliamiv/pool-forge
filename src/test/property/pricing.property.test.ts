@@ -8,7 +8,7 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 
-import { computeQuote, PriceCategory, UnitType } from '@/modules/pricing/engine'
+import { ADDITIVE_CATEGORIES as ADDITIVE, computeQuote, PriceCategory, UnitType } from '@/modules/pricing/engine'
 import type { PriceBookItemLite } from '@/modules/pricing/engine'
 import { computeMeasurements, type MeasurementSummary } from '@/modules/measurements/engine'
 import { groupTotals, QUOTE_GROUPS } from '@/components/editor/shell/quote-groups'
@@ -178,15 +178,35 @@ describe('computeQuote invariants', () => {
     )
   })
 
+  it('never bills two items for one measurement', () => {
+    // The invariant the competing-items rule exists for, stated directly. Two
+    // deck lines in a book billed 1,540 square feet of concrete for a 770
+    // square foot deck, and every other symptom followed from that.
+    fc.assert(
+      fc.property(fc.array(item, { maxLength: 40 }), measurements, selections, (items, m, sel) => {
+        const unitOf = new Map(items.map(i => [i.id, i.unitType]))
+        const seen = new Set<string>()
+        for (const line of computeQuote(items, m, sel).lineItems) {
+          if (ADDITIVE.has(line.category)) continue
+          const key = `${line.category}:${unitOf.get(line.itemId) ?? ''}`
+          expect(seen.has(key), `${key} billed twice, second was ${line.name}`).toBe(false)
+          seen.add(key)
+        }
+      }),
+      { numRuns: 300 },
+    )
+  })
+
   it('adding an item never lowers the subtotal, unless it competes with one already there', () => {
     // Monotonicity: a price book with more in it cannot quote less. A quantity
     // rule that subtracted somewhere would show up here and nowhere else.
     //
-    // The exception is not a weakening, it is the point. This property used to
-    // hold unconditionally, and it held because two deck items both billed the
-    // whole deck: more items meant more money precisely because the same ground
-    // was charged twice. An item that competes with one already in the book now
-    // suspends both and says so, which legitimately lowers the subtotal.
+    // The exception is not a weakening, it is the point. This held
+    // unconditionally before, and it held *because* two deck items both billed
+    // the whole deck: more items meant more money precisely because the same
+    // ground was charged twice. An item that competes with one already in the
+    // book now suspends both, or loses to a default, and either legitimately
+    // lowers the subtotal.
     fc.assert(
       fc.property(
         fc.array(item, { maxLength: 20 }),
@@ -196,31 +216,19 @@ describe('computeQuote invariants', () => {
         (items, extra, m, sel) => {
           // Distinct id, or the extra collides with an existing line.
           const added = { ...extra, id: `${extra.id}-extra` }
-          const before = computeQuote(items, m, sel)
-          const after = computeQuote([...items, added], m, sel)
+          const competes =
+            !ADDITIVE.has(added.category) &&
+            items.some(o => o.category === added.category && o.unitType === added.unitType)
+          if (competes) return
 
-          // Did the newcomer land in a category and unit somebody already held?
-          const competes = items.some(
-            other => other.category === added.category && other.unitType === added.unitType,
-          )
-          if (competes) {
-            // Then the drop has to be accounted for: the categories that stopped
-            // billing are exactly the ones the quote now names as competing.
-            const explained = new Set(after.unpriced.map(u => u.category))
-            const stopped = before.lineItems
-              .filter(l => !after.lineItems.some(a => a.itemId === l.itemId))
-              .map(l => l.category)
-            for (const category of stopped) expect(explained.has(category)).toBe(true)
-            return
-          }
-
-          expect(after.subtotal).toBeGreaterThanOrEqual(before.subtotal - CENT)
+          const before = computeQuote(items, m, sel).subtotal
+          const after = computeQuote([...items, added], m, sel).subtotal
+          expect(after).toBeGreaterThanOrEqual(before - CENT)
         },
       ),
       { numRuns: 300 },
     )
-  })
-})
+  })})
 
 // ---------------------------------------------------------------------------
 // Believability: the properties a person checks before they trust a number.

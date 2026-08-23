@@ -433,7 +433,7 @@ function emptyQuote(status: QuoteStatus, taxRatePct: number, unpriced: UnpricedS
  * grid. Everywhere else the category hands the same measured quantity to every
  * item in it, so two items means the same ground billed twice.
  */
-const ADDITIVE_CATEGORIES: ReadonlySet<PriceCategory> = new Set([
+export const ADDITIVE_CATEGORIES: ReadonlySet<PriceCategory> = new Set([
   PriceCategory.EQUIPMENT,
   PriceCategory.ELECTRICAL,
   PriceCategory.FENCE,
