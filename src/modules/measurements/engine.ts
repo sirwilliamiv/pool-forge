@@ -1,4 +1,4 @@
-import { ShapeKind } from '@prisma/client'
+import { PriceCategory, ShapeKind } from '@prisma/client'
 import {
   isDeck,
   isFeature,
@@ -8,6 +8,7 @@ import {
   type Shape,
 } from '@/modules/editor/state/shapes'
 import { getStencil } from '@/modules/editor/stencils'
+import { quoteCategoryForStencil } from '@/modules/editor/stencils/quote-category'
 import { cutFillBetween, maxSlope, type Bounds, type SiteGrade } from '@/modules/editor/grade/model'
 import { MeasurementBehavior } from '@/modules/editor/stencils/types'
 import {
@@ -39,6 +40,16 @@ export interface MeasurementSummary {
   benchLinearFeet: number
   featureCount: number
   spaCount: number
+  /**
+   * Lighting fixtures actually placed in the drawing.
+   *
+   * Kept apart from `featureCount` because lighting is a priced category and a
+   * generic feature is not: a light the designer placed used to price at zero
+   * unless someone also typed a number into the project form.
+   */
+  lightCount: number
+  /** Water / fire features placed in the drawing, for the same reason. */
+  waterFeatureCount: number
   hasPool: boolean
   hasDeck: boolean
   /**
@@ -74,6 +85,8 @@ const EMPTY_SUMMARY: MeasurementSummary = {
   benchLinearFeet: 0,
   featureCount: 0,
   spaCount: 0,
+  lightCount: 0,
+  waterFeatureCount: 0,
   hasPool: false,
   hasDeck: false,
 }
@@ -238,6 +251,12 @@ export function computeMeasurements(shapes: Shape[]): MeasurementSummary {
     } else if (isStencil(shape)) {
       const def = getStencil(shape.stencilId)
       if (!def) continue
+      // Lighting and water features are counted from the drawing so that
+      // placing one moves the quote. Everything else still measures by
+      // behaviour below.
+      const quoteCategory = quoteCategoryForStencil(def)
+      if (quoteCategory === PriceCategory.LIGHTING) summary.lightCount += 1
+      else if (quoteCategory === PriceCategory.WATER_FEATURE) summary.waterFeatureCount += 1
       const area = rectangleAreaSqft(shape.width, shape.height)
       const perimeter = rectanglePerimeterLf(shape.width, shape.height)
       const longSideFt = Math.max(shape.width, shape.height) / 12

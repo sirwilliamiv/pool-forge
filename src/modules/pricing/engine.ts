@@ -56,12 +56,45 @@ export interface QuoteLine {
   total: number
 }
 
+/**
+ * Why a quote has no money in it.
+ *
+ * A quote that cannot be computed must say so rather than print a plausible
+ * figure: an empty canvas that quoted the required pump read as "$1,855 for
+ * nothing", and an organisation with no price book quoted every job at $0.
+ */
+export type QuoteStatus =
+  /** There is a drawing and a price book; the figures below are real. */
+  | 'PRICED'
+  /** Nothing has been drawn, so there is nothing to price. */
+  | 'NOTHING_DRAWN'
+  /** Something is drawn but the organisation has no active price book. */
+  | 'NO_PRICE_BOOK'
+
+/**
+ * Scope that is present in the drawing but that the price book cannot price.
+ *
+ * Surfaced to the user instead of being silently omitted: a waterfall that adds
+ * nothing to the total is either a missing price-book row or a mistake, and
+ * either way the person quoting needs to know before they send it.
+ */
+export interface UnpricedScope {
+  category: PriceCategory
+  /** Human label, e.g. "Water features". Never a raw enum. */
+  label: string
+  quantity: number
+  unit: string
+  reason: string
+}
+
 export interface QuoteSummary {
+  status: QuoteStatus
   lineItems: QuoteLine[]
   subtotal: number
   taxRatePct: number
   taxAmount: number
   total: number
+  unpriced: UnpricedScope[]
 }
 
 export interface QuoteOptions {
@@ -72,6 +105,45 @@ export interface QuoteOptions {
 interface QuantityResult {
   quantity: number
   source: string
+}
+
+/**
+ * Is there anything in this drawing worth billing for?
+ *
+ * The gate that stops an empty canvas quoting money. Required price-book items
+ * (the pump) are forced onto real jobs, and a job with nothing in it is not a
+ * real job.
+ */
+export function hasBillableScope(m: MeasurementSummary): boolean {
+  return (
+    m.hasPool ||
+    m.hasDeck ||
+    m.poolSurfaceArea > 0 ||
+    m.deckArea > 0 ||
+    m.spaCount > 0 ||
+    m.featureCount > 0 ||
+    m.copingLinearFeet > 0 ||
+    m.decoDrainLinearFeet > 0 ||
+    m.benchLinearFeet > 0 ||
+    m.lightCount > 0 ||
+    m.waterFeatureCount > 0 ||
+    m.cutYards > 0 ||
+    m.fillYards > 0
+  )
+}
+
+/**
+ * The lighting count the quote actually bills.
+ *
+ * Lights placed on the canvas win over the number typed into the project form:
+ * the drawing is the thing the customer is buying. The form only speaks when
+ * nothing is drawn, which is how a quote can be built before the design is.
+ */
+export function effectiveLightingQuantity(
+  m: MeasurementSummary,
+  sel: PricingSelections,
+): number {
+  return m.lightCount > 0 ? m.lightCount : Math.max(0, sel.lightingQuantity ?? 0)
 }
 
 // Map a price-book item to a quantity by dispatching on its category + unit
@@ -118,13 +190,21 @@ function quantityForItem(
         source: 'Equipment selection',
       }
     case PriceCategory.LIGHTING:
-      return { quantity: sel.lightingQuantity ?? 0, source: 'Lighting count' }
+      return {
+        quantity: effectiveLightingQuantity(m, sel),
+        source: m.lightCount > 0 ? 'Lights in drawing' : 'Lighting selection',
+      }
+    case PriceCategory.WATER_FEATURE:
+      // Priced per placed feature. Area / linear water-feature items price at
+      // zero rather than inventing a size for a waterfall.
+      return COUNT_UNIT_TYPES.has(item.unitType)
+        ? { quantity: m.waterFeatureCount, source: 'Water features in drawing' }
+        : { quantity: 0, source: 'Manual' }
     case PriceCategory.SCREEN:
       return {
         quantity: sel.screenSelected ? m.deckArea : 0,
         source: 'Screen over deck',
       }
-    case PriceCategory.WATER_FEATURE:
     case PriceCategory.FENCE:
     case PriceCategory.WALL:
     case PriceCategory.ELECTRICAL:
@@ -144,12 +224,118 @@ const COUNT_UNIT_TYPES: ReadonlySet<UnitType> = new Set([
   UnitType.HOUR,
 ])
 
+const CATEGORY_LABELS: Record<PriceCategory, string> = {
+  [PriceCategory.EARTHWORK]: 'Earthwork',
+  [PriceCategory.POOL]: 'Pool shell',
+  [PriceCategory.SPA]: 'Spa',
+  [PriceCategory.DECK]: 'Deck',
+  [PriceCategory.LANAI]: 'Lanai',
+  [PriceCategory.COPING]: 'Coping',
+  [PriceCategory.DRAIN]: 'Deco drain',
+  [PriceCategory.BENCH]: 'Benches',
+  [PriceCategory.EQUIPMENT]: 'Equipment',
+  [PriceCategory.LIGHTING]: 'Lighting',
+  [PriceCategory.WATER_FEATURE]: 'Water features',
+  [PriceCategory.SCREEN]: 'Screen enclosure',
+  [PriceCategory.FENCE]: 'Fence',
+  [PriceCategory.WALL]: 'Walls',
+  [PriceCategory.ELECTRICAL]: 'Electrical',
+  [PriceCategory.MISC]: 'Other',
+}
+
+/** The user-facing name of a price-book category. Never print the raw enum. */
+export function categoryLabel(category: PriceCategory): string {
+  return CATEGORY_LABELS[category]
+}
+
+/** Scope present in the drawing, in the units the person reads it in. */
+function scopePresent(
+  m: MeasurementSummary,
+  sel: PricingSelections,
+): Array<{ category: PriceCategory; quantity: number; unit: string }> {
+  return [
+    { category: PriceCategory.POOL, quantity: m.poolSurfaceArea, unit: 'sq ft' },
+    { category: PriceCategory.SPA, quantity: m.spaCount, unit: 'placed' },
+    { category: PriceCategory.DECK, quantity: m.deckArea, unit: 'sq ft' },
+    { category: PriceCategory.COPING, quantity: m.copingLinearFeet, unit: 'LF' },
+    { category: PriceCategory.DRAIN, quantity: m.decoDrainLinearFeet, unit: 'LF' },
+    { category: PriceCategory.BENCH, quantity: m.benchLinearFeet, unit: 'LF' },
+    { category: PriceCategory.LIGHTING, quantity: effectiveLightingQuantity(m, sel), unit: 'placed' },
+    { category: PriceCategory.WATER_FEATURE, quantity: m.waterFeatureCount, unit: 'placed' },
+    {
+      category: PriceCategory.SCREEN,
+      quantity: sel.screenSelected ? m.deckArea : 0,
+      unit: 'sq ft',
+    },
+    {
+      category: PriceCategory.EQUIPMENT,
+      quantity: sel.heaterSelected || sel.saltSystemSelected ? 1 : 0,
+      unit: 'selected',
+    },
+    { category: PriceCategory.EARTHWORK, quantity: m.cutYards + m.fillYards, unit: 'cu yd' },
+  ]
+}
+
+function unpricedScope(
+  items: readonly PriceBookItemLite[],
+  lineItems: readonly QuoteLine[],
+  m: MeasurementSummary,
+  sel: PricingSelections,
+): UnpricedScope[] {
+  const pricedCategories = new Set(lineItems.map((l) => l.category))
+  const bookCategories = new Set(items.map((i) => i.category))
+  const out: UnpricedScope[] = []
+  for (const scope of scopePresent(m, sel)) {
+    if (scope.quantity <= 0) continue
+    if (pricedCategories.has(scope.category)) continue
+    const label = categoryLabel(scope.category)
+    out.push({
+      category: scope.category,
+      label,
+      quantity: Math.round(scope.quantity * 100) / 100,
+      unit: scope.unit,
+      reason: bookCategories.has(scope.category)
+        ? `The price book has no ${label.toLowerCase()} item that fits this drawing`
+        : `No ${label.toLowerCase()} item in the price book`,
+    })
+  }
+  return out
+}
+
+function emptyQuote(status: QuoteStatus, taxRatePct: number, unpriced: UnpricedScope[] = []): QuoteSummary {
+  return {
+    status,
+    lineItems: [],
+    subtotal: 0,
+    taxRatePct,
+    taxAmount: 0,
+    total: 0,
+    unpriced,
+  }
+}
+
 export function computeQuote(
   items: PriceBookItemLite[],
   measurements: MeasurementSummary,
   selections: PricingSelections = {},
   options: QuoteOptions = {},
 ): QuoteSummary {
+  const taxRatePct = Math.max(0, options.taxRatePct ?? 0)
+
+  // Nothing drawn is not "$0 of work agreed", it is "no answer yet". Return
+  // before any required item is forced onto the sheet.
+  if (!hasBillableScope(measurements)) return emptyQuote('NOTHING_DRAWN', taxRatePct)
+
+  // A drawing with no price book behind it cannot be priced at all. Quoting it
+  // at $0 told twenty-one projects in this database that they were free.
+  if (items.length === 0) {
+    return emptyQuote(
+      'NO_PRICE_BOOK',
+      taxRatePct,
+      unpricedScope([], [], measurements, selections),
+    )
+  }
+
   const lineItems: QuoteLine[] = items
     .map<QuoteLine>((item) => {
       const derived = quantityForItem(item, measurements, selections)
@@ -176,8 +362,15 @@ export function computeQuote(
     .filter((l) => l.quantity > 0)
 
   const subtotal = Math.round(lineItems.reduce((sum, l) => sum + l.total, 0) * 100) / 100
-  const taxRatePct = Math.max(0, options.taxRatePct ?? 0)
   const taxAmount = Math.round(subtotal * (taxRatePct / 100) * 100) / 100
   const total = Math.round((subtotal + taxAmount) * 100) / 100
-  return { lineItems, subtotal, taxRatePct, taxAmount, total }
+  return {
+    status: 'PRICED',
+    lineItems,
+    subtotal,
+    taxRatePct,
+    taxAmount,
+    total,
+    unpriced: unpricedScope(items, lineItems, measurements, selections),
+  }
 }

@@ -1,10 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { loadDrawing } from '@/modules/editor/persistence'
-import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
-import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
+import { loadProjectQuote } from '@/modules/projects/snapshot'
 import {
   ConstructionDocument,
   type ConstructionPageSize,
@@ -37,29 +34,11 @@ export default async function ConstructionPacketPage({
   })
   if (!project || project.orgId !== orgId) notFound()
 
-  let shapes: Awaited<ReturnType<typeof loadDrawing>>['shapes'] = []
-  try {
-    const drawing = await loadDrawing(project.id)
-    shapes = drawing.shapes
-  } catch (err) {
-    console.error('loadDrawing failed', err)
-  }
-
-  const measurements = computeMeasurements(shapes)
-
-  const priceBook = await db.priceBook.findFirst({
-    where: { orgId, isActive: true },
-    orderBy: { version: 'desc' },
-    include: { items: true },
-  })
-  const items = toPriceBookItems(priceBook?.items ?? [])
-
-  const quote = computeQuote(
-    items,
-    measurements,
-    pricingSelectionsFrom(project.poolFields),
-    { taxRatePct: project.org?.taxRatePct ?? 0 },
-  )
+  // Same loader as the proposal, so the builder's sheet and the customer's
+  // sheet cannot print two different totals for one job.
+  const priced = await loadProjectQuote(project.id, orgId)
+  if (!priced) notFound()
+  const { shapes, measurements, quote } = priced
 
   const otherSize: ConstructionPageSize = pageSize === 'tabloid' ? 'letter' : 'tabloid'
 

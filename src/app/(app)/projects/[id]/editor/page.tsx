@@ -4,11 +4,8 @@ import { db } from '@/lib/db'
 import { EditorLayout } from '@/components/editor/shell/EditorLayout'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
-import {
-  pricingSelectionsFrom,
-  validationSelectionsFrom,
-} from '@/modules/projects/pool-fields'
+import { loadProjectQuote } from '@/modules/projects/snapshot'
+import { validationSelectionsFrom } from '@/modules/projects/pool-fields'
 import { runValidation } from '@/modules/validation/engine'
 import type {
   ValidationContext,
@@ -16,12 +13,7 @@ import type {
   ValidationReport,
 } from '@/modules/validation/types'
 import { getSuggestions } from '@/lib/commands/suggestions'
-import {
-  loadCachedQuote,
-  loadCachedValidation,
-  writeCachedQuote,
-  writeCachedValidation,
-} from '@/lib/cache/editor'
+import { loadCachedValidation, writeCachedValidation } from '@/lib/cache/editor'
 
 export default async function ProjectEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -69,41 +61,16 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
   // are read-only views over these snapshots in v1.
   const measurements = computeMeasurements(initial.shapes ?? [])
 
-  const priceBook = await db.priceBook.findFirst({
-    where: { orgId, isActive: true },
-    orderBy: { version: 'desc' },
-    include: { items: true },
-  })
-  const items = toPriceBookItems(priceBook?.items ?? [])
-  const pricingSelections = pricingSelectionsFrom(poolFields)
-
-  // Cache-first read; fall back to compute and fire-and-forget write. Tax comes
-  // from the org so the dock total matches the proposal total.
-  const cachedQuote = await loadCachedQuote(project.id)
-  const quoteSummary =
-    cachedQuote ??
-    computeQuote(items, measurements, pricingSelections, {
-      taxRatePct: project.org?.taxRatePct ?? 0,
-    })
-  if (!cachedQuote && priceBook && quoteSummary.lineItems.length) {
-    void writeCachedQuote(project.id, priceBook.id, quoteSummary).catch((err) =>
-      console.error('writeCachedQuote miss-write failed', err),
-    )
-  }
-  const quoteDock = quoteSummary.lineItems.length
-    ? {
-        id: project.id,
-        subtotal: quoteSummary.subtotal,
-        total: quoteSummary.total,
-        delta: 0,
-        lineItems: quoteSummary.lineItems.map((l) => ({
-          id: l.itemId,
-          name: l.name,
-          source: l.source,
-          total: l.total,
-        })),
-      }
-    : null
+  // Pricing inputs, not a pricing *result*: the dock recomputes in the browser
+  // from the live shape store, through the same `computeQuote` the proposal
+  // runs. The editor previously rendered a cached quote written at the last
+  // save, which is why widening a pool moved the surface area and not the
+  // price, and why the dock and the proposal could disagree by $1,350.
+  const priced = await loadProjectQuote(project.id, orgId)
+  const pricing =
+    priced && priced.items.length > 0
+      ? { items: priced.items, selections: priced.selections, taxRatePct: priced.taxRatePct }
+      : null
 
   const validationContext: ValidationContext = {
     project: validationProject,
@@ -156,8 +123,7 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
       }}
       initial={initial}
       validationReport={validationReport}
-      quoteDock={quoteDock}
-      inspectorQuote={quoteSummary}
+      pricing={pricing}
       paletteSuggestions={paletteSuggestions}
       materials={materials}
     />

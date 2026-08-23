@@ -50,7 +50,9 @@ export function SelectionCard() {
           <div className="truncate text-[12px] font-medium leading-tight text-foreground">
             Project overview
           </div>
-          <div className="mt-0.5 truncate text-[11px] text-textMuted">Hardcoded for demo</div>
+          <div className="mt-0.5 truncate text-[11px] text-textMuted">
+            Nothing selected
+          </div>
         </div>
       </div>
     )

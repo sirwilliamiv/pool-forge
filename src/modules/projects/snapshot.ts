@@ -4,7 +4,14 @@ import { parseGrade } from '@/modules/editor/drawing-payload'
 import type { Bounds, SiteGrade } from '@/modules/editor/grade/model'
 import { visibleBounds } from '@/modules/editor/placement'
 import { computeMeasurements, withEarthwork, type MeasurementSummary } from '@/modules/measurements/engine'
-import { toPriceBookItems, type PriceBookItemLite } from '@/modules/pricing/engine'
+import {
+  computeQuote,
+  toPriceBookItems,
+  type PriceBookItemLite,
+  type PricingSelections,
+  type QuoteSummary,
+} from '@/modules/pricing/engine'
+import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
 import type { ValidationProject } from '@/modules/validation/types'
 
 // Everything the read-only commands need about a project, loaded once.
@@ -93,5 +100,46 @@ export async function loadProjectSnapshot(
         ? project.proposalExpiresAt.toISOString()
         : null,
     },
+  }
+}
+
+export interface ProjectQuote {
+  shapes: Shape[]
+  measurements: MeasurementSummary
+  selections: PricingSelections
+  quote: QuoteSummary
+  /** The priced inputs, so a client can recompute the same quote as it draws. */
+  items: PriceBookItemLite[]
+  taxRatePct: number
+  priceBookId: string | null
+}
+
+/**
+ * The one place a priced project is built.
+ *
+ * The editor, the proposal, the construction packet, the screen RFQ, the shared
+ * customer link and the voice command all used to assemble these four inputs
+ * themselves. They drifted: only this loader folded earthwork into the
+ * measurements, so a graded site quoted one number to the salesperson and
+ * another to the customer. There is now a single path, and "one number
+ * everywhere" is a property of the code rather than a promise.
+ */
+export async function loadProjectQuote(
+  projectId: string,
+  orgId: string,
+): Promise<ProjectQuote | null> {
+  const snapshot = await loadProjectSnapshot(projectId, orgId)
+  if (!snapshot) return null
+  const selections = pricingSelectionsFrom(snapshot.poolFields)
+  return {
+    shapes: snapshot.shapes,
+    measurements: snapshot.measurements,
+    selections,
+    items: snapshot.items,
+    taxRatePct: snapshot.taxRatePct,
+    priceBookId: snapshot.priceBookId,
+    quote: computeQuote(snapshot.items, snapshot.measurements, selections, {
+      taxRatePct: snapshot.taxRatePct,
+    }),
   }
 }

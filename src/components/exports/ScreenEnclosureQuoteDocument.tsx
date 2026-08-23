@@ -2,6 +2,7 @@ import type { MeasurementSummary } from '@/modules/measurements/engine'
 import type { QuoteSummary } from '@/modules/pricing/engine'
 import type { Shape } from '@/modules/editor/state/shapes'
 import { DrawingSvg } from './DrawingSvg'
+import { formatUsd } from '@/lib/money'
 
 interface CustomerLite {
   name: string
@@ -54,9 +55,7 @@ function formatNum(n: number, digits = 1): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
-function formatMoney(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-}
+const formatMoney = formatUsd
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -216,19 +215,29 @@ export function ScreenEnclosureQuoteDocument(props: ScreenEnclosureQuoteDocument
                 {screenLines.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-1 py-2 text-center italic text-neutral-500">
-                      No screen-scope line items in current quote.
+                      {quote.status === 'PRICED'
+                        ? 'No screen-scope line items in current quote.'
+                        : quote.status === 'NO_PRICE_BOOK'
+                          ? 'No active price book, so this design cannot be priced.'
+                          : 'Nothing drawn yet, so there is nothing to price.'}
                     </td>
                   </tr>
                 ) : null}
               </tbody>
             </table>
-          ) : (
+          ) : quote.status === 'PRICED' ? (
             <div className="font-mono text-[11px]">
               <div className="flex justify-between border-b border-neutral-300 py-0.5">
                 <span>Screen scope subtotal (retail)</span>
                 <span>{formatMoney(screenSubtotal)}</span>
               </div>
             </div>
+          ) : (
+            <p className="font-mono text-[11px]">
+              {quote.status === 'NO_PRICE_BOOK'
+                ? 'No active price book, so no retail figure can be shown.'
+                : 'Nothing drawn yet, so there is no scope to price.'}
+            </p>
           )}
           <div className="mt-1 text-[9px] italic text-red-700">
             Internal reference only. Do not share with subcontractor.

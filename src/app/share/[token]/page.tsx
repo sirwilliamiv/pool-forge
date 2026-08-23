@@ -1,10 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
-import { loadDrawing } from '@/modules/editor/persistence'
-import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
-import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
+import { effectiveLightingQuantity } from '@/modules/pricing/engine'
+import { loadProjectQuote } from '@/modules/projects/snapshot'
 import { ProposalDocument } from '@/components/exports/ProposalDocument'
 import { AcceptProposalForm } from '@/components/exports/AcceptProposalForm'
 
@@ -43,19 +41,10 @@ export default async function SharedProposalPage({
   })
   if (!project) notFound()
 
-  const drawing = await loadDrawing(project.id).catch(() => ({ shapes: [] }))
-  const measurements = computeMeasurements(drawing.shapes)
-
-  const priceBook = await db.priceBook.findFirst({
-    where: { orgId: project.orgId, isActive: true },
-    orderBy: { version: 'desc' },
-    include: { items: true },
-  })
-  const items = toPriceBookItems(priceBook?.items ?? [])
-  const selections = pricingSelectionsFrom(project.poolFields)
-  const quote = computeQuote(items, measurements, selections, {
-    taxRatePct: project.org.taxRatePct,
-  })
+  // The customer's copy is priced by the same loader as the salesperson's.
+  const priced = await loadProjectQuote(project.id, project.orgId)
+  if (!priced) notFound()
+  const { measurements, quote, selections, shapes } = priced
 
   const accepted = project.proposalAcceptedAt
     ? { name: project.proposalAcceptedName ?? 'Customer', at: fmtDate(project.proposalAcceptedAt) }
@@ -78,12 +67,12 @@ export default async function SharedProposalPage({
             heaterSelected: selections.heaterSelected ?? false,
             saltSystemSelected: selections.saltSystemSelected ?? false,
             screenSelected: selections.screenSelected ?? false,
-            lightingQuantity: selections.lightingQuantity ?? 0,
+            lightingQuantity: effectiveLightingQuantity(measurements, selections),
           }}
           companyName={project.org.name}
           logoUrl={project.org.logoUrl}
           brandColor={project.org.brandColor}
-          shapes={drawing.shapes}
+          shapes={shapes}
         />
       </div>
     </div>

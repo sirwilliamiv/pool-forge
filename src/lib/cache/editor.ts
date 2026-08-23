@@ -6,7 +6,6 @@
 // recompute on miss). Writes are called from EditorPersistence (client) via
 // these server actions after a successful debounced save.
 
-import { PriceCategory } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { computeMeasurements } from '@/modules/measurements/engine'
@@ -31,60 +30,12 @@ async function requireOrg(): Promise<{ orgId: string }> {
 }
 
 // ----- READS -----
-
-export async function loadCachedQuote(projectId: string): Promise<QuoteSummary | null> {
-  const row = await db.quote.findFirst({
-    where: { projectId },
-    orderBy: { generatedAt: 'desc' },
-    include: { lineItems: true },
-  })
-  // An empty cache row is a miss, not an authoritative "$0". Treating it as a
-  // hit pinned the editor dock to "no quote" while the exports priced the same
-  // drawing at full value.
-  if (!row || row.lineItems.length === 0) return null
-
-  const subtotal = Number(row.subtotal)
-  const total = Number(row.total)
-  // Cached rows store subtotal + total only; recover the tax split from them.
-  const taxAmount = Math.round((total - subtotal) * 100) / 100
-  const taxRatePct = subtotal > 0 ? Math.round((taxAmount / subtotal) * 10000) / 100 : 0
-
-  // `QuoteLineItem` has no category column, so the snapshot is the only place
-  // the real categories survive — without it every line reads as POOL and the
-  // inspector's grouping is wrong.
-  const snapshotLines = readSnapshotLineItems(row.snapshot)
-
-  return {
-    subtotal,
-    total,
-    taxRatePct,
-    taxAmount,
-    lineItems: row.lineItems.map((l, i) => ({
-      itemId: l.id,
-      name: l.name,
-      category: snapshotLines[i]?.category ?? PriceCategory.MISC,
-      source: l.source,
-      quantity: Number(l.quantity),
-      unitPrice: Number(l.unitPrice),
-      total: Number(l.total),
-    })),
-  }
-}
-
-function readSnapshotLineItems(snapshot: unknown): Array<{ category: PriceCategory }> {
-  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return []
-  const lines = (snapshot as { lineItems?: unknown }).lineItems
-  if (!Array.isArray(lines)) return []
-  return lines.map((l) => {
-    const category = (l as { category?: unknown } | null)?.category
-    return {
-      category:
-        typeof category === 'string' && category in PriceCategory
-          ? (category as PriceCategory)
-          : PriceCategory.MISC,
-    }
-  })
-}
+//
+// There is deliberately no cached-quote read. The editor renders a quote it
+// computes from the drawing in front of the user; serving the last saved one
+// showed a stale price beside a live drawing (one project in this database was
+// $1,350 adrift of its own proposal). The `Quote` row is still written below as
+// the persisted record of a priced job.
 
 export async function loadCachedValidation(
   projectId: string,
@@ -194,7 +145,13 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
         pricingSelectionsFrom(poolFields),
         { taxRatePct: project.org?.taxRatePct ?? 0 },
       )
-      await writeCachedQuote(projectId, priceBook.id, summary)
+      // Only a real quote is recorded. An empty drawing has no price, and a row
+      // saying "$0" is a claim rather than an absence.
+      if (summary.status === 'PRICED') {
+        await writeCachedQuote(projectId, priceBook.id, summary)
+      } else {
+        await db.quote.deleteMany({ where: { projectId } })
+      }
     }
 
     const validationProject: ValidationProject = {

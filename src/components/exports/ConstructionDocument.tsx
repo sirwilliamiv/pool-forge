@@ -1,6 +1,7 @@
 import type { MeasurementSummary } from '@/modules/measurements/engine'
 import { ShapeKind } from '@prisma/client'
 import type { QuoteSummary } from '@/modules/pricing/engine'
+import { formatUsd } from '@/lib/money'
 import type { Shape } from '@/modules/editor/state/shapes'
 import { DrawingSvg } from './DrawingSvg'
 
@@ -315,16 +316,38 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
         <h2 className="mb-1 border-b border-black pb-0.5 text-sm font-bold uppercase tracking-wide">
           Quote Summary
         </h2>
-        <div className="font-mono text-[11px]">
-          <div className="flex justify-between border-b border-neutral-300 py-0.5">
-            <span>Line items</span>
-            <span>{quote.lineItems.length}</span>
+        {quote.status === 'PRICED' ? (
+          <div className="font-mono text-[11px]">
+            <div className="flex justify-between border-b border-neutral-300 py-0.5">
+              <span>Line items</span>
+              <span>{quote.lineItems.length}</span>
+            </div>
+            <div className="flex justify-between border-b border-neutral-300 py-0.5">
+              <span>Subtotal</span>
+              <span>{formatUsd(quote.subtotal)}</span>
+            </div>
+            <div className="flex justify-between border-b border-neutral-300 py-0.5">
+              <span>Sales tax ({quote.taxRatePct}%)</span>
+              <span>{formatUsd(quote.taxAmount)}</span>
+            </div>
+            <div className="flex justify-between py-0.5 font-bold">
+              <span>Total</span>
+              <span>{formatUsd(quote.total)}</span>
+            </div>
           </div>
-          <div className="flex justify-between py-0.5 font-bold">
-            <span>Total</span>
-            <span>${formatNum(quote.total, 2)}</span>
-          </div>
-        </div>
+        ) : (
+          <p className="text-[11px]">
+            {quote.status === 'NO_PRICE_BOOK'
+              ? 'Not priced: this company has no active price book, so no figure can be printed here.'
+              : 'Not priced: nothing has been drawn for this project yet.'}
+          </p>
+        )}
+        {quote.unpriced.length > 0 && (
+          <p className="mt-1 text-[10px]">
+            Drawn but not priced:{' '}
+            {quote.unpriced.map((u) => `${u.label} (${u.reason.toLowerCase()})`).join('; ')}.
+          </p>
+        )}
       </section>
 
       {/* Contractor notes */}

@@ -2,41 +2,20 @@
 
 import { useMemo } from 'react'
 import { useSelectionStore } from '@/modules/editor/state'
-import type { QuoteSummary, QuoteLine } from '@/modules/pricing/engine'
+import { categoryLabel, type QuoteLine } from '@/modules/pricing/engine'
+import { formatUsd } from '@/lib/money'
 import { PriceCategory } from '@prisma/client'
+import { useLiveQuote } from '../LiveQuote'
 
-interface QuoteTabProps {
-  quote?: QuoteSummary | null | undefined
-}
-
-const CATEGORY_LABEL: Partial<Record<PriceCategory, string>> = {
-  [PriceCategory.POOL]: 'Pool',
-  [PriceCategory.SPA]: 'Spa',
-  [PriceCategory.DECK]: 'Deck',
-  [PriceCategory.LANAI]: 'Lanai',
-  [PriceCategory.COPING]: 'Coping',
-  [PriceCategory.DRAIN]: 'Drains',
-  [PriceCategory.BENCH]: 'Benches',
-  [PriceCategory.EQUIPMENT]: 'Equipment',
-  [PriceCategory.LIGHTING]: 'Lighting',
-  [PriceCategory.WATER_FEATURE]: 'Water features',
-  [PriceCategory.SCREEN]: 'Screen',
-  [PriceCategory.FENCE]: 'Fence',
-  [PriceCategory.WALL]: 'Walls',
-  [PriceCategory.ELECTRICAL]: 'Electrical',
-  [PriceCategory.MISC]: 'Misc',
-}
-
-function fmtMoney(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-}
+const fmtMoney = formatUsd
 
 function fmtQty(n: number): string {
   if (n === Math.round(n)) return String(n)
   return n.toFixed(1)
 }
 
-export function QuoteTab({ quote }: QuoteTabProps) {
+export function QuoteTab() {
+  const quote = useLiveQuote()
   const selectedId = useSelectionStore((s) => s.selectedIds[0])
 
   const groups = useMemo(() => {
@@ -53,7 +32,24 @@ export function QuoteTab({ quote }: QuoteTabProps) {
   if (!quote) {
     return (
       <p className="px-3 py-4 text-[11.5px] text-textFaint">
-        No quote yet — generate one from the dock.
+        No pricing inputs are loaded for this project, so nothing can be costed here.
+      </p>
+    )
+  }
+
+  if (quote.status === 'NOTHING_DRAWN') {
+    return (
+      <p className="px-3 py-4 text-[11.5px] text-textFaint">
+        Nothing is drawn yet. Place a pool and the quote builds itself from the drawing.
+      </p>
+    )
+  }
+
+  if (quote.status === 'NO_PRICE_BOOK') {
+    return (
+      <p className="px-3 py-4 text-[11.5px] text-amber-800">
+        There is no active price book for this company, so this design cannot be priced. Add one
+        under Price book, then reopen the project.
       </p>
     )
   }
@@ -66,7 +62,7 @@ export function QuoteTab({ quote }: QuoteTabProps) {
           <section key={category} className="border-b border-borderLight">
             <header className="flex items-center justify-between px-3 pb-1 pt-3">
               <h4 className="text-[10px] font-semibold uppercase tracking-[0.5px] text-textMuted">
-                {CATEGORY_LABEL[category] ?? category}
+                {categoryLabel(category)}
               </h4>
               <span className="text-[10px] tabular-nums text-textMuted">
                 {fmtMoney(subtotal)}
@@ -101,12 +97,31 @@ export function QuoteTab({ quote }: QuoteTabProps) {
         )
       })}
 
+      {quote.unpriced.length > 0 && (
+        <div className="border-b border-borderLight bg-amber-50 px-3 py-2">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.5px] text-amber-800">
+            Drawn but not priced
+          </div>
+          <ul className="mt-1 space-y-0.5">
+            {quote.unpriced.map((u) => (
+              <li key={u.category} className="text-[11px] leading-snug text-amber-900">
+                {u.label}: {u.reason}.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="px-3 py-3">
         <div className="flex items-center justify-between text-[12px]">
           <span className="text-textMuted">Subtotal</span>
           <span className="tabular-nums text-foreground">{fmtMoney(quote.subtotal)}</span>
         </div>
-        <div className="mt-1 flex items-center justify-between text-[14px] font-semibold">
+        <div className="mt-1 flex items-center justify-between text-[12px]">
+          <span className="text-textMuted">Sales tax ({quote.taxRatePct}%)</span>
+          <span className="tabular-nums text-foreground">{fmtMoney(quote.taxAmount)}</span>
+        </div>
+        <div className="mt-1 flex items-center justify-between border-t border-borderLight pt-1 text-[14px] font-semibold">
           <span>Total</span>
           <span className="tabular-nums">{fmtMoney(quote.total)}</span>
         </div>

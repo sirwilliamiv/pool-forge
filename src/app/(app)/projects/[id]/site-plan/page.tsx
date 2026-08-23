@@ -1,8 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { loadDrawing } from '@/modules/editor/persistence'
-import { computeMeasurements } from '@/modules/measurements/engine'
+import { loadProjectQuote } from '@/modules/projects/snapshot'
 import { SitePlanDocument } from '@/components/exports/SitePlanDocument'
 import { PrintButton } from '@/components/exports/PrintButton'
 import './site-plan.css'
@@ -24,15 +23,9 @@ export default async function SitePlanPage({
   })
   if (!project) notFound()
 
-  let shapes: Awaited<ReturnType<typeof loadDrawing>>['shapes'] = []
-  try {
-    const drawing = await loadDrawing(project.id)
-    shapes = drawing.shapes
-  } catch (err) {
-    console.error('loadDrawing failed', err)
-  }
-
-  const measurements = computeMeasurements(shapes)
+  const priced = await loadProjectQuote(project.id, orgId)
+  if (!priced) notFound()
+  const { shapes, measurements } = priced
 
   // Survey image overlay is stored as a data URL in the editor state today; once
   // it lives on the server (Phase B follow-up), read it here. For now, render

@@ -3,10 +3,8 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { loadDrawing } from '@/modules/editor/persistence'
-import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
-import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
+import { effectiveLightingQuantity } from '@/modules/pricing/engine'
+import { loadProjectQuote } from '@/modules/projects/snapshot'
 import { ProposalDocument } from '@/components/exports/ProposalDocument'
 import { PrintButton } from '@/components/exports/PrintButton'
 import './proposal.css'
@@ -48,21 +46,11 @@ export default async function ProposalPage({
   })
   if (!project) notFound()
 
-  const drawing = await loadDrawing(project.id).catch(() => ({ shapes: [] }))
-  const measurements = computeMeasurements(drawing.shapes)
-
-  const priceBook = await db.priceBook.findFirst({
-    where: { orgId, isActive: true },
-    orderBy: { version: 'desc' },
-    include: { items: true },
-  })
-
-  const items = toPriceBookItems(priceBook?.items ?? [])
-  const selections = pricingSelectionsFrom(project.poolFields)
-
-  const quote = computeQuote(items, measurements, selections, {
-    taxRatePct: project.org.taxRatePct,
-  })
+  // One loader, one quote: the editor dock, this proposal, the construction
+  // packet and the shared customer link all read the same figures from here.
+  const priced = await loadProjectQuote(project.id, orgId)
+  if (!priced) notFound()
+  const { measurements, quote, selections, shapes } = priced
 
   return (
     <div className="min-h-screen bg-slate-100 py-6">
@@ -82,12 +70,15 @@ export default async function ProposalPage({
             heaterSelected: selections.heaterSelected ?? false,
             saltSystemSelected: selections.saltSystemSelected ?? false,
             screenSelected: selections.screenSelected ?? false,
-            lightingQuantity: selections.lightingQuantity ?? 0,
+            // The lights the quote actually bills, which is the drawing's count
+            // when there is one. The proposal used to read only the form field,
+            // so a design with a light in it said "Pool lighting: Not specified".
+            lightingQuantity: effectiveLightingQuantity(measurements, selections),
           }}
           companyName={project.org.name}
           logoUrl={project.org.logoUrl}
           brandColor={project.org.brandColor}
-          shapes={drawing.shapes}
+          shapes={shapes}
         />
       </div>
     </div>
