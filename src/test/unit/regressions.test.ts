@@ -30,9 +30,51 @@ import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useHistoryStore } from '@/modules/editor/state/historyStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
+import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
+import { buildFinishCatalog } from '@/modules/materials/catalog'
 import { ShapeKind, SHAPE_DEFAULTS, type Shape } from '@/modules/editor/state/shapes'
 import { stencilsByCategory } from '@/modules/editor/stencils'
 import { StencilCategory } from '@/modules/editor/stencils/types'
+
+/**
+ * A finish catalogue for the handlers to check against.
+ *
+ * The material commands validate against the organisation's catalogue, so a
+ * test that does not load one is testing a code path the app never runs.
+ */
+const TEST_MATERIALS = {
+  pebble: 'mat-pebble',
+  ivory: 'mat-ivory',
+  glass: 'mat-glass',
+} as const
+
+function hydrateTestCatalog(): void {
+  useMaterialsStore.getState().hydrate(
+    buildFinishCatalog(
+      [
+        {
+          id: TEST_MATERIALS.pebble,
+          kind: 'CUSTOM',
+          name: 'PebbleTec — Cobalt',
+          fillSpec: { type: 'gradient', color: '#1E40AF', slot: 'interior', priceItemId: 'i1' },
+        },
+        {
+          id: TEST_MATERIALS.ivory,
+          kind: 'COPING',
+          name: 'Travertine — Ivory',
+          fillSpec: { type: 'gradient', color: '#FEF3C7', slot: 'coping', priceItemId: 'c1' },
+        },
+        {
+          id: TEST_MATERIALS.glass,
+          kind: 'CUSTOM',
+          name: 'Glass Mosaic — Aqua mix',
+          fillSpec: { type: 'mosaic', color: '#06B6D4', slot: 'tileBand', priceItemId: 't1' },
+        },
+      ],
+      [],
+    ),
+  )
+}
 
 // ---------------------------------------------------------------------------
 // The pool tool
@@ -202,8 +244,8 @@ describe('a mutation aimed at an id that is not on the canvas', () => {
     ['pool.lock.ratio', { id: GHOST, locked: true }],
     ['pool.geometry.update', { id: GHOST, length: 30 }],
     ['pool.depth.set', { id: GHOST, shallowDepth: 36 }],
-    ['set.shape.material', { id: GHOST, materialId: 'pebbletec.cobalt' }],
-    ['pool.material.set', { id: GHOST, slot: 'interior', materialId: 'pebbletec.cobalt' }],
+    ['set.shape.material', { id: GHOST, materialId: TEST_MATERIALS.pebble }],
+    ['pool.material.set', { id: GHOST, slot: 'interior', materialId: TEST_MATERIALS.pebble }],
   ]
 
   /**
@@ -227,6 +269,7 @@ describe('a mutation aimed at an id that is not on the canvas', () => {
     useSelectionStore.getState().clear()
     useHistoryStore.setState({ past: [], future: [] })
     useCameraStore.setState({ targetView: null, framePose: null, frameTarget: null })
+    hydrateTestCatalog()
     render(createElement(ClientCommandHandlers))
   })
 
@@ -272,22 +315,51 @@ describe('a mutation aimed at an id that is not on the canvas', () => {
     // interior was told it was set, saw no change, and found no trace of it.
     const pool = useShapesStore.getState().addShape(ShapeKind.RECTANGLE_POOL, 0, 0)
 
-    await dispatch('set.shape.material', { id: pool, materialId: 'pebbletec.cobalt' })
-    await dispatch('pool.material.set', { id: pool, slot: 'coping', materialId: 'travertine.silver' })
+    // No slot given: the material's own slot decides where it lands.
+    await dispatch('set.shape.material', { id: pool, materialId: TEST_MATERIALS.pebble })
+    await dispatch('pool.material.set', { id: pool, slot: 'coping', materialId: TEST_MATERIALS.ivory })
 
     const shape = useShapesStore.getState().shapes.find((s) => s.id === pool)
-    expect(shape?.materials?.surface).toBe('pebbletec.cobalt')
+    expect(shape?.materials?.interior).toBe(TEST_MATERIALS.pebble)
     // Two slots, kept apart: setting the coping must not wipe the interior.
-    expect(shape?.materials?.coping).toBe('travertine.silver')
+    expect(shape?.materials?.coping).toBe(TEST_MATERIALS.ivory)
   })
 
   it('refuses a material for a shape that is not there', async () => {
     const result = await dispatch('pool.material.set', {
       id: 'ghost',
       slot: 'interior',
-      materialId: 'x',
+      materialId: TEST_MATERIALS.pebble,
     })
     expect(result.ok).toBe(false)
+  })
+
+  it('refuses a finish that is not in the catalogue instead of recording the word', async () => {
+    // "Set the interior to cobalt" used to write the string `cobalt` onto the
+    // pool and report success. Nothing could render it, price it or print it.
+    const pool = useShapesStore.getState().addShape(ShapeKind.RECTANGLE_POOL, 0, 0)
+    const result = await dispatch('pool.material.set', {
+      id: pool,
+      slot: 'interior',
+      materialId: 'cobalt',
+    })
+    expect(result.ok).toBe(false)
+    expect(useShapesStore.getState().shapes.find((s) => s.id === pool)?.materials).toBeUndefined()
+  })
+
+  it('refuses a per-linear-foot tile band offered as a per-square-foot interior', async () => {
+    // The picker built its interior list out of every CUSTOM material, so a
+    // $15.00/lf waterline tile sat in the list of finishes billed by the square
+    // foot. Kind says nothing about units; the slot does.
+    const pool = useShapesStore.getState().addShape(ShapeKind.RECTANGLE_POOL, 0, 0)
+    const result = await dispatch('pool.material.set', {
+      id: pool,
+      slot: 'interior',
+      materialId: TEST_MATERIALS.glass,
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toMatch(/different units/)
+    expect(useShapesStore.getState().shapes.find((s) => s.id === pool)?.materials).toBeUndefined()
   })
 })
 

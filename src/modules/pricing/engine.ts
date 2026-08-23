@@ -1,5 +1,6 @@
 import { PriceCategory, UnitType } from '@prisma/client'
 import type { MeasurementSummary } from '@/modules/measurements/engine'
+import type { FinishSlot } from '@/modules/materials/slots'
 
 export { PriceCategory, UnitType }
 
@@ -39,11 +40,41 @@ export function toPriceBookItems(rows: readonly PriceBookItemRow[]): PriceBookIt
   }))
 }
 
+/**
+ * A finish chosen for one pool surface, and the price-book item that bills it.
+ *
+ * `priceItemId` is nullable on purpose. A finish the price book cannot bill is
+ * a real answer — the builder picked a material their book has no line for —
+ * and the honest thing to do with it is to say so on the quote. Pricing it
+ * silently at whatever the base pool line happens to charge is what the
+ * material picker used to do, and it meant a $7.10 finish and a $15.75 finish
+ * produced the same total.
+ */
+export interface FinishSelection {
+  slot: FinishSlot
+  /** Human label of the slot, e.g. "Interior finish". Never the raw key. */
+  slotLabel: string
+  materialId: string
+  materialName: string
+  priceItemId: string | null
+}
+
 export interface PricingSelections {
   heaterSelected?: boolean
   saltSystemSelected?: boolean
   screenSelected?: boolean
   lightingQuantity?: number
+  /** What each pool surface is finished in. See `FinishSelection`. */
+  finishes?: readonly FinishSelection[]
+  /**
+   * Every price-book item that some material in the finish catalogue claims.
+   *
+   * An item named here bills only when its material is the one chosen. Without
+   * this, a price book holding three copings would bill all three the moment a
+   * pool had a perimeter, because the engine prices by category and a category
+   * cannot tell one travertine from another.
+   */
+  finishItemIds?: readonly string[]
 }
 
 export interface QuoteLine {
@@ -169,9 +200,16 @@ function quantityForItem(
         source: 'Earthwork present',
       }
     case PriceCategory.POOL:
-      return item.unitType === UnitType.SQFT
-        ? { quantity: m.poolSurfaceArea, source: 'Pool surface area' }
-        : { quantity: m.hasPool ? 1 : 0, source: 'Pool present' }
+      if (item.unitType === UnitType.SQFT) {
+        return { quantity: m.poolSurfaceArea, source: 'Pool surface area' }
+      }
+      // Waterline tile is a pool line sold by the foot, and the foot it is sold
+      // by is the pool's own edge. Before this branch existed a per-linear-foot
+      // pool item priced at qty 1, so a $15/lf tile band billed $15 for the job.
+      if (item.unitType === UnitType.LF) {
+        return { quantity: m.copingLinearFeet, source: 'Pool perimeter' }
+      }
+      return { quantity: m.hasPool ? 1 : 0, source: 'Pool present' }
     case PriceCategory.SPA:
       return { quantity: m.spaCount > 0 ? 1 : 0, source: 'Spa present' }
     case PriceCategory.DECK:
@@ -276,6 +314,44 @@ function scopePresent(
   ]
 }
 
+/**
+ * How much of the drawing a finish covers, in the unit its slot is billed in.
+ * Only used to report a finish the price book cannot bill.
+ */
+function finishQuantity(
+  slot: FinishSlot,
+  m: MeasurementSummary,
+): { quantity: number; unit: string } {
+  return slot === 'interior'
+    ? { quantity: m.poolSurfaceArea, unit: 'sq ft' }
+    : { quantity: m.copingLinearFeet, unit: 'LF' }
+}
+
+/**
+ * Finishes chosen that no price-book item bills.
+ *
+ * Reported by name and by slot rather than folded into the category-level
+ * report, because the category is usually priced: a pool with a finish the book
+ * has no line for still has a `Pool Base` line, so nothing at the category
+ * level looks wrong. The builder has to be told which finish is free.
+ */
+function unpricedFinishes(m: MeasurementSummary, sel: PricingSelections): UnpricedScope[] {
+  const out: UnpricedScope[] = []
+  for (const finish of sel.finishes ?? []) {
+    if (finish.priceItemId !== null) continue
+    const { quantity, unit } = finishQuantity(finish.slot, m)
+    if (quantity <= 0) continue
+    out.push({
+      category: finish.slot === 'coping' ? PriceCategory.COPING : PriceCategory.POOL,
+      label: `${finish.slotLabel} — ${finish.materialName}`,
+      quantity: Math.round(quantity * 100) / 100,
+      unit,
+      reason: 'This finish has no price-book item, so nothing is billed for it',
+    })
+  }
+  return out
+}
+
 function unpricedScope(
   items: readonly PriceBookItemLite[],
   lineItems: readonly QuoteLine[],
@@ -284,7 +360,7 @@ function unpricedScope(
 ): UnpricedScope[] {
   const pricedCategories = new Set(lineItems.map((l) => l.category))
   const bookCategories = new Set(items.map((i) => i.category))
-  const out: UnpricedScope[] = []
+  const out: UnpricedScope[] = unpricedFinishes(m, sel)
   for (const scope of scopePresent(m, sel)) {
     if (scope.quantity <= 0) continue
     if (pricedCategories.has(scope.category)) continue
@@ -336,6 +412,16 @@ export function computeQuote(
     )
   }
 
+  // Which price-book items belong to a finish, and which of those was picked.
+  // An item claimed by the catalogue and not picked bills nothing at all: it is
+  // an alternative the customer did not choose, not scope on this job.
+  const claimedByAFinish = new Set(selections.finishItemIds ?? [])
+  const chosenFinishItems = new Set(
+    (selections.finishes ?? [])
+      .map((finish) => finish.priceItemId)
+      .filter((id): id is string => id !== null),
+  )
+
   const lineItems: QuoteLine[] = items
     .map<QuoteLine>((item) => {
       const derived = quantityForItem(item, measurements, selections)
@@ -344,6 +430,12 @@ export function computeQuote(
       if (item.required && quantity <= 0 && COUNT_UNIT_TYPES.has(item.unitType)) {
         quantity = 1
         source = 'Required'
+      }
+      if (claimedByAFinish.has(item.id) && !chosenFinishItems.has(item.id)) {
+        quantity = 0
+        source = 'Finish not selected'
+      } else if (chosenFinishItems.has(item.id)) {
+        source = 'Selected finish'
       }
       // Round the quantity first, then derive the line total from the rounded
       // quantity so `quantity × unitPrice` always equals the printed line total.

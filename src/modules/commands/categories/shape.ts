@@ -300,7 +300,8 @@ register({
   id: 'set.shape.material',
   runsOn: 'client',
   label: 'Set shape material',
-  description: 'Apply a material or finish to a shape.',
+  description:
+    'Apply a finish from the material catalogue to a pool. The material decides which surface it lands on: an interior finish goes on the interior, a coping on the coping, a waterline tile on the tile band.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
@@ -311,12 +312,13 @@ register({
     materialId: z.string(),
   }),
   voiceExamples: [
-    'Change the deck to pavers.',
     'Set the pool finish to pebble.',
+    'Change the interior to white plaster.',
   ],
-  // CLIENT: useShapesStore.getState().updateShape(input.id, { materialId: input.materialId })
-  //         (Note: Shape type doesn't have materialId yet — Track E adds it via
-  //         displayHint or extends the Shape interface.)
+  // CLIENT (ClientCommandHandlers.applyFinish): the material's own slot decides
+  // where it lands, so this is `pool.material.set` without having to name the
+  // slot. A material the catalogue does not hold, or one that is a plain canvas
+  // fill rather than a pool finish, is refused rather than recorded.
   execute: async (input) => ({
     ok: true,
     data: { id: input.id, materialId: input.materialId },
@@ -367,7 +369,8 @@ register({
   id: 'pool.material.set',
   runsOn: 'client',
   label: 'Set pool material slot',
-  description: 'Apply a material to a specific surface slot of the selected pool (interior, coping, or tile band).',
+  description:
+    'Apply a material to one pool surface. `interior` is billed by the square foot; `coping` and `tileBand` are billed by the linear foot, and a material belonging to one slot cannot be used in another.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
@@ -383,10 +386,11 @@ register({
     'Change the interior to PebbleTec Cobalt.',
     'Set the coping to travertine.',
   ],
-  // CLIENT (Track E MaterialSection):
-  //   Persist via DrawingObject.displayHint until the Shape type carries
-  //   per-slot material ids natively. The patch shape is:
-  //     { displayHint: { ...prev.displayHint, [slotKey]: input.materialId } }
+  // CLIENT (ClientCommandHandlers.applyFinish): writes `Shape.materials[slot]`,
+  // which autosaves with the drawing and is what the quote, the proposal and
+  // the construction packet all read. The material must belong to this slot:
+  // slots are billed in different units and converting between them silently is
+  // how a $15.00/lf tile band came to be offered as a per-square-foot interior.
   execute: async (input) => ({
     ok: true,
     data: { id: input.id, slot: input.slot, materialId: input.materialId },

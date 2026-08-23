@@ -11,6 +11,12 @@ import { db } from '@/lib/db'
 import { computeMeasurements } from '@/modules/measurements/engine'
 import { computeQuote, toPriceBookItems, type QuoteSummary } from '@/modules/pricing/engine'
 import {
+  buildFinishCatalog,
+  resolveFinishes,
+  type MaterialRow,
+} from '@/modules/materials/catalog'
+import {
+  poolFieldsWithFinishes,
   pricingSelectionsFrom,
   validationSelectionsFrom,
 } from '@/modules/projects/pool-fields'
@@ -126,11 +132,6 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
         ? ((raw as { shapes: Shape[] }).shapes ?? [])
         : []
 
-    const poolFields =
-      project.poolFields && typeof project.poolFields === 'object' && !Array.isArray(project.poolFields)
-        ? (project.poolFields as Record<string, unknown>)
-        : {}
-
     const measurements = computeMeasurements(shapes)
 
     const priceBook = await db.priceBook.findFirst({
@@ -138,11 +139,33 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
       orderBy: { version: 'desc' },
       include: { items: true },
     })
+    const items = toPriceBookItems(priceBook?.items ?? [])
+
+    // The finishes on the drawing, resolved the same way `loadProjectQuote`
+    // resolves them. This cache is written on every save and read by the
+    // project page, so computing it without the finishes would put a total on
+    // the project card several thousand dollars below the one on the dock.
+    const materialRows = await db.material.findMany({
+      where: { OR: [{ orgId }, { orgId: null }] },
+      select: { id: true, kind: true, name: true, fillSpec: true },
+      orderBy: [{ kind: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+    })
+    const finishCatalog = buildFinishCatalog(materialRows as MaterialRow[], items)
+    const finishes = resolveFinishes(shapes, finishCatalog)
+    const poolFields = poolFieldsWithFinishes(project.poolFields, finishes) as unknown as Record<
+      string,
+      unknown
+    >
+
     if (priceBook) {
       const summary = computeQuote(
-        toPriceBookItems(priceBook.items),
+        items,
         measurements,
-        pricingSelectionsFrom(poolFields),
+        {
+          ...pricingSelectionsFrom(poolFields),
+          finishes,
+          finishItemIds: finishCatalog.claimedItemIds,
+        },
         { taxRatePct: project.org?.taxRatePct ?? 0 },
       )
       // Only a real quote is recorded. An empty drawing has no price, and a row

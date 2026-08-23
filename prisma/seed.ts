@@ -23,6 +23,12 @@ const PRICE_ITEM_IDS = {
   pool: 'seed-item-pool-base',
   deck: 'seed-item-deck-concrete',
   coping: 'seed-item-coping-lf',
+  copingSilver: 'seed-item-coping-travertine-silver',
+  copingCantilever: 'seed-item-coping-cantilever',
+  finishPlaster: 'seed-item-finish-plaster-white',
+  finishPebbleCobalt: 'seed-item-finish-pebbletec-cobalt',
+  finishPebbleBlueGranite: 'seed-item-finish-pebbletec-blue-granite',
+  tileGlassAqua: 'seed-item-tile-glass-aqua',
   equipment: 'seed-item-pump-vsp',
   lighting: 'seed-item-led-light',
 } as const
@@ -41,7 +47,9 @@ const MATERIAL_IDS = {
   plasterWhite: 'seed-mat-plaster-white',
   travertineSilver: 'seed-mat-travertine-silver',
   travertineIvory: 'seed-mat-travertine-ivory',
+  copingCantilever: 'seed-mat-coping-cantilever',
   glassMosaicAqua: 'seed-mat-glass-mosaic-aqua',
+  glassPearl: 'seed-mat-glass-pearl',
   paverDeckTan: 'seed-mat-paver-deck-tan',
   grass: 'seed-mat-grass',
 } as const
@@ -171,13 +179,73 @@ async function main() {
       unitCost: '6.50',
       retailPrice: '14.00',
     },
+    // Finishes. Every one of these is a line the quote can actually charge, and
+    // the material catalogue points at them by id — see `fillSpec.priceItemId`
+    // below. Before this, the picker carried its own prices (`PebbleTec —
+    // Cobalt $7.10/sqft`) that no quote had ever billed, so a builder chose
+    // between three finishes and got the same total whichever they picked.
+    //
+    // Only the chosen one is billed: `computeQuote` treats a price-book item
+    // that some material claims as an alternative rather than as scope, so a
+    // book with three copings in it bills the one running round the pool.
     {
       id: PRICE_ITEM_IDS.coping,
       category: PriceCategory.COPING,
-      name: 'Travertine Coping',
+      name: 'Travertine Coping — Ivory',
       unitType: UnitType.LF,
       unitCost: '18.00',
       retailPrice: '42.00',
+    },
+    {
+      id: PRICE_ITEM_IDS.copingSilver,
+      category: PriceCategory.COPING,
+      name: 'Travertine Coping — Silver',
+      unitType: UnitType.LF,
+      unitCost: '20.00',
+      retailPrice: '46.00',
+    },
+    {
+      id: PRICE_ITEM_IDS.copingCantilever,
+      category: PriceCategory.COPING,
+      name: 'Cantilever Concrete Coping',
+      unitType: UnitType.LF,
+      unitCost: '12.00',
+      retailPrice: '26.00',
+    },
+    {
+      id: PRICE_ITEM_IDS.finishPlaster,
+      category: PriceCategory.POOL,
+      name: 'Interior Finish — White Plaster',
+      unitType: UnitType.SQFT,
+      unitCost: '4.25',
+      retailPrice: '9.50',
+    },
+    {
+      id: PRICE_ITEM_IDS.finishPebbleCobalt,
+      category: PriceCategory.POOL,
+      name: 'Interior Finish — PebbleTec Cobalt',
+      unitType: UnitType.SQFT,
+      unitCost: '7.10',
+      retailPrice: '15.75',
+    },
+    {
+      id: PRICE_ITEM_IDS.finishPebbleBlueGranite,
+      category: PriceCategory.POOL,
+      name: 'Interior Finish — PebbleTec Blue Granite',
+      unitType: UnitType.SQFT,
+      unitCost: '9.00',
+      retailPrice: '19.50',
+    },
+    {
+      // Waterline tile is a pool line sold by the foot, and the foot is the
+      // pool's own edge. `PriceCategory` has no TILE, and adding one is a
+      // migration; POOL + LF says the same thing and the engine measures it.
+      id: PRICE_ITEM_IDS.tileGlassAqua,
+      category: PriceCategory.POOL,
+      name: 'Waterline Tile — Glass Mosaic Aqua',
+      unitType: UnitType.LF,
+      unitCost: '15.00',
+      retailPrice: '32.00',
     },
     {
       id: PRICE_ITEM_IDS.equipment,
@@ -346,56 +414,138 @@ async function main() {
       id: MATERIAL_IDS.pebbletecBlueGranite,
       kind: MaterialKind.CUSTOM,
       name: 'PebbleTec — Blue Granite',
-      fillSpec: { type: 'gradient', color: '#1E3A8A', secondary: '#2563EB', brand: 'PebbleTec', costPerSqft: 9.0, unit: 'sqft', slot: 'interior' },
+      fillSpec: {
+        type: 'gradient',
+        color: '#1E3A8A',
+        secondary: '#2563EB',
+        brand: 'PebbleTec',
+        slot: 'interior',
+        priceItemId: PRICE_ITEM_IDS.finishPebbleBlueGranite,
+      },
     },
     {
       id: MATERIAL_IDS.pebbletecCobalt,
       kind: MaterialKind.CUSTOM,
       name: 'PebbleTec — Cobalt',
-      fillSpec: { type: 'gradient', color: '#1E40AF', secondary: '#3B82F6', brand: 'PebbleTec', costPerSqft: 7.1, unit: 'sqft', slot: 'interior' },
+      fillSpec: {
+        type: 'gradient',
+        color: '#1E40AF',
+        secondary: '#3B82F6',
+        brand: 'PebbleTec',
+        slot: 'interior',
+        priceItemId: PRICE_ITEM_IDS.finishPebbleCobalt,
+      },
     },
     {
+      // The finish a pool has before anyone upgrades it. The default used to be
+      // "Pool Water", which is not a finish — it is the colour the water is
+      // drawn in — so every proposal that printed an interior finish printed the
+      // wrong thing, and every one that did not printed a blank row.
       id: MATERIAL_IDS.plasterWhite,
       kind: MaterialKind.CUSTOM,
       name: 'White Plaster',
-      fillSpec: { type: 'gradient', color: '#F1F5F9', secondary: '#CBD5E1', costPerSqft: 4.25, unit: 'sqft', slot: 'interior' },
+      fillSpec: {
+        type: 'gradient',
+        color: '#F1F5F9',
+        secondary: '#CBD5E1',
+        slot: 'interior',
+        priceItemId: PRICE_ITEM_IDS.finishPlaster,
+        isDefault: true,
+      },
     },
     {
       id: MATERIAL_IDS.travertineSilver,
       kind: MaterialKind.COPING,
       name: 'Travertine — Silver',
-      fillSpec: { type: 'gradient', color: '#A8A29E', secondary: '#78716C', costPerLf: 30.0, unit: 'lf', slot: 'coping' },
+      fillSpec: {
+        type: 'gradient',
+        color: '#A8A29E',
+        secondary: '#78716C',
+        slot: 'coping',
+        priceItemId: PRICE_ITEM_IDS.copingSilver,
+      },
     },
     {
       id: MATERIAL_IDS.travertineIvory,
       kind: MaterialKind.COPING,
       name: 'Travertine — Ivory',
-      fillSpec: { type: 'gradient', color: '#FEF3C7', secondary: '#FDE68A', costPerLf: 28.0, unit: 'lf', slot: 'coping' },
+      fillSpec: {
+        type: 'gradient',
+        color: '#FEF3C7',
+        secondary: '#FDE68A',
+        slot: 'coping',
+        priceItemId: PRICE_ITEM_IDS.coping,
+        isDefault: true,
+      },
+    },
+    {
+      // Every coping line in the price book must have a material claiming it.
+      // An unclaimed line is billed by its category the moment the pool has a
+      // perimeter, so a book holding a travertine and a cantilever with only
+      // the travertine in the catalogue quoted both, on the same proposal.
+      id: MATERIAL_IDS.copingCantilever,
+      kind: MaterialKind.COPING,
+      name: 'Cantilever Concrete',
+      fillSpec: {
+        type: 'gradient',
+        color: '#E7E5E4',
+        secondary: '#A8A29E',
+        slot: 'coping',
+        priceItemId: PRICE_ITEM_IDS.copingCantilever,
+      },
     },
     {
       id: MATERIAL_IDS.glassMosaicAqua,
       kind: MaterialKind.CUSTOM,
       name: 'Glass Mosaic — Aqua mix',
-      fillSpec: { type: 'mosaic', color: '#06B6D4', secondary: '#0EA5E9', costPerLf: 15.0, unit: 'lf', slot: 'tileBand' },
+      fillSpec: {
+        type: 'mosaic',
+        color: '#06B6D4',
+        secondary: '#0EA5E9',
+        slot: 'tileBand',
+        priceItemId: PRICE_ITEM_IDS.tileGlassAqua,
+        isDefault: true,
+      },
     },
     {
+      // Deliberately unlinked: an organisation always has a material its price
+      // book has no line for, and the honest behaviour is worth being able to
+      // see. The picker says "Not in price book" beside it and the quote lists
+      // it under unpriced scope instead of billing it at the base rate.
+      id: MATERIAL_IDS.glassPearl,
+      kind: MaterialKind.CUSTOM,
+      name: 'Glass — Pearl',
+      fillSpec: {
+        type: 'gradient',
+        color: '#F1F5F9',
+        secondary: '#94A3B8',
+        slot: 'tileBand',
+      },
+    },
+    {
+      // No slot and no price: a canvas fill, not something a builder picks and
+      // is charged for. Deck surfaces are billed by the deck line, and the card
+      // used to advertise `$14.00/sqft` here that came from nowhere.
       id: MATERIAL_IDS.paverDeckTan,
       kind: MaterialKind.PAVER_DECK,
       name: 'Paver Deck — Tan',
-      fillSpec: { type: 'gradient', color: '#D6BFA0', secondary: '#A8896A', costPerSqft: 14.0, unit: 'sqft' },
+      fillSpec: { type: 'gradient', color: '#D6BFA0', secondary: '#A8896A' },
     },
     {
       id: MATERIAL_IDS.grass,
       kind: MaterialKind.GRASS,
       name: 'Grass',
-      fillSpec: { type: 'solid', color: '#9CCC8E', costPerSqft: 1.5, unit: 'sqft' },
+      fillSpec: { type: 'solid', color: '#9CCC8E' },
     },
   ]
 
   for (const m of extraMaterials) {
     await db.material.upsert({
       where: { id: m.id },
-      update: {},
+      // `update: {}` here meant a re-seed left every existing row exactly as it
+      // was, so the materials carrying prices no quote had ever charged would
+      // have survived this change in every database that already had them.
+      update: { kind: m.kind, name: m.name, fillSpec: m.fillSpec },
       create: {
         id: m.id,
         orgId: null,

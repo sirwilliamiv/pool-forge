@@ -86,13 +86,20 @@ register({
 
     const { computeQuote } = await import('@/modules/pricing/engine')
     const { pricingSelectionsFrom } = await import('@/modules/projects/pool-fields')
+    const { resolveFinishes } = await import('@/modules/materials/catalog')
 
     // Same function, same inputs as the editor page and the proposal, so the
-    // spoken total cannot disagree with the one on screen.
+    // spoken total cannot disagree with the one on screen. The finishes are
+    // part of "same inputs": leaving them out here would have the agent say a
+    // number several thousand dollars below the one on the dock.
     const quote = computeQuote(
       snapshot.items,
       snapshot.measurements,
-      pricingSelectionsFrom(snapshot.poolFields),
+      {
+        ...pricingSelectionsFrom(snapshot.poolFields),
+        finishes: resolveFinishes(snapshot.shapes, snapshot.finishCatalog),
+        finishItemIds: snapshot.finishCatalog.claimedItemIds,
+      },
       { taxRatePct: snapshot.taxRatePct },
     )
 
