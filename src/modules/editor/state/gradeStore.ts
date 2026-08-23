@@ -2,6 +2,8 @@
 
 import { create } from 'zustand'
 
+import { useHistoryStore } from './historyStore'
+
 import {
   DEFAULT_FALLOFF,
   emptyGrade,
@@ -38,6 +40,19 @@ export interface GradeState {
   hydrate: (payload: { existing?: SiteGrade | null; finished?: SiteGrade | null } | null) => void
 }
 
+/**
+ * Record the state before a change, so undo can reach it.
+ *
+ * Grading was added after history existed and was not wired into it, so undo
+ * after moving an elevation reverted an unrelated shape change: the ground
+ * stayed put and something the user had not touched moved instead.
+ */
+function pushHistory(state: Pick<GradeState, 'existing' | 'finished'>): void {
+  const history = useHistoryStore.getState()
+  const shapes = history._getShapes?.() ?? []
+  history.pushPast({ shapes, grade: { existing: state.existing, finished: state.finished } })
+}
+
 let counter = 0
 function pointId(): string {
   counter += 1
@@ -52,22 +67,31 @@ export const useGradeStore = create<GradeState>()((set, get) => ({
   setEditing: (editing) => set({ editing }),
 
   setEnabled: (enabled) =>
-    // Both surfaces together. One enabled and one not would report the whole
-    // site as cut or fill the moment it was switched on.
-    set((state) => ({
-      existing: { ...state.existing, enabled },
-      finished: { ...state.finished, enabled },
-    })),
+    set((state) => {
+      pushHistory(state)
+      // Both surfaces together. One enabled and one not would report the whole
+      // site as cut or fill the moment it was switched on.
+      return {
+        existing: { ...state.existing, enabled },
+        finished: { ...state.finished, enabled },
+      }
+    }),
 
   setBaseElevation: (feet) =>
-    set((state) => ({ [state.editing]: { ...state[state.editing], baseElevationFt: feet } }) as Partial<GradeState>),
+    set((state) => {
+      pushHistory(state)
+      return { [state.editing]: { ...state[state.editing], baseElevationFt: feet } } as Partial<GradeState>
+    }),
 
   setFalloff: (falloff) =>
-    set((state) => ({
+    set((state) => {
+      pushHistory(state)
       // Clamped: below one the field oscillates between points, and very high
       // values turn every shot into a plateau with a cliff around it.
-      [state.editing]: { ...state[state.editing], falloff: clamp(falloff, 1, 6) },
-    }) as Partial<GradeState>),
+      return {
+        [state.editing]: { ...state[state.editing], falloff: clamp(falloff, 1, 6) },
+      } as Partial<GradeState>
+    }),
 
   addPoint: (input) => {
     const id = pointId()
@@ -80,6 +104,7 @@ export const useGradeStore = create<GradeState>()((set, get) => ({
       ...(input.label ? { label: input.label } : {}),
     }
     set((state) => {
+      pushHistory(state)
       const which = state.editing
       const surface = state[which]
       return {
@@ -98,6 +123,7 @@ export const useGradeStore = create<GradeState>()((set, get) => ({
 
   updatePoint: (id, patch) =>
     set((state) => {
+      pushHistory(state)
       const which = state.editing
       const surface = state[which]
       return {
@@ -110,6 +136,7 @@ export const useGradeStore = create<GradeState>()((set, get) => ({
 
   removePoint: (id) =>
     set((state) => {
+      pushHistory(state)
       const which = state.editing
       const surface = state[which]
       return {
@@ -119,6 +146,7 @@ export const useGradeStore = create<GradeState>()((set, get) => ({
 
   clearPoints: () =>
     set((state) => {
+      pushHistory(state)
       const which = state.editing
       return { [which]: { ...state[which], points: [] } } as Partial<GradeState>
     }),
@@ -160,3 +188,13 @@ function normalise(raw: SiteGrade | null | undefined): SiteGrade {
 function clamp(value: number, low: number, high: number): number {
   return Math.min(high, Math.max(low, value))
 }
+
+// Let undo reach the ground, the same way shapesStore does for shapes. Bound
+// here rather than imported the other way so neither store depends on the other.
+useHistoryStore.getState().bindGradeAccessor(
+  () => {
+    const { existing, finished } = useGradeStore.getState()
+    return { existing, finished }
+  },
+  ({ existing, finished }) => useGradeStore.setState({ existing, finished }),
+)

@@ -113,7 +113,12 @@ export const useShapesStore = create<ShapesState>((set, get) => {
   // Snapshot the current shapes into history before a mutation.
   // No-op while a transaction is open beyond the initial push.
   function pushHistory() {
-    useHistoryStore.getState().pushPast({ shapes: get().shapes })
+    // Both, always. A snapshot holding only half the drawing means undo puts
+    // half of it back, and the other half silently belongs to a different
+    // moment in time.
+    const history = useHistoryStore.getState()
+    const grade = history._getGrade?.()
+    history.pushPast(grade ? { shapes: get().shapes, grade } : { shapes: get().shapes })
   }
 
   function endTransaction() {
