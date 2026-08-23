@@ -1,7 +1,33 @@
 import type { ValidationContext, ValidationItem, ValidationRule } from './types'
 
+/**
+ * What each issue is *about*, said the way a builder would say it.
+ *
+ * `ValidationItem.field` is printed straight onto the checklist row, so it has
+ * to be English. It used to be the schema path, which the dock upper-cased into
+ * `POOL · DEPTHSHALLOW` and `EXPORT · PROPOSALEXPIRESAT`: internal
+ * identifiers on a screen a customer can be sitting next to. Rules still name
+ * the key they check, because that is what makes them readable next to the
+ * check itself; `fail()` is the one place the key becomes words, and a test
+ * asserts every key a rule passes has an entry here.
+ */
+export const FIELD_LABELS = {
+  customerName: 'Customer name',
+  address: 'Job address',
+  proposalExpiresAt: 'Proposal expiry',
+  poolDepth: 'Pool depth',
+  interiorFinish: 'Interior finish',
+  equipmentPackage: 'Equipment package',
+  sanitizationPackage: 'Sanitization',
+  heaterSelection: 'Heater',
+  screenOption: 'Screen enclosure',
+  deckMaterial: 'Deck material',
+} as const
+
+export type ValidationField = keyof typeof FIELD_LABELS
+
 interface FailOpts {
-  field?: string | undefined
+  field?: ValidationField | undefined
   targetId?: string | undefined
   suggestedFix?: string | undefined
 }
@@ -14,7 +40,7 @@ function fail(
   opts: FailOpts = {},
 ): ValidationItem {
   const item: ValidationItem = { id, level, category, message }
-  if (opts.field !== undefined) item.field = opts.field
+  if (opts.field !== undefined) item.field = FIELD_LABELS[opts.field]
   if (opts.targetId !== undefined) item.targetId = opts.targetId
   if (opts.suggestedFix !== undefined) item.suggestedFix = opts.suggestedFix
   return item
@@ -211,23 +237,25 @@ export const ALL_RULES: ValidationRule[] = [
     level: 'error',
     category: 'pool',
     passMessage: 'Pool depths set',
+    // Depth lives on the pool in the drawing and nowhere else. Reading it here
+    // from the measurements is what stops the checklist demanding depths for a
+    // pool whose own inspector already reads SH 3.0 / DP 5.0: there is one
+    // number, so there is nothing left to disagree with.
+    appliesTo: (ctx) => ctx.measurements.hasPool,
     check(ctx) {
-      const shallow = pf(ctx, 'depthShallow')
-      const deep = pf(ctx, 'depthDeep')
-      if (isBlank(shallow) || isBlank(deep)) {
-        return fail(
-          'pool.depth.required',
-          'error',
-          'pool',
-          'Set both shallow and deep end depths',
-          {
-            field: 'depthShallow',
-            targetId: ctx.targets?.pool,
-            suggestedFix: 'Enter shallow + deep depth in Geometry section',
-          },
-        )
-      }
-      return null
+      const { poolDepthShallow, poolDepthDeep } = ctx.measurements
+      if (poolDepthShallow > 0 && poolDepthDeep > 0) return null
+      return fail(
+        'pool.depth.required',
+        'error',
+        'pool',
+        'The pool has no shallow and deep end depths',
+        {
+          field: 'poolDepth',
+          targetId: ctx.targets?.pool,
+          suggestedFix: 'Select the pool and set Sh and Dp in the Geometry section',
+        },
+      )
     },
   },
   {

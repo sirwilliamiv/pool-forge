@@ -1,8 +1,10 @@
 import { Fragment } from 'react'
 import type { Customer, Project } from '@prisma/client'
 import type { MeasurementSummary } from '@/modules/measurements/engine'
-import type { QuoteSummary, QuoteLine } from '@/modules/pricing/engine'
+import { categoryLabel, type QuoteSummary, type QuoteLine } from '@/modules/pricing/engine'
+import { formatUsd, formatUsdCents } from '@/lib/money'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { readPoolFields } from '@/modules/projects/pool-fields'
 import { DrawingSvg } from './DrawingSvg'
 
 interface ProposalDocumentProps {
@@ -23,11 +25,10 @@ interface ProposalDocumentProps {
   shapes?: Shape[]
 }
 
-const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-
-const fmtMoneyPrecise = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
+// Shared formatters: the packet and the dock print the identical string for
+// the identical number, which is the whole point of "one number everywhere".
+const fmtMoney = formatUsd
+const fmtMoneyPrecise = formatUsdCents
 
 const fmtNumber = (n: number, digits = 0) =>
   n.toLocaleString('en-US', { maximumFractionDigits: digits })
@@ -41,9 +42,12 @@ const fmtDate = (d: Date | string | null | undefined) => {
 function groupLineItems(lines: QuoteLine[]): Map<string, QuoteLine[]> {
   const groups = new Map<string, QuoteLine[]>()
   for (const line of lines) {
-    const arr = groups.get(line.category) ?? []
+    // Grouped by the readable category name: the sheet used to head each block
+    // with the raw enum, so a customer read "WATER_FEATURE".
+    const key = categoryLabel(line.category)
+    const arr = groups.get(key) ?? []
     arr.push(line)
-    groups.set(line.category, arr)
+    groups.set(key, arr)
   }
   return groups
 }
@@ -63,13 +67,14 @@ export function ProposalDocument({
   const accent = brandColor && /^#[0-9a-fA-F]{3,8}$/.test(brandColor) ? brandColor : '#0f172a'
   const safeLogo =
     typeof logoUrl === 'string' && /^(https?:\/\/|data:image\/)/.test(logoUrl) ? logoUrl : null
-  const poolFields = (project.poolFields ?? {}) as Record<string, unknown>
-  const interiorFinish =
-    typeof poolFields.interiorFinish === 'string' ? poolFields.interiorFinish : null
-  const sanitization =
-    typeof poolFields.sanitizationPackage === 'string' ? poolFields.sanitizationPackage : null
-  const deckMaterial =
-    typeof poolFields.deckMaterial === 'string' ? poolFields.deckMaterial : null
+  // Through the one reader, and blank counts as unanswered. Reading the raw
+  // JSON meant an empty string was a string, so the `?? 'Not specified'`
+  // fallbacks below never fired and the Sanitization row printed nothing at all
+  // on a project with salt switched on.
+  const poolFields = readPoolFields(project.poolFields)
+  const interiorFinish = poolFields.interiorFinish.trim() || null
+  const sanitization = poolFields.sanitizationPackage.trim() || null
+  const deckMaterial = poolFields.deckMaterial.trim() || null
 
   const groups = groupLineItems(quote.lineItems)
   const today = fmtDate(new Date())
@@ -242,13 +247,15 @@ export function ProposalDocument({
             ))}
             {quote.lineItems.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-6 text-center text-slate-400">
-                  No quote items yet.
+                <td colSpan={4} className="py-6 text-center text-slate-500">
+                  {quote.status === 'NO_PRICE_BOOK'
+                    ? 'This design cannot be priced: there is no active price book. No total is shown rather than a total of zero.'
+                    : 'Nothing has been drawn for this project yet, so there is nothing to price.'}
                 </td>
               </tr>
             ) : null}
           </tbody>
-          <tfoot>
+          <tfoot className={quote.status === 'PRICED' ? '' : 'hidden'}>
             <tr className="border-t-2" style={{ borderColor: accent }}>
               <td colSpan={3} className="py-3 text-right font-sans text-sm font-semibold uppercase tracking-wide">
                 Subtotal
@@ -276,6 +283,13 @@ export function ProposalDocument({
             </tr>
           </tfoot>
         </table>
+        {quote.unpriced.length > 0 ? (
+          <p className="mt-3 text-xs text-slate-600">
+            Not included in the figures above:{' '}
+            {quote.unpriced.map((u) => u.label.toLowerCase()).join(', ')}. Ask us for a price on
+            these before you sign.
+          </p>
+        ) : null}
       </section>
 
       {/* Notes */}

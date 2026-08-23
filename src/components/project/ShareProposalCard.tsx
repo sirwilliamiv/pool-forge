@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { shareProject, unshareProject } from '@/modules/projects/share'
 
 export function ShareProposalCard({
@@ -74,7 +75,18 @@ export function ShareProposalCard({
         {token ? (
           <>
             <div className="flex gap-2">
-              <Input readOnly value={url} onFocus={(e) => e.currentTarget.select()} />
+              {/* Named, like every other control on this page: an unlabelled
+                  read-only box is announced as nothing at all. */}
+              <Label htmlFor="share-proposal-url" className="sr-only">
+                Customer proposal link
+              </Label>
+              <Input
+                id="share-proposal-url"
+                name="share-proposal-url"
+                readOnly
+                value={url}
+                onFocus={(e) => e.currentTarget.select()}
+              />
               <Button type="button" variant="outline" onClick={copy}>
                 Copy
               </Button>

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { ShapeKind } from '@prisma/client'
 import { computeMeasurements } from '@/modules/measurements/engine'
 import { runValidation } from '@/modules/validation/engine'
+import { FIELD_LABELS } from '@/modules/validation/rules'
 import type { ValidationContext, ValidationSelections } from '@/modules/validation/types'
 import type { Shape } from '@/modules/editor/state/shapes'
 
@@ -9,7 +10,7 @@ import type { Shape } from '@/modules/editor/state/shapes'
 // rules were removed). Every rule here reads real project/measurement/selection
 // data.
 
-function poolShape(): Shape {
+function poolShape(depths: { shallow: number; deep: number } = { shallow: 3, deep: 5 }): Shape {
   return {
     id: 'p1',
     kind: ShapeKind.RECTANGLE_POOL,
@@ -21,8 +22,8 @@ function poolShape(): Shape {
     zIndex: 1,
     locked: false,
     hidden: false,
-    depthShallow: 3,
-    depthDeep: 5,
+    depthShallow: depths.shallow,
+    depthDeep: depths.deep,
   }
 }
 
@@ -82,8 +83,6 @@ const FULLY_POPULATED = {
   address: '123 Pool Lane',
   proposalExpiresAt: '2026-12-31',
   poolFields: {
-    depthShallow: '3',
-    depthDeep: '5',
     interiorFinish: 'Pebble',
     equipmentPackage: 'Standard',
     sanitizationPackage: 'Salt',
@@ -100,11 +99,32 @@ describe('validation — required fields read the real keys', () => {
     expect(level(makeCtx({ customerName: 'Jane' }), 'customer.name.required')).toBe('pass')
   })
 
-  it('pool depth: error when either depth is missing, pass when both set', () => {
-    expect(level(makeCtx({ poolFields: {} }), 'pool.depth.required')).toBe('error')
+  // Depth is read off the pool in the drawing, not off a second free-text copy
+  // on the project. The old rule read `poolFields.depthShallow`, so the dock
+  // demanded depths for a pool whose own inspector already read SH 3.0 / DP 5.0.
+  it('pool depth: reads the drawn pool, not a typed copy', () => {
+    expect(level(makeCtx({ shapes: [poolShape({ shallow: 0, deep: 0 })] }), 'pool.depth.required')).toBe(
+      'error',
+    )
+    expect(level(makeCtx({ shapes: [poolShape({ shallow: 3, deep: 0 })] }), 'pool.depth.required')).toBe(
+      'error',
+    )
+    expect(level(makeCtx({ shapes: [poolShape()] }), 'pool.depth.required')).toBe('pass')
+
+    // Typing depths onto the project can no longer satisfy it, and no longer
+    // needs to: there is one place depth lives.
     expect(
-      level(makeCtx({ poolFields: { depthShallow: '3', depthDeep: '5' } }), 'pool.depth.required'),
-    ).toBe('pass')
+      level(
+        makeCtx({ shapes: [poolShape({ shallow: 0, deep: 0 })], poolFields: { depthShallow: '3', depthDeep: '5' } }),
+        'pool.depth.required',
+      ),
+    ).toBe('error')
+  })
+
+  it('pool depth: says nothing at all when there is no pool to have a depth', () => {
+    // `pool.area.required` is the honest complaint about an empty canvas. A
+    // second row about the depth of a pool that does not exist is noise.
+    expect(level(makeCtx({ shapes: [deckShape()] }), 'pool.depth.required')).toBeUndefined()
   })
 
   it('interior finish: warn when blank, pass when set (interiorFinish key)', () => {
@@ -195,5 +215,50 @@ describe('validation — a complete project passes cleanly', () => {
     expect(report.counts.error).toBe(0)
     expect(report.counts.warn).toBe(0)
     expect(report.counts.pass).toBeGreaterThan(0)
+  })
+})
+
+
+// The checklist prints `category · field` under every row and upper-cases it, so
+// a schema path put in `field` reached the screen as `POOL · DEPTHSHALLOW` and
+// `EXPORT · PROPOSALEXPIRESAT`. Both the global and the repo conventions say
+// user-facing text never carries an internal identifier.
+describe('checklist rows are written in English', () => {
+  /** A project with nothing answered, which trips every field-bearing rule. */
+  function bareCtx(): ValidationContext {
+    return makeCtx({
+      shapes: [poolShape({ shallow: 0, deep: 0 }), deckShape()],
+      customerName: '',
+      address: '',
+      proposalExpiresAt: '',
+      poolFields: {},
+      selections: { heaterSelected: true, screenSelected: true },
+    })
+  }
+
+  function emittedFields(): string[] {
+    return runValidation(bareCtx())
+      .items.map((item) => item.field)
+      .filter((field): field is string => typeof field === 'string')
+  }
+
+  it('never prints an internal field key', () => {
+    const fields = emittedFields()
+    // Without this the sweep below would pass on an empty list.
+    expect(fields.length).toBeGreaterThanOrEqual(6)
+
+    for (const field of fields) {
+      expect(field, `${field} looks like camelCase`).not.toMatch(/[a-z][A-Z]/)
+      expect(field, `${field} is not capitalised like a sentence`).toMatch(/^[A-Z]/)
+      expect(Object.values<string>(FIELD_LABELS)).toContain(field)
+    }
+  })
+
+  it('says something different from the key it stands for', () => {
+    // Guards the lazy fix, where a label is set to the key it replaced and the
+    // row still reads PROPOSALEXPIRESAT once the dock upper-cases it.
+    for (const [key, label] of Object.entries(FIELD_LABELS)) {
+      expect(label.toUpperCase()).not.toBe(key.toUpperCase())
+    }
   })
 })

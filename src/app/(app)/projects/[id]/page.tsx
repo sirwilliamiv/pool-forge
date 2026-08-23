@@ -8,6 +8,8 @@ import { ProjectForm } from '@/components/project/ProjectForm'
 import { ProjectActions } from '@/components/project/ProjectActions'
 import { ShareProposalCard } from '@/components/project/ShareProposalCard'
 import { poolFieldsSchema, readPoolFields } from '@/modules/projects/pool-fields'
+import { computeMeasurements } from '@/modules/measurements/engine'
+import type { Shape } from '@/modules/editor/state/shapes'
 
 async function saveProjectAction(
   projectId: string,
@@ -24,8 +26,6 @@ async function saveProjectAction(
     customerAddress: string
     customerNotes: string
     poolType: string
-    depthShallow: string
-    depthDeep: string
     interiorFinish: string
     equipmentPackage: string
     sanitizationPackage: string
@@ -50,8 +50,6 @@ async function saveProjectAction(
 
   const poolFields = poolFieldsSchema.parse({
     poolType: input.poolType,
-    depthShallow: input.depthShallow,
-    depthDeep: input.depthDeep,
     interiorFinish: input.interiorFinish,
     equipmentPackage: input.equipmentPackage,
     sanitizationPackage: input.sanitizationPackage,
@@ -115,10 +113,29 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!orgId) redirect('/login')
 
   const { id } = await params
-  const project = await db.project.findUnique({ where: { id }, include: { customer: true } })
+  const project = await db.project.findUnique({
+    where: { id },
+    include: { customer: true, drawing: { select: { rootJson: true } } },
+  })
   if (!project || project.orgId !== orgId) notFound()
 
   const pool = readPoolFields(project.poolFields)
+
+  // Depth is read from the drawing, because the drawing is where it lives. The
+  // form used to ask for it again in two free-text boxes that priced nothing
+  // and printed nowhere, so one pool could report three different depths: the
+  // typed pair, the canvas geometry the proposal printed, and the checklist
+  // complaining the canvas pair was missing.
+  const root = project.drawing?.rootJson
+  const shapes: Shape[] =
+    root && typeof root === 'object' && Array.isArray((root as { shapes?: unknown }).shapes)
+      ? (root as unknown as { shapes: Shape[] }).shapes
+      : []
+  const measurements = computeMeasurements(shapes)
+  const depth =
+    measurements.hasPool && measurements.poolDepthShallow > 0 && measurements.poolDepthDeep > 0
+      ? { shallowFt: measurements.poolDepthShallow, deepFt: measurements.poolDepthDeep }
+      : null
   const initial = {
     name: project.name,
     salesperson: project.salesperson ?? '',
@@ -132,8 +149,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     customerAddress: project.customer?.address ?? '',
     customerNotes: project.customer?.notes ?? '',
     poolType: pool.poolType ?? '',
-    depthShallow: pool.depthShallow ?? '',
-    depthDeep: pool.depthDeep ?? '',
     interiorFinish: pool.interiorFinish ?? '',
     equipmentPackage: pool.equipmentPackage ?? '',
     sanitizationPackage: pool.sanitizationPackage ?? '',
@@ -177,7 +192,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             : null
         }
       />
-      <ProjectForm projectId={project.id} initial={initial} saveAction={saveProjectAction} />
+      <ProjectForm
+        projectId={project.id}
+        initial={initial}
+        depth={depth}
+        saveAction={saveProjectAction}
+      />
     </div>
   )
 }

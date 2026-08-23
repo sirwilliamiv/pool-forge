@@ -9,6 +9,13 @@ export interface ValidationItem {
   level: ValidationLevel
   category: ValidationCategory
   message: string
+  /**
+   * What the issue is about, in words ("Proposal expiry", not
+   * `proposalExpiresAt`). The checklist prints this verbatim under the message
+   * and upper-cases it, so a schema path here reaches the screen as
+   * `EXPORT · PROPOSALEXPIRESAT`. `fail()` in `rules.ts` maps keys to
+   * labels; nothing should assign this by hand.
+   */
   field?: string
   // Optional: shape id the issue refers to (for click-to-select in the dock).
   // Not yet emitted by the rule engine; populated by future rules.

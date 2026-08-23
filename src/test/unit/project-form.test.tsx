@@ -6,7 +6,7 @@
 // typed here and then navigated away from was simply lost — which reads as the
 // save being broken when it was never asked to run.
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -28,8 +28,6 @@ const initial = {
   customerAddress: '',
   customerNotes: '',
   poolType: '',
-  depthShallow: '',
-  depthDeep: '',
   interiorFinish: '',
   equipmentPackage: '',
   sanitizationPackage: '',
@@ -46,7 +44,9 @@ const initial = {
 
 function setup() {
   const saveAction = vi.fn(async () => ({ ok: true }))
-  const view = render(<ProjectForm projectId="p1" initial={initial} saveAction={saveAction} />)
+  const view = render(
+    <ProjectForm projectId="p1" initial={initial} depth={null} saveAction={saveAction} />,
+  )
   return { saveAction, view }
 }
 
@@ -92,5 +92,96 @@ describe('ProjectForm autosave', () => {
     await userEvent.type(screen.getByDisplayValue('Before'), '!')
     view.unmount()
     await waitFor(() => expect(saveAction).toHaveBeenCalled(), { timeout: 2_000 })
+  })
+})
+
+
+// The form asked about the heater twice: a "Heater selection" text box that
+// changed no price, no line item and no validation, and an "Include heater"
+// checkbox that changed all three. Same for salt and the screen. A builder
+// filling the detailed field and skipping the checkbox shipped a quote with no
+// equipment on it.
+//
+// The spec box is now subordinate to the selection: it lives under it, it is
+// dead until the selection is on, and turning the selection off takes the spec
+// with it. These assert the behaviour, not the layout.
+describe('ProjectForm asks each question once', () => {
+  function renderWith(overrides: Partial<typeof initial> = {}) {
+    const saveAction = vi.fn(async () => ({ ok: true }))
+    const view = render(
+      <ProjectForm
+        projectId="p1"
+        initial={{ ...initial, ...overrides }}
+        depth={{ shallowFt: 3, deepFt: 5 }}
+        saveAction={saveAction}
+      />,
+    )
+    return { saveAction, view }
+  }
+
+  it('does not let a heater be specced without being sold', async () => {
+    renderWith({ heaterSelected: false })
+    expect(screen.getByLabelText('Heater model or fuel')).toBeDisabled()
+
+    await userEvent.click(screen.getByLabelText('Include heater'))
+    expect(screen.getByLabelText('Heater model or fuel')).toBeEnabled()
+  })
+
+  it('takes the spec away with the selection it described', async () => {
+    const { saveAction } = renderWith({
+      heaterSelected: true,
+      heaterSelection: 'Pentair MasterTemp 400',
+    })
+
+    await userEvent.click(screen.getByLabelText('Include heater'))
+
+    await waitFor(
+      () => {
+        const [, values] = saveAction.mock.calls.at(-1) as unknown as [string, typeof initial]
+        expect(values.heaterSelected).toBe(false)
+        expect(values.heaterSelection).toBe('')
+      },
+      { timeout: 5_000 },
+    )
+  })
+
+  it('writes one sanitization answer to both the price and the printed row', async () => {
+    const { saveAction } = renderWith()
+
+    await userEvent.click(screen.getByLabelText('Sanitization'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Salt system' }))
+
+    await waitFor(
+      () => {
+        const [, values] = saveAction.mock.calls.at(-1) as unknown as [string, typeof initial]
+        // The flag is what prices it; the string is what the proposal prints.
+        // Neither can now be set without the other.
+        expect(values.saltSystemSelected).toBe(true)
+        expect(values.sanitizationPackage).toBe('Salt system')
+      },
+      { timeout: 5_000 },
+    )
+  })
+
+  it('offers no second way to answer the heater, salt or screen question', () => {
+    const { view } = renderWith()
+    const labels = [...view.container.querySelectorAll('label')].map((l) => l.textContent?.trim())
+
+    // The old free-text twins. Their replacements are named for what they are:
+    // "Heater model or fuel", "Mesh and cage spec", "Fixture model".
+    expect(labels).not.toContain('Heater selection')
+    expect(labels).not.toContain('Sanitization package')
+    expect(labels).not.toContain('Screen option')
+    expect(labels).not.toContain('Lighting selection')
+    expect(labels).not.toContain('Include salt system')
+  })
+
+  it('shows the drawing’s depth and offers no box to contradict it', () => {
+    const { view } = renderWith()
+    const labels = [...view.container.querySelectorAll('label')].map((l) => l.textContent?.trim())
+    expect(labels).not.toContain('Depth (shallow)')
+    expect(labels).not.toContain('Depth (deep)')
+
+    expect(within(view.container).getByText(/3 ft shallow \/ 5 ft deep/)).toBeInTheDocument()
   })
 })
