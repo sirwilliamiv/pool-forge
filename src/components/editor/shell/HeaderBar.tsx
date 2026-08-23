@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ChevronRight, MessageSquare, Play, Share2, Upload } from 'lucide-react'
 import { SaveStatus } from '@/components/editor/SaveStatus'
+import { UndoRedo } from '@/components/editor/shell/UndoRedo'
 import { SceneTemplateMenu } from '@/components/editor/shell/SceneTemplateMenu'
 import { runExportCommand } from '@/components/exports/ExportCommandHandlers'
 import {
@@ -60,6 +61,11 @@ export function HeaderBar({ orgName, customerName, projectName, projectId, user 
       </nav>
 
       <SaveStatus />
+
+      {/* Undo has had a working implementation and no way to reach it: no
+          button, no shortcut, nothing importing the hotkey table. Deleting the
+          wrong pool was permanent. */}
+      <UndoRedo />
 
       <div className="flex-1" />
 

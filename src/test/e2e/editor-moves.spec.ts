@@ -22,6 +22,7 @@ test('a builder selects, edits, hides, duplicates and deletes in the editor', as
   // walks the whole panel surface in one session.
   test.setTimeout(420_000)
 
+  await hideDevOverlay(page)
   await signIn(page)
   const projectUrl = await createProject(page, `Moves ${RUN}`)
 
@@ -106,7 +107,9 @@ test('a builder selects, edits, hides, duplicates and deletes in the editor', as
   // file). Proved on screen by the selection label, which is re-projected from
   // the 3D scene every frame: if the camera did not move, it does not move.
   await left.locator('[role="button"]').filter({ hasText: renamed }).first().click()
-  const label = page.getByText(/^Pool — Rectangle$/).first()
+  // The separator in that label is a dash glyph; matched loosely so this does
+  // not turn into a test about which one.
+  const label = page.getByText(/^Pool\s*\S\s*Rectangle$/).first()
   await expect(label).toBeVisible({ timeout: 15_000 })
 
   const beforeZoom = await labelPosition(label)
@@ -160,7 +163,11 @@ test('a builder selects, edits, hides, duplicates and deletes in the editor', as
   // ground is described is a number going on an invoice that nobody measured.
   await left.getByRole('button', { name: 'Grade', exact: true }).click()
   await left.getByText(/The site is flat/i).waitFor({ timeout: 15_000 })
-  await left.locator('input[type="checkbox"]').first().check()
+  // `.check()` will not do here: the box is controlled by the store and the
+  // store is only written when the command comes back from the server, so the
+  // tick appears a round trip after the click rather than with it.
+  await left.locator('input[type="checkbox"]').first().click()
+  await expect(left.locator('input[type="checkbox"]').first()).toBeChecked({ timeout: 15_000 })
   await expect(left.getByText('Datum (ft)')).toBeVisible({ timeout: 15_000 })
   expect(await earthwork(left), 'a flat site moves no dirt').toEqual({ cut: 0, fill: 0 })
 
@@ -193,7 +200,7 @@ test('a builder selects, edits, hides, duplicates and deletes in the editor', as
 // ---------------------------------------------------------------------------
 // GAPS: moves on the brief with no control in the UI to drive them.
 //
-// UNDO and REDO — MISSING, and this is the serious one. `edit.undo` and
+// UNDO and REDO: MISSING, and this is the serious one. `edit.undo` and
 // `edit.redo` are registered commands with working handlers
 // (`ClientCommandHandlers.tsx`), and `useHistoryStore` records every mutation,
 // but nothing in the browser can reach them:
@@ -201,7 +208,7 @@ test('a builder selects, edits, hides, duplicates and deletes in the editor', as
 //   * no command palette row (the palette lists Add / export / validation /
 //     camera only),
 //   * no key binding. `src/modules/editor/hotkeys/index.ts` maps mod+z and
-//     mod+shift+z, but nothing in the app ever reads HOTKEYS — grep it: the
+//     mod+shift+z, but nothing in the app ever reads HOTKEYS; grep it: the
 //     array is imported by no component, so no keydown listener exists for it.
 //     It also names `history.undo` / `history.redo`, which are not registered
 //     command ids at all; the real ones are `edit.undo` / `edit.redo`. So even
@@ -211,14 +218,14 @@ test('a builder selects, edits, hides, duplicates and deletes in the editor', as
 // only way to make it green today would be to call the store from the test,
 // which would assert nothing about what a user can do.
 //
-// ZOOM BUTTONS — MISSING. Wheel zoom works and is covered above. There is no
+// ZOOM BUTTONS: MISSING. Wheel zoom works and is covered above. There is no
 // zoom in / zoom out control on screen, and the +/-/0 shortcuts in the hotkey
 // table are unbound for the same reason as undo. `canvas.zoom.in` /
 // `canvas.zoom.out` have handlers, but they drive `useEditorStore.zoom`, which
 // the 3D camera does not read at all, so even a wired button would move
 // nothing. The wheel path goes through `CustomOrbit` instead.
 //
-// RENAMING FROM THE LAYERS PANEL — MISSING. `LayerRow` has no rename control:
+// RENAMING FROM THE LAYERS PANEL: MISSING. `LayerRow` has no rename control:
 // no double-click handler, no inline edit. Renaming only exists in the
 // inspector's selection card, which is what the rename case above drives.
 //
@@ -227,11 +234,31 @@ test('a builder selects, edits, hides, duplicates and deletes in the editor', as
 //     before it is renamed. `LayerRow` falls back to the stencil catalogue name
 //     ("Standard rectangle"); `SelectionCard` falls back to the shape kind
 //     ("Rectangle pool"). Same object, two names, side by side on screen.
-//   * `view.set.tab` (Plan / 3D / Section) is dispatched nowhere from the panel
-//     — `LeftPanel` calls `setViewMode` on the store directly, bypassing the
+//   * `view.set.tab` (Plan / 3D / Section) is dispatched nowhere from the panel:
+//     `LeftPanel` calls `setViewMode` on the store directly, bypassing the
 //     command registry the repo requires for user-driven actions. The tabs do
 //     work, so this test passes; the audit log just never sees them.
 // ---------------------------------------------------------------------------
+
+/**
+ * Take the Next dev-server indicator out of the corner.
+ *
+ * It renders into `<nextjs-portal>` at the bottom left, which is exactly where
+ * the Plan / 3D / Section tabs live, and it swallows the click. That is dev
+ * furniture rather than the product, so hiding it tests the app rather than the
+ * toolchain sitting on top of it.
+ */
+async function hideDevOverlay(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    function hide() {
+      const style = document.createElement('style')
+      style.textContent = 'nextjs-portal { display: none !important; }'
+      document.head?.appendChild(style)
+    }
+    if (document.head) hide()
+    else document.addEventListener('DOMContentLoaded', hide)
+  })
+}
 
 async function signIn(page: Page): Promise<void> {
   await page.goto('/login')

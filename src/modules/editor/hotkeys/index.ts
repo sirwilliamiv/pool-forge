@@ -6,13 +6,14 @@ export interface Hotkey {
   input?: unknown
 }
 
-// Maps spec §14 keyboard shortcuts to commands in the registry.
-// The shortcut string uses 'mod' to mean Cmd on macOS / Ctrl elsewhere.
+// Keyboard shortcuts, mapped to commands in the registry.
+// 'mod' means Cmd on macOS and Ctrl elsewhere.
 //
-// Tool activations (V/R/S/W/L/D/B/M/T/C) dispatch through `tool.activate` with
-// a `tool` input. Track G is expected to register `tool.activate`; until then
-// the dispatch records the audit row and the `useEditorStore` listener wires
-// the active-tool change.
+// This table was written and never read: nothing in the app imported it, so
+// every shortcut in the product did nothing at all, and six entries named
+// commands that were never registered. `useHotkeys` is what listens now, and a
+// test holds every entry against the registry so a shortcut cannot again
+// advertise a command that does not exist.
 export const HOTKEYS: Hotkey[] = [
   // Spec §14 tool shortcuts.
   { shortcut: 'v', commandId: 'tool.activate', description: 'Move tool', input: { tool: 'move' } },
@@ -42,13 +43,16 @@ export const HOTKEYS: Hotkey[] = [
   // Existing destructive / clipboard / history shortcuts (kept).
   { shortcut: 'delete', commandId: 'delete.shape', description: 'Delete selection' },
   { shortcut: 'backspace', commandId: 'delete.shape', description: 'Delete selection' },
-  { shortcut: 'mod+c', commandId: 'shape.copy', description: 'Copy selection' },
-  { shortcut: 'mod+v', commandId: 'shape.paste', description: 'Paste' },
   { shortcut: 'mod+d', commandId: 'duplicate.shape', description: 'Duplicate selection' },
-  { shortcut: 'mod+z', commandId: 'history.undo', description: 'Undo' },
-  { shortcut: 'mod+shift+z', commandId: 'history.redo', description: 'Redo' },
-  { shortcut: 'mod+g', commandId: 'shape.group', description: 'Group selection' },
-  { shortcut: 'mod+shift+g', commandId: 'shape.ungroup', description: 'Ungroup selection' },
+  // These were 'history.undo' and 'history.redo', which are not command ids.
+  // Wired as written, the one shortcut everybody reaches for would have
+  // dispatched an unknown command and done nothing.
+  { shortcut: 'mod+z', commandId: 'edit.undo', description: 'Undo' },
+  { shortcut: 'mod+shift+z', commandId: 'edit.redo', description: 'Redo' },
+  { shortcut: 'mod+y', commandId: 'edit.redo', description: 'Redo (Windows)' },
+  // Copy, paste, group and ungroup were listed here and have no commands behind
+  // them. Advertising a shortcut that cannot work is worse than not offering it,
+  // so they are gone until the commands exist.
 
   // Existing zoom shortcuts (kept).
   { shortcut: '+', commandId: 'canvas.zoom.in', description: 'Zoom in' },

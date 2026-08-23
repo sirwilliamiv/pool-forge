@@ -8,6 +8,7 @@ import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { cutFillBetween, maxSlope, type SiteGrade } from '@/modules/editor/grade/model'
 import { useGradeStore } from '@/modules/editor/state/gradeStore'
+import { useHotkeys } from '@/modules/editor/hotkeys/useHotkeys'
 import { useHistoryStore } from '@/modules/editor/state/historyStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useSunStore } from '@/modules/editor/state/sunStore'
@@ -184,6 +185,11 @@ const HANDLER_IDS: string[] = [
 ]
 
 export function ClientCommandHandlers() {
+  // Mounted here because this is the component that guarantees the handlers the
+  // shortcuts dispatch to are registered. Binding keys anywhere else risks a
+  // keystroke arriving before the thing that answers it exists.
+  useHotkeys()
+
   useEffect(() => {
     // ---------- shape ----------
     registerClientHandler<

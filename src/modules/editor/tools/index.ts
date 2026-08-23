@@ -72,7 +72,9 @@ const selection: Tool[] = [
     name: 'Group',
     icon: 'Group',
     tooltip: 'Group selected objects',
-    shortcut: 'mod+g',
+    // No command and no binding behind it, so no shortcut is advertised: a
+    // reader who tries the key concludes the keyboard is broken.
+    shortcut: null,
     description: 'Combine selected objects into a group.',
     category: 'selection',
     inputs: ['selection set'],
@@ -88,7 +90,9 @@ const selection: Tool[] = [
     name: 'Ungroup',
     icon: 'Ungroup',
     tooltip: 'Ungroup selected objects',
-    shortcut: 'mod+shift+g',
+    // No command and no binding behind it, so no shortcut is advertised: a
+    // reader who tries the key concludes the keyboard is broken.
+    shortcut: null,
     description: 'Disband a group, leaving its children selected.',
     category: 'selection',
     inputs: ['group id'],
