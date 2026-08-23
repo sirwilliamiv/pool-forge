@@ -352,11 +352,41 @@ function unpricedFinishes(m: MeasurementSummary, sel: PricingSelections): Unpric
   return out
 }
 
+
+/**
+ * Tell the builder which of their own items collided.
+ *
+ * Named rather than counted, because "two deck items" is not actionable and
+ * "Concrete Deck and Paver Deck" is: it points at the two rows to go and fix.
+ */
+function collisionScope(
+  collisions: readonly Collision[],
+  m: MeasurementSummary,
+  sel: PricingSelections,
+): UnpricedScope[] {
+  if (collisions.length === 0) return []
+  const scopes = new Map(scopePresent(m, sel).map((scope) => [scope.category, scope]))
+
+  return collisions.map((collision) => {
+    const scope = scopes.get(collision.category)
+    const label = categoryLabel(collision.category)
+    return {
+      category: collision.category,
+      label,
+      quantity: scope ? Math.round(scope.quantity * 100) / 100 : 0,
+      unit: scope?.unit ?? '',
+      reason: `${collision.names.join(' and ')} would both bill this ${label.toLowerCase()}. Mark one as the default, or remove one, and it will be priced.`,
+    }
+  })
+}
+
 function unpricedScope(
   items: readonly PriceBookItemLite[],
   lineItems: readonly QuoteLine[],
   m: MeasurementSummary,
   sel: PricingSelections,
+  /** Categories a collision already explains, so one gap is not reported twice. */
+  explained: ReadonlySet<PriceCategory> = new Set(),
 ): UnpricedScope[] {
   const pricedCategories = new Set(lineItems.map((l) => l.category))
   const bookCategories = new Set(items.map((i) => i.category))
@@ -364,6 +394,10 @@ function unpricedScope(
   for (const scope of scopePresent(m, sel)) {
     if (scope.quantity <= 0) continue
     if (pricedCategories.has(scope.category)) continue
+    // A category with two items fighting over it is not a category the book is
+    // missing, and saying both would give the builder contradictory reasons for
+    // the same blank line.
+    if (explained.has(scope.category)) continue
     const label = categoryLabel(scope.category)
     out.push({
       category: scope.category,
@@ -388,6 +422,97 @@ function emptyQuote(status: QuoteStatus, taxRatePct: number, unpriced: UnpricedS
     total: 0,
     unpriced,
   }
+}
+
+
+/**
+ * Categories where several items on one job is normal.
+ *
+ * A pump, a heater and a salt cell are three pieces of equipment, not three
+ * ways of doing the same thing, and the same goes for a panel and a bonding
+ * grid. Everywhere else the category hands the same measured quantity to every
+ * item in it, so two items means the same ground billed twice.
+ */
+const ADDITIVE_CATEGORIES: ReadonlySet<PriceCategory> = new Set([
+  PriceCategory.EQUIPMENT,
+  PriceCategory.ELECTRICAL,
+  PriceCategory.FENCE,
+  PriceCategory.WALL,
+  PriceCategory.MISC,
+])
+
+interface Collision {
+  category: PriceCategory
+  names: string[]
+}
+
+/**
+ * Stop two items billing one measurement, without guessing which the builder meant.
+ *
+ * The engine prices by category: it asks the category for a quantity and hands
+ * that same quantity to every item in it. So a price book with a concrete deck
+ * and a paver deck billed 1,540 square feet of deck for a 770 square foot deck,
+ * and the builder found out when the job came back underbid, or did not find
+ * out at all.
+ *
+ * Where the customer has chosen, the choice decides it: an item claimed by a
+ * material and not selected has already been zeroed by the time this runs.
+ * Where the book names a default with `required`, that decides it. Where
+ * neither is true the answer is genuinely unknown, so nothing in that category
+ * bills and the quote says which items collided. A number that is too high is
+ * the harm here, and a visible gap is recoverable in a way a silently doubled
+ * line is not.
+ */
+function resolveAlternatives(
+  lines: QuoteLine[],
+  items: readonly PriceBookItemLite[],
+  claimedByAFinish: ReadonlySet<string>,
+): Collision[] {
+  const required = new Set(items.filter((i) => i.required).map((i) => i.id))
+  const unitOf = new Map(items.map((i) => [i.id, i.unitType]))
+  const byCategory = new Map<string, QuoteLine[]>()
+
+  for (const line of lines) {
+    if (line.quantity <= 0) continue
+    if (ADDITIVE_CATEGORIES.has(line.category)) continue
+    // An item a material claims is already governed by which finish was
+    // picked, and it sits alongside the thing it finishes rather than
+    // competing with it: a pool base and a pool interior are both POOL and are
+    // both genuinely on the job.
+    if (claimedByAFinish.has(line.itemId)) continue
+
+    // Category and unit together, because that is what decides the quantity an
+    // item receives. A per-square-foot pool base and a per-linear-foot tile
+    // band are both POOL and are measured along different things, so they were
+    // never competing for the same number.
+    const key = `${line.category}:${unitOf.get(line.itemId) ?? ''}`
+    const group = byCategory.get(key) ?? []
+    group.push(line)
+    byCategory.set(key, group)
+  }
+
+  const collisions: Collision[] = []
+
+  for (const group of byCategory.values()) {
+    if (group.length < 2) continue
+    const category = group[0]!.category
+
+    const defaults = group.filter((line) => required.has(line.itemId))
+    const winner = defaults.length === 1 ? defaults[0] : undefined
+
+    for (const line of group) {
+      if (line === winner) continue
+      line.quantity = 0
+      line.total = 0
+      line.source = winner ? 'Alternative not selected' : 'Two items compete'
+    }
+
+    if (!winner) {
+      collisions.push({ category, names: group.map((line) => line.name).sort() })
+    }
+  }
+
+  return collisions
 }
 
 export function computeQuote(
@@ -422,7 +547,7 @@ export function computeQuote(
       .filter((id): id is string => id !== null),
   )
 
-  const lineItems: QuoteLine[] = items
+  const priced: QuoteLine[] = items
     .map<QuoteLine>((item) => {
       const derived = quantityForItem(item, measurements, selections)
       let quantity = derived.quantity
@@ -451,7 +576,10 @@ export function computeQuote(
         total: Math.round(roundedQty * unitPrice * 100) / 100,
       }
     })
-    .filter((l) => l.quantity > 0)
+
+  // Before anything is added up: two items cannot bill one measurement.
+  const collisions = resolveAlternatives(priced, items, claimedByAFinish)
+  const lineItems = priced.filter((l) => l.quantity > 0)
 
   const subtotal = Math.round(lineItems.reduce((sum, l) => sum + l.total, 0) * 100) / 100
   const taxAmount = Math.round(subtotal * (taxRatePct / 100) * 100) / 100
@@ -463,6 +591,15 @@ export function computeQuote(
     taxRatePct,
     taxAmount,
     total,
-    unpriced: unpricedScope(items, lineItems, measurements, selections),
+    unpriced: [
+      ...unpricedScope(
+        items,
+        lineItems,
+        measurements,
+        selections,
+        new Set(collisions.map((c) => c.category)),
+      ),
+      ...collisionScope(collisions, measurements, selections),
+    ],
   }
 }

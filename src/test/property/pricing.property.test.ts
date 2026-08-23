@@ -178,9 +178,15 @@ describe('computeQuote invariants', () => {
     )
   })
 
-  it('adding an item never lowers the subtotal', () => {
+  it('adding an item never lowers the subtotal, unless it competes with one already there', () => {
     // Monotonicity: a price book with more in it cannot quote less. A quantity
     // rule that subtracted somewhere would show up here and nowhere else.
+    //
+    // The exception is not a weakening, it is the point. This property used to
+    // hold unconditionally, and it held because two deck items both billed the
+    // whole deck: more items meant more money precisely because the same ground
+    // was charged twice. An item that competes with one already in the book now
+    // suspends both and says so, which legitimately lowers the subtotal.
     fc.assert(
       fc.property(
         fc.array(item, { maxLength: 20 }),
@@ -190,9 +196,25 @@ describe('computeQuote invariants', () => {
         (items, extra, m, sel) => {
           // Distinct id, or the extra collides with an existing line.
           const added = { ...extra, id: `${extra.id}-extra` }
-          const before = computeQuote(items, m, sel).subtotal
-          const after = computeQuote([...items, added], m, sel).subtotal
-          expect(after).toBeGreaterThanOrEqual(before - CENT)
+          const before = computeQuote(items, m, sel)
+          const after = computeQuote([...items, added], m, sel)
+
+          // Did the newcomer land in a category and unit somebody already held?
+          const competes = items.some(
+            other => other.category === added.category && other.unitType === added.unitType,
+          )
+          if (competes) {
+            // Then the drop has to be accounted for: the categories that stopped
+            // billing are exactly the ones the quote now names as competing.
+            const explained = new Set(after.unpriced.map(u => u.category))
+            const stopped = before.lineItems
+              .filter(l => !after.lineItems.some(a => a.itemId === l.itemId))
+              .map(l => l.category)
+            for (const category of stopped) expect(explained.has(category)).toBe(true)
+            return
+          }
+
+          expect(after.subtotal).toBeGreaterThanOrEqual(before.subtotal - CENT)
         },
       ),
       { numRuns: 300 },
@@ -305,12 +327,24 @@ describe('a quote is believable', () => {
     }
   })
 
-  it('a line and an "unpriced" warning are never raised for the same category', () => {
+  it('never says a category is unpriced while billing for it', () => {
+    // The original wording was "a line and an unpriced warning are never raised
+    // for the same category", which was the same thing until competing items
+    // existed. A category can now hold a priced line in one unit and two items
+    // fighting over another: a pool base by the square foot billing, and two
+    // per-linear-foot pool lines suspended. Both statements are true and the
+    // builder needs both.
+    //
+    // What must never happen is the older, contradictory pair: a category
+    // billing money while the quote claims nothing could be priced for it.
     fc.assert(
       fc.property(fc.array(item, { maxLength: 40 }), measurements, selections, (items, m, sel) => {
         const quote = computeQuote(items, m, sel)
         const priced = new Set(quote.lineItems.map(l => l.category))
-        for (const u of quote.unpriced) expect(priced.has(u.category)).toBe(false)
+        for (const u of quote.unpriced) {
+          if (/would both bill/.test(u.reason)) continue
+          expect(priced.has(u.category)).toBe(false)
+        }
       }),
       { numRuns: 300 },
     )
