@@ -3,6 +3,11 @@ import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import { effectiveLightingQuantity } from '@/modules/pricing/engine'
 import { loadProjectQuote } from '@/modules/projects/snapshot'
+import {
+  COMPANY_PROFILE_SELECT,
+  DEFAULT_PROPOSAL_TERMS,
+  parsePaymentSchedule,
+} from '@/modules/organization/company'
 import { ProposalDocument } from '@/components/exports/ProposalDocument'
 import { AcceptProposalForm } from '@/components/exports/AcceptProposalForm'
 
@@ -36,7 +41,18 @@ export default async function SharedProposalPage({
     where: { shareToken: token },
     include: {
       customer: true,
-      org: { select: { name: true, taxRatePct: true, logoUrl: true, brandColor: true } },
+      // The same company details, the same schedule and the same terms the
+      // builder's own copy prints. The customer's copy is the one that gets
+      // signed, so it cannot be the thinner document of the two.
+      org: {
+        select: {
+          ...COMPANY_PROFILE_SELECT,
+          taxRatePct: true,
+          paymentSchedule: true,
+          proposalTerms: true,
+          proposalValidDays: true,
+        },
+      },
     },
   })
   if (!project) notFound()
@@ -44,7 +60,7 @@ export default async function SharedProposalPage({
   // The customer's copy is priced by the same loader as the salesperson's.
   const priced = await loadProjectQuote(project.id, project.orgId)
   if (!priced) notFound()
-  const { measurements, quote, selections, shapes } = priced
+  const { measurements, quote, selections, shapes, poolFields } = priced
 
   const accepted = project.proposalAcceptedAt
     ? { name: project.proposalAcceptedName ?? 'Customer', at: fmtDate(project.proposalAcceptedAt) }
@@ -59,7 +75,9 @@ export default async function SharedProposalPage({
       </div>
       <div className="mx-auto w-full max-w-[8.5in] bg-white p-[0.6in] shadow-sm">
         <ProposalDocument
-          project={project}
+          // The loader's pool fields, so the customer's copy prints the finish
+          // the pool is drawn with — the same row the salesperson's copy shows.
+          project={{ ...project, poolFields }}
           customer={project.customer}
           measurements={measurements}
           quote={quote}
@@ -69,9 +87,23 @@ export default async function SharedProposalPage({
             screenSelected: selections.screenSelected ?? false,
             lightingQuantity: effectiveLightingQuantity(measurements, selections),
           }}
-          companyName={project.org.name}
-          logoUrl={project.org.logoUrl}
-          brandColor={project.org.brandColor}
+          company={{
+            name: project.org.name,
+            logoUrl: project.org.logoUrl,
+            brandColor: project.org.brandColor,
+            address: project.org.address,
+            phone: project.org.phone,
+            email: project.org.email,
+            licenseNumber: project.org.licenseNumber,
+          }}
+          // Never assigned here: this page is public, and a write reachable
+          // without a session is a write anyone holding the link can trigger.
+          // The number is stamped when the project is created and when the
+          // builder opens the proposal or creates the share link.
+          jobNumber={project.jobNumber}
+          paymentSchedule={parsePaymentSchedule(project.org.paymentSchedule)}
+          proposalValidDays={project.org.proposalValidDays}
+          terms={project.org.proposalTerms?.trim() || DEFAULT_PROPOSAL_TERMS}
           shapes={shapes}
         />
       </div>

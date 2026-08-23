@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+
 import { ClientCommandHandlers } from '@/components/editor/ClientCommandHandlers'
 import { EditorPersistence } from '@/components/editor/EditorPersistence'
 import { ExportCommandHandlers } from '@/components/exports/ExportCommandHandlers'
@@ -28,7 +30,8 @@ import { MaterialSection } from './inspector/MaterialSection'
 import { ComputedMetrics } from './inspector/ComputedMetrics'
 import { QuoteContribution } from './inspector/QuoteContribution'
 import type { Suggestion } from '@/lib/commands/suggestions'
-import type { RawMaterial } from './materials/MaterialGrid'
+import { EMPTY_FINISH_CATALOG, type FinishCatalog } from '@/modules/materials/catalog'
+import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import { PricingProvider, type PricingInput } from './LiveQuote'
 
 export interface EditorLayoutProps {
@@ -55,7 +58,12 @@ export interface EditorLayoutProps {
    */
   pricing: PricingInput | null
   paletteSuggestions: Suggestion[]
-  materials?: RawMaterial[]
+  /**
+   * The organisation's finish catalogue, already joined to its price book on
+   * the server. One list, so the inspector, the materials panel and the live
+   * quote cannot show three different prices for one finish.
+   */
+  finishCatalog?: FinishCatalog
 }
 
 export function EditorLayout({
@@ -68,8 +76,23 @@ export function EditorLayout({
   validationReport,
   pricing,
   paletteSuggestions,
-  materials = [],
+  finishCatalog = EMPTY_FINISH_CATALOG,
 }: EditorLayoutProps) {
+  // Seeded on the first render rather than in an effect, because the finish
+  // rows and the live quote both read the catalogue on their first paint and an
+  // effect would let them paint once against an empty one — which looks exactly
+  // like the bug this replaces, a finish snapping back to the top of the list.
+  // Safe to write during render only here: no subscriber has mounted yet on the
+  // first pass. Every later change goes through the effect below.
+  const seeded = useRef(false)
+  if (!seeded.current) {
+    seeded.current = true
+    useMaterialsStore.setState({ catalog: finishCatalog })
+  }
+  useEffect(() => {
+    useMaterialsStore.getState().hydrate(finishCatalog)
+  }, [finishCatalog])
+
   return (
     <PricingProvider value={pricing}>
       <div
@@ -86,7 +109,7 @@ export function EditorLayout({
         />
       </div>
 
-      <LeftPanel materials={materials} />
+      <LeftPanel />
 
       <main className="relative overflow-hidden">
         <R3FCanvas />
@@ -106,7 +129,7 @@ export function EditorLayout({
         selectionCardSlot={<SelectionCard />}
         positionSlot={<PositionSection />}
         geometrySlot={<GeometrySection />}
-        materialSlot={<MaterialSection materials={materials} />}
+        materialSlot={<MaterialSection />}
         computedMetricsSlot={<ComputedMetrics />}
         quoteContributionSlot={<QuoteContribution />}
       />

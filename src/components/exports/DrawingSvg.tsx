@@ -1,5 +1,7 @@
-import { ShapeKind } from '@prisma/client'
+import { ExportVisibility, ShapeKind } from '@prisma/client'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { isStencil } from '@/modules/editor/state/shapes'
+import { getStencil } from '@/modules/editor/stencils'
 import { fillForShape, labelForShape, shapesBoundingBox } from '@/modules/exports/svg'
 
 interface DrawingSvgProps {
@@ -7,6 +9,22 @@ interface DrawingSvgProps {
   widthPx?: number
   heightPx?: number
   showLabels?: boolean
+}
+
+/**
+ * Whether this object belongs on a customer-facing render.
+ *
+ * Every stencil in the catalogue has carried an `exportVisibility` since it was
+ * written and nothing had ever read it, so a property line, a setback line and
+ * an equipment pad all drew straight onto the proposal. This is the render a
+ * customer sees; the construction symbols belong on the plan sheets, which draw
+ * themselves through `TechnicalPlanSvg`.
+ */
+function onCustomerRender(shape: Shape): boolean {
+  if (!isStencil(shape)) return true
+  const def = getStencil(shape.stencilId)
+  if (!def) return true
+  return def.exportVisibility !== ExportVisibility.CONSTRUCTION && def.exportVisibility !== ExportVisibility.NONE
 }
 
 // Coping band drawn around a pool, and the plan grid spacing. Both in inches
@@ -24,7 +42,7 @@ export function DrawingSvg({
   heightPx = 420,
   showLabels = true,
 }: DrawingSvgProps) {
-  const visible = shapes.filter((s) => !s.hidden)
+  const visible = shapes.filter((s) => !s.hidden && onCustomerRender(s))
   const vp = shapesBoundingBox(visible)
   const sorted = [...visible].sort((a, b) => a.zIndex - b.zIndex)
 

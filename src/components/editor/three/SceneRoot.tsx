@@ -22,6 +22,7 @@ import { LedLights } from './objects/LedLights'
 import { Loungers } from './objects/Loungers'
 import { PlanOverlay } from './PlanOverlay'
 import { PolygonPool } from './objects/PolygonPool'
+import { PropertyLine } from './objects/PropertyLine'
 import { PoolWalls } from './objects/PoolWalls'
 import { EllipsePool } from './objects/EllipsePool'
 import { Spa } from './objects/Spa'
@@ -183,6 +184,12 @@ function renderStencilShape(shape: Shape) {
         <Loungers loungers={[{ x: 0, z: 0, rotation: ((shape.rotation ?? 0) * Math.PI) / 180 }]} />
       </group>
     )
+  }
+  // The lot line is a boundary, not an object: drawn on the ground, and never
+  // as a solid box the size of the lot, which is what the generic stencil mesh
+  // would have made of it.
+  if (id === 'symbol.property-line') {
+    return <PropertyLine shape={shape} />
   }
   if (id === 'site.house-wall') {
     // The wall reads its length from the shape, so a user can size it to the

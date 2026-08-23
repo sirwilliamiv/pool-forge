@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type ViewMode = 'plan' | '3d' | 'section'
 export type PresentationMode = 'plan' | 'design' | 'build' | 'customer'
-export type LeftTab = 'layers' | 'stencils' | 'materials' | 'grade'
+export type LeftTab = 'layers' | 'stencils' | 'materials' | 'site' | 'grade'
 export type RightTab = 'design' | 'specs' | 'quote'
 
 /**
@@ -48,7 +48,12 @@ export const useViewStore = create<ViewState>((set) => ({
       }
       // Bring it into view as well as highlight it: being told where something
       // is helps nobody if it is behind another tab.
-      if (focusedPanel === 'layers' || focusedPanel === 'stencils' || focusedPanel === 'materials') {
+      if (
+        focusedPanel === 'layers' ||
+        focusedPanel === 'stencils' ||
+        focusedPanel === 'materials' ||
+        focusedPanel === 'site'
+      ) {
         next.leftTab = focusedPanel
       }
       if (focusedPanel === 'design' || focusedPanel === 'specs' || focusedPanel === 'quote') {

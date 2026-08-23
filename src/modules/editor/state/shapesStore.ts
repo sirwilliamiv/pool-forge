@@ -11,6 +11,16 @@ interface AddShapeOptions {
   stencilId?: string
   width?: number
   height?: number
+  /**
+   * Set at birth rather than by a follow-up `renameShape` / `updateShape`.
+   *
+   * Both of those push their own history entry, so placing a named, rotated
+   * object in three calls cost three undos to take back one action. Undo is the
+   * safety net under every movement in the app and a net with three layers in
+   * it is as confusing as no net at all.
+   */
+  name?: string
+  rotation?: number
 }
 
 interface ShapesState {
@@ -74,7 +84,8 @@ function defaultsFor(
     y,
     width,
     height,
-    rotation: 0,
+    rotation: opts?.rotation ?? 0,
+    ...(opts?.name ? { name: opts.name } : {}),
     zIndex: z,
     locked: false,
     hidden: false,

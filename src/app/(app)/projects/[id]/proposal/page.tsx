@@ -5,6 +5,12 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { effectiveLightingQuantity } from '@/modules/pricing/engine'
 import { loadProjectQuote } from '@/modules/projects/snapshot'
+import { ensureJobNumber } from '@/modules/projects/job-number'
+import {
+  COMPANY_PROFILE_SELECT,
+  DEFAULT_PROPOSAL_TERMS,
+  parsePaymentSchedule,
+} from '@/modules/organization/company'
 import { ProposalDocument } from '@/components/exports/ProposalDocument'
 import { PrintButton } from '@/components/exports/PrintButton'
 import './proposal.css'
@@ -41,16 +47,29 @@ export default async function ProposalPage({
     where: { id, orgId },
     include: {
       customer: true,
-      org: { select: { name: true, taxRatePct: true, logoUrl: true, brandColor: true } },
+      org: {
+        select: {
+          ...COMPANY_PROFILE_SELECT,
+          taxRatePct: true,
+          paymentSchedule: true,
+          proposalTerms: true,
+          proposalValidDays: true,
+        },
+      },
     },
   })
   if (!project) notFound()
+
+  // Projects created before job numbers existed have none, and a proposal with
+  // a blank where the reference number goes is the problem the number exists to
+  // remove. Idempotent and org-scoped: it writes once, ever, per project.
+  const jobNumber = await ensureJobNumber(project.id, orgId)
 
   // One loader, one quote: the editor dock, this proposal, the construction
   // packet and the shared customer link all read the same figures from here.
   const priced = await loadProjectQuote(project.id, orgId)
   if (!priced) notFound()
-  const { measurements, quote, selections, shapes } = priced
+  const { measurements, quote, selections, shapes, poolFields } = priced
 
   return (
     <div className="min-h-screen bg-slate-100 py-6">
@@ -62,7 +81,11 @@ export default async function ProposalPage({
       </div>
       <div className="mx-auto bg-white shadow-sm">
         <ProposalDocument
-          project={project}
+          // `poolFields` from the loader, not the raw column: it carries the
+          // interior finish and coping the pool is actually drawn with. Both
+          // rows printed blank because nothing wrote the picked finish anywhere
+          // this document could read it.
+          project={{ ...project, poolFields }}
           customer={project.customer}
           measurements={measurements}
           quote={quote}
@@ -75,9 +98,19 @@ export default async function ProposalPage({
             // so a design with a light in it said "Pool lighting: Not specified".
             lightingQuantity: effectiveLightingQuantity(measurements, selections),
           }}
-          companyName={project.org.name}
-          logoUrl={project.org.logoUrl}
-          brandColor={project.org.brandColor}
+          company={{
+            name: project.org.name,
+            logoUrl: project.org.logoUrl,
+            brandColor: project.org.brandColor,
+            address: project.org.address,
+            phone: project.org.phone,
+            email: project.org.email,
+            licenseNumber: project.org.licenseNumber,
+          }}
+          jobNumber={jobNumber}
+          paymentSchedule={parsePaymentSchedule(project.org.paymentSchedule)}
+          proposalValidDays={project.org.proposalValidDays}
+          terms={project.org.proposalTerms?.trim() || DEFAULT_PROPOSAL_TERMS}
           shapes={shapes}
         />
       </div>

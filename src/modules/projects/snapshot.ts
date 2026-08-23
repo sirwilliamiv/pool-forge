@@ -11,7 +11,12 @@ import {
   type PricingSelections,
   type QuoteSummary,
 } from '@/modules/pricing/engine'
-import { pricingSelectionsFrom } from '@/modules/projects/pool-fields'
+import { buildFinishCatalog, resolveFinishes, type FinishCatalog, type MaterialRow } from '@/modules/materials/catalog'
+import {
+  pricingSelectionsFrom,
+  poolFieldsWithFinishes,
+  type PoolFields,
+} from '@/modules/projects/pool-fields'
 import type { ValidationProject } from '@/modules/validation/types'
 
 // Everything the read-only commands need about a project, loaded once.
@@ -28,7 +33,19 @@ export interface ProjectSnapshot {
   measurements: MeasurementSummary
   items: PriceBookItemLite[]
   priceBookId: string | null
-  poolFields: unknown
+  /**
+   * The project's own selections, with the finishes the drawing actually
+   * carries folded in.
+   *
+   * The drawing wins over the form for interior finish and coping, on the same
+   * principle as the light count: the design is the thing the customer is
+   * buying. Every export reads `poolFields`, so this is how the proposal and
+   * the construction packet print the finish that was chosen rather than a
+   * blank row.
+   */
+  poolFields: PoolFields
+  /** The material list joined to the price book that bills it. */
+  finishCatalog: FinishCatalog
   taxRatePct: number
   validationProject: ValidationProject
 }
@@ -78,6 +95,17 @@ export async function loadProjectSnapshot(
     orderBy: { version: 'desc' },
     include: { items: true },
   })
+  const items = toPriceBookItems(priceBook?.items ?? [])
+
+  // Materials shared by every organisation carry a null orgId; an organisation's
+  // own additions carry its id. Nothing here can see another org's catalogue.
+  const materialRows = await db.material.findMany({
+    where: { OR: [{ orgId }, { orgId: null }] },
+    select: { id: true, kind: true, name: true, fillSpec: true },
+    orderBy: [{ kind: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+  })
+  const finishCatalog = buildFinishCatalog(materialRows as MaterialRow[], items)
+  const finishes = resolveFinishes(shapes, finishCatalog)
 
   return {
     id: project.id,
@@ -87,15 +115,21 @@ export async function loadProjectSnapshot(
     // proposal and the editor dock all read this, and three copies would
     // disagree about how much dirt is moving.
     measurements: withEarthwork(computeMeasurements(shapes), gradeOf(root), boundsOf(shapes)),
-    items: toPriceBookItems(priceBook?.items ?? []),
+    items,
     priceBookId: priceBook?.id ?? null,
-    poolFields: project.poolFields,
+    poolFields: poolFieldsWithFinishes(project.poolFields, finishes),
+    finishCatalog,
     taxRatePct: project.org?.taxRatePct ?? 0,
     validationProject: {
       name: project.name,
       customerName: project.customer?.name ?? null,
       address: project.customer?.address ?? null,
-      poolFields: (project.poolFields ?? {}) as Record<string, unknown>,
+      // The merged fields, so the "select an interior finish" warning clears
+      // when the finish was chosen on the drawing rather than typed on the form.
+      poolFields: poolFieldsWithFinishes(project.poolFields, finishes) as unknown as Record<
+        string,
+        unknown
+      >,
       proposalExpiresAt: project.proposalExpiresAt
         ? project.proposalExpiresAt.toISOString()
         : null,
@@ -110,6 +144,13 @@ export interface ProjectQuote {
   quote: QuoteSummary
   /** The priced inputs, so a client can recompute the same quote as it draws. */
   items: PriceBookItemLite[]
+  /**
+   * `Project.poolFields` with the drawing's chosen finishes folded in, which is
+   * what every export prints. Read this rather than the raw column.
+   */
+  poolFields: PoolFields
+  /** The material list joined to the price book, so a client can re-resolve. */
+  finishCatalog: FinishCatalog
   taxRatePct: number
   priceBookId: string | null
 }
@@ -130,12 +171,22 @@ export async function loadProjectQuote(
 ): Promise<ProjectQuote | null> {
   const snapshot = await loadProjectSnapshot(projectId, orgId)
   if (!snapshot) return null
-  const selections = pricingSelectionsFrom(snapshot.poolFields)
+  // The finishes come from the drawing, so they are resolved against the
+  // catalogue rather than read off the form. A finish the price book cannot
+  // bill arrives with a null item id and lands on the quote's unpriced list.
+  const finishes = resolveFinishes(snapshot.shapes, snapshot.finishCatalog)
+  const selections: PricingSelections = {
+    ...pricingSelectionsFrom(snapshot.poolFields),
+    finishes,
+    finishItemIds: snapshot.finishCatalog.claimedItemIds,
+  }
   return {
     shapes: snapshot.shapes,
     measurements: snapshot.measurements,
     selections,
     items: snapshot.items,
+    poolFields: snapshot.poolFields,
+    finishCatalog: snapshot.finishCatalog,
     taxRatePct: snapshot.taxRatePct,
     priceBookId: snapshot.priceBookId,
     quote: computeQuote(snapshot.items, snapshot.measurements, selections, {

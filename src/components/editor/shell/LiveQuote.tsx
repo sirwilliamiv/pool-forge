@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { useShapesStore } from '@/modules/editor/state'
+import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { resolveFinishes, type FinishCatalog } from '@/modules/materials/catalog'
 import { computeMeasurements } from '@/modules/measurements/engine'
 import {
   computeQuote,
@@ -43,9 +45,22 @@ export function usePricingInput(): PricingInput | null {
   return useContext(PricingContext)
 }
 
-function quoteFor(shapes: Shape[], input: PricingInput | null): QuoteSummary | null {
+function quoteFor(
+  shapes: Shape[],
+  input: PricingInput | null,
+  catalog: FinishCatalog,
+): QuoteSummary | null {
   if (!input) return null
-  return computeQuote(input.items, computeMeasurements(shapes), input.selections, {
+  // Finishes are re-resolved from the shapes on every recompute rather than
+  // taken from the server's selections. Picking a finish changes a shape and
+  // nothing else, so this is what makes the number on the dock move the moment
+  // the builder changes the interior — the whole point of the exercise.
+  const selections: PricingSelections = {
+    ...input.selections,
+    finishes: resolveFinishes(shapes, catalog),
+    finishItemIds: catalog.claimedItemIds,
+  }
+  return computeQuote(input.items, computeMeasurements(shapes), selections, {
     taxRatePct: input.taxRatePct,
   })
 }
@@ -53,8 +68,9 @@ function quoteFor(shapes: Shape[], input: PricingInput | null): QuoteSummary | n
 /** The quote for what is on the canvas right now. */
 export function useLiveQuote(): QuoteSummary | null {
   const shapes = useShapesStore((s) => s.shapes)
+  const catalog = useMaterialsStore((s) => s.catalog)
   const input = usePricingInput()
-  return useMemo(() => quoteFor(shapes, input), [shapes, input])
+  return useMemo(() => quoteFor(shapes, input, catalog), [shapes, input, catalog])
 }
 
 /**
@@ -70,13 +86,15 @@ export function useShapeContribution(shapeId: string | undefined): {
   changedLines: Array<{ name: string; delta: number }>
 } | null {
   const shapes = useShapesStore((s) => s.shapes)
+  const catalog = useMaterialsStore((s) => s.catalog)
   const input = usePricingInput()
   return useMemo(() => {
     if (!input || !shapeId) return null
-    const withAll = quoteFor(shapes, input)
+    const withAll = quoteFor(shapes, input, catalog)
     const withoutIt = quoteFor(
       shapes.filter((s) => s.id !== shapeId),
       input,
+      catalog,
     )
     if (!withAll || !withoutIt) return null
     const before = new Map(withoutIt.lineItems.map((l) => [l.itemId, l]))
@@ -95,5 +113,5 @@ export function useShapeContribution(shapeId: string | undefined): {
       withoutTotal: withoutIt.total,
       changedLines,
     }
-  }, [shapes, input, shapeId])
+  }, [shapes, input, shapeId, catalog])
 }

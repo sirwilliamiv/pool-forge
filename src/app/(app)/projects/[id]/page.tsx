@@ -20,6 +20,8 @@ async function saveProjectAction(
     status: ProjectStatus
     proposalExpiresAt: string
     internalNotes: string
+    jurisdiction: string
+    parcelId: string
     customerName: string
     customerEmail: string
     customerPhone: string
@@ -71,6 +73,10 @@ async function saveProjectAction(
     status: input.status,
     proposalExpiresAt: input.proposalExpiresAt ? new Date(input.proposalExpiresAt) : null,
     internalNotes: input.internalNotes || null,
+    // Permit facts, on their own columns. The site plan reads these; it used to
+    // read JSON keys that no writer ever wrote, and printed a dash for both.
+    jurisdiction: input.jurisdiction.trim() || null,
+    parcelId: input.parcelId.trim() || null,
     poolFields: poolFields as unknown as Prisma.InputJsonValue,
   }
 
@@ -143,6 +149,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     status: project.status,
     proposalExpiresAt: project.proposalExpiresAt ? project.proposalExpiresAt.toISOString().slice(0, 10) : '',
     internalNotes: project.internalNotes ?? '',
+    jurisdiction: project.jurisdiction ?? '',
+    parcelId: project.parcelId ?? '',
     customerName: project.customer?.name ?? '',
     customerEmail: project.customer?.email ?? '',
     customerPhone: project.customer?.phone ?? '',

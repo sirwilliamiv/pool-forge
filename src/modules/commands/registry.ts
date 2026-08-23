@@ -16,6 +16,7 @@ export type CommandCategory =
   | 'navigation'
   | 'context'
   | 'grade'
+  | 'site'
   | 'import'
 
 export type CommandContext = {

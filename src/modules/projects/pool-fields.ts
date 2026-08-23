@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { PricingSelections } from '@/modules/pricing/engine'
+import type { FinishSelection, PricingSelections } from '@/modules/pricing/engine'
 import type { ValidationSelections } from '@/modules/validation/types'
 
 // Legacy rows wrote these as strings/numbers before the form was typed, so a
@@ -114,6 +114,34 @@ function agree(pf: PoolFields): PoolFields {
 export function readPoolFields(json: unknown): PoolFields {
   const source = json && typeof json === 'object' && !Array.isArray(json) ? json : {}
   return agree(poolFieldsSchema.parse(source))
+}
+
+/**
+ * The finishes on the drawing win over the words on the form.
+ *
+ * Interior finish and coping are chosen twice in this product: as free text on
+ * the project form, and as a material on the pool itself. The drawing is the
+ * thing the customer is buying — the same rule the light count already follows
+ * — so it supplies the answer, and the form's text is the fallback for a
+ * project with nothing drawn yet.
+ *
+ * This is also how the finish reaches paper. The proposal and the construction
+ * packet both read `interiorFinish` and `copingMaterial` off `poolFields` and
+ * printed blank rows for them, because nothing ever wrote the picked material
+ * anywhere the exports could see.
+ */
+export function poolFieldsWithFinishes(
+  json: unknown,
+  finishes: readonly FinishSelection[],
+): PoolFields {
+  const pf = readPoolFields(json)
+  const interior = finishes.find((finish) => finish.slot === 'interior')
+  const coping = finishes.find((finish) => finish.slot === 'coping')
+  return {
+    ...pf,
+    interiorFinish: interior?.materialName ?? pf.interiorFinish,
+    copingMaterial: coping?.materialName ?? pf.copingMaterial,
+  }
 }
 
 /**

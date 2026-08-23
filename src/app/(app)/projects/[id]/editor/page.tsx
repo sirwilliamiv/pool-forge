@@ -5,6 +5,7 @@ import { EditorLayout } from '@/components/editor/shell/EditorLayout'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
 import { loadProjectQuote } from '@/modules/projects/snapshot'
+import { EMPTY_FINISH_CATALOG } from '@/modules/materials/catalog'
 import { validationSelectionsFrom } from '@/modules/projects/pool-fields'
 import { runValidation } from '@/modules/validation/engine'
 import type {
@@ -44,19 +45,6 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
     initial = { shapes: [] }
   }
 
-  const poolFields =
-    project.poolFields && typeof project.poolFields === 'object' && !Array.isArray(project.poolFields)
-      ? (project.poolFields as Record<string, unknown>)
-      : {}
-
-  const validationProject: ValidationProject = {
-    name: project.name,
-    customerName: project.customer?.name ?? null,
-    address: project.customer?.address ?? null,
-    poolFields,
-    proposalExpiresAt: project.proposalExpiresAt ? project.proposalExpiresAt.toISOString() : null,
-  }
-
   // Compute measurements + quote + validation server-side. The dock components
   // are read-only views over these snapshots in v1.
   const measurements = computeMeasurements(initial.shapes ?? [])
@@ -71,6 +59,23 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
     priced && priced.items.length > 0
       ? { items: priced.items, selections: priced.selections, taxRatePct: priced.taxRatePct }
       : null
+
+  // The loader's pool fields, not the raw column: they carry the finishes the
+  // drawing actually has. Reading the column here instead is how the checklist
+  // came to warn "select a pool interior finish" about a pool that had one.
+  const merged = priced?.poolFields ?? project.poolFields
+  const poolFields =
+    merged && typeof merged === 'object' && !Array.isArray(merged)
+      ? (merged as Record<string, unknown>)
+      : {}
+
+  const validationProject: ValidationProject = {
+    name: project.name,
+    customerName: project.customer?.name ?? null,
+    address: project.customer?.address ?? null,
+    poolFields,
+    proposalExpiresAt: project.proposalExpiresAt ? project.proposalExpiresAt.toISOString() : null,
+  }
 
   const validationContext: ValidationContext = {
     project: validationProject,
@@ -90,25 +95,6 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
 
   const paletteSuggestions = await getSuggestions({ projectId: project.id })
 
-  const materialRows = await db.material.findMany({
-    where: { OR: [{ orgId }, { orgId: null }] },
-    select: { id: true, kind: true, name: true, fillSpec: true },
-    orderBy: [{ kind: 'asc' }, { name: 'asc' }],
-  })
-  const materials = materialRows.map((m) => ({
-    id: m.id,
-    kind: m.kind as
-      | 'POOL_WATER'
-      | 'CONCRETE_DECK'
-      | 'PAVER_DECK'
-      | 'GRASS'
-      | 'COPING'
-      | 'SCREEN'
-      | 'LANAI'
-      | 'CUSTOM',
-    name: m.name,
-    fillSpec: m.fillSpec,
-  }))
 
   return (
     <EditorLayout
@@ -125,7 +111,7 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
       validationReport={validationReport}
       pricing={pricing}
       paletteSuggestions={paletteSuggestions}
-      materials={materials}
+      finishCatalog={priced?.finishCatalog ?? EMPTY_FINISH_CATALOG}
     />
   )
 }

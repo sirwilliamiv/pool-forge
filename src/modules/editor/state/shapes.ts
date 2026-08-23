@@ -18,6 +18,20 @@ export interface DisplayHint {
   // Absent means present, because a real pool has both.
   coping?: boolean
   tileBand?: boolean
+  /**
+   * Zoning limits, carried by the property line the user drew.
+   *
+   * Only meaningful on a `symbol.property-line` shape, and absent until a
+   * builder has actually looked the numbers up: the site plan prints "not
+   * entered" rather than a default, because a default here is a number a plan
+   * checker would hold the builder to.
+   */
+  lot?: {
+    frontFt?: number
+    sideFt?: number
+    rearFt?: number
+    easements?: string
+  }
 }
 
 export interface ShapeBase {
@@ -42,14 +56,17 @@ export interface ShapeBase {
    */
   elevationFt?: number
   /**
-   * Chosen materials, by surface.
+   * The finish chosen for each pool surface, as `Material` ids.
    *
-   * `set.shape.material` and `pool.material.set` used to return their own input
-   * and persist nothing, with a comment saying the audit log captured the
-   * intent. A builder who set a cobalt interior was told it worked, saw no
-   * change, and the only record was a log of what they had asked for.
+   * Saved with the drawing, so it survives a reload, and resolved against the
+   * price book by `@/modules/materials/catalog` so the same choice drives the
+   * quote and prints on the proposal and the construction packet.
+   *
+   * There used to be a fourth key here called `surface`, written by
+   * `set.shape.material` and read by nothing at all. Three slots, because a
+   * pool has three finished surfaces and each is billed in its own unit.
    */
-  materials?: { interior?: string; coping?: string; tileBand?: string; surface?: string }
+  materials?: { interior?: string; coping?: string; tileBand?: string }
 }
 
 export interface RectanglePool extends ShapeBase {

@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { loadProjectQuote } from '@/modules/projects/snapshot'
+import { ensureJobNumber } from '@/modules/projects/job-number'
 import {
   ConstructionDocument,
   type ConstructionPageSize,
@@ -38,7 +39,11 @@ export default async function ConstructionPacketPage({
   // sheet cannot print two different totals for one job.
   const priced = await loadProjectQuote(project.id, orgId)
   if (!priced) notFound()
-  const { shapes, measurements, quote } = priced
+  const { shapes, measurements, quote, poolFields } = priced
+
+  // Same number as the proposal. A packet and a proposal for one job that
+  // reference it two different ways is how a crew ends up digging the wrong hole.
+  const jobNumber = await ensureJobNumber(project.id, orgId)
 
   const otherSize: ConstructionPageSize = pageSize === 'tabloid' ? 'letter' : 'tabloid'
 
@@ -58,11 +63,14 @@ export default async function ConstructionPacketPage({
       <ConstructionDocument
         project={{
           id: project.id,
+          jobNumber,
           name: project.name,
           salesperson: project.salesperson,
           designer: project.designer,
           internalNotes: project.internalNotes,
-          poolFields: project.poolFields,
+          // The loader's, not the raw column: the packet prints the finish the
+          // pool is drawn with rather than a blank Interior finish row.
+          poolFields,
           createdAt: project.createdAt,
         }}
         customer={

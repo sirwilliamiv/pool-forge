@@ -32,9 +32,11 @@ export default async function SitePlanPage({
   // without an underlay if unavailable.
   const surveyImageUrl: string | null = null
 
-  const pf = (project.poolFields ?? {}) as Record<string, unknown>
-  const jurisdiction = typeof pf.jurisdiction === 'string' ? pf.jurisdiction : null
-  const parcelId = typeof pf.parcelId === 'string' ? pf.parcelId : null
+  // Columns, not `poolFields`. These are permit facts about the property, they
+  // are typed on the project page, and the sheet printed a dash for both
+  // because nothing had ever written the JSON keys this used to read.
+  const jurisdiction = project.jurisdiction?.trim() || null
+  const parcelId = project.parcelId?.trim() || null
 
   return (
     <div className="min-h-screen bg-neutral-100 py-6">

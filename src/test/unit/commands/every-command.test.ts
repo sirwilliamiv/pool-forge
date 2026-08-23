@@ -49,7 +49,9 @@ import { useHistoryStore } from '@/modules/editor/state/historyStore'
 import { useSaveStatusStore } from '@/modules/editor/state/saveStore'
 import { useScreenSelectionStore } from '@/modules/editor/state/screenSelectionStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
+import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
+import { buildFinishCatalog } from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useSurveyStore } from '@/modules/editor/state/surveyStore'
 import { useViewStore } from '@/modules/editor/state/viewStore'
@@ -409,7 +411,7 @@ const EXERCISES: Record<string, Exercise> = {
   },
   'set.shape.material': {
     kind: 'mutates',
-    input: async () => ({ id: await addShape(), materialId: 'pebble.cobalt' }),
+    input: async () => ({ id: await addShape(), materialId: FINISH_MATERIAL }),
   },
   'pool.geometry.update': {
     kind: 'mutates',
@@ -420,7 +422,9 @@ const EXERCISES: Record<string, Exercise> = {
   },
   'pool.material.set': {
     kind: 'mutates',
-    input: async () => ({ id: await addShape(), slot: 'coping', materialId: 'travertine' }),
+    // The interior slot, because that is the slot this material belongs to: a
+    // slot is a unit, and a material cannot be put in a slot billed in another.
+    input: async () => ({ id: await addShape(), slot: 'interior', materialId: FINISH_MATERIAL }),
   },
   'shape.hide': {
     kind: 'mutates',
@@ -549,6 +553,15 @@ const EXERCISES: Record<string, Exercise> = {
     why: 'Closes out the recorded voice session.',
   },
   'settings.update': { kind: 'stub' },
+  'settings.company.update': {
+    kind: 'server',
+    why:
+      'Writes the Organization row a proposal prints its address, phone, licence number, ' +
+      'payment schedule and terms from. Covered by organization/company-settings.test.ts ' +
+      'against the real DB. Deliberately carries no voice examples, so the converter refuses ' +
+      'it: contract content rewritten from misheard audio is not found until a customer has ' +
+      'signed the result.',
+  },
   'settings.voice.set': {
     kind: 'server',
     why:
@@ -595,6 +608,38 @@ const EXERCISES: Record<string, Exercise> = {
     input: async () => {
       await dirtyEverything()
       await addGradePoint('existing')
+      return {}
+    },
+  },
+
+  // ---------- site ----------
+  'site.property.place': {
+    kind: 'mutates',
+    input: async () => ({ widthFt: 80, depthFt: 110, xFt: -40, yFt: -55 }),
+  },
+  'site.property.remove': {
+    kind: 'mutates',
+    input: async () => {
+      await must('site.property.place', { widthFt: 70, depthFt: 90 })
+      return {}
+    },
+  },
+  'site.limits.set': {
+    kind: 'mutates',
+    input: async () => {
+      await must('site.property.place', { widthFt: 70, depthFt: 90 })
+      return { frontFt: 25, sideFt: 5, rearFt: 7.5, easements: '10 ft drainage easement, rear' }
+    },
+  },
+  'site.structure.place': {
+    kind: 'mutates',
+    input: async () => ({ label: 'House', widthFt: 40, depthFt: 24, xFt: -20, yFt: -40 }),
+  },
+  'site.describe': {
+    kind: 'reads',
+    input: async () => {
+      await dirtyEverything()
+      await must('site.property.place', { widthFt: 70, depthFt: 90 })
       return {}
     },
   },
@@ -708,7 +753,30 @@ function entriesOf(kind: Classification): [string, Exercise][] {
 }
 
 /** Every store is a module singleton, so leftovers decide the next test. */
+/**
+ * A finish catalogue for the two material commands.
+ *
+ * They validate the material against the organisation's catalogue and refuse
+ * anything not in it, which is the whole point of them: they used to accept any
+ * string and report success. A harness with no catalogue would be exercising a
+ * path the app never takes.
+ */
+const FINISH_MATERIAL = 'mat-pebbletec-cobalt'
+
 function resetStores(): void {
+  useMaterialsStore.getState().hydrate(
+    buildFinishCatalog(
+      [
+        {
+          id: FINISH_MATERIAL,
+          kind: 'CUSTOM',
+          name: 'PebbleTec — Cobalt',
+          fillSpec: { type: 'gradient', color: '#1E40AF', slot: 'interior', priceItemId: 'i1' },
+        },
+      ],
+      [],
+    ),
+  )
   useSelectionStore.getState().clear()
   useEditorStore.setState({
     activeTool: 'tool.select',

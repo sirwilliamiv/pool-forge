@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { ProjectStatus } from '@prisma/client'
 import { register } from '@/modules/commands/registry'
+import { nextJobNumber } from '@/modules/projects/job-number'
 
 register({
   id: 'create.project',
@@ -68,10 +69,19 @@ register({
         const data: {
           orgId: string
           name: string
+          jobNumber: number
           customerId?: string
           salesperson?: string
           designer?: string
-        } = { orgId, name }
+        } = {
+          orgId,
+          name,
+          // Assigned inside this transaction, under an advisory lock keyed on
+          // the organisation. Two projects created in the same moment queue
+          // rather than both claiming 1042; the unique index catches anything
+          // that reaches the table another way.
+          jobNumber: await nextJobNumber(tx, orgId),
+        }
         if (customerId) data.customerId = customerId
         if (input.salesperson) data.salesperson = input.salesperson
         if (input.designer) data.designer = input.designer

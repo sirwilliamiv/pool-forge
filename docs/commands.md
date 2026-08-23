@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **86**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **92**.
 
 ## Project
 
@@ -207,7 +207,7 @@ Constrain L/W proportion when resizing.
 
 ### `pool.material.set` — Set pool material slot
 
-Apply a material to a specific surface slot of the selected pool (interior, coping, or tile band).
+Apply a material to one pool surface. `interior` is billed by the square foot; `coping` and `tileBand` are billed by the linear foot, and a material belonging to one slot cannot be used in another.
 
 **Voice examples:**
 - "Change the interior to PebbleTec Cobalt."
@@ -258,11 +258,11 @@ Select one or more shapes on the canvas.
 
 ### `set.shape.material` — Set shape material
 
-Apply a material or finish to a shape.
+Apply a finish from the material catalogue to a pool. The material decides which surface it lands on: an interior finish goes on the interior, a coping on the coping, a waterline tile on the tile band.
 
 **Voice examples:**
-- "Change the deck to pavers."
 - "Set the pool finish to pebble."
+- "Change the interior to white plaster."
 
 ### `shape.elevation.set` — Raise or lower an object
 
@@ -470,6 +470,10 @@ Sign the current user out of the session.
 
 ## Settings
 
+### `settings.company.update` — Update company settings
+
+Save the organization business details that print on customer documents: name, branding, address, phone, email, contractor licence number, default sales tax, proposal validity window, payment schedule and proposal terms.
+
 ### `settings.update` — Update setting
 
 Update an organization-scoped application setting by key.
@@ -647,6 +651,52 @@ Move a recorded height, or change what it reads.
 **Voice examples:**
 - "Make that corner four feet down instead."
 - "The back fence is lower than I said."
+
+## Site & property line
+
+### `site.describe` — Describe the site
+
+Read back the lot: whether a property line has been drawn, its size, the required setbacks entered for it, what structures are placed, and the measured setback on each side. Read-only. Call this before changing anything.
+
+**Voice examples:**
+- "What are the setbacks?"
+- "Is there a property line on this drawing?"
+- "How far is the pool from the house?"
+
+### `site.limits.set` — Set the required setbacks
+
+Record what the jurisdiction requires on this lot, in FEET, plus any easements. These print on the permit sheet exactly as entered, so leave out anything that has not been looked up.
+
+**Voice examples:**
+- "Side setback is five feet, rear is seven and a half."
+- "The front setback here is twenty five feet."
+- "There is a ten foot drainage easement along the back."
+
+### `site.property.place` — Draw the property line
+
+Draw the lot boundary, or resize the one already drawn. Every number is in FEET. Setbacks are measured from this line, so nothing is measured until it exists.
+
+**Voice examples:**
+- "The lot is eighty by a hundred and ten."
+- "Draw the property line, seventy feet wide and ninety deep."
+- "Make the lot a hundred feet deep."
+
+### `site.property.remove` — Remove the property line
+
+Delete the lot boundary. Setbacks go back to reading as not measured, rather than to a default.
+
+**Voice examples:**
+- "Take the property line off."
+- "Remove the lot boundary."
+
+### `site.structure.place` — Place the house
+
+Put the house — or another structure the pool has to clear — on the drawing. Every number is in FEET. "From house" in the inspector and on the packet measures to this.
+
+**Voice examples:**
+- "The house runs forty feet along the back of the patio."
+- "Put the house wall twenty feet north of the pool."
+- "Add the garage on the left."
 
 ## Import
 

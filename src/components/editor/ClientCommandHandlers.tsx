@@ -10,10 +10,25 @@ import { cutFillBetween, maxSlope, type SiteGrade } from '@/modules/editor/grade
 import { useGradeStore } from '@/modules/editor/state/gradeStore'
 import { useHotkeys } from '@/modules/editor/hotkeys/useHotkeys'
 import { useHistoryStore } from '@/modules/editor/state/historyStore'
+import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
+import {
+  SLOT_LABEL,
+  materialFor,
+  optionFor,
+  type FinishOption,
+  type FinishSlot,
+} from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useViewStore, type FocusTarget } from '@/modules/editor/state/viewStore'
 import { ShapeKind, type Shape } from '@/modules/editor/state/shapes'
+import {
+  PROPERTY_LINE_STENCIL,
+  STRUCTURE_STENCIL,
+  findPropertyLine,
+  siteSetbackReport,
+  suggestedLot,
+} from '@/modules/editor/site/model'
 import { getStencil } from '@/modules/editor/stencils'
 import { framingFor } from '@/modules/editor/framing'
 import { visibleBounds } from '@/modules/editor/placement'
@@ -35,6 +50,61 @@ const ZOOM_STEP = 1.2
 function requireShape(id: string): void {
   const shape = useShapesStore.getState().shapes.find((s) => s.id === id)
   if (!shape) throw new Error(`There is nothing on the canvas with id ${id}.`)
+}
+
+/**
+ * Look a finish up in the organisation's catalogue, or refuse.
+ *
+ * Refusing is the point. Both material commands used to accept any string at
+ * all and report success, so "set the interior to cobalt" recorded the word
+ * cobalt against the pool and moved nothing. A finish that is not in the
+ * catalogue has no price, no swatch and no name to print, and saying yes to it
+ * is the same lie in a new place.
+ */
+function requireFinish(materialId: string): FinishOption {
+  const catalog = useMaterialsStore.getState().catalog
+  if (catalog.materials.length === 0) {
+    throw new Error('The material catalogue has not loaded yet. Try again in a moment.')
+  }
+  const option = optionFor(catalog, materialId)
+  if (!option) {
+    const material = materialFor(catalog, materialId)
+    if (material) {
+      throw new Error(
+        `${material.name} is a surface fill, not a pool finish. Open the Materials panel to see the finishes available.`,
+      )
+    }
+    // Never the raw id: it is a cuid in production and means nothing to anyone.
+    throw new Error(
+      'That material is not in this organisation’s catalogue. Open the Materials panel to see what is available.',
+    )
+  }
+  return option
+}
+
+/**
+ * Record a finish on a pool.
+ *
+ * The slot check is the unit check. A slot is billed in exactly one unit —
+ * interiors by the square foot, coping and waterline tile by the linear foot —
+ * so a material belonging to one slot cannot be put in another. The picker used
+ * to offer a $15.00-per-linear-foot tile band in the list of interior finishes
+ * because it filtered on the material's `kind`, which says nothing about units.
+ */
+function applyFinish(shapeId: string, slot: FinishSlot, materialId: string): void {
+  requireShape(shapeId)
+  const option = requireFinish(materialId)
+  const its = option.material.slot
+  if (its !== slot) {
+    const what = its ? SLOT_LABEL[its].toLowerCase() : 'a surface fill'
+    throw new Error(
+      `${option.material.name} is ${what}, not ${SLOT_LABEL[slot].toLowerCase()}. The two are billed in different units.`,
+    )
+  }
+  const shape = useShapesStore.getState().shapes.find((s) => s.id === shapeId)
+  useShapesStore.getState().updateShape(shapeId, {
+    materials: { ...(shape?.materials ?? {}), [slot]: materialId },
+  })
 }
 
 /** Point the camera at the box these shapes occupy. */
@@ -73,6 +143,30 @@ function describeSurface(surface: SiteGrade): GradeSurfaceDescription {
       label: point.label ?? null,
     })),
   }
+}
+
+interface SiteDescription {
+  propertyLine: { shapeId: string; widthFt: number; depthFt: number } | null
+  limits: {
+    frontFt: number | null
+    sideFt: number | null
+    rearFt: number | null
+    easements: string | null
+  }
+  structures: { shapeId: string; label: string }[]
+  setbacks:
+    | {
+        edge: string
+        measuredFt: number
+        requiredFt: number | null
+        compliant: boolean | null
+      }[]
+    | null
+}
+
+/** Spoken numbers do not need four decimal places. */
+function round1(value: number): number {
+  return Math.round(value * 10) / 10
 }
 
 interface SceneDescription {
@@ -178,6 +272,12 @@ const HANDLER_IDS: string[] = [
   'grade.falloff.set',
   'grade.describe',
   'shape.elevation.set',
+  // site category
+  'site.property.place',
+  'site.property.remove',
+  'site.limits.set',
+  'site.structure.place',
+  'site.describe',
   // scene category
   'sun.set.time',
   'sun.run.study',
@@ -363,11 +463,17 @@ export function ClientCommandHandlers() {
       { id: string; materialId: string },
       { id: string; materialId: string }
     >('set.shape.material', (input) => {
-      requireShape(input.id)
-      const shape = useShapesStore.getState().shapes.find((s) => s.id === input.id)
-      useShapesStore.getState().updateShape(input.id, {
-        materials: { ...(shape?.materials ?? {}), surface: input.materialId },
-      })
+      // No slot given, so the catalogue supplies it. This used to write the id
+      // under a key called `surface` that nothing on earth read — a record of
+      // the request rather than of the finish.
+      const option = requireFinish(input.materialId)
+      const slot = option.material.slot
+      if (!slot) {
+        throw new Error(
+          `${option.material.name} is a surface fill, not a pool finish. Pool finishes are the interior, the coping and the waterline tile.`,
+        )
+      }
+      applyFinish(input.id, slot, input.materialId)
       return { id: input.id, materialId: input.materialId }
     })
 
@@ -412,11 +518,7 @@ export function ClientCommandHandlers() {
       { id: string; slot: 'interior' | 'coping' | 'tileBand'; materialId: string },
       { id: string; slot: 'interior' | 'coping' | 'tileBand'; materialId: string }
     >('pool.material.set', (input) => {
-      requireShape(input.id)
-      const shape = useShapesStore.getState().shapes.find((s) => s.id === input.id)
-      useShapesStore.getState().updateShape(input.id, {
-        materials: { ...(shape?.materials ?? {}), [input.slot]: input.materialId },
-      })
+      applyFinish(input.id, input.slot, input.materialId)
       return { id: input.id, slot: input.slot, materialId: input.materialId }
     })
 
@@ -705,6 +807,126 @@ export function ClientCommandHandlers() {
         return { id: input.id, elevationFt: input.elevationFt }
       },
     )
+
+    // ---------- site ----------
+    registerClientHandler<
+      { widthFt: number; depthFt: number; xFt?: number; yFt?: number },
+      { shapeId: string; widthFt: number; depthFt: number; created: boolean }
+    >('site.property.place', (input) => {
+      const store = useShapesStore.getState()
+      const width = input.widthFt * 12
+      const height = input.depthFt * 12
+      const existing = findPropertyLine(store.shapes)
+      const suggestion = suggestedLot(store.shapes)
+      // Centred on what is already drawn unless the user said where. A lot that
+      // does not contain the pool is not a starting point, it is a correction
+      // waiting to be made.
+      const x = input.xFt !== undefined ? input.xFt * 12 : suggestion.x + (suggestion.width - width) / 2
+      const y = input.yFt !== undefined ? input.yFt * 12 : suggestion.y + (suggestion.height - height) / 2
+
+      if (existing) {
+        store.updateShape(existing.id, { x, y, width, height })
+        return { shapeId: existing.id, widthFt: input.widthFt, depthFt: input.depthFt, created: false }
+      }
+      const shapeId = store.addShape(ShapeKind.STENCIL, x, y, {
+        stencilId: PROPERTY_LINE_STENCIL,
+        width,
+        height,
+        name: 'Property line',
+      })
+      return { shapeId, widthFt: input.widthFt, depthFt: input.depthFt, created: true }
+    })
+
+    registerClientHandler<unknown, { removed: boolean }>('site.property.remove', () => {
+      const existing = findPropertyLine(useShapesStore.getState().shapes)
+      if (!existing) throw new Error('There is no property line on this drawing to remove.')
+      useShapesStore.getState().removeShape(existing.id)
+      return { removed: true }
+    })
+
+    registerClientHandler<
+      { frontFt?: number; sideFt?: number; rearFt?: number; easements?: string },
+      { frontFt: number | null; sideFt: number | null; rearFt: number | null; easements: string | null }
+    >('site.limits.set', (input) => {
+      const store = useShapesStore.getState()
+      const existing = findPropertyLine(store.shapes)
+      if (!existing) {
+        throw new Error('Draw the property line first — a setback needs a line to be measured from.')
+      }
+      const shape = store.shapes.find((s) => s.id === existing.id)
+      // Merged, not replaced: entering the rear setback must not erase the side
+      // one somebody entered a minute earlier.
+      const lot: NonNullable<NonNullable<Shape['displayHint']>['lot']> = { ...existing.limits }
+      if (input.frontFt !== undefined) lot.frontFt = input.frontFt
+      if (input.sideFt !== undefined) lot.sideFt = input.sideFt
+      if (input.rearFt !== undefined) lot.rearFt = input.rearFt
+      if (input.easements !== undefined) {
+        const text = input.easements.trim()
+        if (text === '') delete lot.easements
+        else lot.easements = text
+      }
+      store.updateShape(existing.id, { displayHint: { ...(shape?.displayHint ?? {}), lot } })
+      return {
+        frontFt: lot.frontFt ?? null,
+        sideFt: lot.sideFt ?? null,
+        rearFt: lot.rearFt ?? null,
+        easements: lot.easements ?? null,
+      }
+    })
+
+    registerClientHandler<
+      { label?: string; widthFt: number; depthFt: number; xFt: number; yFt: number; rotationDeg?: number },
+      { shapeId: string; label: string }
+    >('site.structure.place', (input) => {
+      const store = useShapesStore.getState()
+      const label = input.label?.trim() || 'House'
+      // Name and rotation at birth, so placing the house is one undo rather
+      // than three.
+      const opts: {
+        stencilId: string
+        width: number
+        height: number
+        name: string
+        rotation?: number
+      } = {
+        stencilId: STRUCTURE_STENCIL,
+        width: input.widthFt * 12,
+        height: input.depthFt * 12,
+        name: label,
+      }
+      if (input.rotationDeg !== undefined) opts.rotation = input.rotationDeg
+      const shapeId = store.addShape(ShapeKind.STENCIL, input.xFt * 12, input.yFt * 12, opts)
+      return { shapeId, label }
+    })
+
+    registerClientHandler<unknown, SiteDescription>('site.describe', () => {
+      const shapes = useShapesStore.getState().shapes
+      const report = siteSetbackReport(shapes)
+      const limits = report.lot?.limits ?? {}
+      return {
+        propertyLine: report.lot
+          ? {
+              shapeId: report.lot.id,
+              widthFt: round1(report.lot.width / 12),
+              depthFt: round1(report.lot.height / 12),
+            }
+          : null,
+        limits: {
+          frontFt: limits.frontFt ?? null,
+          sideFt: limits.sideFt ?? null,
+          rearFt: limits.rearFt ?? null,
+          easements: limits.easements ?? null,
+        },
+        structures: report.structures.map((s) => ({ shapeId: s.id, label: s.label })),
+        setbacks:
+          report.edges?.map((edge) => ({
+            edge: edge.edge,
+            measuredFt: round1(edge.distanceIn / 12),
+            requiredFt: edge.requiredIn === null ? null : round1(edge.requiredIn / 12),
+            compliant: edge.compliant,
+          })) ?? null,
+      }
+    })
 
     // The one read in the registry. Every other command takes an id, so without
     // this the voice agent can add objects forever and never touch one again.

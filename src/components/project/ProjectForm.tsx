@@ -57,6 +57,9 @@ export type ProjectFormInput = {
     status: ProjectStatus
     proposalExpiresAt: string
     internalNotes: string
+    /** Permit facts about the property. Both print in the site plan title block. */
+    jurisdiction: string
+    parcelId: string
     customerName: string
     customerEmail: string
     customerPhone: string
@@ -274,6 +277,23 @@ export function ProjectForm({
             type="date"
             value={form.proposalExpiresAt}
             onChange={(v) => update('proposalExpiresAt', v)}
+          />
+          {/* The site plan's title block printed a dash for both of these,
+              because nothing in the product had ever asked for them. A permit
+              sheet without a jurisdiction and a parcel ID comes back. */}
+          <TextField
+            id="project-jurisdiction"
+            label="Permitting jurisdiction"
+            placeholder="e.g. Hillsborough County, FL"
+            value={form.jurisdiction}
+            onChange={(v) => update('jurisdiction', v)}
+          />
+          <TextField
+            id="project-parcel-id"
+            label="Parcel ID"
+            placeholder="e.g. 0412-3456-7890"
+            value={form.parcelId}
+            onChange={(v) => update('parcelId', v)}
           />
           <TextField
             id="project-internal-notes"

@@ -32,6 +32,8 @@ const initial = {
   status: 'DRAFT' as const,
   proposalExpiresAt: '',
   internalNotes: '',
+  jurisdiction: '',
+  parcelId: '',
   customerName: '',
   customerEmail: '',
   customerPhone: '',
