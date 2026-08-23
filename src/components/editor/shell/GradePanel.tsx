@@ -4,7 +4,7 @@ import { Mountain, Plus, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { dispatch } from '@/lib/commands/dispatch'
-import { cutFillBetween, maxSlope } from '@/modules/editor/grade/model'
+import { cutFillBetween, maxSlope, nextShotPosition } from '@/modules/editor/grade/model'
 import { visibleBounds } from '@/modules/editor/placement'
 import { useGradeStore } from '@/modules/editor/state/gradeStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
@@ -38,13 +38,15 @@ export function GradePanel() {
   const enabled = existing.enabled || finished.enabled
 
   function addPoint() {
-    // Dropped in the middle of the drawing rather than at the origin, which on a
-    // yard drawn away from zero would be off screen.
+    const spot = nextShotPosition(surface.points.length, bounds)
     void dispatch('grade.point.add', {
       surface: editing,
-      xFt: Math.round((bounds.x + bounds.width / 2) / 12),
-      yFt: Math.round((bounds.y + bounds.height / 2) / 12),
-      elevationFt: 0,
+      xFt: Math.round(spot.x / 12),
+      yFt: Math.round(spot.y / 12),
+      // At the datum, which is the benchmark everything on site is shot from.
+      // A new shot at a hardcoded zero meant that on a site benchmarked at 12
+      // feet, pressing Add dropped the ground twelve feet.
+      elevationFt: surface.baseElevationFt,
     })
   }
 

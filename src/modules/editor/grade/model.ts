@@ -70,18 +70,30 @@ export function elevationAt(grade: SiteGrade, x: number, y: number): number {
   let weightedSum = 0
   let weightTotal = 0
 
+  // Standing on a known shot, the answer is that shot rather than a division by
+  // zero. Two shots on one spot is a contradiction in the survey, and taking
+  // whichever was recorded first made the ground jump by the difference between
+  // them one inch away: a cliff at a point nobody could see. Their mean is not
+  // more correct, but it is continuous, and it matches what the surface does
+  // everywhere around them.
+  const onPoint: number[] = []
+
   for (const point of grade.points) {
     const dx = x - point.x
     const dy = y - point.y
     const distanceSquared = dx * dx + dy * dy
 
-    // Standing on a known point: return it exactly rather than dividing by zero.
-    if (distanceSquared < 1e-9) return point.elevationFt
+    if (distanceSquared < 1e-9) {
+      onPoint.push(point.elevationFt)
+      continue
+    }
 
     const weight = 1 / Math.pow(distanceSquared, grade.falloff / 2)
     weightedSum += weight * point.elevationFt
     weightTotal += weight
   }
+
+  if (onPoint.length > 0) return onPoint.reduce((a, b) => a + b, 0) / onPoint.length
 
   return weightedSum / weightTotal
 }
@@ -96,6 +108,42 @@ export interface Bounds {
   y: number
   width: number
   height: number
+}
+
+/** Corners of the site, as fractions of its extent, in the order a person walks it. */
+const CORNERS = [
+  { x: 0, y: 0 },
+  { x: 1, y: 0 },
+  { x: 1, y: 1 },
+  { x: 0, y: 1 },
+] as const
+
+/**
+ * Where the next survey shot goes when the user does not say.
+ *
+ * Every shot used to land in the middle of the drawing, so the second sat
+ * exactly on the first. That is a contradiction in the survey rather than a
+ * shape, and it read as a flat site: a tester added two shots two feet apart
+ * and was told the ground fell one foot at a steepest slope of 0%.
+ *
+ * Corners first, because that is where a laser actually gets pointed, then
+ * spiralling inward so no two shots ever collide however many are taken.
+ */
+export function nextShotPosition(
+  existingCount: number,
+  bounds: Bounds,
+): { x: number; y: number } {
+  const index = Math.max(0, Math.floor(existingCount))
+  const ring = Math.floor(index / CORNERS.length)
+  const corner = CORNERS[index % CORNERS.length] ?? CORNERS[0]
+  // Each ring steps further in than the last and never reaches the middle, so
+  // a shot can always be added without landing on one already taken.
+  const inset = 0.5 * (1 - 1 / (ring + 1.3))
+
+  return {
+    x: bounds.x + bounds.width * (corner.x + (0.5 - corner.x) * inset),
+    y: bounds.y + bounds.height * (corner.y + (0.5 - corner.y) * inset),
+  }
 }
 
 export interface GradeSample {
