@@ -17,6 +17,7 @@ import type { Prisma } from '@prisma/client'
 
 import { db } from '@/lib/db'
 import { emptyDesignIntent } from '@/modules/imports/intent'
+import { nextJobNumber } from '@/modules/projects/job-number'
 import { INTAKE_ANALYSIS_STATUS } from './constants'
 import type { IntakeContact } from './schema'
 import type { ResolvedIntakeLink } from './links'
@@ -86,6 +87,9 @@ export async function landIntakeSubmission(
         name: draftProjectName(contact, now),
         status: 'DRAFT',
         internalNotes: intakeInternalNotes(contact, link, now),
+        // A job number from the moment it lands, so the first thing the builder
+        // can do with a new lead is say its number down the phone.
+        jobNumber: await nextJobNumber(tx, link.orgId),
       },
       select: { id: true },
     })

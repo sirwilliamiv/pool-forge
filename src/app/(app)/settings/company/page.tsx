@@ -2,45 +2,16 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { CompanySettingsForm } from '@/components/settings/CompanySettingsForm'
 import {
-  CompanySettingsForm,
+  parsePaymentSchedule,
   type CompanySettingsInput,
-} from '@/components/settings/CompanySettingsForm'
+} from '@/modules/organization/company'
 
-async function saveCompanyAction(input: CompanySettingsInput) {
-  'use server'
-  const session = await auth()
-  const orgId = session?.user?.orgId
-  if (!session || !orgId) return { ok: false, error: 'Not authenticated' }
-
-  const name = input.name.trim()
-  if (!name) return { ok: false, error: 'Company name is required' }
-
-  const brandColor = input.brandColor.trim()
-  if (brandColor && !/^#[0-9a-fA-F]{3,8}$/.test(brandColor)) {
-    return { ok: false, error: 'Brand color must be a hex value like #0284c7' }
-  }
-
-  const logoUrl = input.logoUrl.trim()
-  if (logoUrl && !/^(https?:\/\/|data:image\/)/.test(logoUrl)) {
-    return { ok: false, error: 'Logo must be an https link or a data:image URL' }
-  }
-
-  const taxRatePct = Number.isFinite(input.taxRatePct)
-    ? Math.min(Math.max(input.taxRatePct, 0), 100)
-    : 0
-
-  await db.organization.update({
-    where: { id: orgId },
-    data: {
-      name,
-      logoUrl: logoUrl || null,
-      brandColor: brandColor || null,
-      taxRatePct,
-    },
-  })
-  return { ok: true }
-}
+// The save goes through `settings.company.update` in the command registry, not
+// through a server action writing Prisma directly. That is what puts a row in
+// `CommandAuditLog` when somebody changes the licence number that prints on a
+// contract.
 
 export default async function CompanySettingsPage() {
   const session = await auth()
@@ -50,7 +21,19 @@ export default async function CompanySettingsPage() {
 
   const org = await db.organization.findUnique({
     where: { id: orgId },
-    select: { name: true, logoUrl: true, brandColor: true, taxRatePct: true },
+    select: {
+      name: true,
+      logoUrl: true,
+      brandColor: true,
+      taxRatePct: true,
+      address: true,
+      phone: true,
+      email: true,
+      licenseNumber: true,
+      proposalTerms: true,
+      proposalValidDays: true,
+      paymentSchedule: true,
+    },
   })
   if (!org) redirect('/login')
 
@@ -59,6 +42,13 @@ export default async function CompanySettingsPage() {
     logoUrl: org.logoUrl ?? '',
     brandColor: org.brandColor ?? '',
     taxRatePct: org.taxRatePct,
+    address: org.address ?? '',
+    phone: org.phone ?? '',
+    email: org.email ?? '',
+    licenseNumber: org.licenseNumber ?? '',
+    proposalTerms: org.proposalTerms ?? '',
+    proposalValidDays: org.proposalValidDays,
+    paymentSchedule: parsePaymentSchedule(org.paymentSchedule),
   }
 
   return (
@@ -71,7 +61,7 @@ export default async function CompanySettingsPage() {
           </Link>
         </p>
       </div>
-      <CompanySettingsForm initial={initial} saveAction={saveCompanyAction} />
+      <CompanySettingsForm initial={initial} />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { ensureJobNumber } from '@/modules/projects/job-number'
 
 type ShareResult = { ok: true; token: string } | { ok: false; error: string }
 
@@ -22,6 +23,11 @@ export async function shareProject(projectId: string): Promise<ShareResult> {
     select: { id: true, shareToken: true },
   })
   if (!project) return { ok: false, error: 'Project not found' }
+
+  // The customer's copy prints the job number, and the share page is public so
+  // it cannot assign one itself. Stamped here, where there is still a session
+  // behind the request, which is the moment the proposal is actually sent.
+  await ensureJobNumber(project.id, orgId)
 
   let token = project.shareToken
   if (!token) {
