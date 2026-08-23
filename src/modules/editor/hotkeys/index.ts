@@ -4,6 +4,16 @@ export interface Hotkey {
   description: string
   /** Optional static input passed to the command; overlaps with `commandId`. */
   input?: unknown
+  /**
+   * Fill the command's input from whatever is selected when the key is pressed.
+   *
+   * Static input cannot express "the thing the user is looking at", and three
+   * entries here tried to anyway: they sent `{}` to commands requiring the
+   * selection, were refused by their own schema, and did nothing at all.
+   */
+  fromSelection?: 'ids' | 'id'
+  /** Fill `projectId` from the route, for commands scoped to one project. */
+  needsProject?: boolean
 }
 
 // Keyboard shortcuts, mapped to commands in the registry.
@@ -41,9 +51,9 @@ export const HOTKEYS: Hotkey[] = [
   { shortcut: 'escape', commandId: 'selection.set', description: 'Deselect', input: { ids: [] } },
 
   // Existing destructive / clipboard / history shortcuts (kept).
-  { shortcut: 'delete', commandId: 'delete.shape', description: 'Delete selection' },
-  { shortcut: 'backspace', commandId: 'delete.shape', description: 'Delete selection' },
-  { shortcut: 'mod+d', commandId: 'duplicate.shape', description: 'Duplicate selection' },
+  { shortcut: 'delete', commandId: 'delete.shape', description: 'Delete selection', fromSelection: 'ids' },
+  { shortcut: 'backspace', commandId: 'delete.shape', description: 'Delete selection', fromSelection: 'ids' },
+  { shortcut: 'mod+d', commandId: 'duplicate.shape', description: 'Duplicate selection', fromSelection: 'id' },
   // These were 'history.undo' and 'history.redo', which are not command ids.
   // Wired as written, the one shortcut everybody reaches for would have
   // dispatched an unknown command and done nothing.
@@ -61,8 +71,8 @@ export const HOTKEYS: Hotkey[] = [
   { shortcut: '0', commandId: 'canvas.fit', description: 'Fit to page' },
 
   // Spec §14 export shortcuts.
-  { shortcut: 'mod+e', commandId: 'export.customerProposal', description: 'Export customer proposal' },
-  { shortcut: 'mod+shift+e', commandId: 'export.constructionPacket', description: 'Export construction packet' },
+  { shortcut: 'mod+e', commandId: 'export.customerProposal', description: 'Export customer proposal', needsProject: true },
+  { shortcut: 'mod+shift+e', commandId: 'export.constructionPacket', description: 'Export construction packet', needsProject: true },
 
   // Command palette open/close is handled inside CommandPalette directly so
   // the modal can manage its own focus state. We register an entry here so the

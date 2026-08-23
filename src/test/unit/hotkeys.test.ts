@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest'
 import { initCommands } from '@/modules/commands/init'
 import { all } from '@/modules/commands/registry'
 import { HOTKEYS } from '@/modules/editor/hotkeys'
-import { shortcutFor } from '@/modules/editor/hotkeys/useHotkeys'
+import { inputFor, shortcutFor } from '@/modules/editor/hotkeys/useHotkeys'
 
 initCommands()
 
@@ -91,5 +91,62 @@ describe('reading a keystroke', () => {
     // this one closes the loop on the shortcut that matters most.
     const spelling = shortcutFor(press({ key: 'z', metaKey: true }))
     expect(HOTKEYS.some(entry => entry.shortcut === spelling)).toBe(true)
+  })
+})
+
+describe('what a shortcut actually sends', () => {
+  // The table was checked for naming real commands and nothing else, so three
+  // entries that named a real command and sent it input it rejects passed for
+  // as long as they existed. Delete, Backspace and Cmd+D each dispatched `{}`
+  // into a schema requiring the selection, failed validation, and did nothing.
+  //
+  // A tester found it the way a user would: "nothing can be deleted", after
+  // stacking three pools on top of each other and abandoning the drawing.
+  it('sends every command input that command accepts', () => {
+    const rejected: string[] = []
+
+    for (const entry of HOTKEYS) {
+      const command = all().find(c => c.id === entry.commandId)
+      if (!command) continue
+
+      const input = inputFor(entry, { selectedIds: ['shape-1'], projectId: 'project-1' })
+      expect(input, `${entry.shortcut} produced no input at all`).not.toBeNull()
+
+      const parsed = command.inputSchema.safeParse(input)
+      if (!parsed.success) {
+        rejected.push(`${entry.shortcut} -> ${entry.commandId}: ${parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')}`)
+      }
+    }
+
+    expect(rejected, `shortcuts whose input their command refuses:\n${rejected.join('\n')}`).toEqual([])
+  })
+})
+
+describe('a shortcut with nothing to act on', () => {
+  // Delete on an empty canvas is not a mistake and must not be reported as
+  // one. Sending `{ ids: [] }` would fail the command's own `min(1)` and put a
+  // validation error in front of a user who pressed a key with nothing
+  // selected.
+  it('sends nothing rather than sending something invalid', () => {
+    const del = HOTKEYS.find(entry => entry.shortcut === 'delete')
+    expect(del).toBeDefined()
+    expect(inputFor(del!, { selectedIds: [] })).toBeNull()
+
+    const dup = HOTKEYS.find(entry => entry.shortcut === 'mod+d')
+    expect(inputFor(dup!, { selectedIds: [] })).toBeNull()
+  })
+
+  it('takes one shape for duplicate and every shape for delete', () => {
+    const del = HOTKEYS.find(entry => entry.shortcut === 'backspace')!
+    expect(inputFor(del, { selectedIds: ['a', 'b'] })).toEqual({ ids: ['a', 'b'] })
+
+    const dup = HOTKEYS.find(entry => entry.shortcut === 'mod+d')!
+    expect(inputFor(dup, { selectedIds: ['a', 'b'] })).toEqual({ id: 'a' })
+  })
+
+  it('will not export without a project', () => {
+    const exp = HOTKEYS.find(entry => entry.shortcut === 'mod+e')!
+    expect(inputFor(exp, { selectedIds: [] })).toBeNull()
+    expect(inputFor(exp, { selectedIds: [], projectId: 'p1' })).toEqual({ projectId: 'p1' })
   })
 })

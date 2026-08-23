@@ -1,10 +1,12 @@
 'use client'
 
+import { useParams } from 'next/navigation'
 import { useEffect } from 'react'
 
 import { dispatch } from '@/lib/commands/dispatch'
+import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 
-import { HOTKEYS } from './index'
+import { HOTKEYS, type Hotkey } from './index'
 
 // The listener that makes the shortcut table real.
 //
@@ -48,7 +50,36 @@ export function shortcutFor(event: KeyboardEvent): string {
   return parts.join('+')
 }
 
+/**
+ * The input a shortcut sends, or null when there is nothing to send it about.
+ *
+ * Null is an ordinary answer: Delete with an empty canvas has nothing to
+ * delete. It is not an error and must not reach the command, which would
+ * report a validation failure at a user who did nothing wrong.
+ */
+export function inputFor(
+  hotkey: Hotkey,
+  context: { selectedIds: string[]; projectId?: string | undefined },
+): Record<string, unknown> | null {
+  if (hotkey.fromSelection === 'ids') {
+    return context.selectedIds.length > 0 ? { ids: context.selectedIds } : null
+  }
+  if (hotkey.fromSelection === 'id') {
+    // One shape, because duplicate takes one. The first selected is the one the
+    // user reached for first.
+    const first = context.selectedIds[0]
+    return first ? { id: first } : null
+  }
+  if (hotkey.needsProject) {
+    return context.projectId ? { projectId: context.projectId } : null
+  }
+  return (hotkey.input as Record<string, unknown> | undefined) ?? {}
+}
+
 export function useHotkeys(enabled = true): void {
+  const params = useParams<{ id?: string }>()
+  const projectId = typeof params?.id === 'string' ? params.id : undefined
+
   useEffect(() => {
     if (!enabled) return
 
@@ -62,12 +93,21 @@ export function useHotkeys(enabled = true): void {
       if (!hotkey) return
 
       // Only once a shortcut is known to be ours, so an unbound key still does
-      // whatever the browser would normally do with it.
+      // whatever the browser would normally do with it. Backspace in
+      // particular navigates back in some browsers, which on a drawing is
+      // worse than the delete the user asked for.
       event.preventDefault()
-      void dispatch(hotkey.commandId, hotkey.input ?? {})
+
+      const input = inputFor(hotkey, {
+        selectedIds: useSelectionStore.getState().selectedIds,
+        projectId,
+      })
+      if (!input) return
+
+      void dispatch(hotkey.commandId, input)
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [enabled])
+  }, [enabled, projectId])
 }
