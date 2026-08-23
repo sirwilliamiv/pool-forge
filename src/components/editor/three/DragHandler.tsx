@@ -4,15 +4,17 @@ import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { dispatch } from '@/lib/commands/dispatch'
-import { inches } from '@/lib/three/units'
 import { pickShapeId } from '@/lib/three/pick'
+import { clientToNdc } from '@/modules/editor/interactions/pointer'
+import {
+  canDragShape,
+  dragTranslation,
+  isNoOpMove,
+  passesDragThreshold,
+} from '@/modules/editor/interactions/drag'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
-
-const DRAG_THRESHOLD_PX = 4
-// Snap increment for drag-move when snapping is enabled (inches; 0.5 ft).
-const SNAP_INCHES = 6
 
 export function DragHandler() {
   const { gl, camera, scene } = useThree()
@@ -41,9 +43,9 @@ export function DragHandler() {
     let drag: DragState | null = null
 
     function projectToGround(clientX: number, clientY: number): THREE.Vector3 | null {
-      const rect = dom.getBoundingClientRect()
-      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1
-      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1
+      const screen = clientToNdc(clientX, clientY, dom.getBoundingClientRect())
+      if (!screen) return null
+      ndc.set(screen.x, screen.y)
       raycaster.setFromCamera(ndc, camera)
       const ok = raycaster.ray.intersectPlane(groundPlane, hitPoint)
       if (!ok) return null
@@ -54,19 +56,21 @@ export function DragHandler() {
       // Only left button.
       if (e.button !== 0) return
 
-      // Only when select tool is active.
-      const tool = useEditorStore.getState().activeTool
-      if (tool !== 'tool.select' && tool !== 'select') return
-
       const id = pickShapeId(raycaster, camera, scene, dom, e.clientX, e.clientY)
       if (!id) return
 
-      const selected = useSelectionStore.getState().selectedIds
-      if (!selected.includes(id)) return
-
       const shape = useShapesStore.getState().shapes.find((s) => s.id === id)
-      if (!shape) return
-      if (shape.locked) return
+      // Right tool, already selected, not locked, not hidden.
+      if (
+        !canDragShape({
+          activeTool: useEditorStore.getState().activeTool,
+          shape: shape ?? null,
+          selectedIds: useSelectionStore.getState().selectedIds,
+        }) ||
+        !shape
+      ) {
+        return
+      }
 
       const ground = projectToGround(e.clientX, e.clientY)
       if (!ground) return
@@ -95,8 +99,10 @@ export function DragHandler() {
       // Threshold: don't start moving until we exceed 4px.
       if (!drag.moved) {
         if (
-          Math.abs(e.clientX - drag.startClientX) <= DRAG_THRESHOLD_PX &&
-          Math.abs(e.clientY - drag.startClientY) <= DRAG_THRESHOLD_PX
+          !passesDragThreshold(
+            { x: drag.startClientX, y: drag.startClientY },
+            { x: e.clientX, y: e.clientY },
+          )
         ) {
           return
         }
@@ -111,13 +117,15 @@ export function DragHandler() {
       const ground = projectToGround(e.clientX, e.clientY)
       if (!ground) return
 
-      const dxFeet = ground.x - drag.startGroundX
-      const dzFeet = ground.z - drag.startGroundZ
-      const rawX = drag.startShapeX + inches(dxFeet)
-      const rawY = drag.startShapeY + inches(dzFeet)
-      const snapOn = useEditorStore.getState().snapEnabled
-      const newX = snapOn ? Math.round(rawX / SNAP_INCHES) * SNAP_INCHES : rawX
-      const newY = snapOn ? Math.round(rawY / SNAP_INCHES) * SNAP_INCHES : rawY
+      const { x: newX, y: newY } = dragTranslation({
+        startGroundX: drag.startGroundX,
+        startGroundZ: drag.startGroundZ,
+        groundX: ground.x,
+        groundZ: ground.z,
+        startShapeX: drag.startShapeX,
+        startShapeY: drag.startShapeY,
+        snap: useEditorStore.getState().snapEnabled,
+      })
 
       drag.lastX = newX
       drag.lastY = newY
@@ -139,9 +147,20 @@ export function DragHandler() {
 
       if (!finished.moved) return
 
-      // Stop the click from also reaching SelectionPicker as a "click" — its
-      // pointerup uses a 4px threshold, so a real drag won't register as a
-      // click anyway.
+      // A drag that ends where it started is not a move. Committing it would
+      // write a history entry and an audit row for nothing, so the user's next
+      // undo would appear to do nothing at all.
+      if (
+        isNoOpMove(
+          { x: finished.startShapeX, y: finished.startShapeY },
+          { x: finished.lastX, y: finished.lastY },
+        )
+      ) {
+        return
+      }
+
+      // SelectionPicker's own pointerup uses the same 4px slop, so a real drag
+      // never registers there as a click.
       void dispatch('move.shape', {
         id: finished.id,
         x: finished.lastX,

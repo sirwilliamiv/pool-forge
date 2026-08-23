@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 
+import { clientToNdc } from '@/modules/editor/interactions/pointer'
+
 const _ndc = new THREE.Vector2()
 
 /**
@@ -16,11 +18,11 @@ export function pickShapeId(
   clientX: number,
   clientY: number,
 ): string | null {
-  const rect = dom.getBoundingClientRect()
-  _ndc.set(
-    ((clientX - rect.left) / rect.width) * 2 - 1,
-    -((clientY - rect.top) / rect.height) * 2 + 1,
-  )
+  const screen = clientToNdc(clientX, clientY, dom.getBoundingClientRect())
+  // A canvas with no width (collapsed panel, pre-layout) can hold nothing to
+  // pick, and the raw conversion would hand the raycaster a NaN ray.
+  if (!screen) return null
+  _ndc.set(screen.x, screen.y)
   raycaster.setFromCamera(_ndc, camera)
   const hits = raycaster.intersectObjects(scene.children, true)
   for (const hit of hits) {

@@ -118,6 +118,25 @@ describe('voice tool surface', () => {
     expect(isDestructive('set.pool.length')).toBe(false)
   })
 
+  it('gates a click on a button whose words mean something is lost', () => {
+    // page.click presses whatever a page renders, so the id says nothing about
+    // what it does. The label is the only signal there is, and without this a
+    // model wrote its own confirm: true and deleted a project on one sentence.
+    expect(isDestructive('page.click', { label: 'Delete project' })).toBe(true)
+    expect(isDestructive('page.click', { label: 'Archive' })).toBe(true)
+    expect(isDestructive('page.click', { label: 'Save' })).toBe(false)
+    expect(isDestructive('page.click', { label: 'Create project' })).toBe(false)
+  })
+
+  it('gates clearing the sheet but not deleting one thing', () => {
+    // Removing a pool and two loungers is an edit; clearing a yard is not.
+    // Asked to clear the whole thing, the agent removed four objects without
+    // pausing, and undo is a poor answer once the user has moved on.
+    expect(isDestructive('delete.shape', { ids: ['a'] })).toBe(false)
+    expect(isDestructive('delete.shape', { ids: ['a', 'b'] })).toBe(false)
+    expect(isDestructive('delete.shape', { ids: ['a', 'b', 'c', 'd'] })).toBe(true)
+  })
+
   it('does not gate what undo can bring back', () => {
     // The test is "can the user get it back", not "does it sound alarming".
     // Confirming a shape delete costs the agent the ability to correct its own

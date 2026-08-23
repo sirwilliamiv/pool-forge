@@ -8,18 +8,17 @@ import { dispatch } from '@/lib/commands/dispatch'
 import { inches } from '@/lib/three/units'
 import { pickShapeId } from '@/lib/three/pick'
 import { useEditorStore, type Vec3 } from '@/modules/editor/state/editorStore'
+import {
+  ANNOTATION_STENCIL,
+  nextMeasurePoints,
+  stencilForTool,
+} from '@/modules/editor/interactions/gestures'
+import { clientToNdc, isClick } from '@/modules/editor/interactions/pointer'
+import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
 import { MeasureLabelOverlay } from '../shell/MeasureLabelOverlay'
 import { AnnotationDialog } from '../shell/AnnotationDialog'
 
 const GROUND_Y = 0
-
-const ADD_TOOL_STENCIL: Record<string, string> = {
-  'tool.pool-shape': 'pool.rectangle',
-  'tool.steps': 'pool.corner-steps',
-  'tool.water-feature': 'water.waterfall',
-  'tool.lights': 'feature.light',
-  'tool.deck': 'deck.concrete',
-}
 
 function intersectGround(
   e: PointerEvent,
@@ -27,12 +26,9 @@ function intersectGround(
   camera: THREE.Camera,
   raycaster: THREE.Raycaster,
 ): THREE.Vector3 | null {
-  const rect = el.getBoundingClientRect()
-  const ndc = new THREE.Vector2(
-    ((e.clientX - rect.left) / rect.width) * 2 - 1,
-    -((e.clientY - rect.top) / rect.height) * 2 + 1,
-  )
-  raycaster.setFromCamera(ndc, camera)
+  const screen = clientToNdc(e.clientX, e.clientY, el.getBoundingClientRect())
+  if (!screen) return null
+  raycaster.setFromCamera(new THREE.Vector2(screen.x, screen.y), camera)
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -GROUND_Y)
   const hit = new THREE.Vector3()
   if (!raycaster.ray.intersectPlane(plane, hit)) return null
@@ -63,30 +59,32 @@ export function ToolGestures() {
 
     function onPointerMove(e: PointerEvent) {
       // Track for measure preview line; cheap raycast on every move
-      const tool = useEditorStore.getState().activeTool
+      const tool = normalizeToolId(useEditorStore.getState().activeTool)
       if (tool !== 'tool.measure') return
       const hit = intersectGround(e, el, camera, raycaster)
       if (hit) pointerWorldRef.current = [hit.x, hit.y, hit.z]
     }
 
     function onPointerUp(e: PointerEvent) {
+      // Releasing a non-primary button ends an orbit or a pan, never a
+      // placement: a right-click while the deck tool was armed used to drop a
+      // deck.
+      if (e.button !== 0) return
       const down = downRef.current
       downRef.current = null
-      if (!down) return
-      const dx = Math.abs(e.clientX - down.x)
-      const dy = Math.abs(e.clientY - down.y)
-      if (dx > 4 || dy > 4) return // drag, not a click — defer to orbit/selection
+      // A release more than 4px from the press was a camera drag, not a click.
+      // Note this is also why drag-to-draw places nothing: the gesture is read
+      // as an orbit and abandoned without a word to the user.
+      if (!isClick(down, { x: e.clientX, y: e.clientY })) return
 
-      const tool = useEditorStore.getState().activeTool
+      const tool = normalizeToolId(useEditorStore.getState().activeTool)
 
       // Add-* tools: place a stencil at click point, then return to select.
       // For 'tool.pool-shape', the active stencil id comes from PoolShapePicker.
-      let stencilId: string | undefined
-      if (tool === 'tool.pool-shape') {
-        stencilId = useEditorStore.getState().activeStencilId ?? 'pool.rectangle'
-      } else {
-        stencilId = ADD_TOOL_STENCIL[tool]
-      }
+      const stencilId = stencilForTool(
+        tool,
+        useEditorStore.getState().activeStencilId,
+      )
       if (stencilId) {
         const hit = intersectGround(e, el, camera, raycaster)
         if (!hit) return
@@ -123,18 +121,10 @@ export function ToolGestures() {
         const hit = intersectGround(e, el, camera, raycaster)
         if (!hit) return
         const p: Vec3 = [hit.x, hit.y, hit.z]
-        const a = useEditorStore.getState().measureA
-        const b = useEditorStore.getState().measureB
-        if (!a) {
-          useEditorStore.getState().setMeasureA(p)
-          useEditorStore.getState().setMeasureB(null)
-        } else if (!b) {
-          useEditorStore.getState().setMeasureB(p)
-        } else {
-          // Restart on third click
-          useEditorStore.getState().setMeasureA(p)
-          useEditorStore.getState().setMeasureB(null)
-        }
+        const store = useEditorStore.getState()
+        const next = nextMeasurePoints({ a: store.measureA, b: store.measureB }, p)
+        store.setMeasureA(next.a)
+        store.setMeasureB(next.b)
         return
       }
 
@@ -155,7 +145,7 @@ export function ToolGestures() {
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        const tool = useEditorStore.getState().activeTool
+        const tool = normalizeToolId(useEditorStore.getState().activeTool)
         if (tool === 'tool.measure') {
           useEditorStore.getState().clearMeasure()
         }
@@ -204,7 +194,7 @@ export function ToolGestures() {
         <AnnotationDialog
           onSave={(text) => {
             void dispatch('add.shape', {
-              stencilId: 'feature.deep-end-marker',
+              stencilId: ANNOTATION_STENCIL,
               x: inches(pendingAnnotation.worldX),
               y: inches(pendingAnnotation.worldZ),
               displayHint: { text },

@@ -12,6 +12,8 @@ import {
   type VoiceToolCallEvent,
 } from '../bridge'
 import type { VoiceScreen } from '../scope'
+import type { DestructiveRequest } from '@/components/voice/DestructiveConfirm'
+import { isDestructive } from '../tools'
 import { startCapture, VoicePlayback, type CaptureHandle } from './audio'
 import { createWebSocketBridge, relayUrl } from './wsBridge'
 
@@ -33,6 +35,14 @@ export interface TranscriptLine {
 
 export interface UseVoiceSession {
   status: VoiceStatus
+  /**
+   * Set while a destructive action waits on the user.
+   *
+   * Null the rest of the time. The dock renders a dialog from it and answers
+   * through `decide`, which is what unblocks the command.
+   */
+  pendingConfirm: DestructiveRequest | null
+  decide: (allowed: boolean) => void
   /** Safe to display. Never provider text. */
   error: string | null
   transcript: TranscriptLine[]
@@ -60,6 +70,36 @@ export function useVoiceSession(
   const [status, setStatus] = useState<VoiceStatus>('unavailable')
   const [error, setError] = useState<string | null>(null)
   const [transcript, setTranscript] = useState<TranscriptLine[]>([])
+  const [pendingConfirm, setPendingConfirm] = useState<DestructiveRequest | null>(null)
+
+  /** Resolves when the user answers the dialog. */
+  const decision = useRef<((allowed: boolean) => void) | null>(null)
+  /** Off means fall back to the spoken gate; on is the default and the safe one. */
+  const confirmDestructive = useRef(true)
+
+  const decide = useCallback((allowed: boolean) => {
+    setPendingConfirm(null)
+    const resolve = decision.current
+    decision.current = null
+    resolve?.(allowed)
+  }, [])
+
+  /**
+   * Ask the user, and wait.
+   *
+   * The promise is what makes this a gate rather than a notification: the tool
+   * call does not resolve until somebody clicks, so the model cannot proceed on
+   * the assumption that it will be allowed.
+   */
+  const askUser = useCallback((request: DestructiveRequest): Promise<boolean> => {
+    return new Promise<boolean>(resolve => {
+      // A second request while one is open cancels the first rather than
+      // queueing it. Two stacked dialogs is how somebody confirms the wrong one.
+      decision.current?.(false)
+      decision.current = resolve
+      setPendingConfirm(request)
+    })
+  }, [])
 
   useEffect(() => {
     // The desktop build exposes a bridge on `window`; the web build reaches the
@@ -194,7 +234,9 @@ export function useVoiceSession(
 
     let surfaces: Record<VoiceScreen, SerializedScope>
     try {
-      surfaces = await fetchSurfaces()
+      const loaded = await fetchSurfaces()
+      surfaces = loaded.surfaces
+      confirmDestructive.current = loaded.settings.confirmDestructive
     } catch {
       await teardown()
       await releaseBudget()
@@ -217,7 +259,10 @@ export function useVoiceSession(
         setError(reason)
       }),
       current.onToolCall(event => {
-        void runToolCall(current, event, projectId)
+        void runToolCall(current, event, projectId, {
+          enabled: () => confirmDestructive.current,
+          ask: askUser,
+        })
       }),
     ]
 
@@ -235,7 +280,7 @@ export function useVoiceSession(
     }
 
     setStatus('live')
-  }, [addLine, projectId, projectName, releaseBudget, screen, status, teardown])
+  }, [addLine, askUser, projectId, projectName, releaseBudget, screen, status, teardown])
 
   // Moving between screens swaps what the agent can do, and moving between
   // projects swaps what it is talking about. Both without ending the call.
@@ -256,7 +301,13 @@ export function useVoiceSession(
     }
   }, [releaseBudget, teardown])
 
-  return { status, error, transcript, start, stop }
+  return { status, error, transcript, start, stop, pendingConfirm, decide }
+}
+
+/** How the dialog is reached from a tool call. */
+export interface ConfirmGate {
+  enabled: () => boolean
+  ask: (request: DestructiveRequest) => Promise<boolean>
 }
 
 /**
@@ -270,8 +321,29 @@ async function runToolCall(
   bridge: VoiceBridge,
   event: VoiceToolCallEvent,
   projectId: string | undefined,
+  gate: ConfirmGate,
 ): Promise<void> {
   try {
+    // The last gate before anything is removed, and the only one the model
+    // cannot write itself. The spoken confirmation is the agent deciding the
+    // user agreed, from audio it may have misheard; this is the user.
+    if (gate.enabled() && isDestructive(event.commandId, event.args)) {
+      const allowed = await gate.ask({
+        commandId: event.commandId,
+        summary: describeDestructive(event.commandId, event.args),
+      })
+      if (!allowed) {
+        bridge.respond({
+          requestId: event.requestId,
+          outcome: {
+            ok: false,
+            summary: 'The user cancelled it. Do not try again unless they ask.',
+          },
+        })
+        return
+      }
+    }
+
     // Labelled VOICE so the audit log can answer "what did the agent actually
     // do, and did it work" — which is the whole basis of evaluating it.
     const result = await dispatch(event.commandId, withProjectId(event.args, projectId), 'VOICE')
@@ -364,12 +436,47 @@ async function fetchTicket(
   return body.ticket
 }
 
-async function fetchSurfaces(): Promise<Record<VoiceScreen, SerializedScope>> {
+/**
+ * What the dialog says is about to happen.
+ *
+ * Named rather than generic: "are you sure?" is a question nobody can answer,
+ * and the whole reason this dialog exists is that the user was never told what
+ * was going.
+ */
+function describeDestructive(commandId: string, args: unknown): string {
+  const record = args && typeof args === 'object' ? (args as Record<string, unknown>) : {}
+
+  if (commandId === 'page.click' && typeof record['label'] === 'string') {
+    return `Press "${record['label']}" on this page. Whatever that removes cannot be brought back with undo.`
+  }
+  if (commandId === 'delete.shape' && Array.isArray(record['ids'])) {
+    const count = record['ids'].length
+    return `Remove ${count} object${count === 1 ? '' : 's'} from the drawing.`
+  }
+  if (commandId === 'template.scene.apply') {
+    return 'Replace everything on this sheet with a saved scene.'
+  }
+  if (commandId === 'import.intent.apply') {
+    return 'Write the imported design into this project, replacing what is there.'
+  }
+  return `Run ${commandId}, which removes or replaces work that cannot be recovered.`
+}
+
+async function fetchSurfaces(): Promise<{
+  surfaces: Record<VoiceScreen, SerializedScope>
+  settings: { confirmDestructive: boolean }
+}> {
   const response = await fetch('/api/voice/surfaces', { cache: 'no-store' })
   const body = (await response.json()) as {
     ok?: boolean
     surfaces?: Record<VoiceScreen, SerializedScope>
+    settings?: { confirmDestructive?: boolean }
   }
   if (!response.ok || !body.ok || !body.surfaces) throw new Error('surfaces unavailable')
-  return body.surfaces
+  return {
+    surfaces: body.surfaces,
+    // Absent means on. A settings read that half worked must not be the thing
+    // that turns the confirmation off.
+    settings: { confirmDestructive: body.settings?.confirmDestructive !== false },
+  }
 }

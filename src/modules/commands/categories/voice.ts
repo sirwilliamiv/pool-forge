@@ -51,3 +51,31 @@ register({
     return { ok: true, data: { seconds } }
   },
 })
+
+register({
+  id: 'settings.voice.set',
+  label: 'Change voice safety settings',
+  description:
+    'Turn the confirmation dialog for destructive voice actions on or off for this organization.',
+  category: 'settings',
+  inputSchema: z.object({ confirmDestructive: z.boolean() }),
+  outputSchema: z.object({ confirmDestructive: z.boolean() }),
+  // No voiceExamples, which the converter treats as a refusal, so the agent is
+  // never offered this. A safety gate the agent can switch off is not a gate,
+  // and "stop asking me to confirm" is exactly the sentence a misheard
+  // conversation would produce.
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+
+    const { db } = await import('@/lib/db')
+    const { VOICE_SETTINGS_KEY } = await import('@/modules/voice/settings')
+
+    await db.appSetting.upsert({
+      where: { orgId_key: { orgId: ctx.orgId, key: VOICE_SETTINGS_KEY } },
+      create: { orgId: ctx.orgId, key: VOICE_SETTINGS_KEY, value: { confirmDestructive: input.confirmDestructive } },
+      update: { value: { confirmDestructive: input.confirmDestructive } },
+    })
+
+    return { ok: true, data: { confirmDestructive: input.confirmDestructive } }
+  },
+})

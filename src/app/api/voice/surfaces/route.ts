@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 
 import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
 import { initCommands } from '@/modules/commands/init'
 import type { SerializedScope } from '@/modules/voice/bridge'
 import { voiceEnabled } from '@/modules/voice/config'
 import { scopeFor, VOICE_SCREENS, type VoiceScreen } from '@/modules/voice/scope'
+import { parseVoiceSettings, VOICE_SETTINGS_KEY } from '@/modules/voice/settings'
 
 // The tool surfaces, computed once per screen and handed to the client.
 //
@@ -41,8 +43,15 @@ export async function GET(): Promise<Response> {
   // spoken surface is otherwise invisible until a user asks for it.
   if (refused > 0) console.warn(`[voice] ${refused} command(s) have no spoken form`)
 
+  // Sent with the surfaces because both are read once at session start, and a
+  // second round trip is a window in which the confirmation setting is unknown.
+  const stored = await db.appSetting.findUnique({
+    where: { orgId_key: { orgId: session.user.orgId ?? '', key: VOICE_SETTINGS_KEY } },
+    select: { value: true },
+  })
+
   return NextResponse.json(
-    { ok: true, surfaces },
+    { ok: true, surfaces, settings: parseVoiceSettings(stored?.value) },
     { headers: { 'Cache-Control': 'no-store' } },
   )
 }

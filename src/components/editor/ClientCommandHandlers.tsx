@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { registerClientHandler, unregisterClientHandler } from '@/lib/commands/dispatch'
 import { useCameraStore } from '@/modules/editor/state/cameraStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
+import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { cutFillBetween, maxSlope, type SiteGrade } from '@/modules/editor/grade/model'
 import { useGradeStore } from '@/modules/editor/state/gradeStore'
@@ -230,6 +231,12 @@ export function ClientCommandHandlers() {
     registerClientHandler<{ ids: string[]; additive?: boolean }, { selectedIds: string[] }>(
       'select.shape',
       (input) => {
+        const present = new Set(useShapesStore.getState().shapes.map((s) => s.id))
+        const missing = input.ids.filter((id) => !present.has(id))
+        if (missing.length > 0) {
+          throw new Error(`Nothing on the canvas matches ${missing.join(', ')}.`)
+        }
+
         if (input.additive) {
           const cur = useSelectionStore.getState().selectedIds
           const merged = Array.from(new Set([...cur, ...input.ids]))
@@ -463,6 +470,15 @@ export function ClientCommandHandlers() {
     registerClientHandler<{ ids: string[] }, { selectedIds: string[] }>(
       'selection.set',
       (input) => {
+        // Ids are checked before they are stored. Selecting something that is
+        // not there leaves the inspector blank and points the next "resize the
+        // selected one" at a shape that does not exist.
+        const present = new Set(useShapesStore.getState().shapes.map((s) => s.id))
+        const missing = input.ids.filter((id) => !present.has(id))
+        if (missing.length > 0) {
+          throw new Error(`Nothing on the canvas matches ${missing.join(', ')}.`)
+        }
+
         if (input.ids.length === 0) useSelectionStore.getState().clear()
         else useSelectionStore.getState().selectMany(input.ids)
         return { selectedIds: input.ids }
@@ -592,11 +608,13 @@ export function ClientCommandHandlers() {
       { surface: 'existing' | 'finished'; pointId: string; xFt?: number; yFt?: number; elevationFt?: number; label?: string },
       { pointId: string }
     >('grade.point.update', (input) => {
+      // Checked before the surface is switched. Flipping first meant a refused
+      // command still moved the panel to a surface the user was not editing.
       const store = useGradeStore.getState()
-      store.setEditing(input.surface)
       if (!store[input.surface].points.some((p) => p.id === input.pointId)) {
         throw new Error(`There is no elevation with id ${input.pointId} on the ${input.surface} ground.`)
       }
+      store.setEditing(input.surface)
       const patch: Record<string, unknown> = {}
       if (input.xFt !== undefined) patch.x = input.xFt * 12
       if (input.yFt !== undefined) patch.y = input.yFt * 12
@@ -610,10 +628,10 @@ export function ClientCommandHandlers() {
       'grade.point.remove',
       (input) => {
         const store = useGradeStore.getState()
-        store.setEditing(input.surface)
         if (!store[input.surface].points.some((p) => p.id === input.pointId)) {
           throw new Error(`There is no elevation with id ${input.pointId} to remove.`)
         }
+        store.setEditing(input.surface)
         useGradeStore.getState().removePoint(input.pointId)
         return { pointId: input.pointId }
       },
@@ -750,8 +768,11 @@ export function ClientCommandHandlers() {
     })
 
     registerClientHandler<{ tool: string }, { tool: string }>('tool.activate', (input) => {
-      useEditorStore.getState().setActiveTool(input.tool)
-      return { tool: input.tool }
+      // Report the id that ended up active, not the alias the caller typed, so
+      // the audit row and the voice agent's reply agree with the Toolbar.
+      const tool = normalizeToolId(input.tool)
+      useEditorStore.getState().setActiveTool(tool)
+      return { tool }
     })
 
     // ---------- scene ----------

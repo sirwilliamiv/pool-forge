@@ -2,6 +2,8 @@
 
 import { create } from 'zustand'
 
+import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
+
 export type ToolMode = 'select' | 'pan' | 'draw'
 
 export type Vec3 = [number, number, number]
@@ -55,7 +57,14 @@ export const useEditorStore = create<EditorState>()((set) => ({
   measureA: null,
   measureB: null,
 
-  setActiveTool: (toolId) => set({ activeTool: toolId, measureA: null, measureB: null }),
+  // Normalized on the way in. The hotkey table sends bare names ('move',
+  // 'steps', 'measure') while the Toolbar sends prefixed ids, and every reader
+  // (ToolGestures, DragHandler, the Toolbar's active highlight) matches on the
+  // prefixed form. Storing the raw value made every keyboard tool shortcut a
+  // no-op: pressing M armed 'measure', which nothing recognised, so clicking
+  // the canvas measured nothing and reported nothing.
+  setActiveTool: (toolId) =>
+    set({ activeTool: normalizeToolId(toolId), measureA: null, measureB: null }),
   setActiveMaterial: (materialId) => set({ activeMaterialId: materialId }),
   setActiveStencil: (stencilId) => set({ activeStencilId: stencilId }),
   setMode: (mode) => set({ mode }),

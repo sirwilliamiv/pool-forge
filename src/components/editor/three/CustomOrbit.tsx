@@ -3,72 +3,34 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
+import { useCameraStore } from '@/modules/editor/state/cameraStore'
 import {
-  useCameraStore,
-  type CameraView,
-} from '@/modules/editor/state/cameraStore'
-
-interface SphericalState {
-  azimuth: number
-  polar: number
-  distance: number
-}
-
-const POLAR_MIN = 0.01
-const POLAR_MAX = Math.PI / 2 - 0.01
-const TRANSITION_MS = 300
-const ROTATE_SPEED = 0.005
-const PAN_SPEED_FACTOR = 0.0015
-const ZOOM_FACTOR = 0.001
-const MIN_DISTANCE = 5
-const MAX_DISTANCE = 300
-const ORTHO_ZOOM_MIN = 2
-const ORTHO_ZOOM_MAX = 400
-// World-units-per-wheel-tick at zoom=1 (ortho) or distance=MIN_DISTANCE (perspective).
-const WHEEL_PAN_FACTOR = 0.05
-
-const ISO_DEFAULT: SphericalState = { azimuth: -0.756, polar: 0.92, distance: 65.9 }
-
-const VIEW_POSES: Record<
-  CameraView,
-  { spherical: SphericalState; target: [number, number, number] }
-> = {
-  iso: { spherical: { ...ISO_DEFAULT }, target: [0, -1, 0] },
-  top: { spherical: { azimuth: 0, polar: 0.05, distance: 60 }, target: [0, 0, 0] },
-  front: {
-    spherical: { azimuth: 0, polar: POLAR_MAX, distance: 50 },
-    target: [0, 0, 0],
-  },
-  left: {
-    spherical: { azimuth: -Math.PI / 2, polar: POLAR_MAX, distance: 50 },
-    target: [0, 0, 0],
-  },
-  right: {
-    spherical: { azimuth: Math.PI / 2, polar: POLAR_MAX, distance: 50 },
-    target: [0, 0, 0],
-  },
-}
+  ISO_DEFAULT,
+  TRANSITION_MS,
+  VIEW_POSES,
+  WHEEL_PAN_FACTOR,
+  lerpSpherical,
+  orthoPanSpeed,
+  perspectivePanSpeed,
+  poseToSpherical,
+  resolveDragMode,
+  rotateSpherical,
+  sphericalToPosition,
+  transitionEase,
+  zoomDistance,
+  zoomOrthoLevel,
+  type SphericalState,
+} from '@/modules/editor/interactions/orbit'
 
 function applyToCamera(
   camera: THREE.Camera,
   sph: SphericalState,
   target: THREE.Vector3,
 ) {
-  const sinPolar = Math.sin(sph.polar)
-  const cosPolar = Math.cos(sph.polar)
-  const sinAz = Math.sin(sph.azimuth)
-  const cosAz = Math.cos(sph.azimuth)
-  camera.position.set(
-    target.x + sph.distance * sinPolar * cosAz,
-    target.y + sph.distance * cosPolar,
-    target.z + sph.distance * sinPolar * sinAz,
-  )
+  const [x, y, z] = sphericalToPosition(sph, [target.x, target.y, target.z])
+  camera.position.set(x, y, z)
   camera.lookAt(target)
   camera.updateMatrixWorld()
-}
-
-function easeInOutQuad(u: number): number {
-  return u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2
 }
 
 interface Transition {
@@ -115,16 +77,10 @@ export function CustomOrbit() {
     }
     if (framePose && frameTarget) {
       // Convert cartesian framePose (relative to frameTarget) into spherical.
-      const dx = framePose[0] - frameTarget[0]
-      const dy = framePose[1] - frameTarget[1]
-      const dz = framePose[2] - frameTarget[2]
-      const distance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, Math.hypot(dx, dy, dz)))
-      const polar = Math.max(POLAR_MIN, Math.min(POLAR_MAX, Math.acos(dy / distance || 1)))
-      const azimuth = Math.atan2(dz, dx)
       transitionRef.current = {
         startTime: performance.now(),
         startSph: { ...sphRef.current },
-        endSph: { azimuth, polar, distance },
+        endSph: poseToSpherical(framePose, frameTarget),
         startTarget: targetRef.current.clone(),
         endTarget: new THREE.Vector3(...frameTarget),
       }
@@ -138,15 +94,10 @@ export function CustomOrbit() {
     let lastY = 0
 
     const onPointerDown = (e: PointerEvent) => {
-      const isOrtho = camera instanceof THREE.OrthographicCamera
-      if (e.button === 2 || e.shiftKey || isOrtho) {
-        // Orthographic views (plan / section) never rotate — any drag is a pan.
-        dragging = 'pan'
-      } else if (e.button === 0) {
-        dragging = 'rotate'
-      } else {
-        return
-      }
+      // Orthographic views (plan / section) never rotate: any drag is a pan.
+      const mode = resolveDragMode(e, camera instanceof THREE.OrthographicCamera)
+      if (!mode) return
+      dragging = mode
       transitionRef.current = null
       lastX = e.clientX
       lastY = e.clientY
@@ -165,17 +116,13 @@ export function CustomOrbit() {
       lastY = e.clientY
 
       if (dragging === 'rotate') {
-        sphRef.current.azimuth -= dx * ROTATE_SPEED
-        sphRef.current.polar = Math.max(
-          POLAR_MIN,
-          Math.min(POLAR_MAX, sphRef.current.polar - dy * ROTATE_SPEED),
-        )
+        sphRef.current = rotateSpherical(sphRef.current, dx, dy)
         applyToCamera(camera, sphRef.current, targetRef.current)
       } else if (camera instanceof THREE.OrthographicCamera) {
         // Plan / section: pan the camera + target together along world axes
         // that align with the screen. Speed scales inversely with zoom so the
         // drag tracks the cursor regardless of zoom level.
-        const speed = 1 / Math.max(0.0001, camera.zoom)
+        const speed = orthoPanSpeed(camera.zoom)
         // Plan view looks down +Y → screen-right is +X, screen-up is +Z.
         // Section view looks along +X → screen-right is +Z, screen-up is +Y.
         const lookDir = new THREE.Vector3()
@@ -194,7 +141,7 @@ export function CustomOrbit() {
         forward.y = 0
         forward.normalize()
         const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize()
-        const panSpeed = sphRef.current.distance * PAN_SPEED_FACTOR
+        const panSpeed = perspectivePanSpeed(sphRef.current.distance)
         targetRef.current.addScaledVector(right, -dx * panSpeed)
         targetRef.current.addScaledVector(forward, dy * panSpeed)
         applyToCamera(camera, sphRef.current, targetRef.current)
@@ -224,7 +171,7 @@ export function CustomOrbit() {
           const up = new THREE.Vector3().crossVectors(right, lookDir).normalize()
           const axis = horizontal ? right : up
           const sign = horizontal ? 1 : -1
-          const delta = (sign * e.deltaY * WHEEL_PAN_FACTOR) / Math.max(0.0001, camera.zoom) * 20
+          const delta = sign * e.deltaY * WHEEL_PAN_FACTOR * orthoPanSpeed(camera.zoom) * 20
           camera.position.addScaledVector(axis, delta)
           targetRef.current.addScaledVector(axis, delta)
           camera.updateMatrixWorld()
@@ -244,18 +191,10 @@ export function CustomOrbit() {
 
       // Plain wheel → zoom.
       if (camera instanceof THREE.OrthographicCamera) {
-        const factor = Math.exp(-e.deltaY * ZOOM_FACTOR)
-        camera.zoom = Math.max(
-          ORTHO_ZOOM_MIN,
-          Math.min(ORTHO_ZOOM_MAX, camera.zoom * factor),
-        )
+        camera.zoom = zoomOrthoLevel(camera.zoom, e.deltaY)
         camera.updateProjectionMatrix()
       } else {
-        const factor = Math.exp(e.deltaY * ZOOM_FACTOR)
-        sphRef.current.distance = Math.max(
-          MIN_DISTANCE,
-          Math.min(MAX_DISTANCE, sphRef.current.distance * factor),
-        )
+        sphRef.current.distance = zoomDistance(sphRef.current.distance, e.deltaY)
         applyToCamera(camera, sphRef.current, targetRef.current)
       }
     }
@@ -288,15 +227,10 @@ export function CustomOrbit() {
       transitionRef.current = null
       return
     }
-    const now = performance.now()
-    const u = Math.min(1, (now - t.startTime) / TRANSITION_MS)
-    const ease = easeInOutQuad(u)
-    sphRef.current.azimuth =
-      t.startSph.azimuth + (t.endSph.azimuth - t.startSph.azimuth) * ease
-    sphRef.current.polar =
-      t.startSph.polar + (t.endSph.polar - t.startSph.polar) * ease
-    sphRef.current.distance =
-      t.startSph.distance + (t.endSph.distance - t.startSph.distance) * ease
+    const elapsed = performance.now() - t.startTime
+    const u = Math.min(1, elapsed / TRANSITION_MS)
+    const ease = transitionEase(elapsed)
+    sphRef.current = lerpSpherical(t.startSph, t.endSph, ease)
     targetRef.current.lerpVectors(t.startTarget, t.endTarget, ease)
     applyToCamera(camera, sphRef.current, targetRef.current)
     if (u >= 1) transitionRef.current = null

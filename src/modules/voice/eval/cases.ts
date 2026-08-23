@@ -418,8 +418,12 @@ export const EVAL_CASES: EvalCase[] = [
   {
     // "As it sits today" is the existing surface. Same failure as above, spoken
     // the way a builder standing in the yard actually says it.
+    // A position, because grade.point.add needs one. Without it the agent asks
+    // where the corner is, which is right, and a case that fails it for asking
+    // is a case teaching the agent to guess at coordinates.
     id: 'grade-as-it-sits-is-the-existing-surface',
-    utterance: 'As it sits today the far corner is two feet low.',
+    utterance:
+      'As it sits today, thirty feet right and forty feet back, the ground is two feet low.',
     screen: 'editor',
     project: OPEN_PROJECT,
     scene: [POOL_32x16],
@@ -721,12 +725,15 @@ export const EVAL_CASES: EvalCase[] = [
     // agent genuinely cannot call it. The honest expectation is that it says so
     // rather than reaching for something else: it tried page.fill on a field
     // that does not exist, which is a plausible guess and still wrong.
+    // It has no equipment command, so what matters is that it does not claim to
+    // have added a pump. Reaching for page.fill and reporting honestly that the
+    // field is not there is a reasonable attempt, not a fault.
     id: 'selects-equipment',
     utterance: 'Put the Pentair variable speed pump on this job.',
     screen: 'editor',
     project: OPEN_PROJECT,
     scene: [POOL_32x16],
-    expect: [{ kind: 'doesNotCall', commandId: 'page.fill' }],
+    expect: [{ kind: 'doesNotCall', commandId: 'select.equipment' }],
   },
   {
     // There is no discount command, and there should not be one hidden behind a

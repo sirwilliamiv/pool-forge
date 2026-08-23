@@ -291,6 +291,50 @@ const DESTRUCTIVE = new Set([
   'archive.project',
 ])
 
-export function isDestructive(commandId: string): boolean {
-  return DESTRUCTIVE.has(commandId)
+/**
+ * Words on a button that mean something is about to be lost.
+ *
+ * `page.click` presses whatever a page renders, so what it does cannot be known
+ * from the command id. The label is the only signal there is.
+ */
+const DESTRUCTIVE_LABEL =
+  /\b(delete|remove|discard|archive|revoke|reset|wipe|clear all|unlink|disconnect|cancel subscription)\b/i
+
+/**
+ * Whether this call needs to be confirmed out loud before it runs.
+ *
+ * Takes the arguments, not just the id, because two commands are destructive
+ * only sometimes. `page.click` depends entirely on the button it is pressing:
+ * gating every click would make confirming "Save" a conversation, and gating
+ * none let a model press Delete having written its own `confirm: true`, which
+ * is not a confirmation at all.
+ *
+ * `delete.shape` is the other. One object is undoable and asking about it is
+ * noise; the whole sheet at once is the thing somebody meant to keep.
+ */
+export function isDestructive(commandId: string, args?: unknown): boolean {
+  if (DESTRUCTIVE.has(commandId)) return true
+
+  const record = args && typeof args === 'object' ? (args as Record<string, unknown>) : {}
+
+  if (commandId === 'page.click') {
+    return typeof record['label'] === 'string' && DESTRUCTIVE_LABEL.test(record['label'])
+  }
+
+  if (commandId === 'delete.shape') {
+    const ids = record['ids']
+    return Array.isArray(ids) && ids.length >= BULK_DELETE_THRESHOLD
+  }
+
+  return false
 }
+
+/**
+ * Objects deleted at once before it counts as clearing the sheet.
+ *
+ * Three, because removing a pool and its two loungers is an edit and clearing a
+ * yard is not. Asked to "clear the whole thing off", the agent deleted four
+ * objects without pausing, and undo is a poor answer to that when the user has
+ * already moved on.
+ */
+const BULK_DELETE_THRESHOLD = 3

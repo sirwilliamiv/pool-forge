@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
+import { DestructiveConfirm } from '@/components/voice/DestructiveConfirm'
 import { registerClientHandler } from '@/lib/commands/dispatch'
 import { clickOnPage } from '@/modules/editor/page-click'
 import { fillPage, type FillRequest } from '@/modules/editor/page-fill'
@@ -70,7 +71,11 @@ export function VoiceDock() {
   // has no props, and the agent saying "the Phone Demo project" rather than a
   // cuid is the difference between it sounding aware and sounding lost.
   const projectName = useProjectName(projectId)
-  const { status, error, transcript, start, stop } = useVoiceSession(screen, projectId, projectName)
+  const { status, error, transcript, start, stop, pendingConfirm, decide } = useVoiceSession(
+    screen,
+    projectId,
+    projectName,
+  )
 
   // The navigation commands resolve a path and let the client route. Registering
   // the handlers here means `nav.goto` works from the command palette too, and
@@ -124,13 +129,17 @@ export function VoiceDock() {
     )
   }, [router])
 
-  if (status === 'unavailable') return null
+  // The dialog renders even when the dock is hidden, because a destructive
+  // request outliving the button that started it is still a request.
+  if (status === 'unavailable') return <DestructiveConfirm request={pendingConfirm} onDecide={decide} />
 
   const live = status === 'live'
   const busy = status === 'starting'
 
   return (
-    <div className="pointer-events-none fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+    <>
+      <DestructiveConfirm request={pendingConfirm} onDecide={decide} />
+      <div className="pointer-events-none fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
       {transcript.length > 0 && live && (
         <div className="pointer-events-auto max-h-64 w-80 overflow-y-auto rounded-lg border border-slate-200 bg-white/95 p-3 text-sm shadow-lg backdrop-blur">
           {transcript.map(line => (
@@ -174,7 +183,8 @@ export function VoiceDock() {
           ].join(' ')}
         />
         {busy ? 'Starting…' : live ? 'Listening' : 'Talk'}
-      </button>
-    </div>
+        </button>
+      </div>
+    </>
   )
 }

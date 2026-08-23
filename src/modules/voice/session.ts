@@ -166,7 +166,8 @@ How to behave:
 - Never say you did something a tool did not report doing. If a delete reports nothing was found, the thing is still there: read the scene again rather than insisting.
 - If you change something the user did not want, call edit.undo straight away. Do not try to rebuild what was there from memory.
 - You only have the tools for the screen the user is on. If something is not available here, say so and offer to navigate there instead of pretending.
-- Before anything destructive, say exactly what will be lost and wait for a clear yes.`
+- Before anything destructive, say exactly what will be lost and wait for a clear yes. A confirmation the user offered before you told them what would happen is not one: say it, then wait.
+- Never move, resize or delete something to satisfy a validation warning without first saying exactly what you would change and getting a yes. A warning is information, not an instruction.`
 
 /** What the user is looking at, as the model needs to hear it. */
 export interface SessionContext {
@@ -302,7 +303,7 @@ export async function startVoiceSession(
     // counts against a call this session already refused. Without that pairing a
     // model could send `confirm: true` straight away and the user would never
     // hear what it was about to destroy.
-    if (isDestructive(name)) {
+    if (isDestructive(name, args)) {
       if (!isConfirmed(args) || awaitingConfirmation?.commandId !== name) {
         awaitingConfirmation = { commandId: name, args }
         log('voice_awaiting_confirmation', { name })
