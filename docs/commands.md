@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **94**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **98**.
 
 ## Project
 
@@ -535,6 +535,7 @@ Bring a panel or section into view and highlight it, for when someone asks to be
 - "Show me the quote."
 - "Highlight the validation issues."
 - "Open the materials panel."
+- "Show me the notes on this job."
 
 ### `nav.goto` — Go to
 
@@ -793,4 +794,22 @@ Report how much of an area was actually measured by the site capture and how muc
 ### `capture.heightfield.ingest` — Take in a walked site capture
 
 Take the heightfield from a phone that walked the site and make it the existing ground. The elevations come in as a grid with a coverage mask, and only the cells somebody actually walked become survey shots. The benchmark the builder tapped sets the datum.
+
+## Notes on the drawing
+
+### `comment.add` — Leave a note on the drawing
+
+Pin a note to a point on the drawing, for the people building the job. Every number is in FEET, measured from the drawing origin. Notes are internal: they never appear on the proposal, the site plan or the construction packet.
+
+### `comment.edit` — Change a note
+
+Rewrite the text of a note already pinned to the drawing.
+
+### `comment.remove` — Delete a note
+
+Remove a note from the drawing. Undo puts it back.
+
+### `comment.resolve` — Mark a note done
+
+Mark a note as dealt with, or reopen one that was marked too early. A resolved note stays on the drawing so there is a record of what was decided.
 

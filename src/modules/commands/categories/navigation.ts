@@ -189,10 +189,24 @@ register({
   // 'sunStudy', which have no panel to bring forward, so the command would have
   // reported success and highlighted nothing.
   inputSchema: z.object({
-    target: z.enum(['layers', 'stencils', 'materials', 'design', 'specs', 'quote', 'validation']),
+    target: z.enum([
+      'layers',
+      'stencils',
+      'materials',
+      'design',
+      'specs',
+      'quote',
+      'comments',
+      'validation',
+    ]),
   }),
   outputSchema: z.object({ target: z.string() }),
-  voiceExamples: ['Show me the quote.', 'Highlight the validation issues.', 'Open the materials panel.'],
+  voiceExamples: [
+    'Show me the quote.',
+    'Highlight the validation issues.',
+    'Open the materials panel.',
+    'Show me the notes on this job.',
+  ],
   // CLIENT: useViewStore.getState().focusPanel(input.target)
   execute: async input => ({ ok: true, data: { target: input.target } }),
 })

@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { dispatch } from '@/lib/commands/dispatch'
 import { inches } from '@/lib/three/units'
 import { pickShapeId } from '@/lib/three/pick'
+import { useCommentsStore } from '@/modules/editor/state/commentsStore'
 import { useEditorStore, type Vec3 } from '@/modules/editor/state/editorStore'
 import {
   ANNOTATION_STENCIL,
@@ -187,9 +188,12 @@ export function ToolGestures() {
       }
 
       if (tool === 'tool.comment') {
-        // No comment infra in v1 — log and consume.
-        // eslint-disable-next-line no-console
-        console.info('[Pool Forge] Comment tool: comments deferred for v1.')
+        const hit = intersectGround(e, el, camera, raycaster)
+        if (!hit) return
+        // Opens the composer at this point; nothing is created until there is
+        // something to create. CommentPins renders it and dispatches the
+        // command.
+        useCommentsStore.getState().beginDraft({ x: inches(hit.x), y: inches(hit.z) })
         return
       }
     }

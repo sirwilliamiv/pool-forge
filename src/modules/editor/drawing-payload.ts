@@ -7,6 +7,7 @@ import type { Shape } from '@/modules/editor/state/shapes'
 import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
 import type { SiteGrade } from '@/modules/editor/grade/model'
 import { emptyGrade, parseCaptureProvenance } from '@/modules/editor/grade/model'
+import { parseComments, type DrawingComment } from '@/modules/editor/comments/model'
 
 export interface DrawingPayload {
   shapes: Shape[]
@@ -19,6 +20,14 @@ export interface DrawingPayload {
    * error.
    */
   grade?: { existing: SiteGrade; finished: SiteGrade } | null
+  /**
+   * The builder's notes pinned to the drawing.
+   *
+   * Working notes, not drawing objects: they are here rather than in `shapes`
+   * so nothing that renders a shape can put one in front of a customer.
+   * Absent on every drawing made before comments existed, which means none.
+   */
+  comments?: DrawingComment[]
 }
 
 /**
@@ -31,10 +40,15 @@ export interface DrawingPayload {
  * opens and still renders its underlay before the migration script has run.
  */
 export function parseDrawingPayload(raw: unknown): DrawingPayload {
-  if (!raw || typeof raw !== 'object') return { shapes: [], survey: null }
-  const obj = raw as { shapes?: unknown; survey?: unknown; grade?: unknown }
+  if (!raw || typeof raw !== 'object') return { shapes: [], survey: null, comments: [] }
+  const obj = raw as { shapes?: unknown; survey?: unknown; grade?: unknown; comments?: unknown }
   const shapes = Array.isArray(obj.shapes) ? (obj.shapes as Shape[]) : []
-  return { shapes, survey: parseSurvey(obj.survey), grade: parseGrade(obj.grade) }
+  return {
+    shapes,
+    survey: parseSurvey(obj.survey),
+    grade: parseGrade(obj.grade),
+    comments: parseComments(obj.comments),
+  }
 }
 
 /**
@@ -110,6 +124,7 @@ export function serializeDrawingPayload(payload: DrawingPayload): {
   shapes: Shape[]
   survey: Record<string, unknown> | null
   grade?: { existing: SiteGrade; finished: SiteGrade }
+  comments?: DrawingComment[]
 } {
   // The grade is attached first and unconditionally. An earlier version
   // returned early when there was no survey underlay, which would have written
@@ -119,9 +134,15 @@ export function serializeDrawingPayload(payload: DrawingPayload): {
     shapes: Shape[]
     survey: Record<string, unknown> | null
     grade?: { existing: SiteGrade; finished: SiteGrade }
+    comments?: DrawingComment[]
   } = { shapes: payload.shapes, survey: null }
 
   if (payload.grade) out.grade = payload.grade
+
+  // Written whenever the caller has an opinion, including an empty list: a save
+  // that dropped the key would make deleting the last note un-saveable, since
+  // the reader treats a missing key as "this drawing never had any".
+  if (payload.comments) out.comments = payload.comments
 
   if (payload.survey) {
     const { legacyImageDataUrl, ...rest } = payload.survey

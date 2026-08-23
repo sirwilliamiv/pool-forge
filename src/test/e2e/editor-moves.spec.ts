@@ -311,9 +311,14 @@ async function clickCanvasCentre(page: Page, canvas: Locator): Promise<void> {
   await page.waitForTimeout(500)
 }
 
+
 async function wheelOverCanvas(page: Page, canvas: Locator, deltaY: number): Promise<void> {
   const box = await canvas.boundingBox()
   if (!box) throw new Error('canvas has no box')
+  // Deliberately the middle of the viewport, which is where the floating
+  // toolbar for a selected object sits. A wheel there used to land on that
+  // overlay and never reach the camera, so selecting a pool in the middle of
+  // the screen and scrolling did nothing at all.
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.wheel(0, deltaY)
   await page.waitForTimeout(800)

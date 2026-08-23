@@ -65,12 +65,19 @@ describe('parseDrawingPayload: legacy data-URL shape', () => {
 
 describe('parseDrawingPayload: absent or malformed', () => {
   it('returns an empty payload for junk', () => {
-    expect(parseDrawingPayload(null)).toEqual({ shapes: [], survey: null })
-    expect(parseDrawingPayload('nope')).toEqual({ shapes: [], survey: null })
+    // Comments read as an empty list rather than as absent, so every caller
+    // gets an array to iterate whatever it was handed.
+    expect(parseDrawingPayload(null)).toEqual({ shapes: [], survey: null, comments: [] })
+    expect(parseDrawingPayload('nope')).toEqual({ shapes: [], survey: null, comments: [] })
     // A drawing with no grade reads as a flat site, and stays that way: null
     // rather than a pair of empty surfaces, so opening an old drawing does not
     // start writing elevations back into it.
-    expect(parseDrawingPayload({})).toEqual({ shapes: [], survey: null, grade: null })
+    expect(parseDrawingPayload({})).toEqual({
+      shapes: [],
+      survey: null,
+      grade: null,
+      comments: [],
+    })
   })
 
   it('carries the site elevations through a save and a load', () => {

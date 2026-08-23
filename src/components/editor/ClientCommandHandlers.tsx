@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { dispatch, registerClientHandler, unregisterClientHandler } from '@/lib/commands/dispatch'
+import { inches } from '@/lib/three/units'
 import { useCameraStore } from '@/modules/editor/state/cameraStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
@@ -12,6 +13,17 @@ import { useHotkeys } from '@/modules/editor/hotkeys/useHotkeys'
 import { useHistoryStore } from '@/modules/editor/state/historyStore'
 import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
+import { useCommentsStore } from '@/modules/editor/state/commentsStore'
+import {
+  CommentAuthorshipSchema,
+  CommentStampSchema,
+} from '@/modules/editor/comments/model'
+import type {
+  CommentAddInput,
+  CommentEditInput,
+  CommentRemoveInput,
+  CommentResolveInput,
+} from '@/modules/commands/categories/comment'
 import {
   SLOT_LABEL,
   materialFor,
@@ -38,6 +50,20 @@ let sunStudyRaf: number | null = null
 
 /** One notch of zoom, matching the wheel's feel over a short scroll. */
 const ZOOM_STEP = 1.2
+
+/**
+ * Fail loudly when a command names a note that is not there.
+ *
+ * Same reason as `requireShape`: without it, deleting or resolving a note that
+ * has already gone reports success and changes nothing, which is the exact
+ * defect this codebase keeps shipping. The message names no id, because the id
+ * is internal and means nothing to the person reading the toast.
+ */
+function requireComment(id: string): void {
+  if (!useCommentsStore.getState().has(id)) {
+    throw new Error('That note is no longer on this drawing.')
+  }
+}
 
 /**
  * Fail loudly when a command names a shape that is not there.
@@ -286,6 +312,11 @@ const HANDLER_IDS: string[] = [
   // palette category
   'palette.open',
   'palette.run.suggestion',
+  // comment category
+  'comment.add',
+  'comment.edit',
+  'comment.remove',
+  'comment.resolve',
 ]
 
 export function ClientCommandHandlers() {
@@ -1079,6 +1110,63 @@ export function ClientCommandHandlers() {
       if (!result.ok) throw new Error(result.error)
       return { ran: true }
     })
+
+    // ---------- comments ----------
+    // The note itself is client state, in the drawing's `rootJson` beside the
+    // shapes, so these handlers do the work. What they will not do is invent
+    // the author, the id or the time: those arrive from the server half, and a
+    // response that does not carry them is refused rather than papered over
+    // with a guess about who is signed in.
+    registerClientHandler<CommentAddInput, { commentId: string }>(
+      'comment.add',
+      (input, serverData) => {
+        const stamped = CommentAuthorshipSchema.parse(serverData)
+        const id = useCommentsStore.getState().addComment({
+          id: stamped.commentId,
+          x: inches(input.xFt),
+          y: inches(input.yFt),
+          body: input.body,
+          authorId: stamped.authorId,
+          authorName: stamped.authorName,
+          createdAt: stamped.createdAt,
+        })
+        // Opened straight away, so the note a builder just wrote is the one on
+        // screen rather than a pin they have to go and find.
+        useCommentsStore.getState().setOpen(id)
+        return { commentId: id }
+      },
+    )
+
+    registerClientHandler<CommentEditInput, { commentId: string }>(
+      'comment.edit',
+      (input, serverData) => {
+        const stamped = CommentStampSchema.parse(serverData)
+        requireComment(input.commentId)
+        useCommentsStore.getState().editComment(input.commentId, input.body, stamped.at)
+        return { commentId: input.commentId }
+      },
+    )
+
+    registerClientHandler<CommentRemoveInput, { commentId: string }>(
+      'comment.remove',
+      (input) => {
+        requireComment(input.commentId)
+        useCommentsStore.getState().removeComment(input.commentId)
+        return { commentId: input.commentId }
+      },
+    )
+
+    registerClientHandler<CommentResolveInput, { commentId: string; resolved: boolean }>(
+      'comment.resolve',
+      (input, serverData) => {
+        const stamped = CommentStampSchema.parse(serverData)
+        requireComment(input.commentId)
+        useCommentsStore
+          .getState()
+          .setResolved(input.commentId, input.resolved, stamped.actorName, stamped.at)
+        return { commentId: input.commentId, resolved: input.resolved }
+      },
+    )
 
     return () => {
       for (const id of HANDLER_IDS) unregisterClientHandler(id)

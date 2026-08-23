@@ -3,7 +3,7 @@ import { create } from 'zustand'
 export type ViewMode = 'plan' | '3d' | 'section'
 export type PresentationMode = 'plan' | 'design' | 'build' | 'customer'
 export type LeftTab = 'layers' | 'stencils' | 'materials' | 'site' | 'grade'
-export type RightTab = 'design' | 'specs' | 'quote'
+export type RightTab = 'design' | 'specs' | 'quote' | 'comments'
 
 /**
  * A panel the user asked to be shown.
@@ -56,7 +56,12 @@ export const useViewStore = create<ViewState>((set) => ({
       ) {
         next.leftTab = focusedPanel
       }
-      if (focusedPanel === 'design' || focusedPanel === 'specs' || focusedPanel === 'quote') {
+      if (
+        focusedPanel === 'design' ||
+        focusedPanel === 'specs' ||
+        focusedPanel === 'quote' ||
+        focusedPanel === 'comments'
+      ) {
         next.rightTab = focusedPanel
       }
       return next

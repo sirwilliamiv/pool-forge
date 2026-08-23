@@ -30,7 +30,7 @@ test('20 · adding things to the scene', async ({ page }) => {
     page,
     '20',
     'Adding things to the scene',
-    'Five routes: a stencil card, a tool and a click, the pool picker, the palette, and dragging out a size.',
+    'Six routes: a stencil card, a tool and a click, the pool picker, the palette, dragging out a size, and a note.',
   )
 
   // --- route 1: the stencil panel -----------------------------------------
@@ -151,17 +151,21 @@ test('20 · adding things to the scene', async ({ page }) => {
 
   await say(
     page,
-    'And the Comment tool does nothing at all',
-    'It is on the toolbar with a shortcut, and clicking the canvas with it writes a line to the console. Comments are not built yet.',
+    'Route 6 · Leave a note',
+    'The Comment tool drops a pin where you click and lets you type. Notes are for you and your crew, never on a customer document.',
   )
   await page.getByRole('button', { name: 'Comment', exact: true }).first().click().catch(() => {})
   await page.waitForTimeout(600)
   await clickOnCanvas(page, { x: 0.5, y: 0.5 })
   await page.waitForTimeout(BEAT * 2)
+  await page.keyboard.type('Check the gas line clearance here')
+  await page.waitForTimeout(BEAT)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(BEAT)
 
   await say(
     page,
-    'Five routes, and the two you will use are the first two',
+    'Six routes, and the two you will use are the first two',
     'Click a stencil card, or pick a tool and click once. Command K is the escape hatch when you cannot find the button.',
   )
   await page.waitForTimeout(BEAT * 2)

@@ -8,6 +8,7 @@ import { ExportCommandHandlers } from '@/components/exports/ExportCommandHandler
 import { R3FCanvas } from '@/lib/three/r3f-canvas'
 import type { Shape } from '@/modules/editor/state/shapes'
 import type { SiteGrade } from '@/modules/editor/grade/model'
+import type { DrawingComment } from '@/modules/editor/comments/model'
 import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
 import type { ValidationReport } from '@/modules/validation/types'
 import { CanvasOverlay } from './CanvasOverlay'
@@ -49,6 +50,8 @@ export interface EditorLayoutProps {
     survey?: SurveyConfig | null
     /** Absent on any drawing made before grading existed: that means flat. */
     grade?: { existing: SiteGrade; finished: SiteGrade } | null
+    /** The builder's notes. Absent on any drawing made before they existed. */
+    comments?: DrawingComment[] | null
   }
   validationReport: ValidationReport | null
   /**

@@ -27,6 +27,7 @@ const CATEGORY_ORDER: CommandCategory[] = [
   'site',
   'import',
   'capture',
+  'comment',
 ]
 
 const CATEGORY_LABELS: Record<CommandCategory, string> = {
@@ -48,6 +49,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   site: 'Site & property line',
   import: 'Import',
   capture: 'Site capture',
+  comment: 'Notes on the drawing',
 }
 
 function groupByCategory(

@@ -22,6 +22,7 @@ import './categories/palette'
 import './categories/import'
 import './categories/capture'
 import './categories/intake'
+import './categories/comment'
 
 let _initialized = false
 

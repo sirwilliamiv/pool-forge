@@ -2,7 +2,11 @@
 
 import type { ReactNode } from 'react'
 import { MessageSquare } from 'lucide-react'
+import { dispatchEphemeral } from '@/lib/commands/dispatch'
+import { useCommentsStore } from '@/modules/editor/state/commentsStore'
+import { unresolvedCount } from '@/modules/editor/comments/model'
 import { useViewStore, type RightTab } from '@/modules/editor/state/viewStore'
+import { CommentsPanel } from './CommentsPanel'
 import { SpecsTab } from './inspector/SpecsTab'
 import { QuoteTab } from './inspector/QuoteTab'
 import { focusRing, useFocusFlash } from './useFocusFlash'
@@ -32,6 +36,7 @@ export function RightPanel({
 }: RightPanelProps) {
   const rightTab = useViewStore((s) => s.rightTab)
   const setRightTab = useViewStore((s) => s.setRightTab)
+  const openNotes = useCommentsStore((s) => unresolvedCount(s.comments))
   const flashing = useFocusFlash(rightTab)
 
   return (
@@ -59,12 +64,34 @@ export function RightPanel({
           )
         })}
         <div className="flex-1" />
+        {/* A fourth tab wearing an icon, not a button that does nothing. It was
+            the second of three "coming soon" controls in the editor chrome, and
+            a walkthrough had to tell the user to ignore it. */}
         <button
           type="button"
-          aria-label="Comments"
-          className="grid h-7 w-7 place-items-center rounded-pfSm text-textMuted hover:bg-rowHover hover:text-foreground"
+          onClick={() =>
+            // Through the registry, like every other action: the tab this opens
+            // is also reachable by voice and by the palette, and all three write
+            // the same audit row. Ephemeral so the panel switches on the click
+            // rather than after a round trip.
+            dispatchEphemeral('nav.focus', { target: rightTab === 'comments' ? 'design' : 'comments' })
+          }
+          aria-label="Notes"
+          title="Notes on this drawing"
+          aria-pressed={rightTab === 'comments'}
+          className={
+            'relative grid h-7 w-7 place-items-center rounded-pfSm ' +
+            (rightTab === 'comments'
+              ? 'bg-rowHover text-foreground'
+              : 'text-textMuted hover:bg-rowHover hover:text-foreground')
+          }
         >
           <MessageSquare className="h-3.5 w-3.5" />
+          {openNotes > 0 ? (
+            <span className="absolute -right-0.5 -top-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-amber-500 px-[3px] text-[8.5px] font-semibold leading-none text-white">
+              {openNotes}
+            </span>
+          ) : null}
         </button>
       </div>
 
@@ -81,6 +108,7 @@ export function RightPanel({
         ) : null}
         {rightTab === 'specs' ? <SpecsTab /> : null}
         {rightTab === 'quote' ? <QuoteTab /> : null}
+        {rightTab === 'comments' ? <CommentsPanel /> : null}
       </div>
     </aside>
   )

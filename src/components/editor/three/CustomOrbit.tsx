@@ -228,7 +228,20 @@ export function CustomOrbit() {
     domElement.addEventListener('pointermove', onPointerMove)
     domElement.addEventListener('pointerup', onPointerUp)
     domElement.addEventListener('pointercancel', onPointerUp)
-    domElement.addEventListener('wheel', onWheel, { passive: false })
+    // Bound to the element that contains the canvas, not the canvas itself.
+    //
+    // The overlays drawn over the scene are real HTML on top of the canvas: the
+    // floating toolbar on a selection, the measurement label, the sun study.
+    // A wheel over any of them never reached the canvas, so selecting a pool in
+    // the middle of the view and scrolling did nothing at all, which is the
+    // most natural thing in the world to try and reads as the app being frozen.
+    // The viewport region, which contains the canvas and everything drawn over
+    // it, and stops short of the side panels so scrolling a list never zooms
+    // the model. `parentElement` is not enough: the overlays are portalled out
+    // of the canvas's own wrapper.
+    const wheelTarget: HTMLElement =
+      domElement.closest('main') ?? domElement.parentElement ?? domElement
+    wheelTarget.addEventListener('wheel', onWheel, { passive: false })
     domElement.addEventListener('contextmenu', onContextMenu)
 
     return () => {
@@ -236,7 +249,7 @@ export function CustomOrbit() {
       domElement.removeEventListener('pointermove', onPointerMove)
       domElement.removeEventListener('pointerup', onPointerUp)
       domElement.removeEventListener('pointercancel', onPointerUp)
-      domElement.removeEventListener('wheel', onWheel)
+      wheelTarget.removeEventListener('wheel', onWheel)
       domElement.removeEventListener('contextmenu', onContextMenu)
     }
   }, [camera, domElement])

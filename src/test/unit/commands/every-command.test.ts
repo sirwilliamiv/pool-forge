@@ -51,6 +51,7 @@ import { useScreenSelectionStore } from '@/modules/editor/state/screenSelectionS
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
+import { useCommentsStore } from '@/modules/editor/state/commentsStore'
 import { buildFinishCatalog } from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useSurveyStore } from '@/modules/editor/state/surveyStore'
@@ -120,6 +121,7 @@ const STORES = {
   survey: useSurveyStore,
   screenSelection: useScreenSelectionStore,
   save: useSaveStatusStore,
+  comments: useCommentsStore,
 }
 
 type Snapshot = Record<string, unknown>
@@ -159,16 +161,51 @@ function without(snap: Snapshot, paths: string[]): Snapshot {
 let frames = new Map<number, FrameRequestCallback>()
 let nextFrame = 0
 
+/**
+ * What the server half of a command hands back.
+ *
+ * Empty for almost everything: a client command's `execute` validates and
+ * echoes, and its handler ignores the response. The comment commands are the
+ * exception, because three things about a note are not the browser's to invent
+ * — who wrote it, what its id is, and what time it is — so their handlers
+ * refuse a response that does not carry them. A stub that answered `{}` would
+ * make every comment command fail here for a reason the real server never
+ * produces.
+ */
+let stubbedComments = 0
+function serverDataFor(body: unknown): Record<string, unknown> {
+  if (typeof body !== 'string') return {}
+  let parsed: { id?: unknown; input?: unknown }
+  try {
+    parsed = JSON.parse(body) as { id?: unknown; input?: unknown }
+  } catch {
+    return {}
+  }
+  if (typeof parsed.id !== 'string' || !parsed.id.startsWith('comment.')) return {}
+  const input = (parsed.input ?? {}) as Record<string, unknown>
+  stubbedComments += 1
+  const commentId =
+    typeof input.commentId === 'string' ? input.commentId : `comment-stub-${stubbedComments}`
+  return {
+    commentId,
+    authorId: 'user-under-test',
+    authorName: 'Dana Reyes',
+    createdAt: '2026-01-02T03:04:05.000Z',
+    actorName: 'Dana Reyes',
+    at: '2026-01-02T03:04:05.000Z',
+  }
+}
+
 function stubGlobals(): void {
   // dispatch() posts to /api/commands and only runs the client half once the
   // server half comes back ok. Without this every handler is skipped and the
   // whole file passes while testing nothing.
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => ({
+    vi.fn(async (_url: unknown, init?: { body?: unknown }) => ({
       ok: true,
       status: 200,
-      json: async () => ({ ok: true, data: {} }),
+      json: async () => ({ ok: true, data: serverDataFor(init?.body) }),
     })),
   )
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -234,6 +271,16 @@ async function dirtyEverything(): Promise<string> {
   return id
 }
 
+/** Leave a note the way a user would, and hand back its id. */
+async function addComment(): Promise<string> {
+  const data = await must('comment.add', {
+    xFt: 6,
+    yFt: -3,
+    body: 'Check the gas line clearance.',
+  })
+  return String(data.commentId)
+}
+
 /** Record an elevation and hand back its id. */
 async function addGradePoint(surface: 'existing' | 'finished'): Promise<string> {
   const data = await must('grade.point.add', {
@@ -256,6 +303,9 @@ const CHROME_NOT_DRAWING =
 const SELECTION_IS_A_POINTER =
   'Selection points at content rather than being content. Restoring it would make undo after a ' +
   'click take back the click instead of the edit.'
+const OPEN_NOTE_IS_A_POINTER =
+  'Undo puts the note back but not which pin was open. Which card is showing is a UI cursor, not ' +
+  'drawing data, the same way the grade panel\'s editing surface is.'
 const EDITING_SURFACE_IS_A_POINTER =
   'Undo restores both ground surfaces but not which one the grade panel is pointed at. The ' +
   'editing surface is a UI cursor, not site data, and every grade command names its own surface.'
@@ -529,6 +579,28 @@ const EXERCISES: Record<string, Exercise> = {
     notUndoable: CHROME_NOT_DRAWING,
   },
 
+  // ---------- comments ----------
+  'comment.add': {
+    kind: 'mutates',
+    input: async () => ({ xFt: 12, yFt: -4, body: 'Check the gas line clearance.' }),
+  },
+  'comment.edit': {
+    kind: 'mutates',
+    input: async () => ({
+      commentId: await addComment(),
+      body: 'Check the gas line clearance at the meter.',
+    }),
+  },
+  'comment.remove': {
+    kind: 'mutates',
+    input: async () => ({ commentId: await addComment() }),
+    undoLeaves: { paths: ['comments.openId'], why: OPEN_NOTE_IS_A_POINTER },
+  },
+  'comment.resolve': {
+    kind: 'mutates',
+    input: async () => ({ commentId: await addComment(), resolved: true }),
+  },
+
   // ---------- context ----------
   'page.read': {
     kind: 'server',
@@ -749,7 +821,7 @@ function ghostVariant(input: unknown): Record<string, unknown> | null {
   const copy = { ...(input as Record<string, unknown>) }
   let touched = false
   for (const key of Object.keys(copy)) {
-    if (key === 'id' || key === 'pointId') {
+    if (key === 'id' || key === 'pointId' || key === 'commentId') {
       copy[key] = GHOST
       touched = true
     } else if (key === 'ids' && Array.isArray(copy[key])) {
@@ -825,6 +897,7 @@ function resetStores(): void {
   useSaveStatusStore.setState({ status: 'idle', lastSavedAt: null })
   useGradeStore.getState().hydrate(null)
   useGradeStore.getState().setEditing('existing')
+  useCommentsStore.getState().hydrate([])
   // Last, and through hydrate: it clears the undo stack and closes any drag
   // transaction left open, which plain setState leaves dangling and lets
   // history bleed from one test into the next.

@@ -19,6 +19,7 @@ export type CommandCategory =
   | 'site'
   | 'import'
   | 'capture'
+  | 'comment'
 
 export type CommandContext = {
   userId: string

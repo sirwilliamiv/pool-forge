@@ -4,12 +4,14 @@ import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useGradeStore } from '@/modules/editor/state/gradeStore'
+import { useCommentsStore } from '@/modules/editor/state/commentsStore'
 import { useSurveyStore } from '@/modules/editor/state/surveyStore'
 import { useSaveStatusStore } from '@/modules/editor/state/saveStore'
 import { saveDrawing } from '@/modules/editor/persistence'
 import { recomputeAndCacheEditor } from '@/lib/cache/editor'
 import type { Shape } from '@/modules/editor/state/shapes'
 import type { SiteGrade } from '@/modules/editor/grade/model'
+import type { DrawingComment } from '@/modules/editor/comments/model'
 import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
 
 interface EditorPersistenceProps {
@@ -19,6 +21,8 @@ interface EditorPersistenceProps {
     survey?: SurveyConfig | null
     /** Absent on any drawing made before grading existed: that means flat. */
     grade?: { existing: SiteGrade; finished: SiteGrade } | null
+    /** Absent on any drawing made before comments existed: that means none. */
+    comments?: DrawingComment[] | null
   }
 }
 
@@ -43,7 +47,8 @@ export function EditorPersistence({ projectId, initial }: EditorPersistenceProps
       const shapes = useShapesStore.getState().shapes
       const survey = useSurveyStore.getState().survey
       const { existing, finished } = useGradeStore.getState()
-      return saveDrawing(projectId, { shapes, survey, grade: { existing, finished } })
+      const comments = useCommentsStore.getState().comments
+      return saveDrawing(projectId, { shapes, survey, grade: { existing, finished }, comments })
         .then(() => {
           useSaveStatusStore.getState().markSaved()
           // Fire-and-forget: refresh quote + validation caches off the saved drawing.
@@ -96,12 +101,23 @@ export function EditorPersistence({ projectId, initial }: EditorPersistenceProps
     const unsubGrade = useGradeStore.subscribe((state, prev) => {
       if (state.existing !== prev.existing || state.finished !== prev.finished) changed()
     })
+    // Subscribed here, in this effect, above the hydrate below. A separate
+    // effect is exactly the shape of the bug that lost the first edit on every
+    // project, and a note is a sentence somebody typed: losing the first one
+    // silently is not a thing this can be allowed to do.
+    //
+    // `comments` only. The store also holds which pin is open and which one is
+    // being written, and neither of those is worth a database write.
+    const unsubComments = useCommentsStore.subscribe((state, prev) => {
+      if (state.comments !== prev.comments) changed()
+    })
 
     if (!hydratedRef.current) {
       hydratedRef.current = true
       useShapesStore.getState().hydrate(initial.shapes)
       useSurveyStore.getState().setSurvey(initial.survey ?? null)
       useGradeStore.getState().hydrate(initial.grade ?? null)
+      useCommentsStore.getState().hydrate(initial.comments ?? [])
     }
     hydrating = false
 
@@ -127,6 +143,7 @@ export function EditorPersistence({ projectId, initial }: EditorPersistenceProps
       unsubShapes()
       unsubSurvey()
       unsubGrade()
+      unsubComments()
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null

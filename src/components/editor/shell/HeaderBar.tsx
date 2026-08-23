@@ -2,6 +2,9 @@
 
 import Link from 'next/link'
 import { ChevronRight, MessageSquare, Play, Share2, Upload } from 'lucide-react'
+import { dispatchEphemeral } from '@/lib/commands/dispatch'
+import { unresolvedCount } from '@/modules/editor/comments/model'
+import { useCommentsStore } from '@/modules/editor/state/commentsStore'
 import { SaveStatus } from '@/components/editor/SaveStatus'
 import { UndoRedo } from '@/components/editor/shell/UndoRedo'
 import { SceneTemplateMenu } from '@/components/editor/shell/SceneTemplateMenu'
@@ -36,6 +39,8 @@ function initialsFor(user: HeaderBarProps['user']): string {
 }
 
 export function HeaderBar({ orgName, customerName, projectName, projectId, user }: HeaderBarProps) {
+  const openNotes = useCommentsStore((s) => unresolvedCount(s.comments))
+
   return (
     <header className="z-50 flex h-11 items-center gap-3 border-b border-borderLight bg-white px-3">
       <Link
@@ -81,14 +86,24 @@ export function HeaderBar({ orgName, customerName, projectName, projectId, user 
       </div>
 
       <div className="flex items-center gap-1">
+        {/* Kept, and made real, rather than deleted: this is the only place in
+            the app that says how many notes are outstanding without opening a
+            panel to look. It opens the same list the inspector's icon does. */}
         <button
           type="button"
-          aria-label="Comments (coming soon)"
-          title="Comments — coming soon"
-          disabled
-          className="grid h-7 w-7 place-items-center rounded-pfSm bg-rowHover text-textMuted opacity-40"
+          onClick={() => dispatchEphemeral('nav.focus', { target: 'comments' })}
+          aria-label={
+            openNotes > 0 ? `Notes: ${openNotes} open` : 'Notes on this drawing'
+          }
+          title="Notes on this drawing"
+          className="relative grid h-7 w-7 place-items-center rounded-pfSm bg-rowHover text-textMuted hover:bg-borderLight hover:text-foreground"
         >
           <MessageSquare className="h-3.5 w-3.5" />
+          {openNotes > 0 ? (
+            <span className="absolute -right-0.5 -top-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-amber-500 px-[3px] text-[8.5px] font-semibold leading-none text-white">
+              {openNotes}
+            </span>
+          ) : null}
         </button>
         <button
           type="button"

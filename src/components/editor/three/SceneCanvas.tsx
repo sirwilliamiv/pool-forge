@@ -3,6 +3,7 @@
 import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import { CameraRig } from './CameraRig'
+import { CommentPins } from './CommentPins'
 import { CustomOrbit } from './CustomOrbit'
 import { DragHandler } from './DragHandler'
 import { Ground } from './Ground'
@@ -32,6 +33,7 @@ export function SceneCanvas() {
       <SelectionHalo />
       <SelectionLabel />
       <ToolGestures />
+      <CommentPins />
     </Canvas>
   )
 }

@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import type { Shape } from '@/modules/editor/state/shapes'
 import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
+import { DrawingCommentSchema } from '@/modules/editor/comments/model'
 import {
   parseDrawingPayload,
   serializeDrawingPayload,
@@ -17,6 +18,10 @@ const SurveySchema: z.ZodType<SurveyConfig> = z.any()
 const DrawingPayloadSchema = z.object({
   shapes: z.array(ShapeSchema),
   survey: SurveySchema.nullable().optional(),
+  // Validated properly rather than waved through as `z.any()`: a note is free
+  // text a person typed, and this is the last boundary before it becomes a
+  // column in the database.
+  comments: z.array(DrawingCommentSchema).optional(),
 })
 
 export type { DrawingPayload }
