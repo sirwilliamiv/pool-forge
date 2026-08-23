@@ -18,8 +18,13 @@ export function LayersTree() {
 
   if (ordered.length === 0) {
     return (
-      <p className="px-3 py-2 text-[11.5px] text-textFaint">
-        No layers yet. Drop a stencil or use ⌘K → Add to start.
+      // "Drop a stencil" described drag and drop, which is not how this works,
+      // and used two words a new starter has not been given. This says what to
+      // click, in the words printed on the thing to click.
+      <p className="px-3 py-2 text-[11.5px] leading-relaxed text-textFaint">
+        Nothing drawn yet. Open the <span className="font-medium text-textMuted">Commands</span>{' '}
+        button at the bottom of the canvas (or press ⌘K) and pick something under
+        “Add”, or choose a pool shape from the toolbar and click the canvas.
       </p>
     )
   }

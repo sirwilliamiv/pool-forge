@@ -7,6 +7,11 @@ import {
   DEFAULT_COMMAND_SOURCE,
   type CommandSourceValue,
 } from '@/modules/commands/source'
+import {
+  humanCommandInputError,
+  humanUnknownCommandError,
+  technicalIssueList,
+} from '@/lib/commands/errors'
 import { initCommands } from '@/modules/commands/init'
 import { get } from '@/modules/commands/registry'
 import type { CommandContext, CommandResult } from '@/modules/commands/registry'
@@ -54,19 +59,26 @@ async function writeAudit(args: {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // These two are malformed requests rather than bad user input, so there is no
+  // command to name, but the string still ends up in a toast, so it is still a
+  // sentence rather than a parser's complaint.
+  const MALFORMED =
+    'Pool Forge could not send that action to the server. Nothing was changed. Please try again.'
+
   let body: unknown
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ ok: false, error: 'invalid JSON body' }, { status: 400 })
+    console.warn('[commands] request body was not JSON')
+    return NextResponse.json({ ok: false, error: MALFORMED }, { status: 400 })
   }
 
   const parsed = requestSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { ok: false, error: `invalid request: ${parsed.error.issues.map(i => i.message).join('; ')}` },
-      { status: 400 },
+    console.warn(
+      `[commands] malformed request: ${parsed.error.issues.map(i => i.message).join('; ')}`,
     )
+    return NextResponse.json({ ok: false, error: MALFORMED }, { status: 400 })
   }
 
   const { id, input } = parsed.data
@@ -85,19 +97,41 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   if (!command) {
-    const result = { ok: false as const, error: `unknown command: ${id}` }
-    await writeAudit({ userId, orgId, commandId: id, input, result, source })
-    return NextResponse.json(result, { status: 404 })
+    // Two audiences, two messages: the audit row keeps the id that was asked
+    // for, the response carries a sentence rather than an internal identifier.
+    await writeAudit({
+      userId,
+      orgId,
+      commandId: id,
+      input,
+      result: { ok: false, error: `unknown command: ${id}` },
+      source,
+    })
+    return NextResponse.json(
+      { ok: false, error: humanUnknownCommandError() },
+      { status: 404 },
+    )
   }
 
   const inputParsed = command.inputSchema.safeParse(input)
   if (!inputParsed.success) {
-    const result = {
-      ok: false as const,
-      error: `invalid input: ${inputParsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
-    }
-    await writeAudit({ userId, orgId, commandId: id, input, result, source })
-    return NextResponse.json(result, { status: 400 })
+    // The Zod issue list is a developer's sentence, and it used to be shown to
+    // the user in a toast. It stays here, where it is useful, and the response
+    // carries the plain-English half.
+    const technical = technicalIssueList(inputParsed.error)
+    console.warn(`[commands] ${id} refused its input: ${technical}`)
+    await writeAudit({
+      userId,
+      orgId,
+      commandId: id,
+      input,
+      result: { ok: false, error: `invalid input: ${technical}` },
+      source,
+    })
+    return NextResponse.json(
+      { ok: false, error: humanCommandInputError(command.label, inputParsed.error) },
+      { status: 400 },
+    )
   }
 
   const ctx: CommandContext = {

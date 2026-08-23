@@ -6,6 +6,11 @@
 // `CommandAuditLog` row, so the shared behaviour lives here rather than being
 // copied and drifting.
 
+import {
+  humanCommandInputError,
+  humanUnknownCommandError,
+  technicalIssueList,
+} from '@/lib/commands/errors'
 import { get } from './registry'
 import type { CommandContext, CommandResult } from './registry'
 import { DEFAULT_COMMAND_SOURCE, type CommandSourceValue } from './source'
@@ -54,23 +59,33 @@ export async function dispatchCommand<T = unknown>(
   ctx: CommandContext,
   source: CommandSourceValue = DEFAULT_COMMAND_SOURCE,
 ): Promise<CommandResult<T>> {
+  // Both failures below carry two messages: the audit row keeps the developer's
+  // version (which id, which field), and the returned error is the one a person
+  // is shown. They used to be the same string, and it was the Zod issue list.
   const command = get(commandId)
   if (!command) {
-    const result = { ok: false as const, error: `unknown command: ${commandId}` }
-    await writeAudit({ commandId, ctx, input, result, source })
-    return result
+    await writeAudit({
+      commandId,
+      ctx,
+      input,
+      result: { ok: false, error: `unknown command: ${commandId}` },
+      source,
+    })
+    return { ok: false, error: humanUnknownCommandError() }
   }
 
   const parsed = command.inputSchema.safeParse(input)
   if (!parsed.success) {
-    const result = {
-      ok: false as const,
-      error: `invalid input: ${parsed.error.issues
-        .map((i) => `${i.path.join('.')}: ${i.message}`)
-        .join('; ')}`,
-    }
-    await writeAudit({ commandId, ctx, input, result, source })
-    return result
+    const technical = technicalIssueList(parsed.error)
+    console.warn(`[commands] ${commandId} refused its input: ${technical}`)
+    await writeAudit({
+      commandId,
+      ctx,
+      input,
+      result: { ok: false, error: `invalid input: ${technical}` },
+      source,
+    })
+    return { ok: false, error: humanCommandInputError(command.label, parsed.error) }
   }
 
   let result: CommandResult

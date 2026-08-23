@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { useViewStore, type RightTab } from '@/modules/editor/state/viewStore'
-import type { QuoteSummary } from '@/modules/pricing/engine'
 import { SpecsTab } from './inspector/SpecsTab'
 import { QuoteTab } from './inspector/QuoteTab'
 import { focusRing, useFocusFlash } from './useFocusFlash'
@@ -15,7 +14,6 @@ export interface RightPanelProps {
   materialSlot?: ReactNode
   computedMetricsSlot?: ReactNode
   quoteContributionSlot?: ReactNode
-  inspectorQuote?: QuoteSummary | null | undefined
 }
 
 const TABS: { id: RightTab; label: string }[] = [
@@ -31,7 +29,6 @@ export function RightPanel({
   materialSlot,
   computedMetricsSlot,
   quoteContributionSlot,
-  inspectorQuote,
 }: RightPanelProps) {
   const rightTab = useViewStore((s) => s.rightTab)
   const setRightTab = useViewStore((s) => s.setRightTab)
@@ -83,7 +80,7 @@ export function RightPanel({
           </div>
         ) : null}
         {rightTab === 'specs' ? <SpecsTab /> : null}
-        {rightTab === 'quote' ? <QuoteTab quote={inspectorQuote} /> : null}
+        {rightTab === 'quote' ? <QuoteTab /> : null}
       </div>
     </aside>
   )

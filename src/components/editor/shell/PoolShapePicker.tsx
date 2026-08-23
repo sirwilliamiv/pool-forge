@@ -21,6 +21,15 @@ import { StencilCategory } from '@/modules/editor/stencils/types'
 // catalogue now puts it in the picker.
 const POOL_SHAPES = stencilsByCategory()[StencilCategory.POOL_SHAPE]
 
+/** The footprint this shape drops, in feet, the way a builder would say it. */
+function sizeLabel(shape: (typeof POOL_SHAPES)[number]): string {
+  const dim = shape.defaultDimensions
+  const width = dim.unit === 'ft' ? dim.width : dim.width / 12
+  const height = dim.unit === 'ft' ? dim.height : dim.height / 12
+  const round = (n: number) => (Number.isInteger(n) ? `${n}` : n.toFixed(1))
+  return `${round(width)}' × ${round(height)}'`
+}
+
 export function PoolShapePicker() {
   const activeTool = useEditorStore((s) => s.activeTool)
   const setActiveTool = useEditorStore((s) => s.setActiveTool)
@@ -67,10 +76,20 @@ export function PoolShapePicker() {
       </DropdownMenuTrigger>
       {/* Seventeen shapes will not fit on screen at once, so the list scrolls
           rather than running off the bottom of the viewport. */}
-      <DropdownMenuContent align="center" side="top" className="max-h-80 w-56 overflow-y-auto">
+      <DropdownMenuContent align="center" side="top" className="max-h-80 w-72 overflow-y-auto">
         {POOL_SHAPES.map((shape) => (
-          <DropdownMenuItem key={shape.id} onSelect={() => pick(shape.id)}>
-            {shape.name}
+          <DropdownMenuItem
+            key={shape.id}
+            onSelect={() => pick(shape.id)}
+            className="flex items-baseline justify-between gap-3"
+          >
+            {/* Full name, plus the size it drops. "Roman two master" and "Roman
+                two point one master" are different pools, and a list of names
+                alone gave a first-time user no way to tell them apart. */}
+            <span>{shape.name}</span>
+            <span className="shrink-0 text-[10px] tabular-nums text-textFaint">
+              {sizeLabel(shape)}
+            </span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

@@ -28,16 +28,8 @@ import { MaterialSection } from './inspector/MaterialSection'
 import { ComputedMetrics } from './inspector/ComputedMetrics'
 import { QuoteContribution } from './inspector/QuoteContribution'
 import type { Suggestion } from '@/lib/commands/suggestions'
-import type { QuoteSummary } from '@/modules/pricing/engine'
 import type { RawMaterial } from './materials/MaterialGrid'
-
-interface QuoteDockData {
-  id: string
-  subtotal: number
-  total: number
-  delta?: number
-  lineItems: Array<{ id: string; name: string; source: string; total: number }>
-}
+import { PricingProvider, type PricingInput } from './LiveQuote'
 
 export interface EditorLayoutProps {
   projectId: string
@@ -56,8 +48,12 @@ export interface EditorLayoutProps {
     grade?: { existing: SiteGrade; finished: SiteGrade } | null
   }
   validationReport: ValidationReport | null
-  quoteDock: QuoteDockData | null
-  inspectorQuote: QuoteSummary | undefined
+  /**
+   * Price book + selections for this project, or null when the organisation has
+   * no active price book. The quote itself is computed in the browser from the
+   * live shape store so the dock cannot lag the drawing.
+   */
+  pricing: PricingInput | null
   paletteSuggestions: Suggestion[]
   materials?: RawMaterial[]
 }
@@ -70,16 +66,16 @@ export function EditorLayout({
   user,
   initial,
   validationReport,
-  quoteDock,
-  inspectorQuote,
+  pricing,
   paletteSuggestions,
   materials = [],
 }: EditorLayoutProps) {
   return (
-    <div
-      className="fixed inset-0 z-40 grid min-w-[1024px] bg-canvas text-foreground"
-      style={{ gridTemplateRows: '44px 1fr', gridTemplateColumns: '248px 1fr 296px' }}
-    >
+    <PricingProvider value={pricing}>
+      <div
+        className="fixed inset-0 z-40 grid min-w-[1024px] bg-canvas text-foreground"
+        style={{ gridTemplateRows: '44px 1fr', gridTemplateColumns: '248px 1fr 296px' }}
+      >
       <div className="col-span-3">
         <HeaderBar
           projectId={projectId}
@@ -96,7 +92,7 @@ export function EditorLayout({
         <R3FCanvas />
         <CanvasOverlay
           modePillSlot={<ModePillContainer />}
-          quoteDockSlot={<QuoteDock quote={quoteDock} />}
+          quoteDockSlot={<QuoteDock />}
           viewCubeSlot={<ViewCube />}
           sunDialSlot={<SunDial />}
           toolbarSlot={<Toolbar />}
@@ -112,16 +108,14 @@ export function EditorLayout({
         geometrySlot={<GeometrySection />}
         materialSlot={<MaterialSection materials={materials} />}
         computedMetricsSlot={<ComputedMetrics />}
-        quoteContributionSlot={
-          inspectorQuote ? <QuoteContribution quote={inspectorQuote} /> : <QuoteContribution />
-        }
-        inspectorQuote={inspectorQuote}
+        quoteContributionSlot={<QuoteContribution />}
       />
 
       <EditorPersistence projectId={projectId} initial={initial} />
       <ClientCommandHandlers />
       <ExportCommandHandlers />
       <CommandPalette suggestions={paletteSuggestions} projectId={projectId} />
-    </div>
+      </div>
+    </PricingProvider>
   )
 }

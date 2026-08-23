@@ -54,6 +54,17 @@ describe('the pool tool offers the whole catalogue', () => {
     return screen.findAllByRole('menuitem')
   }
 
+  /**
+   * The shape's name, which is the first half of the row.
+   *
+   * Each row now carries its footprint alongside the name, because a list of
+   * names alone gave a first-time user no way to tell "Roman two master" from
+   * "Roman two point one master".
+   */
+  function nameOf(item: HTMLElement): string {
+    return item.querySelector('span')?.textContent ?? ''
+  }
+
   it('lists one entry per pool shape in the catalogue', async () => {
     const catalogue = stencilsByCategory()[StencilCategory.POOL_SHAPE]
     // Guards the guard: if the catalogue itself shrank back to four, the
@@ -61,23 +72,36 @@ describe('the pool tool offers the whole catalogue', () => {
     expect(catalogue.length).toBeGreaterThan(4)
 
     const items = await openPicker()
-    expect(items.map(item => item.textContent)).toEqual(catalogue.map(shape => shape.name))
+    expect(items.map(nameOf)).toEqual(catalogue.map(shape => shape.name))
   })
 
   it('shows the shapes the hardcoded list left out', async () => {
     // Named explicitly, because these are the ones a customer asks for by name
     // and the tool used to have no answer for.
-    const labels = (await openPicker()).map(item => item.textContent)
+    const labels = (await openPicker()).map(nameOf)
     expect(labels).toContain('Grecian pool and spa')
     expect(labels).toContain('Corner steps')
     expect(labels).toContain('Spa')
+  })
+
+  it('says how big each shape is, so two similar names can be told apart', async () => {
+    // "Roman two master" and "Roman two point one master" are different pools
+    // and read as a version number to anyone outside the trade. The footprint
+    // is the part of the difference the product can actually show.
+    const items = await openPicker()
+    const romans = items.filter(item => nameOf(item).startsWith('Roman two'))
+    expect(romans.length).toBeGreaterThan(1)
+    for (const roman of romans) {
+      expect(roman.textContent).toMatch(/\d+' × \d+'/)
+    }
+    expect(new Set(romans.map(item => item.textContent)).size).toBe(romans.length)
   })
 
   it('arms the tool with the shape that was picked', async () => {
     // Listing a shape is only half of it: choosing Grecian has to be what the
     // next click on the canvas actually draws.
     const items = await openPicker()
-    const grecian = items.find(item => item.textContent === 'Grecian')
+    const grecian = items.find(item => nameOf(item) === 'Grecian')
     expect(grecian).toBeDefined()
     await userEvent.click(grecian as HTMLElement)
 

@@ -79,7 +79,10 @@ export function StencilGrid({ search }: Props) {
                 <span className="ml-1 text-textFaint">{items.length}</span>
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-1 px-2">
+            {/* One column. Three columns is what forced every name into an
+                ellipsis, and the names are the only thing that tells two of
+                these shapes apart. */}
+            <div className="grid grid-cols-1 gap-0.5 px-2">
               {items.map((s) => (
                 <StencilCard key={s.id} stencil={s} onAdd={onAdd} />
               ))}

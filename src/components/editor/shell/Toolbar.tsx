@@ -58,14 +58,21 @@ export function Toolbar() {
       <Divider />
       {renderGroup('annotate')}
       <Divider />
+      {/* Labelled, because an unlabelled sparkle is not a label. This is the
+          only place a new user is told that adding a waterfall, exporting a
+          proposal and running the checklist all live behind one button, and the
+          first person to try the product read it as decoration and missed it. */}
       <button
         type="button"
         onClick={() => void dispatch('palette.open', {})}
-        title="Open command palette"
-        aria-label="Open command palette"
-        className="ml-0.5 flex h-9 w-9 items-center justify-center rounded-pfSm bg-gradient-to-br from-fuchsia-500 to-pink-500 text-white shadow-pfSm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-pfAccent"
+        title="Commands: add features, export documents, run the checklist (⌘K)"
+        aria-label="Open the command palette"
+        aria-keyshortcuts="Meta+K Control+K"
+        className="ml-0.5 flex h-9 items-center gap-1.5 rounded-pfSm bg-gradient-to-br from-fuchsia-500 to-pink-500 pl-2 pr-2.5 text-white shadow-pfSm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-pfAccent"
       >
-        <Sparkles className="h-4 w-4" aria-hidden />
+        <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="text-[11.5px] font-medium leading-none">Commands</span>
+        <span className="font-mono text-[9px] leading-none text-white/80">⌘K</span>
       </button>
     </div>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { registerClientHandler, unregisterClientHandler } from '@/lib/commands/dispatch'
+import { dispatch, registerClientHandler, unregisterClientHandler } from '@/lib/commands/dispatch'
 import { useCameraStore } from '@/modules/editor/state/cameraStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
@@ -185,6 +185,7 @@ const HANDLER_IDS: string[] = [
   'nav.focus',
   // palette category
   'palette.open',
+  'palette.run.suggestion',
 ]
 
 export function ClientCommandHandlers() {
@@ -840,6 +841,22 @@ export function ClientCommandHandlers() {
         return { opened: true }
       },
     )
+
+    // A suggestion is a wrapper: the audit row records which suggestion the
+    // user picked, and the inner command is what actually does the work. With
+    // no handler here the wrapper returned ok and the inner command was never
+    // called, so every row under "Suggested for this design" closed the palette
+    // and changed nothing.
+    registerClientHandler<
+      { suggestionId: string; innerCommandId: string; innerInput?: unknown },
+      { ran: boolean }
+    >('palette.run.suggestion', async (input) => {
+      const result = await dispatch(input.innerCommandId, input.innerInput ?? {})
+      // Thrown, not swallowed: dispatch turns a throw into ok:false carrying
+      // this message, which is what the palette puts in front of the user.
+      if (!result.ok) throw new Error(result.error)
+      return { ran: true }
+    })
 
     return () => {
       for (const id of HANDLER_IDS) unregisterClientHandler(id)

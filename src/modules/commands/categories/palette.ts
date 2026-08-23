@@ -28,6 +28,7 @@ register({
 
 register({
   id: 'palette.run.suggestion',
+  runsOn: 'client',
   label: 'Run a palette suggestion',
   description: 'Dispatch a palette suggestion which delegates to an inner command id.',
   category: 'palette',
@@ -39,9 +40,14 @@ register({
   outputSchema: z.object({
     ran: z.boolean(),
   }),
-  // CLIENT (Track H CommandPalette):
-  //   import { dispatch } from '@/lib/commands/dispatch';
-  //   await dispatch(input.innerCommandId, input.innerInput);
-  //   The wrapping audit row records which suggestion drove the inner call.
+  // CLIENT: ClientCommandHandlers dispatches input.innerCommandId with
+  //   input.innerInput and throws when that inner call fails, so the palette
+  //   reports the real reason. The wrapping audit row records which suggestion
+  //   drove the inner call.
+  //
+  //   This handler did not exist until a first-run review found it: every row
+  //   under "Suggested for this design" posted this command, was told ok, and
+  //   changed nothing. `runsOn: 'client'` is what makes wiring.test insist on
+  //   the handler being there.
   execute: async () => ({ ok: true, data: { ran: true } }),
 })

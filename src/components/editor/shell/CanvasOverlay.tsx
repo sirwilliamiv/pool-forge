@@ -40,16 +40,28 @@ export function CanvasOverlay({
         </div>
       </div>
 
-      <div className="pointer-events-auto absolute bottom-3 left-3">
-        {sunDialSlot ?? <Placeholder label="Sun study" muted />}
-      </div>
+      {/* One row, not three things pinned to the same edge and hoping.
+          Absolutely positioned, the centred toolbar and the right-hand
+          checklist ran into each other as soon as either grew or the window
+          narrowed. As a wrapping row they share the space: while everything
+          fits, the toolbar sits between the sun dial and the checklist, and
+          when it does not, the checklist lifts onto its own line above rather
+          than sitting on top of the tools. `flex-wrap-reverse` is what makes
+          the overflow line go up instead of off the bottom of the canvas. The
+          wrappers keep the empty space click-through so the canvas underneath
+          is still reachable. */}
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap-reverse items-end justify-center gap-3">
+        <div className="pointer-events-auto mr-auto">
+          {sunDialSlot ?? <Placeholder label="Sun study" muted />}
+        </div>
 
-      <div className="pointer-events-auto absolute bottom-3 left-1/2 -translate-x-1/2">
-        {toolbarSlot ?? <Placeholder label="Toolbar" muted />}
-      </div>
+        <div className="pointer-events-auto">
+          {toolbarSlot ?? <Placeholder label="Toolbar" muted />}
+        </div>
 
-      <div className="pointer-events-auto absolute bottom-3 right-3">
-        {validationDockSlot ?? <Placeholder label="Validation" muted />}
+        <div className="pointer-events-auto ml-auto">
+          {validationDockSlot ?? <Placeholder label="Validation" muted />}
+        </div>
       </div>
 
       {/* Re-projected from 3D each frame; positioning is owned by the slot itself. */}

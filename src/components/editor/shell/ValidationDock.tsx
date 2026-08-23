@@ -7,8 +7,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { dispatch } from '@/lib/commands/dispatch'
+import { humanFieldName } from '@/lib/human-field'
 import { cn } from '@/lib/utils'
 import { focusRing, useFocusFlash } from './useFocusFlash'
 import type {
@@ -45,6 +46,14 @@ export function ValidationDock({ validationResult }: ValidationDockProps) {
 
   const flashing = useFocusFlash('validation')
 
+  // Being pointed at a collapsed panel is being pointed at nothing. The palette
+  // and the voice agent both send people here with "show me the checklist", and
+  // the fix wording each issue carries is inside the list, not on the three
+  // coloured counts.
+  useEffect(() => {
+    if (flashing) setExpanded(true)
+  }, [flashing])
+
   async function jumpTo(item: ItemWithFix) {
     if (!item.targetId) return
     await dispatch('selection.set', { ids: [item.targetId] })
@@ -62,8 +71,15 @@ export function ValidationDock({ validationResult }: ValidationDockProps) {
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
+        aria-label={`Checklist: ${counts.error} errors, ${counts.warn} warnings, ${counts.pass} passed`}
         className="flex w-full items-center gap-1 rounded-pfMd px-1.5 py-1 text-left hover:bg-rowHover focus:outline-none focus:ring-2 focus:ring-pfAccent"
       >
+        {/* The word matters. Three coloured numbers with no label was read by a
+            first-time user as "a cluster I cannot guess", and this is the panel
+            the palette sends people to. */}
+        <span className="pl-1 pr-0.5 text-[10px] font-semibold uppercase tracking-[0.5px] text-textMuted">
+          Checklist
+        </span>
         <div className="flex items-center gap-1">
           <Pill
             tone="error"
@@ -107,9 +123,11 @@ export function ValidationDock({ validationResult }: ValidationDockProps) {
                       <div className="font-medium text-foreground">
                         {item.message}
                       </div>
+                      {/* Not `POOL · DEPTHSHALLOW`. The category is a word;
+                          the field was an internal key printed in capitals. */}
                       <div className="mt-0.5 text-[10px] uppercase tracking-wide text-textMuted">
                         {item.category}
-                        {item.field ? ` · ${item.field}` : ''}
+                        {item.field ? ` · ${humanFieldName(item.field)}` : ''}
                       </div>
                       {item.suggestedFix && (
                         <div className="mt-0.5 text-[10px] text-pfAccentStrong">
