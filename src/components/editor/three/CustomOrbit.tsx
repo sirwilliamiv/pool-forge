@@ -4,6 +4,9 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useCameraStore } from '@/modules/editor/state/cameraStore'
+import { useEditorStore } from '@/modules/editor/state/editorStore'
+import { stencilForTool } from '@/modules/editor/interactions/gestures'
+import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
 import {
   placeCamera,
   subscribeCameraNudges,
@@ -105,6 +108,14 @@ export function CustomOrbit() {
     let lastY = 0
 
     const onPointerDown = (e: PointerEvent) => {
+      // A drag with a placing tool armed belongs to the tool, not the camera.
+      // It used to belong to both: the yard swung round while the gesture that
+      // was meant to size a deck was thrown away for having moved too far.
+      const tool = normalizeToolId(useEditorStore.getState().activeTool)
+      if (e.button === 0 && stencilForTool(tool, useEditorStore.getState().activeStencilId)) {
+        return
+      }
+
       // Orthographic views (plan / section) never rotate: any drag is a pan.
       const mode = resolveDragMode(e, camera instanceof THREE.OrthographicCamera)
       if (!mode) return

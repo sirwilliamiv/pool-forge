@@ -11,8 +11,11 @@ import { useEditorStore, type Vec3 } from '@/modules/editor/state/editorStore'
 import {
   ANNOTATION_STENCIL,
   nextMeasurePoints,
+  placementFrom,
   stencilForTool,
+  type GroundPoint,
 } from '@/modules/editor/interactions/gestures'
+import { getStencil } from '@/modules/editor/stencils'
 import { clientToNdc, isClick } from '@/modules/editor/interactions/pointer'
 import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
 import { MeasureLabelOverlay } from '../shell/MeasureLabelOverlay'
@@ -38,7 +41,15 @@ function intersectGround(
 export function ToolGestures() {
   const { gl, camera, scene } = useThree()
   const downRef = useRef<{ x: number; y: number } | null>(null)
+  // Where the press landed on the ground, so a drag can size the new shape.
+  const downGroundRef = useRef<GroundPoint | null>(null)
   const pointerWorldRef = useRef<Vec3 | null>(null)
+  const [dragBox, setDragBox] = useState<{
+    cx: number
+    cz: number
+    w: number
+    h: number
+  } | null>(null)
   const [pendingAnnotation, setPendingAnnotation] = useState<{
     worldX: number
     worldZ: number
@@ -55,11 +66,38 @@ export function ToolGestures() {
     function onPointerDown(e: PointerEvent) {
       if (e.button !== 0) return
       downRef.current = { x: e.clientX, y: e.clientY }
+
+      // Only for the tools that place something. Everything else leaves the
+      // press to the camera, which is what a drag on empty ground should do.
+      const tool = normalizeToolId(useEditorStore.getState().activeTool)
+      const placing = stencilForTool(tool, useEditorStore.getState().activeStencilId)
+      if (!placing) return
+      const hit = intersectGround(e, el, camera, raycaster)
+      downGroundRef.current = hit ? { x: hit.x, z: hit.z } : null
     }
 
     function onPointerMove(e: PointerEvent) {
-      // Track for measure preview line; cheap raycast on every move
       const tool = normalizeToolId(useEditorStore.getState().activeTool)
+
+      // Show the rectangle while it is being dragged. Without it the gesture
+      // gives no sign it is working until the mouse comes up, which is most of
+      // why it read as broken.
+      const start = downGroundRef.current
+      if (start) {
+        const hit = intersectGround(e, el, camera, raycaster)
+        if (hit) {
+          const w = Math.abs(hit.x - start.x)
+          const h = Math.abs(hit.z - start.z)
+          setDragBox(
+            w > 0.25 && h > 0.25
+              ? { cx: (start.x + hit.x) / 2, cz: (start.z + hit.z) / 2, w, h }
+              : null,
+          )
+        }
+        return
+      }
+
+      // Track for measure preview line; cheap raycast on every move
       if (tool !== 'tool.measure') return
       const hit = intersectGround(e, el, camera, raycaster)
       if (hit) pointerWorldRef.current = [hit.x, hit.y, hit.z]
@@ -72,14 +110,13 @@ export function ToolGestures() {
       if (e.button !== 0) return
       const down = downRef.current
       downRef.current = null
-      // A release more than 4px from the press was a camera drag, not a click.
-      // Note this is also why drag-to-draw places nothing: the gesture is read
-      // as an orbit and abandoned without a word to the user.
-      if (!isClick(down, { x: e.clientX, y: e.clientY })) return
+      const downGround = downGroundRef.current
+      downGroundRef.current = null
+      setDragBox(null)
 
       const tool = normalizeToolId(useEditorStore.getState().activeTool)
 
-      // Add-* tools: place a stencil at click point, then return to select.
+      // Add-* tools: place a stencil, then return to select.
       // For 'tool.pool-shape', the active stencil id comes from PoolShapePicker.
       const stencilId = stencilForTool(
         tool,
@@ -88,17 +125,31 @@ export function ToolGestures() {
       if (stencilId) {
         const hit = intersectGround(e, el, camera, raycaster)
         if (!hit) return
-        // Click is the *center* of the new shape; the store stores top-left
-        // in inches and renderers offset by w/2,h/2. Small offset is fine —
-        // user can drag to refine.
+
+        // Click places the stencil at its catalogue size, centred on the point
+        // clicked. Drag places it in the rectangle dragged out. Both go through
+        // one function so the two gestures cannot drift apart.
+        const stencil = getStencil(stencilId)
+        const factor = stencil?.defaultDimensions.unit === 'ft' ? 12 : 1
+        const placement = placementFrom(downGround, { x: hit.x, z: hit.z }, {
+          widthIn: (stencil?.defaultDimensions.width ?? 96) * factor,
+          heightIn: (stencil?.defaultDimensions.height ?? 96) * factor,
+        })
+
         void dispatch('add.shape', {
           stencilId,
-          x: inches(hit.x),
-          y: inches(hit.z),
+          x: placement.x,
+          y: placement.y,
+          width: placement.width,
+          height: placement.height,
         })
         useEditorStore.getState().setActiveTool('tool.select')
         return
       }
+
+      // Everything below is a click, not a drag: a release far from the press
+      // was the camera moving, and must not drop a measurement or a note.
+      if (!isClick(down, { x: e.clientX, y: e.clientY })) return
 
       if (tool === 'tool.material-brush') {
         const id = pickShapeId(raycaster, camera, scene, el, e.clientX, e.clientY)
@@ -188,6 +239,26 @@ export function ToolGestures() {
             depthTest={false}
           />
           <MeasureLabelOverlay a={measureA} b={measureB} />
+        </>
+      )}
+      {dragBox && (
+        <>
+          <mesh position={[dragBox.cx, 0.04, dragBox.cz]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[dragBox.w, dragBox.h]} />
+            <meshBasicMaterial color="#0E9DE5" transparent opacity={0.18} depthTest={false} />
+          </mesh>
+          <Line
+            points={[
+              [dragBox.cx - dragBox.w / 2, 0.05, dragBox.cz - dragBox.h / 2],
+              [dragBox.cx + dragBox.w / 2, 0.05, dragBox.cz - dragBox.h / 2],
+              [dragBox.cx + dragBox.w / 2, 0.05, dragBox.cz + dragBox.h / 2],
+              [dragBox.cx - dragBox.w / 2, 0.05, dragBox.cz + dragBox.h / 2],
+              [dragBox.cx - dragBox.w / 2, 0.05, dragBox.cz - dragBox.h / 2],
+            ]}
+            color="#0E9DE5"
+            lineWidth={2}
+            depthTest={false}
+          />
         </>
       )}
       {pendingAnnotation && (

@@ -11,8 +11,7 @@ import {
   surfaceSqft,
 } from './_demo'
 
-// Every way to put something on the drawing, and the two that look like ways
-// and are not.
+// Every way to put something on the drawing.
 //
 // The add tools each carry a fixed stencil (`ADD_TOOL_STENCIL` in
 // `interactions/gestures.ts`), the pool tool carries whatever the picker last
@@ -31,7 +30,7 @@ test('20 · adding things to the scene', async ({ page }) => {
     page,
     '20',
     'Adding things to the scene',
-    'Four routes that work, and two gestures that look like they should and do not.',
+    'Five routes: a stencil card, a tool and a click, the pool picker, the palette, and dragging out a size.',
   )
 
   // --- route 1: the stencil panel -----------------------------------------
@@ -114,19 +113,11 @@ test('20 · adding things to the scene', async ({ page }) => {
   await say(page, 'It tells you where it went', 'Added objects land in the Layers list, ready to move.')
   await page.waitForTimeout(BEAT)
 
-  // --- the two that do not work -------------------------------------------
+  // --- route 5: drag it out ------------------------------------------------
   await say(
     page,
-    'Now the two that look like they should work',
-    'Worth knowing so you do not spend ten minutes thinking you are doing it wrong.',
-  )
-  await page.waitForTimeout(BEAT)
-
-  const before = await surfaceSqft(page)
-  await say(
-    page,
-    'You cannot drag out a shape',
-    'Press, drag, release, and nothing is placed. The drag is read as a camera orbit and abandoned without a word.',
+    'Route 5 · Drag out the size you want',
+    'Press, drag, release. The rectangle you drag is the object you get, and it previews as you go.',
   )
   await page.getByRole('button', { name: 'Deck', exact: true }).first().click().catch(() => {})
   await page.waitForTimeout(400)
@@ -144,11 +135,18 @@ test('20 · adding things to the scene', async ({ page }) => {
     await page.mouse.up()
   }
   await page.waitForTimeout(BEAT * 2)
-  expect(
-    await surfaceSqft(page),
-    'drag-to-draw placed something, so this caption is now wrong and the chapter needs rewriting',
-  ).toBe(before)
-  await say(page, 'Nothing happened, and nothing said so', 'Click, do not drag. This one is on our list.')
+  await say(
+    page,
+    'The drag is measured on the ground, not on your screen',
+    'So a diagonal drag in the 3D view comes out skewed. Switch to Plan first when the size matters.',
+  )
+  await page.waitForTimeout(BEAT * 2)
+
+  await say(
+    page,
+    'A short drag is still a click',
+    'Under about two feet it places the catalogue size instead, so a twitch cannot make a tiny unusable pool.',
+  )
   await page.waitForTimeout(BEAT)
 
   await say(
@@ -163,8 +161,8 @@ test('20 · adding things to the scene', async ({ page }) => {
 
   await say(
     page,
-    'So: click a stencil, or pick a tool and click once',
-    'Those are the two you will use. Command K is the escape hatch when you cannot find the button.',
+    'Five routes, and the two you will use are the first two',
+    'Click a stencil card, or pick a tool and click once. Command K is the escape hatch when you cannot find the button.',
   )
   await page.waitForTimeout(BEAT * 2)
 })
