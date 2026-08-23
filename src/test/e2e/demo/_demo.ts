@@ -220,6 +220,43 @@ export async function clickOnCanvas(page: Page, at: { x: number; y: number }): P
  * The brief for these demos is to note defects and keep filming rather than
  * stop and fix, so an honest picture of the product survives the run.
  */
+
+/**
+ * A project of this chapter's own, empty, named per run.
+ *
+ * Chapters that teach "place your first object" cannot open whatever was worked
+ * on last: a seeded database hands them a finished design with nine objects on
+ * it. A fixed name is no good either, because the second recording then opens
+ * the first recording's project with its pool still in it.
+ */
+export async function newProject(page: Page, label: string): Promise<string> {
+  const name = `${label} ${Date.now().toString(36).slice(-4)}`
+  await page.goto('/dashboard')
+  await page.getByRole('button', { name: /new project/i }).first().click()
+  await page.locator('input').first().fill(name)
+  await page.getByRole('button', { name: /^create/i }).click()
+  await page.getByText(name).first().waitFor({ timeout: 60_000 })
+  await page.getByText(name).first().click()
+  await page.waitForURL(/\/projects\/[a-z0-9]+/i, { timeout: 60_000 })
+  const href = new URL(page.url()).pathname
+  await openEditor(page, href)
+  return href
+}
+
+/**
+ * Square feet currently on the drawing, read off the inspector.
+ *
+ * Not the layer count: that lives in the Layers panel and is off screen
+ * whenever Stencils or Materials is open, which is exactly when a chapter
+ * wants to check that a click placed something. A chapter that narrates
+ * deleting a pool over an empty canvas is worse than no chapter.
+ */
+export async function surfaceSqft(page: Page): Promise<number> {
+  const text = await page.evaluate(() => document.body.innerText)
+  const m = text.match(/SURFACE AREA\s*([\d,]+)/i)
+  return m?.[1] ? Number(m[1].replace(/,/g, '')) : -1
+}
+
 export const findings: string[] = []
 
 export function note(chapterName: string, what: string): void {
