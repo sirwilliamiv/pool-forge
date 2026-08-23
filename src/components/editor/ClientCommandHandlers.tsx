@@ -21,6 +21,9 @@ import { useCommandPaletteStore } from './shell/CommandPalette'
 
 let sunStudyRaf: number | null = null
 
+/** One notch of zoom, matching the wheel's feel over a short scroll. */
+const ZOOM_STEP = 1.2
+
 /**
  * Fail loudly when a command names a shape that is not there.
  *
@@ -557,24 +560,35 @@ export function ClientCommandHandlers() {
     // ---------- canvas view ----------
     // These were registered, offered to the voice agent, and did nothing. The
     // agent called canvas.zoom.out during a real session, was told it succeeded,
-    // and the view never moved.
+    // and the view never moved: the handlers wrote useEditorStore.zoom/panX/panY,
+    // which no 3D component reads. The camera is driven by useCameraStore, the
+    // same route camera.set.view and canvas.fit already take, so that is where
+    // these go now. The editor-store fields stay in step because the 2D
+    // viewport state is still reported back as the command's result.
     registerClientHandler<{ step?: number }, { zoom: number }>('canvas.zoom.in', (input) => {
+      const factor = input.step ?? ZOOM_STEP
+      useCameraStore.getState().zoomBy(factor)
       const store = useEditorStore.getState()
-      store.setZoom(store.zoom * (input.step ?? 1.2))
+      store.setZoom(store.zoom * factor)
       return { zoom: useEditorStore.getState().zoom }
     })
 
     registerClientHandler<{ step?: number }, { zoom: number }>('canvas.zoom.out', (input) => {
+      const factor = input.step ?? ZOOM_STEP
+      useCameraStore.getState().zoomBy(1 / factor)
       const store = useEditorStore.getState()
-      store.setZoom(store.zoom / (input.step ?? 1.2))
+      store.setZoom(store.zoom / factor)
       return { zoom: useEditorStore.getState().zoom }
     })
 
     registerClientHandler<{ dx?: number; dy?: number }, { panX: number; panY: number }>(
       'canvas.pan',
       (input) => {
+        const dx = input.dx ?? 0
+        const dy = input.dy ?? 0
+        useCameraStore.getState().panBy(dx, dy)
         const store = useEditorStore.getState()
-        store.setPan(store.panX + (input.dx ?? 0), store.panY + (input.dy ?? 0))
+        store.setPan(store.panX + dx, store.panY + dy)
         const after = useEditorStore.getState()
         return { panX: after.panX, panY: after.panY }
       },

@@ -1,6 +1,6 @@
 'use client'
 
-import { Maximize } from 'lucide-react'
+import { Maximize, ZoomIn, ZoomOut } from 'lucide-react'
 
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,11 @@ const FACES: { view: CameraView; label: string; className: string }[] = [
   { view: 'right', label: 'RIGHT', className: 'col-start-3 row-start-2' },
   { view: 'front', label: 'FRONT', className: 'col-start-2 row-start-3' },
 ]
+
+const ZOOMS = [
+  { command: 'canvas.zoom.in', Icon: ZoomIn, label: 'Zoom in' },
+  { command: 'canvas.zoom.out', Icon: ZoomOut, label: 'Zoom out' },
+] as const
 
 export function ViewCube() {
   const targetView = useCameraStore((s) => s.targetView)
@@ -37,6 +42,24 @@ export function ViewCube() {
         <Maximize className="h-3 w-3" aria-hidden />
         Fit
       </button>
+
+      {/* Zoom in / zoom out. The commands existed and the hotkeys dispatched
+          them, but there was no control anywhere on screen, so a mouse-only
+          user had nothing to press. */}
+      <div className="flex gap-1">
+        {ZOOMS.map(({ command, Icon, label }) => (
+          <button
+            key={command}
+            type="button"
+            onClick={() => void dispatch(command, {})}
+            title={label}
+            aria-label={label}
+            className="flex h-7 flex-1 items-center justify-center rounded-pfMd border border-border bg-white text-textMuted shadow-pfMd transition hover:bg-rowHover hover:text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent"
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        ))}
+      </div>
 
       <div
         className="h-24 w-24 rounded-pfMd border border-border bg-white p-1 shadow-pfMd"
