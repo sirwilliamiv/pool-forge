@@ -6,8 +6,14 @@
 
 import { expect, type Page } from '@playwright/test'
 
-export const DEMO_EMAIL = 'demo@poolforge.local'
-export const DEMO_PASSWORD = 'PoolForge123!'
+// The seeded demo organisation, which is the one with a price book in it.
+//
+// These recordings used to sign in as demo@poolforge.local, whose organisation
+// has no price book at all, so every chapter filmed a LIVE QUOTE reading "Not
+// priced" and no document ever carried a number. The demo of an estimating tool
+// has to show estimates.
+export const DEMO_EMAIL = 'demo@poolforge.test'
+export const DEMO_PASSWORD = 'demo1234'
 
 /** Long enough to read a caption, short enough not to drag. */
 export const BEAT = 1400
