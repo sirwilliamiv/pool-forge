@@ -60,14 +60,14 @@ export function DragHandler() {
       if (!id) return
 
       const shape = useShapesStore.getState().shapes.find((s) => s.id === id)
+      if (!shape) return
       // Right tool, already selected, not locked, not hidden.
       if (
         !canDragShape({
           activeTool: useEditorStore.getState().activeTool,
-          shape: shape ?? null,
+          shape,
           selectedIds: useSelectionStore.getState().selectedIds,
-        }) ||
-        !shape
+        })
       ) {
         return
       }
