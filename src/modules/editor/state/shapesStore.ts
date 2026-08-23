@@ -53,13 +53,20 @@ function defaultsFor(
 ): Shape {
   let width = opts?.width ?? SHAPE_DEFAULTS[kind].width
   let height = opts?.height ?? SHAPE_DEFAULTS[kind].height
-  if (kind === ShapeKind.STENCIL && opts?.stencilId) {
-    const s = getStencil(opts.stencilId)
-    if (s) {
-      const factor = s.defaultDimensions.unit === 'ft' ? 12 : 1
-      width = opts.width ?? s.defaultDimensions.width * factor
-      height = opts.height ?? s.defaultDimensions.height * factor
-    }
+
+  // The catalogue wins wherever a stencil was named, whatever kind it becomes.
+  //
+  // This branch used to run only for the generic STENCIL kind, so the six
+  // stencils with a mesh of their own -- both pools, the spa, the sun shelf,
+  // the bench and both decks -- took their size from SHAPE_DEFAULTS instead and
+  // ignored the card the user had just clicked. "Standard rectangle, 30' x 14'"
+  // dropped a 25' x 12' pool; the bench went the other way and dropped bigger
+  // than its label. Those six are what a drawing is made of.
+  const stencil = opts?.stencilId ? getStencil(opts.stencilId) : undefined
+  if (stencil) {
+    const factor = stencil.defaultDimensions.unit === 'ft' ? 12 : 1
+    width = opts?.width ?? stencil.defaultDimensions.width * factor
+    height = opts?.height ?? stencil.defaultDimensions.height * factor
   }
   const base = {
     id: rid(kind),

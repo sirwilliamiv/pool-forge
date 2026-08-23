@@ -25,24 +25,43 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships  OrganizationMember[]
-  exports      Export[]             @relation("ExportGeneratedBy")
-  auditLogs    CommandAuditLog[]
-  voiceSessions VoiceSession[]
-  sourceImages SourceImage[]        @relation("SourceImageUploadedBy")
+  memberships    OrganizationMember[]
+  exports        Export[]             @relation("ExportGeneratedBy")
+  auditLogs      CommandAuditLog[]
+  voiceSessions  VoiceSession[]
+  sourceImages   SourceImage[]        @relation("SourceImageUploadedBy")
   sceneTemplates SceneTemplate[]
 }
 
 model Organization {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   name       String
   // Branding used on customer-facing proposals.
   logoUrl    String?
   brandColor String?
   // Default sales-tax rate applied to the quote subtotal, as a percentage.
-  taxRatePct Float    @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  taxRatePct Float   @default(0)
+
+  // The business behind the paperwork. A proposal is contract-adjacent and a
+  // permit sheet is submitted to a county: both need to say who is offering the
+  // work. Settings held a name, a logo, a colour and a tax rate, so there was
+  // nowhere to put any of this and every document went out without it.
+  address           String?
+  phone             String?
+  email             String?
+  // Florida requires the contractor licence number on a pool contract. Other
+  // states differ; the field is free text so it can hold whichever applies.
+  licenseNumber     String?
+  // Deposit and draws, as ordered stages. Every pool contract has a schedule
+  // and the proposal printed none.
+  paymentSchedule   Json    @default("[]")
+  // The terms paragraph, so a builder's own wording ships instead of ours.
+  proposalTerms     String?
+  // How long a quote stands, used when nobody sets a date by hand.
+  proposalValidDays Int     @default(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   members           OrganizationMember[]
   customers         Customer[]
@@ -107,9 +126,15 @@ model Project {
   orgId                String
   customerId           String?
   name                 String
+  // A number a builder can say on the phone. The proposal used the tail of the
+  // cuid, which is not a reference anybody can read back.
+  jobNumber            Int?
   salesperson          String?
   designer             String?
   status               ProjectStatus @default(DRAFT)
+  // Printed on the permit set, which is rejected without them.
+  jurisdiction         String?
+  parcelId             String?
   proposalExpiresAt    DateTime?
   internalNotes        String?
   poolFields           Json          @default("{}")
@@ -131,6 +156,7 @@ model Project {
   importSessions    ImportSession[]
   intakeSubmissions IntakeSubmission[]
 
+  @@unique([orgId, jobNumber])
   @@index([orgId])
   @@index([status])
   @@index([orgId, status, updatedAt])
@@ -432,19 +458,19 @@ enum CommandSource {
 }
 
 model CommandAuditLog {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   userId       String?
   orgId        String?
   commandId    String
-  inputJson    Json     @default("{}")
-  outputJson   Json     @default("{}")
-  success      Boolean  @default(false)
+  inputJson    Json          @default("{}")
+  outputJson   Json          @default("{}")
+  success      Boolean       @default(false)
   errorMessage String?
   /// How the command was triggered. Without it a spoken action and a button
   /// click are indistinguishable in the log, so "what does the voice agent
   /// actually get wrong" is unanswerable.
   source       CommandSource @default(UI)
-  ranAt        DateTime @default(now())
+  ranAt        DateTime      @default(now())
 
   user User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   org  Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
@@ -702,18 +728,16 @@ model ImportSession {
 
 /**
  * The public intake funnel's rate limiter. The ONE new model this track adds.
- *
  * Counting has to be atomic across every running instance: an in-memory token
  * bucket is per-process, so N instances collectively let through N times the
  * ceiling. Every request runs a single
  * `INSERT ... ON CONFLICT ... DO UPDATE ... WHERE count < ceiling`; Postgres
  * reports zero affected rows exactly when the bucket is spent.
- *
  * `bucketKey` is already normalized by the caller: an IP key is reduced to its
  * IPv6 /64 prefix so rotating addresses inside one allocation share a bucket.
  */
 model IntakeRateCounter {
-  id String @id @default(cuid())
+  id          String   @id @default(cuid())
   // 'ip' or 'token'. Keeps the two ceilings in separate namespaces.
   scope       String
   bucketKey   String
