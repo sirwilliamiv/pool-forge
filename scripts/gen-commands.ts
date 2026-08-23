@@ -26,6 +26,7 @@ const CATEGORY_ORDER: CommandCategory[] = [
   'grade',
   'site',
   'import',
+  'capture',
 ]
 
 const CATEGORY_LABELS: Record<CommandCategory, string> = {
@@ -46,6 +47,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   grade: 'Site grading',
   site: 'Site & property line',
   import: 'Import',
+  capture: 'Site capture',
 }
 
 function groupByCategory(

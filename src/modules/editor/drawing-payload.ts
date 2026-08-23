@@ -6,7 +6,7 @@
 import type { Shape } from '@/modules/editor/state/shapes'
 import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
 import type { SiteGrade } from '@/modules/editor/grade/model'
-import { emptyGrade } from '@/modules/editor/grade/model'
+import { emptyGrade, parseCaptureProvenance } from '@/modules/editor/grade/model'
 
 export interface DrawingPayload {
   shapes: Shape[]
@@ -57,7 +57,11 @@ function parseSurface(raw: unknown): SiteGrade | null {
   if (!raw || typeof raw !== 'object') return null
   const obj = raw as Partial<SiteGrade>
   const points = Array.isArray(obj.points) ? obj.points : []
-  return {
+  // Provenance survives the round trip. Dropping it would leave the shots on a
+  // reopened drawing looking like a builder typed them, and the panel would
+  // quietly stop saying which of that ground was walked.
+  const capture = parseCaptureProvenance(obj.capture)
+  const surface: SiteGrade = {
     baseElevationFt: Number.isFinite(obj.baseElevationFt) ? (obj.baseElevationFt as number) : 0,
     falloff: Number.isFinite(obj.falloff) ? (obj.falloff as number) : 2,
     enabled: obj.enabled === true,
@@ -72,6 +76,8 @@ function parseSurface(raw: unknown): SiteGrade | null {
         ...(point.label ? { label: point.label } : {}),
       })),
   }
+  if (capture !== null) surface.capture = capture
+  return surface
 }
 
 export function parseSurvey(raw: unknown): SurveyConfig | null {

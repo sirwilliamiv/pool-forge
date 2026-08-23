@@ -18,6 +18,7 @@ export type CommandCategory =
   | 'grade'
   | 'site'
   | 'import'
+  | 'capture'
 
 export type CommandContext = {
   userId: string

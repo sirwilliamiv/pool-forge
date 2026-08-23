@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **92**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **94**.
 
 ## Project
 
@@ -778,4 +778,19 @@ Abandon an import session without writing anything into the project.
 **Voice examples:**
 - "Discard this import."
 - "Cancel the import."
+
+## Site capture
+
+### `capture.coverage.describe` — How much of this ground was walked
+
+Report how much of an area was actually measured by the site capture and how much is being interpolated across ground nobody walked. Read-only. Ask about the pool footprint, everything drawn, or the whole captured area.
+
+**Voice examples:**
+- "How much of this yard did we actually walk?"
+- "Is the pool area measured or guessed?"
+- "Did the capture cover the whole site?"
+
+### `capture.heightfield.ingest` — Take in a walked site capture
+
+Take the heightfield from a phone that walked the site and make it the existing ground. The elevations come in as a grid with a coverage mask, and only the cells somebody actually walked become survey shots. The benchmark the builder tapped sets the datum.
 

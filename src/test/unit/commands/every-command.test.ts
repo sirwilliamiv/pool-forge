@@ -723,6 +723,18 @@ const EXERCISES: Record<string, Exercise> = {
     kind: 'server',
     why: 'Reads the org customer upload links through Prisma.',
   },
+
+  // ---------- site capture ----------
+  'capture.heightfield.ingest': {
+    kind: 'server',
+    why:
+      'Decodes a walked heightfield staged by /api/capture/heightfield, writes the existing ' +
+      'ground onto the drawing and the coverage mask into a SiteCapture row.',
+  },
+  'capture.coverage.describe': {
+    kind: 'server',
+    why: 'Reads the stored coverage mask through Prisma and reports it over a region of the site.',
+  },
 }
 
 /**

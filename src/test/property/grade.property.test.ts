@@ -13,8 +13,10 @@ import {
   elevationAt,
   emptyGrade,
   maxSlope,
+  parseCaptureProvenance,
   profileAlong,
   sampleGrade,
+  type CaptureProvenance,
   type GradePoint,
   type SiteGrade,
 } from '@/modules/editor/grade/model'
@@ -278,6 +280,98 @@ describe('maxSlope', () => {
         expect(maxSlope(g, BOUNDS, 96)).toBeGreaterThanOrEqual(0)
       }),
       { numRuns: 200 },
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Capture provenance.
+//
+// A surface can now say it was walked with a phone and how much of it anybody
+// actually stood on. That is a claim about where the numbers came from, never a
+// number itself, and the whole point of it is lost the moment it starts moving
+// the ground: a panel that prints "82% walked" beside a cut and fill has to be
+// printing it beside the same cut and fill it would have printed without it.
+
+const provenance: fc.Arbitrary<CaptureProvenance> = fc.record({
+  captureId: fc.string({ minLength: 1, maxLength: 12 }),
+  capturedAt: fc.constant('2026-08-22T15:04:05.000Z'),
+  measuredFraction: fc.double({ min: 0, max: 1, noNaN: true }),
+  gapAreaSqft: fc.double({ min: 0, max: 5_000, noNaN: true }),
+  largestGapSqft: fc.double({ min: 0, max: 5_000, noNaN: true }),
+  shotCount: fc.integer({ min: 0, max: 200 }),
+  maxErrorFt: fc.double({ min: 0, max: 10, noNaN: true }),
+  benchmarkLabel: fc.option(fc.string({ maxLength: 20 }), { nil: null }),
+})
+
+describe('capture provenance', () => {
+  it('does not move the ground by a hair', () => {
+    fc.assert(
+      fc.property(grade, provenance, coord, coord, (g, capture, x, y) => {
+        const walked: SiteGrade = { ...g, capture }
+        expect(elevationAt(walked, x, y)).toBe(elevationAt(g, x, y))
+      }),
+      { numRuns: 300 },
+    )
+  })
+
+  it('does not change a volume, a slope or a profile', () => {
+    // Four consumers, one assertion each, because provenance that leaked into
+    // any of them would be a wrong number on a quote wearing a badge saying it
+    // could be trusted.
+    fc.assert(
+      fc.property(grade, grade, provenance, (a, b, capture) => {
+        const walked = { ...a, capture }
+        expect(cutFillBetween(walked, b, BOUNDS, 96)).toEqual(cutFillBetween(a, b, BOUNDS, 96))
+        expect(maxSlope(walked, BOUNDS, 96)).toBe(maxSlope(a, BOUNDS, 96))
+        expect(sampleGrade(walked, BOUNDS, 48).heights).toEqual(sampleGrade(a, BOUNDS, 48).heights)
+        expect(profileAlong(walked, { x: -100, y: -100 }, { x: 200, y: 300 }, 8)).toEqual(
+          profileAlong(a, { x: -100, y: -100 }, { x: 200, y: 300 }, 8),
+        )
+      }),
+      { numRuns: 150 },
+    )
+  })
+
+  it('survives being written down and read back', () => {
+    fc.assert(
+      fc.property(provenance, capture => {
+        const back = parseCaptureProvenance(JSON.parse(JSON.stringify(capture)))
+        expect(back).toEqual(capture)
+      }),
+      { numRuns: 200 },
+    )
+  })
+
+  it('never reads back a coverage figure it could print as more than everything', () => {
+    fc.assert(
+      fc.property(fc.double({ min: -1_000, max: 1_000, noNaN: true }), fraction => {
+        const back = parseCaptureProvenance({
+          captureId: 'cap_x',
+          capturedAt: '2026-08-22T15:04:05.000Z',
+          measuredFraction: fraction,
+        })
+        expect(back?.measuredFraction).toBeGreaterThanOrEqual(0)
+        expect(back?.measuredFraction).toBeLessThanOrEqual(1)
+      }),
+      { numRuns: 200 },
+    )
+  })
+
+  it('reads nothing rather than something wrong', () => {
+    // A drawing with no capture is a drawing somebody measured by hand, which
+    // is a different claim from a walk that covered none of the yard. Anything
+    // unparseable has to come back as the first, never the second.
+    fc.assert(
+      fc.property(fc.anything(), value => {
+        const back = parseCaptureProvenance(value)
+        if (back !== null) {
+          expect(typeof back.captureId).toBe('string')
+          expect(back.captureId.length).toBeGreaterThan(0)
+          expect(Number.isFinite(back.measuredFraction)).toBe(true)
+        }
+      }),
+      { numRuns: 300 },
     )
   })
 })

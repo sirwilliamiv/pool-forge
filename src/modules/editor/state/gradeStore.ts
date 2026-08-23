@@ -7,6 +7,7 @@ import { useHistoryStore } from './historyStore'
 import {
   DEFAULT_FALLOFF,
   emptyGrade,
+  parseCaptureProvenance,
   type GradePoint,
   type GradePointKind,
   type SiteGrade,
@@ -168,7 +169,8 @@ export const useGradeStore = create<GradeState>()((set, get) => ({
 function normalise(raw: SiteGrade | null | undefined): SiteGrade {
   if (!raw || typeof raw !== 'object') return emptyGrade()
   const points = Array.isArray(raw.points) ? raw.points : []
-  return {
+  const capture = parseCaptureProvenance(raw.capture)
+  const surface: SiteGrade = {
     baseElevationFt: Number.isFinite(raw.baseElevationFt) ? raw.baseElevationFt : 0,
     falloff: Number.isFinite(raw.falloff) ? clamp(raw.falloff, 1, 6) : DEFAULT_FALLOFF,
     enabled: raw.enabled === true,
@@ -183,6 +185,8 @@ function normalise(raw: SiteGrade | null | undefined): SiteGrade {
         ...(point.label ? { label: point.label } : {}),
       })),
   }
+  if (capture !== null) surface.capture = capture
+  return surface
 }
 
 function clamp(value: number, low: number, high: number): number {

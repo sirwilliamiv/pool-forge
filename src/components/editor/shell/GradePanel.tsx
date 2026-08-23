@@ -1,10 +1,10 @@
 'use client'
 
-import { Mountain, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Mountain, Plus, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { dispatch } from '@/lib/commands/dispatch'
-import { cutFillBetween, maxSlope, nextShotPosition } from '@/modules/editor/grade/model'
+import { cutFillBetween, maxSlope, nextShotPosition, type SiteGrade } from '@/modules/editor/grade/model'
 import { visibleBounds } from '@/modules/editor/placement'
 import { useGradeStore } from '@/modules/editor/state/gradeStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
@@ -177,8 +177,62 @@ export function GradePanel() {
             <Row label="Fill" value={`${earthwork.fillYards} yd³`} />
             <Row label="Fall across site" value={`${earthwork.reliefFt} ft`} />
             <Row label="Steepest slope" value={`${slopePct}%`} />
+            {/* The provenance of the two numbers above. A cut and fill taken
+                across ground nobody walked is an estimate, and it has to say so
+                in the same box it is printed in, not somewhere else. */}
+            <GroundProvenance existing={existing} />
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Where the ground under the earthwork came from.
+ *
+ * Three cases, and only two of them say anything. A site walked with a phone
+ * reports how much of it was actually measured. A site with no shots at all is
+ * an assumption of flat ground, and pretending otherwise is how a dig gets
+ * quoted off a surface nobody ever looked at. A site the builder shot by hand
+ * gets no notice: those are real measurements, taken by the person signing the
+ * contract, and a warning on every one of them is a warning nobody reads.
+ */
+function GroundProvenance({ existing }: { existing: SiteGrade }) {
+  const capture = existing.capture
+
+  if (!capture) {
+    if (existing.points.length > 0) return null
+    return (
+      <p className="mt-2 text-[11px] leading-snug text-textFaint">
+        No elevations have been recorded and nobody has walked the site, so this assumes flat
+        ground at the datum.
+      </p>
+    )
+  }
+
+  const walked = Math.round(capture.measuredFraction * 100)
+  const complete = capture.gapAreaSqft <= 0
+
+  return (
+    <div className="mt-2">
+      <Row label="Ground walked" value={complete ? 'All of it' : `${walked}%`} />
+      {!complete && (
+        <div className="mt-1 rounded-pfSm border border-amber-200 bg-amber-50 px-2 py-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+            <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+            Interpolated across unwalked ground
+          </div>
+          <p className="mt-1 text-[11px] leading-snug text-amber-900">
+            {100 - walked}% of the captured area was never walked (
+            {Math.round(capture.gapAreaSqft).toLocaleString()} sq ft
+            {capture.largestGapSqft >= 4 && capture.largestGapSqft < capture.gapAreaSqft * 0.95
+              ? `, the largest hole ${Math.round(capture.largestGapSqft).toLocaleString()} sq ft`
+              : ''}
+            ). The ground there is interpolated from what surrounds it, so the cut and fill over it
+            is an estimate.
+          </p>
+        </div>
       )}
     </div>
   )

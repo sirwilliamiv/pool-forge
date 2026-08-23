@@ -32,10 +32,49 @@ export type GradePointKind =
   /** Cannot move: a door threshold, a neighbour's wall, an inlet. */
   | 'fixed'
 
+/**
+ * Where a surface's shots came from, when they came from a walked capture.
+ *
+ * Pure provenance: nothing in this file reads it, and no height, volume or
+ * slope changes by a hair when it is present. It exists so the panel that
+ * prints a cut and fill can say how much of the ground under that number
+ * anybody actually stood on. A surface interpolated across a stripe somebody
+ * skipped looks exactly like a surface that was walked, and the difference is
+ * a number on a signed contract.
+ *
+ * Absent on every surface entered by hand, which is not the same as zero
+ * coverage: hand-entered is a builder's own measurement, and a capture at 0%
+ * is a walk that failed.
+ */
+export interface CaptureProvenance {
+  captureId: string
+  /** ISO 8601, when the yard was walked. */
+  capturedAt: string
+  /** 0 to 1, over the whole captured extent. */
+  measuredFraction: number
+  /** Ground inside the captured extent that nobody walked. */
+  gapAreaSqft: number
+  /** The biggest single hole, as one connected piece. */
+  largestGapSqft: number
+  /** Shots the capture left behind, benchmark included. */
+  shotCount: number
+  /** Worst disagreement between those shots and the walked ground, in feet. */
+  maxErrorFt: number
+  /** What the builder tapped to set the datum, if they named it. */
+  benchmarkLabel: string | null
+}
+
 export interface SiteGrade {
   /** Height everywhere the points do not reach. */
   baseElevationFt: number
   points: GradePoint[]
+  /**
+   * Set when this surface was built by walking the site with a phone.
+   *
+   * Optional and inert. Every function below behaves identically with and
+   * without it, which is a property test rather than a promise.
+   */
+  capture?: CaptureProvenance
   /**
    * How strongly a point dominates its surroundings.
    *
@@ -46,6 +85,42 @@ export interface SiteGrade {
   falloff: number
   /** Off by default: a flat site is still the common case and costs nothing. */
   enabled: boolean
+}
+
+/**
+ * Read provenance off the wire, or off a drawing saved by another build.
+ *
+ * Tolerant on purpose. A drawing saved before captures existed has none, and a
+ * drawing saved by a newer build may carry a field this one has never heard of.
+ * Both have to open, and neither may invent a coverage number: anything that
+ * does not parse comes back null, which reads as "entered by hand" rather than
+ * as "walked, badly".
+ */
+export function parseCaptureProvenance(raw: unknown): CaptureProvenance | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Partial<CaptureProvenance>
+  if (typeof obj.captureId !== 'string' || obj.captureId === '') return null
+  if (typeof obj.capturedAt !== 'string' || obj.capturedAt === '') return null
+  if (!Number.isFinite(obj.measuredFraction)) return null
+
+  const fraction = obj.measuredFraction as number
+  return {
+    captureId: obj.captureId,
+    capturedAt: obj.capturedAt,
+    // Clamped rather than trusted: a fraction above one would print as "114%
+    // walked", which is the kind of number that makes a builder stop believing
+    // the rest of the panel.
+    measuredFraction: Math.min(1, Math.max(0, fraction)),
+    gapAreaSqft: nonNegative(obj.gapAreaSqft),
+    largestGapSqft: nonNegative(obj.largestGapSqft),
+    shotCount: Math.max(0, Math.floor(nonNegative(obj.shotCount))),
+    maxErrorFt: nonNegative(obj.maxErrorFt),
+    benchmarkLabel: typeof obj.benchmarkLabel === 'string' ? obj.benchmarkLabel : null,
+  }
+}
+
+function nonNegative(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
 }
 
 export const DEFAULT_FALLOFF = 2

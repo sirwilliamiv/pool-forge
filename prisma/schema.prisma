@@ -77,6 +77,7 @@ model Organization {
   importSessions    ImportSession[]
   intakeLinks       IntakeLink[]
   intakeSubmissions IntakeSubmission[]
+  siteCaptures      SiteCapture[]
 }
 
 model OrganizationMember {
@@ -155,6 +156,7 @@ model Project {
   sourceImages      SourceImage[]
   importSessions    ImportSession[]
   intakeSubmissions IntakeSubmission[]
+  siteCaptures      SiteCapture[]
 
   @@unique([orgId, jobNumber])
   @@index([orgId])
@@ -792,4 +794,67 @@ model IntakeSubmission {
   @@index([orgId])
   @@index([intakeLinkId])
   @@index([orgId, status, createdAt])
+}
+
+// ============================================================
+// LiDAR site capture
+//
+// A builder walks the yard in lawnmower stripes and the phone paints the ground
+// as it goes. What lands here is not a mesh: it is a heightfield plus the mask
+// saying which cells anybody actually walked. The mask is the whole point. An
+// interpolated surface and a measured one look identical, and the difference is
+// a cut-and-fill number on a signed contract, so the mask is kept for the life
+// of the project and every volume derived from it can be asked how much of its
+// ground was real.
+// ============================================================
+
+model SiteCapture {
+  id        String @id @default(cuid())
+  orgId     String
+  projectId String
+
+  /// The phone's own id for this walk, stable across a retried upload. Unique
+  /// within the organisation, so a lost connection re-sends rather than
+  /// recording the same yard twice.
+  captureId String
+
+  /// Grid shape. Row-major throughout, `cols * rows` cells.
+  cols Int
+  rows Int
+
+  /// Geometry, already converted: canvas inches, feet on the site datum.
+  /// Metres stop at `src/modules/capture/units.ts` and never reach the database.
+  cellSizeIn   Float
+  originXIn    Float
+  originYIn    Float
+  benchmarkXIn Float
+  benchmarkYIn Float
+
+  /// The height of ground nobody measured, set by the benchmark tap.
+  datumFt        Float
+  benchmarkLabel String?
+
+  /// Row-major heights, one little-endian float32 per cell, in feet on the
+  /// datum. Bytes rather than a Json array: 60,000 cells is 240KB here and
+  /// about 1.2MB as JSON text, re-parsed on every read.
+  elevationsFt Bytes
+
+  /// Row-major coverage, one byte per cell, 0 to 255 meaning 0 to 1.
+  coverage Bytes
+
+  /// Summary, so a list view never has to decode the arrays.
+  measuredCells Int
+  shotCount     Int
+  maxErrorFt    Float
+
+  capturedAt DateTime
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, captureId])
+  @@index([orgId])
+  @@index([projectId, capturedAt])
 }
