@@ -64,3 +64,6 @@ demo-small/
 electron/voice/
 services/voice-relay/dist/
 .next-e2e/
+
+# Throwaway repro scripts written while driving the running app.
+__*.mjs
