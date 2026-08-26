@@ -4,7 +4,11 @@
 // why, and the reason this exists is that the app has 72 stencils, 59 commands,
 // and 33 hotkeys with no way to discover them. Every chapter narrates itself.
 
-import { expect, type Page } from '@playwright/test'
+import { createHash } from 'node:crypto'
+import { appendFileSync, existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { expect, test, type Page } from '@playwright/test'
 
 // The seeded demo organisation, which is the one with a price book in it.
 //
@@ -21,12 +25,71 @@ export const BEAT = 1400
 const CAPTION_ID = 'pf-demo-caption'
 
 /**
+ * When each caption went up, so a voice track can be laid over the recording.
+ *
+ * Written beside the video, in the same directory Playwright puts it, because
+ * the two only mean anything together. Timed from the first thing the chapter
+ * does rather than from the first caption: the video starts recording when the
+ * browser context opens, which is the same moment.
+ */
+const chapterStart = new Map<string, number>()
+
+function markChapterStart(): void {
+  const id = test.info().testId
+  if (!chapterStart.has(id)) chapterStart.set(id, Date.now())
+}
+
+/**
+ * How long each caption takes to read aloud, in milliseconds.
+ *
+ * These chapters were paced for reading, and speech is slower, so laying a
+ * voice over a finished recording meant squeezing most lines and talking over
+ * the next one anyway. The recording waits for the speech instead. Missing
+ * entries just fall back to the normal beat, so a new caption is never blocked
+ * on regenerating this file.
+ *
+ * Regenerate with `node scripts/narrate-demo.mjs measure` after changing caption text.
+ */
+const NARRATION: Record<string, number> = (() => {
+  const path = join(process.cwd(), 'src/test/e2e/demo/narration-timing.json')
+  if (!existsSync(path)) return {}
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as Record<string, number>
+  } catch {
+    return {}
+  }
+})()
+
+/** The same key the measuring script writes: the spoken sentence, hashed. */
+export function narrationKey(title: string, detail: string): string {
+  const text = detail ? `${title}. ${detail}` : title
+  return createHash('sha1').update(text).digest('hex').slice(0, 16)
+}
+
+/** Long enough to say the line out loud, and never shorter than a beat. */
+function holdFor(title: string, detail: string): number {
+  const spoken = NARRATION[narrationKey(title, detail)]
+  return spoken === undefined ? BEAT : Math.max(BEAT, spoken + 400)
+}
+
+function logCaption(title: string, detail: string): void {
+  const info = test.info()
+  const started = chapterStart.get(info.testId)
+  if (started === undefined) return
+  appendFileSync(
+    info.outputPath('captions.jsonl'),
+    JSON.stringify({ atMs: Date.now() - started, title, detail }) + '\n',
+  )
+}
+
+/**
  * Draw a caption over the page.
  *
  * Re-injected on every call because a navigation wipes it, and chapters cross
  * routes constantly.
  */
 export async function say(page: Page, title: string, detail = ''): Promise<void> {
+  logCaption(title, detail)
   await page.evaluate(
     ({ id, title, detail }) => {
       let el = document.getElementById(id)
@@ -69,7 +132,7 @@ export async function say(page: Page, title: string, detail = ''): Promise<void>
     },
     { id: CAPTION_ID, title, detail },
   )
-  await page.waitForTimeout(BEAT)
+  await page.waitForTimeout(holdFor(title, detail))
 }
 
 /** A chapter title card, held long enough to read before the action starts. */
@@ -79,6 +142,7 @@ export async function chapter(page: Page, n: string, title: string, detail: stri
 }
 
 export async function login(page: Page): Promise<void> {
+  markChapterStart()
   await page.goto('/login')
   await page.fill('input[name="email"]', DEMO_EMAIL)
   await page.fill('input[name="password"]', DEMO_PASSWORD)
