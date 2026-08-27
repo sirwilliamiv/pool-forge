@@ -75,10 +75,20 @@ export function ImportXlsxForm() {
     if (errors.length > 0 && !confirm(`${errors.length} row(s) have errors and will be skipped. Continue?`)) {
       return
     }
+    // Said plainly before it happens: this replaces the list everyone is
+    // quoting from, rather than adding to it.
+    if (!confirm(`Publish these ${items.length} items as a new version of the price book? Everyone quoting will move to it. The current version is kept.`)) {
+      return
+    }
     startTransition(async () => {
       try {
         const res = await importPriceBookItems(items)
-        toast.success(`Imported ${res.created} item${res.created === 1 ? '' : 's'}`)
+        // Say which version, because the previous one is still there. An import
+        // that turns out to be the wrong file has to look recoverable.
+        toast.success(
+          `Version ${res.version} published: ${res.created} item${res.created === 1 ? '' : 's'}. ` +
+            `Version ${res.version - 1} is kept.`,
+        )
         router.push('/settings/price-book')
         router.refresh()
       } catch (err) {

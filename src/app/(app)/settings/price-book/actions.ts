@@ -108,21 +108,58 @@ export async function deleteItem(itemId: string): Promise<{ ok: true }> {
   return { ok: true }
 }
 
-export async function createBookVersion(): Promise<{ id: string; version: number }> {
+/**
+ * Cut a new version of the price book, carrying the current one forward.
+ *
+ * It used to create an empty book and deactivate the old one, which is not a
+ * new version of anything: a builder pressing it lost their entire price list
+ * and had to rebuild it from nothing. A version is a copy you can edit while
+ * the one it came from stays readable.
+ *
+ * The copy is what makes the old version safe to keep: edits land on the new
+ * book, and anything already priced against the old one still resolves to the
+ * numbers it was priced with.
+ */
+export async function createBookVersion(): Promise<{ id: string; version: number; copied: number }> {
   const orgId = await requireOrgId()
-  const latest = await db.priceBook.findFirst({
-    where: { orgId, name: 'Default' },
-    orderBy: { version: 'desc' },
-    select: { version: true },
-  })
-  const version = (latest?.version ?? 0) + 1
 
-  await db.priceBook.updateMany({ where: { orgId, isActive: true }, data: { isActive: false } })
-  const created = await db.priceBook.create({
-    data: { orgId, name: 'Default', version, isActive: true },
-    select: { id: true, version: true },
-  })
+  return db.$transaction(async (tx) => {
+    const current = await tx.priceBook.findFirst({
+      where: { orgId, name: 'Default' },
+      orderBy: { version: 'desc' },
+      select: { id: true, version: true },
+    })
+    const version = (current?.version ?? 0) + 1
 
-  revalidatePath('/settings/price-book')
-  return created
+    await tx.priceBook.updateMany({ where: { orgId, isActive: true }, data: { isActive: false } })
+    const created = await tx.priceBook.create({
+      data: { orgId, name: 'Default', version, isActive: true },
+      select: { id: true, version: true },
+    })
+
+    let copied = 0
+    if (current) {
+      const items = await tx.priceBookItem.findMany({ where: { priceBookId: current.id } })
+      if (items.length > 0) {
+        const result = await tx.priceBookItem.createMany({
+          data: items.map((item) => ({
+            priceBookId: created.id,
+            category: item.category,
+            name: item.name,
+            unitType: item.unitType,
+            retailPrice: item.retailPrice,
+            unitCost: item.unitCost,
+            customerVisible: item.customerVisible,
+            internalOnly: item.internalOnly,
+            required: item.required,
+            ...(item.formula === null ? {} : { formula: item.formula }),
+          })),
+        })
+        copied = result.count
+      }
+    }
+
+    revalidatePath('/settings/price-book')
+    return { ...created, copied }
+  })
 }
