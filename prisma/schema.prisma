@@ -63,21 +63,22 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members           OrganizationMember[]
-  customers         Customer[]
-  projects          Project[]
-  shapeTemplates    ShapeTemplate[]
-  sceneTemplates    SceneTemplate[]
-  materials         Material[]
-  priceBooks        PriceBook[]
-  appSettings       AppSetting[]
-  auditLogs         CommandAuditLog[]
-  voiceSessions     VoiceSession[]
-  sourceImages      SourceImage[]
-  importSessions    ImportSession[]
-  intakeLinks       IntakeLink[]
-  intakeSubmissions IntakeSubmission[]
-  siteCaptures      SiteCapture[]
+  members             OrganizationMember[]
+  customers           Customer[]
+  projects            Project[]
+  shapeTemplates      ShapeTemplate[]
+  sceneTemplates      SceneTemplate[]
+  materials           Material[]
+  priceBooks          PriceBook[]
+  appSettings         AppSetting[]
+  auditLogs           CommandAuditLog[]
+  voiceSessions       VoiceSession[]
+  sourceImages        SourceImage[]
+  importSessions      ImportSession[]
+  intakeLinks         IntakeLink[]
+  intakeSubmissions   IntakeSubmission[]
+  siteCaptures        SiteCapture[]
+  priceChangeRequests PriceChangeRequest[]
 }
 
 model OrganizationMember {
@@ -282,6 +283,82 @@ model Material {
 // Pricing
 // ============================================================
 
+// A proposed change to the price list, reviewed before it reaches anyone.
+//
+// The workflow this models is real and was described by a prospect: one person
+// keeps the list, six to eight salespeople quote from it, and when one of them
+// needs a price changed they ask the keeper, who edits and re-sends. The ask
+// lives in a text message, the reasoning is lost, and nobody can see what
+// changed between one copy and the next.
+//
+// So: anyone may open a request, only a keeper may approve one, and approving
+// publishes a new version. The request records who asked, why, what it was
+// worth before, and who decided. A price on a customer's proposal can then be
+// traced back to the person who asked for it.
+enum PriceChangeStatus {
+  OPEN
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PriceChangeKind {
+  ADD
+  UPDATE
+  REMOVE
+}
+
+model PriceChangeRequest {
+  id     String            @id @default(cuid())
+  orgId  String
+  title  String
+  note   String?
+  status PriceChangeStatus @default(OPEN)
+
+  /// The version this was written against. If the active version moves past it,
+  /// the request is stale and has to be looked at again rather than applied
+  /// blindly over somebody else's edit.
+  baseBookId   String
+  /// The version approving it produced. Null until then.
+  resultBookId String?
+
+  openedById   String
+  decidedById  String?
+  decidedAt    DateTime?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org        Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  baseBook   PriceBook     @relation("ChangeRequestBase", fields: [baseBookId], references: [id], onDelete: Cascade)
+  resultBook PriceBook?    @relation("ChangeRequestResult", fields: [resultBookId], references: [id], onDelete: SetNull)
+  changes    PriceChange[]
+
+  @@index([orgId, status])
+  @@index([baseBookId])
+}
+
+model PriceChange {
+  id        String          @id @default(cuid())
+  requestId String
+  kind      PriceChangeKind
+
+  /// The item in the base version this touches. Null for an addition.
+  itemId     String?
+  /// What the item looked like when the request was opened, so a reviewer sees
+  /// what it was as well as what it would become, and so a later edit to the
+  /// same item is visible as a conflict rather than silently overwritten.
+  beforeJson Json?
+  /// What it should become. Null for a removal.
+  afterJson  Json?
+  reason     String?
+
+  request PriceChangeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
 model PriceBook {
   id        String   @id @default(cuid())
   orgId     String
@@ -294,6 +371,9 @@ model PriceBook {
   items  PriceBookItem[]
   rules  PricingRule[]
   quotes Quote[]
+
+  changeRequestsBase   PriceChangeRequest[] @relation("ChangeRequestBase")
+  changeRequestsResult PriceChangeRequest[] @relation("ChangeRequestResult")
 
   @@unique([orgId, name, version])
   @@index([orgId])
