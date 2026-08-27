@@ -19,8 +19,10 @@
 // reads. Run it after changing caption text; a line with no entry falls back to
 // the normal beat rather than blocking the recording.
 //
-// macOS only: it uses `say`, which is what is on the machine these are recorded
-// on. Nothing else in the repo depends on this script.
+// Two engines. `PF_TTS=google` uses Cloud Text-to-Speech and needs a gcloud the
+// operator is already signed in to, plus the API enabled on a billed project
+// named in `PF_GCP_PROJECT`. `PF_TTS=say` falls back to the macOS built-in.
+// Nothing else in the repo depends on this script.
 
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
@@ -28,8 +30,15 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const VOICE = process.env.PF_VOICE ?? 'Samantha'
+// Which engine speaks. `google` is Cloud Text-to-Speech, which sounds like a
+// person; `say` is the macOS built-in, which sounds like a phone menu and is
+// the fallback when there is no network or no auth.
+const ENGINE = process.env.PF_TTS ?? 'google'
+const VOICE = process.env.PF_VOICE ?? (ENGINE === 'google' ? 'en-US-Chirp3-HD-Achernar' : 'Samantha')
 const RATE = Number(process.env.PF_VOICE_RATE ?? 178)
+/** Google speaks in multiples of normal pace rather than words per minute. */
+const SPEAKING_RATE = Number(process.env.PF_SPEAKING_RATE ?? 1.0)
+const PROJECT = process.env.PF_GCP_PROJECT ?? ''
 const TIMING_FILE = 'src/test/e2e/demo/narration-timing.json'
 const OUTPUT_DIR = 'demo-output'
 
@@ -38,6 +47,48 @@ const spoken = (c) => (c.detail ? `${c.title}. ${c.detail}` : c.title).replaceAl
 
 /** Keyed by what is said, so editing a caption invalidates only that line. */
 const keyFor = (text) => createHash('sha1').update(text).digest('hex').slice(0, 16)
+
+/**
+ * Speak one line into a WAV file.
+ *
+ * Google returns base64 LINEAR16, which is a headerless PCM payload wrapped in
+ * a WAV container by the API when the encoding says so, hence writing the bytes
+ * straight out. The token comes from the gcloud the operator is already signed
+ * in with, so nothing here holds a credential of its own.
+ */
+function speak(text, file) {
+  if (ENGINE !== 'google') {
+    execFileSync('say', ['-v', VOICE, '-r', String(RATE), '-o', file, text])
+    return
+  }
+
+  const token = execFileSync('gcloud', ['auth', 'print-access-token']).toString().trim()
+  const body = JSON.stringify({
+    input: { text },
+    voice: { languageCode: 'en-US', name: VOICE },
+    audioConfig: { audioEncoding: 'LINEAR16', speakingRate: SPEAKING_RATE, sampleRateHertz: 24000 },
+  })
+
+  const headers = [
+    '-H', `Authorization: Bearer ${token}`,
+    '-H', 'Content-Type: application/json; charset=utf-8',
+  ]
+  if (PROJECT) headers.push('-H', `x-goog-user-project: ${PROJECT}`)
+
+  const res = execFileSync('curl', [
+    '-sS', '-X', 'POST', ...headers,
+    '--data-binary', '@-',
+    'https://texttospeech.googleapis.com/v1/text:synthesize',
+  ], { input: body, maxBuffer: 64 * 1024 * 1024 }).toString()
+
+  const parsed = JSON.parse(res)
+  if (!parsed.audioContent) {
+    // Never the raw upstream message: it can carry project and token detail.
+    const code = parsed.error?.status ?? 'UNKNOWN'
+    throw new Error(`text-to-speech refused the request (${code}). Check auth, billing and that the API is enabled.`)
+  }
+  writeFileSync(file, Buffer.from(parsed.audioContent, 'base64'))
+}
 
 function seconds(file) {
   const out = execFileSync('ffprobe', [
@@ -68,8 +119,8 @@ function measure() {
       const text = spoken(caption)
       const key = keyFor(text)
       if (timing[key] !== undefined) continue
-      const clip = join(work, `${key}.aiff`)
-      execFileSync('say', ['-v', VOICE, '-r', String(RATE), '-o', clip, text])
+      const clip = join(work, `${key}.${ENGINE === 'google' ? 'wav' : 'aiff'}`)
+      speak(text, clip)
       timing[key] = Math.round(seconds(clip) * 1000)
       added += 1
     }
@@ -94,9 +145,9 @@ function mix(videoIn, captionsIn, out) {
     const nextAt = captions[i + 1]?.atMs ?? videoMs
     const gap = Math.max(0.6, (nextAt - caption.atMs) / 1000 - 0.15)
 
-    const aiff = join(work, `${i}.aiff`)
+    const aiff = join(work, `${i}.${ENGINE === 'google' ? 'src.wav' : 'aiff'}`)
     const wav = join(work, `${i}.wav`)
-    execFileSync('say', ['-v', VOICE, '-r', String(RATE), '-o', aiff, spoken(caption)])
+    speak(spoken(caption), aiff)
 
     const length = seconds(aiff)
     if (length > gap) {
