@@ -257,7 +257,7 @@ export const vertexVisionAnalysisPort: VisionAnalysisPort = {
     const classification = await classifyImage({
       client,
       image,
-      model: modelFrom(CLASSIFY_MODEL_ENV, 'gemini-2.5-flash'),
+      model: modelFrom(CLASSIFY_MODEL_ENV, 'gemini-3-flash-preview'),
     })
     stages.push(toStageResult(classification.analysis))
 

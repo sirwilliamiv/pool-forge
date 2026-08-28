@@ -34,6 +34,14 @@ export const SAMPLE_ROWS = 12
 
 export const AI_MAPPING_STAGE = 'price-book-mapping'
 
+/**
+ * Reading a spreadsheet's headers is a small job, so the fast model does it.
+ *
+ * Served only on the global endpoint, which is why `VERTEX_LOCATION` matters
+ * here: a regional endpoint answers 404 for this name.
+ */
+export const DEFAULT_MAPPING_MODEL = 'gemini-3-flash-preview'
+
 const columnMap = z.object({
   name: z.string().nullable(),
   retailPrice: z.string().nullable(),
@@ -125,7 +133,7 @@ export async function inferMapping(
   options: { model?: string } = {},
 ): Promise<MappingOutcome> {
   const result = await client.generate({
-    model: options.model ?? 'gemini-2.5-flash',
+    model: options.model ?? DEFAULT_MAPPING_MODEL,
     prompt: buildMappingPrompt(preview),
     stage: AI_MAPPING_STAGE,
     temperature: 0,

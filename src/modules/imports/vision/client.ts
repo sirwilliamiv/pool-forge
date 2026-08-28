@@ -18,7 +18,11 @@ import type { VisionUsage } from './types'
 
 const DEFAULT_LOCATION = 'us-central1'
 /** Cheap model for CLASSIFY, strong model for EXTRACT. See spec, cost control. */
-const DEFAULT_CLASSIFY_MODEL = 'gemini-2.5-flash'
+// Gemini 3 Flash, on the global endpoint, which is the only place it is served.
+// 2.5 Flash was the default and is a generation behind; it also spends a large
+// part of a small output budget on thinking before it writes anything, so a
+// tight `maxOutputTokens` came back empty rather than short.
+const DEFAULT_CLASSIFY_MODEL = 'gemini-3-flash-preview'
 const DEFAULT_EXTRACT_MODEL = 'gemini-2.5-pro'
 
 const intFromEnv = (fallback: number) =>
