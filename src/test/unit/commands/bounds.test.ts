@@ -1,3 +1,5 @@
+import { MAX_COORD_FT } from '@/lib/geometry/limits'
+import { feetOutOfRange } from '@/lib/commands/dimensions'
 /** @vitest-environment jsdom */
 
 // Every route into a dimension, and what happens at the edge of each one.
@@ -296,5 +298,25 @@ describe('what the voice agent is told', () => {
     expect(length?.minimum).toBe(MIN_SIZE_FT)
     expect(length?.maximum).toBe(MAX_SIZE_FT)
     expect(surface.refused.map(r => r.name)).not.toContain('pool.geometry.update')
+  })
+})
+
+describe('the number quoted back to a person', () => {
+  // The inspector works in feet and multiplies by twelve before dispatching, so
+  // a refusal from the command names a figure nobody typed: enter 99999 and be
+  // told "you entered 1,199,988". Correct, and useless to read.
+  it('is the one they typed, in the unit they typed it in', () => {
+    const message = feetOutOfRange('Y position', 99_999, -MAX_COORD_FT, MAX_COORD_FT)
+    expect(message).toContain('99,999')
+    expect(message).toContain('feet')
+    expect(message).not.toContain('1,199,988')
+  })
+
+  it('says nothing at all when the value is fine', () => {
+    expect(feetOutOfRange('Y position', 20, -MAX_COORD_FT, MAX_COORD_FT)).toBeNull()
+  })
+
+  it('refuses a value that is not a number', () => {
+    expect(feetOutOfRange('Y position', Number.NaN, -MAX_COORD_FT, MAX_COORD_FT)).not.toBeNull()
   })
 })

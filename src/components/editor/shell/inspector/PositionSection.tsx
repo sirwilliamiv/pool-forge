@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useSelectionStore, useShapesStore } from '@/modules/editor/state'
 import { dispatch } from '@/lib/commands/dispatch'
+import { feetOutOfRange } from '@/lib/commands/dimensions'
+import { MAX_COORD_FT } from '@/lib/geometry/limits'
+import { toast } from 'sonner'
 import { Crosshair } from 'lucide-react'
 import { distanceToHouse, distanceToSetback } from '@/modules/measurements/engine'
 
@@ -64,9 +67,13 @@ export function PositionSection() {
   const setback = distanceToSetback(shape, allShapes)
 
   function commitX(ft: number) {
+    const bad = feetOutOfRange('X position', ft, -MAX_COORD_FT, MAX_COORD_FT)
+    if (bad) { toast.error(bad); return }
     void dispatch('move.shape', { id: shape!.id, x: ft * 12, y: shape!.y })
   }
   function commitY(ft: number) {
+    const bad = feetOutOfRange('Y position', ft, -MAX_COORD_FT, MAX_COORD_FT)
+    if (bad) { toast.error(bad); return }
     void dispatch('move.shape', { id: shape!.id, x: shape!.x, y: ft * 12 })
   }
   function commitRotation(deg: number) {

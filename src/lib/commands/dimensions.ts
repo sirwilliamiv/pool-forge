@@ -76,6 +76,25 @@ function bounded(
     .max(max, range)
 }
 
+/**
+ * The same range, phrased for somebody typing feet into a field.
+ *
+ * The inspector works in feet and multiplies by twelve before dispatching, so a
+ * refusal from the command quotes a number nobody typed: enter 99999 and be
+ * told "you entered 1,199,988". Technically true, useless to read. A caller
+ * that converts should check the value in the unit the person actually used and
+ * say so, before the command ever sees it.
+ */
+export function feetOutOfRange(
+  label: string,
+  valueFt: number,
+  minFt: number,
+  maxFt: number,
+): string | null {
+  if (Number.isFinite(valueFt) && valueFt >= minFt && valueFt <= maxFt) return null
+  return `${label} must be between ${figure(minFt)} and ${figure(maxFt)} feet. You entered ${figure(valueFt)}.`
+}
+
 /** A pool or object extent in inches, which is what `Shape` stores. */
 export function sizeInches(label: string): z.ZodNumber {
   return bounded(label, 'inches', MIN_SIZE_IN, MAX_SIZE_IN)
