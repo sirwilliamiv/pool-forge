@@ -181,6 +181,25 @@ describeDb('setting a new password from a link', () => {
     expect(identityFake.accounts.get(addr('once'))?.password).toBe('first-new-password')
   })
 
+  it('survives two submissions landing at once', async () => {
+    // Same reasoning as invite acceptance: the read that renders the form
+    // happens before either transaction opens, so the conditional UPDATE is the
+    // only thing standing between two simultaneous clicks and two password
+    // writes.
+    const userId = await seedLegacy('race', 'old-password')
+    const token = mintToken()
+    await mintLocalPasswordReset({ userId, email: addr('race'), tokenHash: hashToken(token) })
+
+    const results = await Promise.all([
+      completePasswordReset({ token, password: 'first-new-password' }),
+      completePasswordReset({ token, password: 'second-new-password' }),
+    ])
+    expect(results.filter((r) => r.ok)).toHaveLength(1)
+    const loser = results.find((r) => !r.ok)
+    if (!loser || loser.ok) throw new Error('expected one refusal')
+    expect(loser.refusal).toBe('used')
+  })
+
   it('refuses an expired link', async () => {
     const userId = await seedLegacy('stale', 'old-password')
     const token = mintToken()

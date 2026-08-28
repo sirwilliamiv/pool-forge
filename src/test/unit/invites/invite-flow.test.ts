@@ -206,14 +206,31 @@ describeDb('accepting an invite', () => {
   })
 
   it('survives two clicks landing at once, creating one account', async () => {
-    // The reason single use is a conditional UPDATE and not a read-then-write.
+    // The reason single use is a conditional UPDATE inside the transaction and
+    // not a read-then-write. Both calls get past the read: it happens before
+    // either transaction opens, and at that moment the token really is unspent.
     const { token } = await invite(addr('race'))
     const results = await Promise.all([
       acceptInvite({ token, password: 'a-good-password' }),
       acceptInvite({ token, password: 'a-good-password' }),
     ])
+
     expect(results.filter((r) => r.ok)).toHaveLength(1)
     expect(await db.user.count({ where: { email: addr('race') } })).toBe(1)
+
+    // And the loser is refused BY THE TOKEN, in words a person can act on.
+    //
+    // This assertion is the whole test. Without it the unique index on
+    // `User.email` passes it: both calls claim the token, both try to insert,
+    // and the second dies on the constraint, which still leaves one success and
+    // one account. The difference is what the second person sees, and "could not
+    // create account (ref err_1a2b3c)" is the shape of a race that was never
+    // handled.
+    const loser = results.find((r) => !r.ok)
+    expect(loser).toBeDefined()
+    if (!loser || loser.ok) return
+    expect(loser.error).toMatch(/already been used|is not valid|has expired/i)
+    expect(loser.error).not.toMatch(/ref err_/)
   })
 
   it('refuses an expired link', async () => {
@@ -325,7 +342,12 @@ describeDb('accepting an invite', () => {
 })
 
 describeDb('managing the team', () => {
-  it('will not remove or demote the last owner', async () => {
+  it('does not let a plain member change roles or remove anybody', async () => {
+    // Note what this does NOT prove. It is the "you are not a keeper" rule that
+    // refuses here, not the last-owner rule: a member is turned away before
+    // owner counting is ever reached. The last-owner rule is checked directly in
+    // permissions.test.ts, where the actor can be given a role that gets past
+    // the first gate.
     const second = await db.user.create({
       data: { email: addr('second'), identityUid: `uid-${RUN}-second` },
     })
@@ -344,6 +366,24 @@ describeDb('managing the team', () => {
       actorUserId: second.id,
       subjectUserId: ownerId,
     })
+    expect(remove.ok).toBe(false)
+    expect(await db.organizationMember.count({ where: { orgId, role: 'OWNER' } })).toBe(1)
+    expect(await db.organizationMember.count({ where: { orgId } })).toBe(2)
+  })
+
+  it('refuses to empty the owner seat even when asked by an owner', async () => {
+    // The last-owner rule reaching the database. The actor here is the owner
+    // themselves, which is the only actor that gets past the keeper gate in an
+    // organisation with one owner.
+    const demote = await setMemberRole({
+      orgId,
+      actorUserId: ownerId,
+      subjectUserId: ownerId,
+      role: 'MEMBER',
+    })
+    expect(demote.ok).toBe(false)
+
+    const remove = await removeMember({ orgId, actorUserId: ownerId, subjectUserId: ownerId })
     expect(remove.ok).toBe(false)
     expect(await db.organizationMember.count({ where: { orgId, role: 'OWNER' } })).toBe(1)
   })

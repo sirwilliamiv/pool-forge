@@ -70,6 +70,29 @@ async function writeAudit(args: {
   }
 }
 
+let registryReady = false
+
+/**
+ * Make sure the registry is populated before anything is looked up in it.
+ *
+ * Registration happens as a side effect of importing the category modules, so a
+ * caller that dispatches without having imported them finds an empty map and is
+ * told "that action is not available in this version of Pool Forge" for a
+ * command that exists. Every entry point used to have to remember `initCommands`
+ * for itself, and this file exists precisely because "remember to do the same
+ * thing at every entry point" is how the audit row got missed in the first place.
+ *
+ * A dynamic import rather than a static one: `init` pulls in every category, and
+ * a category is free to import a domain module that eventually reaches back here.
+ * Loading it lazily means that cannot become an import cycle.
+ */
+async function ensureRegistry(): Promise<void> {
+  if (registryReady) return
+  const { initCommands } = await import('./init')
+  initCommands()
+  registryReady = true
+}
+
 /**
  * Validates input against the command's schema, executes it, validates the
  * output, and writes exactly one audit row whatever the outcome.
@@ -80,6 +103,7 @@ export async function dispatchCommand<T = unknown>(
   ctx: CommandContext,
   source: CommandSourceValue = DEFAULT_COMMAND_SOURCE,
 ): Promise<CommandResult<T>> {
+  await ensureRegistry()
   // Both failures below carry two messages: the audit row keeps the developer's
   // version (which id, which field), and the returned error is the one a person
   // is shown. They used to be the same string, and it was the Zod issue list.

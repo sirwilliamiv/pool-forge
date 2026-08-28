@@ -12,71 +12,76 @@ somebody else's product.
 
 | Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **Designs in a browser** | yes | no | no | part | part | yes | yes | yes | yes | part |
-| **Customer can view on their phone** | yes | no | no | yes | yes | yes | yes | yes | yes | part |
-| **3D pool model** | yes | yes | yes | no | no | no | no | no | no | part |
-| **Photorealistic rendering** | no | yes | yes | no | no | no | no | no | no | yes |
-| **Augmented reality on site** | no | part | part | no | no | no | no | no | no | no |
 
-- **Designs in a browser** No Windows box with a gaming card in the office, and nothing to install on a laptop you take to a kitchen table.
-- **Customer can view on their phone** The person paying looks at it on the sofa that evening, not over your shoulder in their driveway.
-- **3D pool model** A shape a homeowner can turn around beats a plan view they have to interpret.
-- **Photorealistic rendering** What sells a $90,000 job to somebody who has never bought one.
-- **Augmented reality on site** Standing in the actual yard and seeing the actual pool.
 
 ## Money
 
 | Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
 |---|---|---|---|---|---|---|---|---|---|---|
 | **Your own price book** | yes | part | part | yes | yes | yes | yes | yes | yes | no |
+| **Cost and retail separately** | yes | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Margin and markup** | no | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Formula driven pricing** | no | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Assemblies and kits** | no | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | **Priced from the drawing** | yes | no | no | no | no | no | no | no | part | no |
+| **Options and alternates** | no | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Sales tax** | yes | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Labour rates** | part | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Change orders** | no | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | **Versioned prices** | yes | ? | ? | ? | ? | ? | ? | ? | ? | no |
 | **Reviewed price changes** | part | no | no | ? | ? | ? | ? | ? | ? | no |
+| **Import your spreadsheet** | yes | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Supplier catalogues** | no | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | **Customer financing** | no | no | no | ? | ? | yes | yes | ? | ? | no |
 
 - **Your own price book** Your costs and your margins, not a vendor catalogue.
+- **Cost and retail separately** What you pay and what you charge are different numbers.
+- **Margin and markup** The number the business actually runs on.
+- **Formula driven pricing** Concrete per cubic yard with a waste factor, not a flat guess.
+- **Assemblies and kits** A pool is thirty line items. Sell it as one.
 - **Priced from the drawing** Widen the pool and the number moves. No second pass in a spreadsheet, and no chance the two disagree.
+- **Options and alternates** Good, better, best is how a bigger job gets sold.
+- **Sales tax** Different in the next county, and wrong is a real cost.
+- **Labour rates** Crew time is most of the job and the easiest thing to underbid.
+- **Change orders** The scope moves after signing. It always moves.
 - **Versioned prices** A price rise cannot silently rewrite a quote somebody already signed.
 - **Reviewed price changes** One person keeps the price book and everybody else asks. That is how it already works, in text messages.
-- **Customer financing** Monthly payment turns a flinch into a signature.
+- **Import your spreadsheet** The price book already exists. It is in Excel.
+- **Supplier catalogues** Distributor pricing that updates without retyping.
+- **Customer financing** A monthly payment turns a flinch into a signature.
 
 ## Documents
 
 | Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **Customer proposal** | yes | part | part | yes | yes | yes | yes | yes | yes | no |
-| **Accepted online** | yes | no | no | yes | yes | yes | yes | yes | yes | no |
-| **Keeps what was sent** | yes | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| **Construction drawings** | yes | yes | yes | no | no | no | no | no | no | part |
-| **Permit documents** | part | part | part | no | no | no | no | no | no | no |
 
-- **Customer proposal** The document that gets signed.
-- **Accepted online** They accept from the sofa instead of you driving back out.
-- **Keeps what was sent** What did we send them in March, exactly. A re-render of today is not an answer.
-- **Construction drawings** What the crew builds from.
-- **Permit documents** A rejected packet costs weeks of schedule.
 
 ## Operations
 
 | Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **Scheduling and jobs** | no | no | no | yes | yes | yes | yes | yes | yes | no |
-| **Customer records** | part | no | no | yes | yes | yes | yes | yes | yes | no |
-| **Service and routes** | no | no | no | part | yes | no | yes | yes | part | no |
-| **Team and permissions** | part | ? | ? | yes | ? | yes | yes | ? | yes | ? |
-| **Built for pools** | yes | yes | yes | yes | yes | no | no | no | no | no |
 
-- **Scheduling and jobs** Running the build after it is sold.
-- **Customer records** Who asked, when, and what you quoted them.
-- **Service and routes** Recurring maintenance work, which is a different business from building.
-- **Team and permissions** Six salespeople quoting from one price list, with one person allowed to change it.
-- **Built for pools** A generic construction tool does not know what coping is, so somebody has to teach it every time.
 
 ## Where Pool Forge is alone
 
+- **2D plan view** What a permit office and a crew both read.
+- **Sun and shade study** Where the shade falls at four in the afternoon, which is when people sit outside.
+- **Ground levels and grading** A sloped lot is most lots, and it decides the earthwork.
+- **The house and what is already there** Setbacks are measured from something real or they are guesses.
+- **Property lines and setbacks** A permit set without them comes back.
+- **Finishes and materials** Plaster, pebble, tile, coping, decking. What the customer actually chooses between.
+- **Saved scenes and templates** Your three best sellers, ready to drop in.
+- **Measurements from the drawing** Area, perimeter, volume, without a tape or a calculator.
+- **Takeoff quantities** How much concrete, how much coping, how many lights.
+- **Cut and fill volumes** Dirt is money, and it is the number most often guessed.
+- **Cost and retail separately** What you pay and what you charge are different numbers.
 - **Priced from the drawing** Widen the pool and the number moves. No second pass in a spreadsheet, and no chance the two disagree.
+- **Sales tax** Different in the next county, and wrong is a real cost.
 - **Versioned prices** A price rise cannot silently rewrite a quote somebody already signed.
+- **Import your spreadsheet** The price book already exists. It is in Excel.
 - **Keeps what was sent** What did we send them in March, exactly. A re-render of today is not an answer.
+- **Your branding on it** It is your company's document, not the software's.
+- **Vendor requests for quote** Screen cages and equipment get bid out. Give the vendor something to price.
 
 ## The products, one paragraph each
 

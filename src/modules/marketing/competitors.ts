@@ -28,79 +28,179 @@ export interface Capability {
 }
 
 export type FeatureKey =
-  | 'browserAuthoring'
-  | 'customerOnPhone'
-  | 'pool3d'
-  | 'photoreal'
-  | 'augmentedReality'
-  | 'priceBook'
-  | 'priceFromDrawing'
-  | 'quoteVersioning'
-  | 'changeApproval'
-  | 'financing'
-  | 'customerProposal'
-  | 'eSignature'
-  | 'storedSentCopy'
-  | 'constructionDrawings'
-  | 'permitDocuments'
-  | 'scheduling'
-  | 'crm'
-  | 'serviceRouting'
-  | 'teamRoles'
-  | 'poolSpecific'
+  // Drawing and visualising
+  | 'browserAuthoring' | 'mobileAuthoring' | 'customerOnPhone' | 'planView' | 'pool3d'
+  | 'photoreal' | 'flythroughVideo' | 'panorama360' | 'virtualReality' | 'augmentedReality'
+  | 'sunStudy' | 'terrainGrading' | 'existingStructures' | 'propertyLines' | 'freeformShapes'
+  | 'materialLibrary' | 'plantLibrary' | 'sceneTemplates'
+  // Measuring
+  | 'autoMeasurements' | 'takeoffQuantities' | 'earthworkVolumes' | 'photoToDesign' | 'siteCapture'
+  // Money
+  | 'priceBook' | 'costAndRetail' | 'margin' | 'formulas' | 'assemblies'
+  | 'priceFromDrawing' | 'optionsAlternates' | 'salesTax' | 'laborRates' | 'changeOrders'
+  | 'quoteVersioning' | 'changeApproval' | 'priceBookImport' | 'supplierCatalog' | 'financing'
+  // Paperwork
+  | 'customerProposal' | 'eSignature' | 'onlinePayment' | 'storedSentCopy' | 'branding'
+  | 'constructionDrawings' | 'permitDocuments' | 'sectionsElevations' | 'materialSchedule' | 'vendorRfq'
+  // Running the business
+  | 'leadsCrm' | 'salesPipeline' | 'scheduling' | 'jobCosting' | 'purchaseOrders'
+  | 'timeTracking' | 'crewMobile' | 'dailyLogs' | 'invoicing' | 'accountingSync'
+  | 'reporting' | 'teamRoles' | 'multiLocation' | 'customerPortal' | 'openApi'
+  | 'serviceRouting' | 'poolSpecific' | 'aiAssist'
 
 export interface Feature {
   key: FeatureKey
   label: string
   /** Why a pool builder would care. Written for them, not for us. */
   matters: string
-  group: 'Design' | 'Money' | 'Documents' | 'Operations'
+  group: 'Drawing' | 'Measuring' | 'Money' | 'Paperwork' | 'Business'
 }
 
+/**
+ * Every distinct thing any product in this market does.
+ *
+ * Wide on purpose. A short list flatters whoever wrote it, and the question
+ * being asked here is what the competition actually does, which only a long
+ * list can answer honestly.
+ */
 export const FEATURES: readonly Feature[] = [
-  { key: 'browserAuthoring', group: 'Design', label: 'Designs in a browser',
-    matters: 'No Windows box with a gaming card in the office, and nothing to install on a laptop you take to a kitchen table.' },
-  { key: 'customerOnPhone', group: 'Design', label: 'Customer can view on their phone',
-    matters: 'The person paying looks at it on the sofa that evening, not over your shoulder in their driveway.' },
-  { key: 'pool3d', group: 'Design', label: '3D pool model',
-    matters: 'A shape a homeowner can turn around beats a plan view they have to interpret.' },
-  { key: 'photoreal', group: 'Design', label: 'Photorealistic rendering',
-    matters: 'What sells a $90,000 job to somebody who has never bought one.' },
-  { key: 'augmentedReality', group: 'Design', label: 'Augmented reality on site',
+
+  { key: 'browserAuthoring', group: 'Drawing', label: 'Designs in a browser',
+    matters: 'No Windows box with a gaming card, and nothing to install on the laptop you carry to a kitchen table.' },
+  { key: 'mobileAuthoring', group: 'Drawing', label: 'Design on a tablet or phone',
+    matters: "Sketching in the customer's back garden instead of back at the office." },
+  { key: 'customerOnPhone', group: 'Drawing', label: 'Customer views on their phone',
+    matters: 'The person paying looks at it on the sofa that evening, not over your shoulder in the driveway.' },
+  { key: 'planView', group: 'Drawing', label: '2D plan view',
+    matters: 'What a permit office and a crew both read.' },
+  { key: 'pool3d', group: 'Drawing', label: '3D pool model',
+    matters: 'A shape a homeowner can turn around beats a plan they have to interpret.' },
+  { key: 'photoreal', group: 'Drawing', label: 'Photorealistic rendering',
+    matters: 'What sells a ninety thousand dollar job to somebody who has never bought one.' },
+  { key: 'flythroughVideo', group: 'Drawing', label: 'Flythrough video',
+    matters: 'Something to leave behind that they show their partner.' },
+  { key: 'panorama360', group: 'Drawing', label: '360 panorama',
+    matters: 'Look around from inside the design with no app to install.' },
+  { key: 'virtualReality', group: 'Drawing', label: 'Virtual reality',
+    matters: 'Headset walkthrough. Impressive, rarely decisive.' },
+  { key: 'augmentedReality', group: 'Drawing', label: 'Augmented reality on site',
     matters: 'Standing in the actual yard and seeing the actual pool.' },
+  { key: 'sunStudy', group: 'Drawing', label: 'Sun and shade study',
+    matters: 'Where the shade falls at four in the afternoon, which is when people sit outside.' },
+  { key: 'terrainGrading', group: 'Drawing', label: 'Ground levels and grading',
+    matters: 'A sloped lot is most lots, and it decides the earthwork.' },
+  { key: 'existingStructures', group: 'Drawing', label: 'The house and what is already there',
+    matters: 'Setbacks are measured from something real or they are guesses.' },
+  { key: 'propertyLines', group: 'Drawing', label: 'Property lines and setbacks',
+    matters: 'A permit set without them comes back.' },
+  { key: 'freeformShapes', group: 'Drawing', label: 'Freeform pool shapes',
+    matters: 'Not every pool is a rectangle from a catalogue.' },
+  { key: 'materialLibrary', group: 'Drawing', label: 'Finishes and materials',
+    matters: 'Plaster, pebble, tile, coping, decking. What the customer actually chooses between.' },
+  { key: 'plantLibrary', group: 'Drawing', label: 'Planting and landscape',
+    matters: 'The rest of the backyard, which is often the rest of the sale.' },
+  { key: 'sceneTemplates', group: 'Drawing', label: 'Saved scenes and templates',
+    matters: 'Your three best sellers, ready to drop in.' },
+
+  { key: 'autoMeasurements', group: 'Measuring', label: 'Measurements from the drawing',
+    matters: 'Area, perimeter, volume, without a tape or a calculator.' },
+  { key: 'takeoffQuantities', group: 'Measuring', label: 'Takeoff quantities',
+    matters: 'How much concrete, how much coping, how many lights.' },
+  { key: 'earthworkVolumes', group: 'Measuring', label: 'Cut and fill volumes',
+    matters: 'Dirt is money, and it is the number most often guessed.' },
+  { key: 'photoToDesign', group: 'Measuring', label: 'Photo to design',
+    matters: 'Point a camera at a yard and get something to work from.' },
+  { key: 'siteCapture', group: 'Measuring', label: 'Measured site capture',
+    matters: 'A survey of the actual yard rather than an estimate of it.' },
 
   { key: 'priceBook', group: 'Money', label: 'Your own price book',
     matters: 'Your costs and your margins, not a vendor catalogue.' },
+  { key: 'costAndRetail', group: 'Money', label: 'Cost and retail separately',
+    matters: 'What you pay and what you charge are different numbers.' },
+  { key: 'margin', group: 'Money', label: 'Margin and markup',
+    matters: 'The number the business actually runs on.' },
+  { key: 'formulas', group: 'Money', label: 'Formula driven pricing',
+    matters: 'Concrete per cubic yard with a waste factor, not a flat guess.' },
+  { key: 'assemblies', group: 'Money', label: 'Assemblies and kits',
+    matters: 'A pool is thirty line items. Sell it as one.' },
   { key: 'priceFromDrawing', group: 'Money', label: 'Priced from the drawing',
     matters: 'Widen the pool and the number moves. No second pass in a spreadsheet, and no chance the two disagree.' },
+  { key: 'optionsAlternates', group: 'Money', label: 'Options and alternates',
+    matters: 'Good, better, best is how a bigger job gets sold.' },
+  { key: 'salesTax', group: 'Money', label: 'Sales tax',
+    matters: 'Different in the next county, and wrong is a real cost.' },
+  { key: 'laborRates', group: 'Money', label: 'Labour rates',
+    matters: 'Crew time is most of the job and the easiest thing to underbid.' },
+  { key: 'changeOrders', group: 'Money', label: 'Change orders',
+    matters: 'The scope moves after signing. It always moves.' },
   { key: 'quoteVersioning', group: 'Money', label: 'Versioned prices',
     matters: 'A price rise cannot silently rewrite a quote somebody already signed.' },
   { key: 'changeApproval', group: 'Money', label: 'Reviewed price changes',
     matters: 'One person keeps the price book and everybody else asks. That is how it already works, in text messages.' },
+  { key: 'priceBookImport', group: 'Money', label: 'Import your spreadsheet',
+    matters: 'The price book already exists. It is in Excel.' },
+  { key: 'supplierCatalog', group: 'Money', label: 'Supplier catalogues',
+    matters: 'Distributor pricing that updates without retyping.' },
   { key: 'financing', group: 'Money', label: 'Customer financing',
-    matters: 'Monthly payment turns a flinch into a signature.' },
+    matters: 'A monthly payment turns a flinch into a signature.' },
 
-  { key: 'customerProposal', group: 'Documents', label: 'Customer proposal',
+  { key: 'customerProposal', group: 'Paperwork', label: 'Customer proposal',
     matters: 'The document that gets signed.' },
-  { key: 'eSignature', group: 'Documents', label: 'Accepted online',
+  { key: 'eSignature', group: 'Paperwork', label: 'Signed online',
     matters: 'They accept from the sofa instead of you driving back out.' },
-  { key: 'storedSentCopy', group: 'Documents', label: 'Keeps what was sent',
+  { key: 'onlinePayment', group: 'Paperwork', label: 'Takes the deposit',
+    matters: 'Signed and paid in the same sitting.' },
+  { key: 'storedSentCopy', group: 'Paperwork', label: 'Keeps what was sent',
     matters: 'What did we send them in March, exactly. A re-render of today is not an answer.' },
-  { key: 'constructionDrawings', group: 'Documents', label: 'Construction drawings',
+  { key: 'branding', group: 'Paperwork', label: 'Your branding on it',
+    matters: "It is your company's document, not the software's." },
+  { key: 'constructionDrawings', group: 'Paperwork', label: 'Construction drawings',
     matters: 'What the crew builds from.' },
-  { key: 'permitDocuments', group: 'Documents', label: 'Permit documents',
+  { key: 'permitDocuments', group: 'Paperwork', label: 'Permit documents',
     matters: 'A rejected packet costs weeks of schedule.' },
+  { key: 'sectionsElevations', group: 'Paperwork', label: 'Sections and elevations',
+    matters: 'Depths, benches and steps, drawn the way a builder reads them.' },
+  { key: 'materialSchedule', group: 'Paperwork', label: 'Material schedule',
+    matters: 'What to order, in one list.' },
+  { key: 'vendorRfq', group: 'Paperwork', label: 'Vendor requests for quote',
+    matters: 'Screen cages and equipment get bid out. Give the vendor something to price.' },
 
-  { key: 'scheduling', group: 'Operations', label: 'Scheduling and jobs',
-    matters: 'Running the build after it is sold.' },
-  { key: 'crm', group: 'Operations', label: 'Customer records',
+  { key: 'leadsCrm', group: 'Business', label: 'Leads and customers',
     matters: 'Who asked, when, and what you quoted them.' },
-  { key: 'serviceRouting', group: 'Operations', label: 'Service and routes',
-    matters: 'Recurring maintenance work, which is a different business from building.' },
-  { key: 'teamRoles', group: 'Operations', label: 'Team and permissions',
+  { key: 'salesPipeline', group: 'Business', label: 'Sales pipeline',
+    matters: 'Which jobs are actually going to close this month.' },
+  { key: 'scheduling', group: 'Business', label: 'Scheduling and jobs',
+    matters: 'Running the build after it is sold.' },
+  { key: 'jobCosting', group: 'Business', label: 'Job costing',
+    matters: 'Whether you made money on it, known before the next one is bid.' },
+  { key: 'purchaseOrders', group: 'Business', label: 'Purchase orders',
+    matters: 'What was ordered, from whom, at what price.' },
+  { key: 'timeTracking', group: 'Business', label: 'Time tracking',
+    matters: 'Hours against the job, not against the week.' },
+  { key: 'crewMobile', group: 'Business', label: 'Crew app in the field',
+    matters: 'The people digging are not at a desk.' },
+  { key: 'dailyLogs', group: 'Business', label: 'Photos and daily logs',
+    matters: 'Proof of what happened, when the customer asks.' },
+  { key: 'invoicing', group: 'Business', label: 'Invoicing',
+    matters: 'Getting paid, in stages, on a build that takes months.' },
+  { key: 'accountingSync', group: 'Business', label: 'Accounting sync',
+    matters: 'Nobody wants to type it twice.' },
+  { key: 'reporting', group: 'Business', label: 'Reporting',
+    matters: 'Which of the six salespeople is actually selling.' },
+  { key: 'teamRoles', group: 'Business', label: 'Team and permissions',
     matters: 'Six salespeople quoting from one price list, with one person allowed to change it.' },
-  { key: 'poolSpecific', group: 'Operations', label: 'Built for pools',
-    matters: 'A generic construction tool does not know what coping is, so somebody has to teach it every time.' },
+  { key: 'multiLocation', group: 'Business', label: 'Multiple locations',
+    matters: 'Tampa and Orlando have different tax, different labour and different licences.' },
+  { key: 'customerPortal', group: 'Business', label: 'Customer portal',
+    matters: 'One link for everything, instead of nine emails.' },
+  { key: 'openApi', group: 'Business', label: 'Open API',
+    matters: 'Whether it can be joined to what you already run.' },
+  { key: 'serviceRouting', group: 'Business', label: 'Service and routes',
+    matters: 'Recurring maintenance, which is a different business from building.' },
+  { key: 'poolSpecific', group: 'Business', label: 'Built for pools',
+    matters: 'A generic construction tool does not know what coping is, so somebody teaches it every time.' },
+  { key: 'aiAssist', group: 'Business', label: 'AI that does real work',
+    matters: 'Not a chat box. Something that removes a step.' },
 ]
 
 export interface Product {
@@ -155,9 +255,55 @@ export const POOL_FORGE: Product = {
     constructionDrawings: { support: 'yes' },
     permitDocuments: { support: 'partial', note: 'Site plan with setbacks. It refuses to call itself submittable until it is.' },
     scheduling: { support: 'no' },
-    crm: { support: 'partial', note: 'Customer records against jobs. Not a sales pipeline.' },
+    leadsCrm: { support: 'partial', note: 'Customer records against jobs. Not a sales pipeline.' },
     serviceRouting: { support: 'no' },
     teamRoles: { support: 'partial', note: 'Roles decide who may change the price book. Invites are in progress.' },
+    planView: { support: 'yes' },
+    flythroughVideo: { support: 'no' },
+    panorama360: { support: 'no' },
+    virtualReality: { support: 'no' },
+    mobileAuthoring: { support: 'no', note: 'The editor wants a real screen. The customer\'s view does not.' },
+    sunStudy: { support: 'yes', note: 'Sunrise to sunset on a slider.' },
+    terrainGrading: { support: 'yes', note: 'Existing and finished ground, with cut and fill reported apart.' },
+    existingStructures: { support: 'yes', note: 'Place the house, and setbacks are measured from it rather than assumed.' },
+    propertyLines: { support: 'yes' },
+    freeformShapes: { support: 'partial', note: 'Seventeen pool shapes, plus polygon footprints from import.' },
+    materialLibrary: { support: 'yes', note: 'Finishes priced from your book, in the unit they are sold in.' },
+    plantLibrary: { support: 'no' },
+    sceneTemplates: { support: 'yes' },
+    autoMeasurements: { support: 'yes', note: 'Area, perimeter, volume and wetted area, live.' },
+    takeoffQuantities: { support: 'yes' },
+    earthworkVolumes: { support: 'yes', note: 'Cut and fill reported separately, never netted.' },
+    photoToDesign: { support: 'partial', note: 'Import from an image runs, and a scale reference is still needed.' },
+    siteCapture: { support: 'no', note: 'The server half is built and there is no phone app yet.' },
+    costAndRetail: { support: 'yes' },
+    margin: { support: 'no' },
+    formulas: { support: 'no', note: 'Flat unit prices only.' },
+    assemblies: { support: 'no' },
+    optionsAlternates: { support: 'no' },
+    salesTax: { support: 'yes' },
+    laborRates: { support: 'partial', note: 'As line items, not as crew hours.' },
+    changeOrders: { support: 'no' },
+    priceBookImport: { support: 'yes', note: 'From the spreadsheet you already keep, mapped for you.' },
+    supplierCatalog: { support: 'no' },
+    onlinePayment: { support: 'no' },
+    branding: { support: 'yes', note: 'Your logo, colour, licence and terms.' },
+    sectionsElevations: { support: 'partial' },
+    materialSchedule: { support: 'partial' },
+    vendorRfq: { support: 'yes', note: 'Screen enclosure request for quote.' },
+    salesPipeline: { support: 'no' },
+    jobCosting: { support: 'no' },
+    purchaseOrders: { support: 'no' },
+    timeTracking: { support: 'no' },
+    crewMobile: { support: 'no' },
+    dailyLogs: { support: 'no' },
+    invoicing: { support: 'no' },
+    accountingSync: { support: 'no' },
+    reporting: { support: 'no' },
+    multiLocation: { support: 'no', note: 'One set of company details today.' },
+    customerPortal: { support: 'partial', note: 'A share link per proposal, not an account.' },
+    openApi: { support: 'no' },
+    aiAssist: { support: 'partial', note: 'Reads a price list and an uploaded sketch. Not a chat box.' },
     poolSpecific: { support: 'yes' },
   },
   strengths: [
@@ -205,7 +351,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'yes' },
       permitDocuments: { support: 'partial' },
       scheduling: { support: 'no' },
-      crm: { support: 'no' },
+      leadsCrm: { support: 'no' },
       serviceRouting: { support: 'no' },
       teamRoles: UNKNOWN,
       poolSpecific: { support: 'yes' },
@@ -238,7 +384,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'yes' },
       permitDocuments: { support: 'partial' },
       scheduling: { support: 'no' },
-      crm: { support: 'no' },
+      leadsCrm: { support: 'no' },
       serviceRouting: { support: 'no' },
       teamRoles: UNKNOWN,
       poolSpecific: { support: 'yes' },
@@ -274,7 +420,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'no' },
       permitDocuments: { support: 'no' },
       scheduling: { support: 'yes' },
-      crm: { support: 'yes' },
+      leadsCrm: { support: 'yes' },
       serviceRouting: { support: 'partial' },
       teamRoles: { support: 'yes' },
       poolSpecific: { support: 'yes' },
@@ -306,7 +452,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'no' },
       permitDocuments: { support: 'no' },
       scheduling: { support: 'yes' },
-      crm: { support: 'yes' },
+      leadsCrm: { support: 'yes' },
       serviceRouting: { support: 'yes' },
       teamRoles: UNKNOWN,
       poolSpecific: { support: 'yes' },
@@ -338,7 +484,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'no' },
       permitDocuments: { support: 'no' },
       scheduling: { support: 'yes' },
-      crm: { support: 'yes' },
+      leadsCrm: { support: 'yes' },
       serviceRouting: { support: 'no' },
       teamRoles: { support: 'yes' },
       poolSpecific: { support: 'no', note: 'Nothing in it knows what coping is.' },
@@ -370,7 +516,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'no' },
       permitDocuments: { support: 'no' },
       scheduling: { support: 'yes' },
-      crm: { support: 'yes' },
+      leadsCrm: { support: 'yes' },
       serviceRouting: { support: 'yes' },
       teamRoles: { support: 'yes' },
       poolSpecific: { support: 'no' },
@@ -402,7 +548,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'no' },
       permitDocuments: { support: 'no' },
       scheduling: { support: 'yes' },
-      crm: { support: 'yes' },
+      leadsCrm: { support: 'yes' },
       serviceRouting: { support: 'yes' },
       teamRoles: UNKNOWN,
       poolSpecific: { support: 'no' },
@@ -434,7 +580,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'no' },
       permitDocuments: { support: 'no' },
       scheduling: { support: 'yes' },
-      crm: { support: 'yes' },
+      leadsCrm: { support: 'yes' },
       serviceRouting: { support: 'partial' },
       teamRoles: { support: 'yes' },
       poolSpecific: { support: 'no' },
@@ -473,7 +619,7 @@ export const COMPETITORS: readonly Product[] = [
       constructionDrawings: { support: 'partial' },
       permitDocuments: { support: 'no' },
       scheduling: { support: 'no' },
-      crm: { support: 'no' },
+      leadsCrm: { support: 'no' },
       serviceRouting: { support: 'no' },
       teamRoles: UNKNOWN,
       poolSpecific: { support: 'no' },
@@ -513,7 +659,7 @@ export const ADJACENT: readonly Product[] = [
       priceFromDrawing: { support: 'no' },
       customerProposal: { support: 'partial', note: 'Repair quotes, not construction proposals.' },
       scheduling: { support: 'yes' },
-      crm: { support: 'yes' },
+      leadsCrm: { support: 'yes' },
       serviceRouting: { support: 'yes', note: 'The thing it is actually for.' },
       teamRoles: { support: 'yes' },
       poolSpecific: { support: 'yes' },

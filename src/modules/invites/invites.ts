@@ -234,6 +234,11 @@ export async function previewInvite(
   const { email, orgId, role } = inspected.token
   if (!orgId || !role) return { ok: false, error: INVITE_REFUSAL.unknown }
 
+  // The `User` lookup is the one query in this module with no `orgId` in it, and
+  // it cannot have one: an account is not owned by an organisation, which is the
+  // whole reason an existing account can be invited into a second one. The
+  // organisation is still what authorises the read, because the only way to
+  // reach this line is to hold the invite that names it.
   const [org, user] = await Promise.all([
     db.organization.findUnique({ where: { id: orgId }, select: { name: true } }),
     db.user.findUnique({ where: { email }, select: { id: true } }),

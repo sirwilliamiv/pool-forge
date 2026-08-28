@@ -26,6 +26,15 @@ const DEMO_PASSWORD = 'demo1234'
 
 const RUN = randomUUID().slice(0, 8)
 
+/**
+ * A bcrypt hash of 'old-password' at cost 4.
+ *
+ * Checked in rather than computed, because the only thing this fixture has to be
+ * is a syntactically real hash on an account that predates Identity Platform:
+ * nothing in these tests signs in as it.
+ */
+const LEGACY_HASH = '$2b$04$8pB1o8lTvVJhQ0m9wCiXeuoZfXpvGz5ZqiTB5RIRNcM7yBoHTKrJm'
+
 function addr(label: string): string {
   return `e2e-${RUN}-${label}@example.test`
 }
@@ -255,6 +264,18 @@ test.describe('forgotten password', () => {
     // The property this whole flow is built around. If these two transcripts
     // differ in any way a browser can see, the form is a machine for sorting a
     // list of addresses into this product's customers and everybody else.
+    //
+    // Both addresses are invented for this run, including the known one, which
+    // is created here rather than borrowed from the seed. Using the shared demo
+    // account made this test fail the second time it ran in an hour: the
+    // per-address ceiling on reset requests is exactly five, and it does not care
+    // that the requests came from a test. A run-scoped address gets a bucket
+    // nothing else has spent.
+    const known = addr('rememberme')
+    await db.user.create({
+      data: { email: known, name: 'Remembers Nothing', passwordHash: LEGACY_HASH },
+    })
+
     async function ask(email: string): Promise<{ text: string; url: string }> {
       await page.goto('/forgot-password')
       await page.getByLabel(/email/i).fill(email)
@@ -264,22 +285,18 @@ test.describe('forgotten password', () => {
       return { text: (await result.innerText()).trim(), url: page.url() }
     }
 
-    const known = await ask(DEMO_EMAIL)
-    const unknown = await ask(addr('nobody'))
+    const forKnown = await ask(known)
+    const forUnknown = await ask(addr('nobody'))
 
-    expect(unknown).toEqual(known)
+    expect(forUnknown).toEqual(forKnown)
     // And the sentence itself commits to nothing.
-    expect(known.text).toMatch(/if that address has a pool forge account/i)
-    expect(known.text).not.toContain(DEMO_EMAIL)
+    expect(forKnown.text).toMatch(/if that address has a pool forge account/i)
+    expect(forKnown.text).not.toContain(known)
 
     // Underneath, the two really did take different paths, which is what makes
     // the sameness above worth asserting rather than trivially true.
-    expect(
-      await db.authToken.count({ where: { email: DEMO_EMAIL, kind: 'PASSWORD_RESET' } }),
-    ).toBeGreaterThan(0)
+    expect(await db.authToken.count({ where: { email: known, kind: 'PASSWORD_RESET' } })).toBe(1)
     expect(await db.authToken.count({ where: { email: addr('nobody') } })).toBe(0)
-
-    await db.authToken.deleteMany({ where: { email: DEMO_EMAIL, kind: 'PASSWORD_RESET' } })
   })
 
   test('an owner can hand a member a link, and it sets a new password once', async ({

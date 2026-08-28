@@ -202,6 +202,80 @@ describe('canResetMemberPassword', () => {
   })
 })
 
+describe('an organisation can never end up with no owner', () => {
+  // The invariant, checked over every arrangement rather than over the one
+  // example somebody thought of.
+  //
+  // Three separate rules could each stop this: you cannot change your own role,
+  // an admin cannot touch a keeper, and the last owner is protected. Any two of
+  // them leave a hole, and the hole is only reachable through the third. So the
+  // sweep below is run against every combination, and it is the reason the
+  // last-owner rule stays even though the other two currently imply it: relaxing
+  // either one must not silently make an ownerless organisation possible.
+  const ROLES = ['OWNER', 'ADMIN', 'MEMBER'] as const
+  const SOLE_OWNER = 'the-only-owner'
+
+  it('refuses every way of removing the only owner', () => {
+    for (const actorRole of ROLES) {
+      for (const actorUserId of [SOLE_OWNER, 'somebody-else']) {
+        const result = canRemoveMember({
+          actorRole,
+          actorUserId,
+          subjectUserId: SOLE_OWNER,
+          subjectRole: 'OWNER',
+          ownerCount: 1,
+        })
+        expect(result.allowed, `${actorRole} as ${actorUserId} removed the only owner`).toBe(false)
+      }
+    }
+  })
+
+  it('refuses every way of demoting the only owner', () => {
+    for (const actorRole of ROLES) {
+      for (const actorUserId of [SOLE_OWNER, 'somebody-else']) {
+        for (const targetRole of ['ADMIN', 'MEMBER'] as const) {
+          const result = canSetRole({
+            actorRole,
+            actorUserId,
+            subjectUserId: SOLE_OWNER,
+            subjectRole: 'OWNER',
+            targetRole,
+            ownerCount: 1,
+          })
+          expect(
+            result.allowed,
+            `${actorRole} as ${actorUserId} demoted the only owner to ${targetRole}`,
+          ).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('allows the same moves once a second owner exists', () => {
+    // Guards the guard: if these were refused too, the sweeps above would pass
+    // for a rule that simply forbids everything.
+    expect(
+      canRemoveMember({
+        actorRole: 'OWNER',
+        actorUserId: 'other-owner',
+        subjectUserId: SOLE_OWNER,
+        subjectRole: 'OWNER',
+        ownerCount: 2,
+      }),
+    ).toEqual({ allowed: true })
+    expect(
+      canSetRole({
+        actorRole: 'OWNER',
+        actorUserId: 'other-owner',
+        subjectUserId: SOLE_OWNER,
+        subjectRole: 'OWNER',
+        targetRole: 'MEMBER',
+        ownerCount: 2,
+      }),
+    ).toEqual({ allowed: true })
+  })
+})
+
 describe('every refusal', () => {
   it('names a person or a job, never a row id', () => {
     // `CLAUDE.md`: no raw internal id in anything a person reads.
