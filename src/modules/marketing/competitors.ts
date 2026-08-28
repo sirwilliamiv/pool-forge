@@ -195,7 +195,7 @@ export const COMPETITORS: readonly Product[] = [
       photoreal: { support: 'yes', note: 'The strongest render in the category.' },
       augmentedReality: { support: 'partial', note: 'Through YARD, a separate iPad add-on.' },
       priceBook: { support: 'partial', note: 'Takeoffs and quantities.' },
-      priceFromDrawing: { support: 'no', note: 'Quantities come out. Money does not.' },
+      priceFromDrawing: { support: 'no', note: 'Quantities come out, money does not, and their own FAQ says that is by design.' },
       quoteVersioning: UNKNOWN,
       changeApproval: { support: 'no' },
       financing: { support: 'no' },
@@ -250,9 +250,13 @@ export const COMPETITORS: readonly Product[] = [
     slug: 'prodbx',
     name: 'ProDBX',
     summary: 'Business software built for pool builders: jobs, customers, and quotes, with no design tool.',
-    pricing: '$19 to $119 per user per month',
+    // The old figure here was a promotional column lifted from a listing site.
+    // List pricing with the seat minimum applied turns a $99 headline into
+    // roughly $495 a month for a five person shop, which is a different product
+    // decision for a builder than the number they first see.
+    pricing: '$19 to $139 per user per month, with a five to ten seat minimum',
     site: 'https://www.prodbx.com',
-    verified: '2026-08-19',
+    verified: '2026-08-28',
     capabilities: {
       browserAuthoring: { support: 'partial', note: 'The business side is in a browser. There is nothing to draw with.' },
       customerOnPhone: { support: 'yes', note: 'Customer portal.' },
@@ -282,9 +286,9 @@ export const COMPETITORS: readonly Product[] = [
     slug: 'poologics',
     name: 'Poologics',
     summary: 'Pool-industry business software with price books and proposals, priced per company.',
-    pricing: '$249 to $299 per company per month',
+    pricing: '$279 per company per month annual, $329 monthly, capped at 20 users',
     site: 'https://www.poologics.com',
-    verified: '2026-08-19',
+    verified: '2026-08-28',
     capabilities: {
       browserAuthoring: { support: 'partial', note: 'Business side only.' },
       customerOnPhone: { support: 'yes', note: 'Emailed proposal.' },
@@ -407,6 +411,45 @@ export const COMPETITORS: readonly Product[] = [
     gaps: ['No pool design.', 'An estimate you cannot adjust by moving the shape.'],
   },
   {
+    slug: 'jobtread',
+    name: 'JobTread',
+    summary: 'Construction management for the whole build, with a partner marketplace rather than a design tool of its own.',
+    pricing: 'Published per company, tiered by users',
+    site: 'https://www.jobtread.com',
+    verified: '2026-08-28',
+    capabilities: {
+      browserAuthoring: { support: 'yes', note: 'The business runs in a browser. There is nothing to draw a pool with.' },
+      customerOnPhone: { support: 'yes' },
+      pool3d: { support: 'no' },
+      photoreal: { support: 'no' },
+      augmentedReality: { support: 'no' },
+      priceBook: { support: 'yes' },
+      priceFromDrawing: { support: 'partial', note: 'Through a scanning partner, which populates an estimate from captured measurements. Not from a pool you design.' },
+      quoteVersioning: UNKNOWN,
+      changeApproval: UNKNOWN,
+      financing: UNKNOWN,
+      customerProposal: { support: 'yes' },
+      eSignature: { support: 'yes' },
+      storedSentCopy: UNKNOWN,
+      constructionDrawings: { support: 'no' },
+      permitDocuments: { support: 'no' },
+      scheduling: { support: 'yes' },
+      crm: { support: 'yes' },
+      serviceRouting: { support: 'partial' },
+      teamRoles: { support: 'yes' },
+      poolSpecific: { support: 'no' },
+    },
+    strengths: [
+      'Runs a construction business properly, end to end.',
+      'An open API and a real partner programme, so it integrates rather than blocks.',
+      'Large and established across the trades.',
+    ],
+    gaps: [
+      'No pool design, and nothing in it knows what a pool is.',
+      'The measurement to estimate loop exists only through a partner built for interiors.',
+    ],
+  },
+  {
     slug: 'cedreo',
     name: 'Cedreo',
     summary: 'Browser home design with cloud rendering, and the architecture worth studying.',
@@ -440,10 +483,55 @@ export const COMPETITORS: readonly Product[] = [
   },
 ]
 
+
+/**
+ * Products a pool builder may already run that this does not compete with.
+ *
+ * Pool Brain is service and route management: recurring maintenance, technicians
+ * and trucks. Their own feature matrix has no row for design, rendering,
+ * takeoffs, signatures or financing anywhere in a hundred and fifty of them.
+ * Their customer has routes, ours has permits and excavators.
+ *
+ * Kept out of `COMPETITORS` on purpose. A comparison page implying a contest
+ * would be a claim nobody in the trade would recognise, and being caught
+ * inventing a rivalry costs more than the page could ever earn.
+ */
+export const ADJACENT: readonly Product[] = [
+  {
+    slug: 'pool-brain',
+    name: 'Pool Brain',
+    summary: 'Service and route management for pool maintenance companies, which is a different business from building them.',
+    pricing: '$50 per month plus $65 per active technician',
+    site: 'https://poolbrain.com',
+    verified: '2026-08-28',
+    capabilities: {
+      browserAuthoring: { support: 'yes' },
+      customerOnPhone: { support: 'yes' },
+      pool3d: { support: 'no' },
+      photoreal: { support: 'no' },
+      priceBook: { support: 'partial', note: 'A service catalogue, for repairs and upsells.' },
+      priceFromDrawing: { support: 'no' },
+      customerProposal: { support: 'partial', note: 'Repair quotes, not construction proposals.' },
+      scheduling: { support: 'yes' },
+      crm: { support: 'yes' },
+      serviceRouting: { support: 'yes', note: 'The thing it is actually for.' },
+      teamRoles: { support: 'yes' },
+      poolSpecific: { support: 'yes' },
+    },
+    strengths: [
+      'Genuinely good at routes, technicians and recurring work.',
+      'Prices honestly per technician rather than per company.',
+    ],
+    gaps: [
+      'Not a construction tool, and does not claim to be.',
+    ],
+  },
+]
+
 export const ALL_PRODUCTS: readonly Product[] = [POOL_FORGE, ...COMPETITORS]
 
 export function productBySlug(slug: string): Product | undefined {
-  return ALL_PRODUCTS.find((product) => product.slug === slug)
+  return [...ALL_PRODUCTS, ...ADJACENT].find((product) => product.slug === slug)
 }
 
 /**

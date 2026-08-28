@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  ADJACENT,
   ALL_PRODUCTS,
   COMPETITORS,
   FEATURES,
@@ -83,5 +84,27 @@ describe('looking a product up', () => {
   it('finds one by slug and returns nothing for a stranger', () => {
     expect(productBySlug('prodbx')?.name).toBe('ProDBX')
     expect(productBySlug('not-a-product')).toBeUndefined()
+  })
+})
+
+describe('products that are not rivals', () => {
+  // Pool Brain does service routes. Their own matrix has no design, render,
+  // takeoff, signature or financing row in a hundred and fifty of them. A
+  // comparison page implying a contest would be a claim nobody in the trade
+  // would recognise, and being caught inventing a rivalry costs more than the
+  // page could earn.
+  it('are kept out of the competitor set', () => {
+    expect(COMPETITORS.map(p => p.slug)).not.toContain('pool-brain')
+    expect(ADJACENT.map(p => p.slug)).toContain('pool-brain')
+  })
+
+  it('never appear in the uncontested claim', () => {
+    // Otherwise we would claim to beat somebody at a game they are not playing.
+    const contested = COMPETITORS.map(p => p.slug)
+    expect(contested).not.toContain('pool-brain')
+  })
+
+  it('are still findable by slug, because their page is honest about the difference', () => {
+    expect(productBySlug('pool-brain')?.name).toBe('Pool Brain')
   })
 })

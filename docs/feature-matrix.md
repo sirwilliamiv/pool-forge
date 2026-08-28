@@ -10,13 +10,13 @@ somebody else's product.
 
 ## Design
 
-| Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | Cedreo |
-|---|---|---|---|---|---|---|---|---|---|
-| **Designs in a browser** | yes | no | no | part | part | yes | yes | yes | part |
-| **Customer can view on their phone** | yes | no | no | yes | yes | yes | yes | yes | part |
-| **3D pool model** | yes | yes | yes | no | no | no | no | no | part |
-| **Photorealistic rendering** | no | yes | yes | no | no | no | no | no | yes |
-| **Augmented reality on site** | no | part | part | no | no | no | no | no | no |
+| Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Designs in a browser** | yes | no | no | part | part | yes | yes | yes | yes | part |
+| **Customer can view on their phone** | yes | no | no | yes | yes | yes | yes | yes | yes | part |
+| **3D pool model** | yes | yes | yes | no | no | no | no | no | no | part |
+| **Photorealistic rendering** | no | yes | yes | no | no | no | no | no | no | yes |
+| **Augmented reality on site** | no | part | part | no | no | no | no | no | no | no |
 
 - **Designs in a browser** No Windows box with a gaming card in the office, and nothing to install on a laptop you take to a kitchen table.
 - **Customer can view on their phone** The person paying looks at it on the sofa that evening, not over your shoulder in their driveway.
@@ -26,13 +26,13 @@ somebody else's product.
 
 ## Money
 
-| Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | Cedreo |
-|---|---|---|---|---|---|---|---|---|---|
-| **Your own price book** | yes | part | part | yes | yes | yes | yes | yes | no |
-| **Priced from the drawing** | yes | no | no | no | no | no | no | no | no |
-| **Versioned prices** | yes | ? | ? | ? | ? | ? | ? | ? | no |
-| **Reviewed price changes** | part | no | no | ? | ? | ? | ? | ? | no |
-| **Customer financing** | no | no | no | ? | ? | yes | yes | ? | no |
+| Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Your own price book** | yes | part | part | yes | yes | yes | yes | yes | yes | no |
+| **Priced from the drawing** | yes | no | no | no | no | no | no | no | part | no |
+| **Versioned prices** | yes | ? | ? | ? | ? | ? | ? | ? | ? | no |
+| **Reviewed price changes** | part | no | no | ? | ? | ? | ? | ? | ? | no |
+| **Customer financing** | no | no | no | ? | ? | yes | yes | ? | ? | no |
 
 - **Your own price book** Your costs and your margins, not a vendor catalogue.
 - **Priced from the drawing** Widen the pool and the number moves. No second pass in a spreadsheet, and no chance the two disagree.
@@ -42,13 +42,13 @@ somebody else's product.
 
 ## Documents
 
-| Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | Cedreo |
-|---|---|---|---|---|---|---|---|---|---|
-| **Customer proposal** | yes | part | part | yes | yes | yes | yes | yes | no |
-| **Accepted online** | yes | no | no | yes | yes | yes | yes | yes | no |
-| **Keeps what was sent** | yes | ? | ? | ? | ? | ? | ? | ? | ? |
-| **Construction drawings** | yes | yes | yes | no | no | no | no | no | part |
-| **Permit documents** | part | part | part | no | no | no | no | no | no |
+| Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Customer proposal** | yes | part | part | yes | yes | yes | yes | yes | yes | no |
+| **Accepted online** | yes | no | no | yes | yes | yes | yes | yes | yes | no |
+| **Keeps what was sent** | yes | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Construction drawings** | yes | yes | yes | no | no | no | no | no | no | part |
+| **Permit documents** | part | part | part | no | no | no | no | no | no | no |
 
 - **Customer proposal** The document that gets signed.
 - **Accepted online** They accept from the sofa instead of you driving back out.
@@ -58,13 +58,13 @@ somebody else's product.
 
 ## Operations
 
-| Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | Cedreo |
-|---|---|---|---|---|---|---|---|---|---|
-| **Scheduling and jobs** | no | no | no | yes | yes | yes | yes | yes | no |
-| **Customer records** | part | no | no | yes | yes | yes | yes | yes | no |
-| **Service and routes** | no | no | no | part | yes | no | yes | yes | no |
-| **Team and permissions** | part | ? | ? | yes | ? | yes | yes | ? | ? |
-| **Built for pools** | yes | yes | yes | yes | yes | no | no | no | no |
+| Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Scheduling and jobs** | no | no | no | yes | yes | yes | yes | yes | yes | no |
+| **Customer records** | part | no | no | yes | yes | yes | yes | yes | yes | no |
+| **Service and routes** | no | no | no | part | yes | no | yes | yes | part | no |
+| **Team and permissions** | part | ? | ? | yes | ? | yes | yes | ? | yes | ? |
+| **Built for pools** | yes | yes | yes | yes | yes | no | no | no | no | no |
 
 - **Scheduling and jobs** Running the build after it is sold.
 - **Customer records** Who asked, when, and what you quoted them.
@@ -111,8 +111,8 @@ Pool Studio with the whole backyard, aimed at design-build firms selling the out
 
 Business software built for pool builders: jobs, customers, and quotes, with no design tool.
 
-- Price: $19 to $119 per user per month
-- Source: https://www.prodbx.com · checked 2026-08-19
+- Price: $19 to $139 per user per month, with a five to ten seat minimum
+- Source: https://www.prodbx.com · checked 2026-08-28
 - Strong at: Built for pool companies, not adapted to them. Runs the business after the sale. Per-user pricing starts low.
 - Gaps for a pool builder: No design tool at all, so the drawing happens somewhere else. Nothing connects a shape to a price.
 
@@ -120,8 +120,8 @@ Business software built for pool builders: jobs, customers, and quotes, with no 
 
 Pool-industry business software with price books and proposals, priced per company.
 
-- Price: $249 to $299 per company per month
-- Source: https://www.poologics.com · checked 2026-08-19
+- Price: $279 per company per month annual, $329 monthly, capped at 20 users
+- Source: https://www.poologics.com · checked 2026-08-28
 - Strong at: Whole-company pricing rather than per seat. Proposals with signing and comments. Covers service as well as construction.
 - Gaps for a pool builder: No design tool. Price per company is steep for a two-person builder.
 
@@ -151,6 +151,15 @@ AI estimating from photos for home services, with a price floor that stops under
 - Source: https://www.myquoteiq.com · checked 2026-08-19
 - Strong at: Photo to estimate is genuinely fast. Price floors stop a rep bidding below cost. Options presented well.
 - Gaps for a pool builder: No pool design. An estimate you cannot adjust by moving the shape.
+
+### JobTread
+
+Construction management for the whole build, with a partner marketplace rather than a design tool of its own.
+
+- Price: Published per company, tiered by users
+- Source: https://www.jobtread.com · checked 2026-08-28
+- Strong at: Runs a construction business properly, end to end. An open API and a real partner programme, so it integrates rather than blocks. Large and established across the trades.
+- Gaps for a pool builder: No pool design, and nothing in it knows what a pool is. The measurement to estimate loop exists only through a partner built for interiors.
 
 ### Cedreo
 
