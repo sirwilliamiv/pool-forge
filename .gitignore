@@ -67,3 +67,6 @@ services/voice-relay/dist/
 
 # Throwaway repro scripts written while driving the running app.
 __*.mjs
+
+# Local database and blob backups (scripts/backup-db.sh, scripts/backup-blobs.sh)
+.backups/

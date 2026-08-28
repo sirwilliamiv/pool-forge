@@ -21,33 +21,50 @@ this app runs Node server actions, so skip it.
 
 ## 2. Create the production schema on Neon
 
-This repo develops with `prisma db push` and has **no migration history**. For a
-clean prod deploy, generate an initial migration once and apply it:
+This section used to say the repo had no migration history. That has not been
+true since the `0_init` baseline landed: `prisma/migrations/` now holds 13
+migrations, starting at `0_init` and running through
+`20260827211543_beta_readiness_foundations`. There is nothing to generate.
 
 ```sh
-# against a throwaway/empty DB, generate the baseline migration:
-DATABASE_URL="postgres://…empty…" npx prisma migrate dev --name init
-git add prisma/migrations && git commit -m "chore(db): baseline migration"
-
-# then, against Neon:
 DATABASE_URL="<neon-pooled-url>" npx prisma migrate deploy
+DATABASE_URL="<neon-pooled-url>" npx prisma migrate status   # expect "up to date"
 ```
 
-Quick alternative for a brand-new empty Neon DB (no data to lose):
-`DATABASE_URL="<neon-url>" npx prisma db push`. Never run `db push` against a
-Neon DB that already holds real data — use `migrate deploy`.
+`migrate deploy` applies only what is missing and never prompts, which is what
+makes it the deploy-time command. Do not run `prisma migrate dev` against a
+deployed database: it is the development command and will offer to reset.
 
-Optionally seed a demo org/price book: `DATABASE_URL="<neon-url>" pnpm db:seed`
-(remove the demo credentials from `prisma/seed.ts` before seeding a real env).
+**Never run `prisma db push` against a database that holds real data.** It
+diffs the schema straight onto the database with no migration record, so the
+next `migrate deploy` sees a schema it cannot account for. `db push` is for the
+local development database only.
+
+Take a dump before every `migrate deploy` (`pnpm db:backup`, one command, a few
+hundred KB today). A migration is the single most likely way to lose data, and
+it is the one where a backup taken sixty seconds earlier costs nothing. See
+[docs/backup-restore.md](./backup-restore.md).
+
+Optionally seed a demo org/price book on a brand-new database:
+`DATABASE_URL="<neon-url>" pnpm db:seed` (remove the demo credentials from
+`prisma/seed.ts` before seeding a real environment).
 
 ## 3. Environment variables (host project settings)
 
-| Var | Value |
-|---|---|
-| `DATABASE_URL` | Neon pooled connection string |
-| `AUTH_SECRET` | `openssl rand -base64 32` |
-| `AUTH_URL` | the deployed origin, e.g. `https://app.example.com` |
-| `NODE_ENV` | `production` (set by the host) |
+| Var | Required | Value |
+|---|---|---|
+| `DATABASE_URL` | yes | Neon pooled connection string |
+| `AUTH_SECRET` | yes | `openssl rand -base64 32` |
+| `AUTH_URL` | yes | the deployed origin, e.g. `https://app.example.com` |
+| `NODE_ENV` | set by host | `production` |
+| `MONITORING_ENV` | no | deployment label in logs and alerts, e.g. `beta`. Defaults to `NODE_ENV` |
+| `MONITORING_RELEASE` | no | build identifier, usually the git sha |
+| `MONITORING_ALERT_WEBHOOK_URL` | no | https endpoint that accepts a JSON POST. Empty disables alerting |
+| `BACKUP_DIR`, `BACKUP_RETENTION_DAYS`, `PG_IMAGE` | no | only read by the backup scripts, not by the app |
+
+**Error monitoring needs none of these to work.** With nothing set, every
+server error and every browser error boundary still produces one redacted JSON
+line on stderr. See §6.
 
 There are no `NEXT_PUBLIC_*` build-time vars in the web app today; if any are
 added later, set them in the host's **build** environment (they bake at build).
@@ -70,6 +87,144 @@ or a build hook) so the client matches the schema.
 - Sign in, create a project, open `/settings/company`, set a tax rate + brand.
 - Open a project's proposal, create a share link, open `/share/<token>` in a
   private window (no login) and accept it.
+
+## 6. Error monitoring
+
+### What was chosen, and why it is not Sentry
+
+**Structured JSON on stderr, plus an optional webhook.** No vendor SDK, no
+account, no DSN, no source-map upload token, no client bundle cost.
+
+Sentry is the obvious answer for a Next.js app and it was the starting
+assumption. It was rejected for this stage on three grounds:
+
+1. **It cannot run unconfigured.** The requirement is that the app runs and the
+   suite passes with no monitoring set up at all. A vendor SDK bolted into
+   `next.config.ts` via `withSentryConfig` is present in every build whether or
+   not a DSN exists, and it needs an account and a secret that only the owner
+   can create before it does anything.
+2. **Its default value is customer data.** Sentry's worth comes from breadcrumbs,
+   request context, session replay and automatic capture of the values in scope.
+   For Pool Forge those are homeowners' names, addresses, phone numbers and
+   contract totals. Making it safe means denying almost all of it in
+   `beforeSend`/`beforeBreadcrumb`, at which point you have paid the bundle, the
+   build integration and the vendor relationship for a scrubbed skeleton.
+3. **Nothing needs it yet.** One instance, one operator, and a host that already
+   aggregates stdout. Alerting was the only real gap, and one webhook closes it.
+
+The trade is explicit: no error grouping UI, no release health, no trend graphs,
+no retention beyond the host's log window. `fingerprint` is on every record so
+grouping is a `sort | uniq -c` rather than nothing. If the beta grows past one
+operator, the seam to swap is `captureError` in
+`src/modules/monitoring/report.ts` — a single function, already the only place
+an error becomes a record.
+
+### How it works
+
+| Piece | File |
+|---|---|
+| Server errors (pages, route handlers, server actions) | `src/instrumentation.ts` → `onRequestError` |
+| Browser errors | `src/app/error.tsx`, `src/app/global-error.tsx` |
+| Where browser errors are sent | `POST /api/monitoring/report` (first party, unauthenticated, rate limited) |
+| Redaction | `src/modules/monitoring/redact.ts` |
+| Record and sink | `src/modules/monitoring/report.ts` |
+
+Every capture writes one JSON line to stderr:
+
+```json
+{"scope":"monitoring","event":"error","errorRef":"err_1a2b3c4d5e6f","severity":"error",
+ "origin":"server","code":"server_render","route":"/projects/:id/quote","name":"TypeError",
+ "message":"Cannot read properties of undefined","digest":"3299871266",
+ "fingerprint":"5f2a91c0","stack":["..."],"orgId":"clx…","userId":"clx…",
+ "environment":"beta","release":"a1b2c3d","at":"2026-08-28T01:41:27.000Z"}
+```
+
+`errorRef` is the `err_<12 hex>` format the imports, intake and voice paths
+already show users, so there is one thing to ask a builder for and one grep:
+
+```sh
+# the builder read "err_1a2b3c4d5e6f" off their screen
+vercel logs --since 24h | grep err_1a2b3c4d5e6f
+gcloud logging read 'textPayload:"err_1a2b3c4d5e6f"' --limit 20
+```
+
+`digest` is the join between the two halves. Next computes it for a server
+error, passes it to `onRequestError` **and** to the browser error boundary, so
+the server-side cause and the browser-side report carry the same value even
+though they have different refs. Grep the digest to get both.
+
+### The privacy rule
+
+Nothing reaches a log line or a webhook without passing `redactText`, which
+removes credential material, email addresses, IP addresses, money figures, long
+digit runs, telephone shapes, home-directory paths, quoted phrases and
+capitalised proper nouns, and caps the result. `src/test/unit/monitoring/
+redact.test.ts` feeds it a realistic Prisma failure carrying a customer's name,
+their email address, their street address, their phone number and a $48,750
+contract total, and asserts none of them survives anywhere in the record or in
+the webhook payload. The stack is logged locally and never sent outbound.
+
+### What this does not cover
+
+Next.js prints its own uncaught server errors to stderr, unredacted, before
+`onRequestError` ever runs. Verified by throwing a route handler carrying a
+customer name, an email address and a `$48,750` total: the monitoring record was
+clean in every field, and Next's own line above it was not.
+
+That is the host's log, not a third party, and it is where the app's output
+already goes, so it does not breach the rule this design exists to hold: the
+outbound webhook only ever carries the redacted record. But it does mean the
+log stream is not itself safe to paste into a ticket or forward to a vendor.
+Two consequences worth acting on:
+
+- Keep log retention short and access to the log console restricted.
+- When quoting an error to anybody, quote the `err_…` reference and the
+  `{"scope":"monitoring"}` line, never the raw stack above it.
+
+The way to actually close this is for application code never to put customer
+values into an error message in the first place, which is the convention the
+`imports`, `intake` and `voice` modules already follow (canned copy plus a ref).
+Monitoring is the second line of defence, not the first.
+
+### Turning alerting on
+
+Set `MONITORING_ALERT_WEBHOOK_URL` to any https endpoint that accepts a JSON
+POST (a Slack or Discord incoming webhook is the cheapest option). It is
+fire-and-forget with a 3 s timeout and 15-minute per-fingerprint deduplication,
+so a dead sink or an error storm cannot slow or break a request. Leave it empty
+and alerting is simply off.
+
+Check it is on from the logs rather than from memory — the app writes one line
+at boot:
+
+```json
+{"scope":"monitoring","event":"ready","sink":"stdout","alerts":"webhook","environment":"beta","release":"a1b2c3d"}
+```
+
+### Verifying after deploy
+
+```sh
+curl -si -X POST "$APP_URL/api/monitoring/report" \
+  -H 'content-type: application/json' \
+  -d '{"code":"deploy_smoke","name":"Error","message":"monitoring smoke test"}'
+# → 202 with {"ok":true,"errorRef":"err_…"}; that ref must appear in the logs
+```
+
+## 7. Backups
+
+There is a runbook with a real, executed restore drill in
+[docs/backup-restore.md](./backup-restore.md). The short version:
+
+```sh
+pnpm backup              # database dump then blob archive, in that order
+pnpm db:verify-restore   # restore into a scratch DB and compare every row count
+```
+
+Take a dump before every `migrate deploy`. Schedule `scripts/backup-all.sh`
+daily, copy the output off the machine, and alert if the job stops running. On
+Neon, also set the history window to at least 7 days and prefer restoring into a
+branch; provider history protects against your mistakes, the dumps protect
+against losing the provider.
 
 ## Notes
 

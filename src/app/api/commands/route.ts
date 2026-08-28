@@ -8,10 +8,12 @@ import {
   type CommandSourceValue,
 } from '@/modules/commands/source'
 import {
+  humanCommandCrashError,
   humanCommandInputError,
   humanUnknownCommandError,
   technicalIssueList,
 } from '@/lib/commands/errors'
+import { captureError } from '@/modules/monitoring'
 import { initCommands } from '@/modules/commands/init'
 import { get } from '@/modules/commands/registry'
 import type { CommandContext, CommandResult } from '@/modules/commands/registry'
@@ -129,7 +131,7 @@ export async function POST(req: Request): Promise<Response> {
       source,
     })
     return NextResponse.json(
-      { ok: false, error: humanCommandInputError(command.label, inputParsed.error) },
+      { ok: false, error: humanCommandInputError(command.label, inputParsed.error, input) },
       { status: 400 },
     )
   }
@@ -140,12 +142,35 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   let result: CommandResult
+  // Two audiences again. A thrown error's own message can quote the row it
+  // choked on, so it never reaches the browser; it is captured, redacted and
+  // logged against a ref, the caller gets a sentence carrying that ref, and the
+  // audit row records the ref rather than the generic copy so the two can be
+  // joined later.
+  let auditResult: CommandResult | { ok: false; error: string }
   try {
     result = await command.execute(inputParsed.data, ctx)
+    auditResult = result
   } catch (err) {
-    result = { ok: false, error: err instanceof Error ? err.message : 'unknown error' }
+    const report = captureError({
+      error: err,
+      code: 'command_execute',
+      origin: 'server',
+      route: `/api/commands/${id}`,
+      userId,
+      orgId,
+    })
+    result = { ok: false, error: humanCommandCrashError(command.label, report.errorRef) }
+    auditResult = { ok: false, error: `command threw (${report.errorRef}): ${report.name}` }
   }
 
-  await writeAudit({ userId, orgId, commandId: id, input: inputParsed.data, result, source })
+  await writeAudit({
+    userId,
+    orgId,
+    commandId: id,
+    input: inputParsed.data,
+    result: auditResult,
+    source,
+  })
   return NextResponse.json(result)
 }
