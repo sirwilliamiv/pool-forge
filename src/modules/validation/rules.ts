@@ -1,3 +1,5 @@
+import { MAX_DEPTH_FT, MAX_SIZE_FT, MIN_DEPTH_FT, MIN_SIZE_FT } from '@/lib/geometry/limits'
+
 import type { ValidationContext, ValidationItem, ValidationRule } from './types'
 
 /**
@@ -16,6 +18,7 @@ export const FIELD_LABELS = {
   address: 'Job address',
   proposalExpiresAt: 'Proposal expiry',
   poolDepth: 'Pool depth',
+  poolSize: 'Pool size',
   interiorFinish: 'Interior finish',
   equipmentPackage: 'Equipment package',
   sanitizationPackage: 'Sanitization',
@@ -48,6 +51,12 @@ function fail(
 
 function pf(ctx: ValidationContext, key: string): unknown {
   return ctx.project.poolFields[key]
+}
+
+/** One decimal at most, and never `NaN` or `Infinity` on a checklist row. */
+function round(value: number): string {
+  if (!Number.isFinite(value)) return 'no measurable size'
+  return (Math.round(value * 10) / 10).toLocaleString('en-US')
 }
 
 function isBlank(v: unknown): boolean {
@@ -256,6 +265,84 @@ export const ALL_RULES: ValidationRule[] = [
           suggestedFix: 'Select the pool and set Sh and Dp in the Geometry section',
         },
       )
+    },
+  },
+  {
+    id: 'pool.size.buildable',
+    level: 'error',
+    category: 'pool',
+    passMessage: 'Pool size is buildable',
+    // The command schemas refuse an out-of-range dimension at the door, so
+    // nothing typed today can reach this. Drawings made before those bounds
+    // existed still can: a saved 99999-foot pool prices, exports and prints
+    // exactly as it always did, and this is the only thing that will say so.
+    appliesTo: (ctx) => ctx.measurements.hasPool,
+    check(ctx) {
+      const { poolLengthFt, poolWidthFt } = ctx.measurements
+      const off = [
+        ['length', poolLengthFt],
+        ['width', poolWidthFt],
+      ].filter(
+        ([, value]) =>
+          !Number.isFinite(value as number) ||
+          (value as number) < MIN_SIZE_FT ||
+          (value as number) > MAX_SIZE_FT,
+      )
+      if (off.length === 0) return null
+      return fail(
+        'pool.size.buildable',
+        'error',
+        'pool',
+        `The pool measures ${round(poolLengthFt)} ft by ${round(poolWidthFt)} ft, which is outside the ${MIN_SIZE_FT} to ${MAX_SIZE_FT} ft a pool can be built at. Every figure on the quote is derived from it.`,
+        {
+          field: 'poolSize',
+          targetId: ctx.targets?.pool,
+          suggestedFix: 'Select the pool and set L and W in the Geometry section',
+        },
+      )
+    },
+  },
+  {
+    id: 'pool.depth.ordered',
+    level: 'error',
+    category: 'pool',
+    passMessage: 'Pool depths run shallow to deep',
+    // A shallow end below the deep end is not a pool, and the floor slope
+    // derived from the pair goes negative, which is what ends up on the
+    // construction packet as a fall in the wrong direction.
+    appliesTo: (ctx) => ctx.measurements.hasPool,
+    check(ctx) {
+      const { poolDepthShallow, poolDepthDeep } = ctx.measurements
+      const outOfRange = [poolDepthShallow, poolDepthDeep].some(
+        (d) => Number.isFinite(d) && d > 0 && (d < MIN_DEPTH_FT || d > MAX_DEPTH_FT),
+      )
+      if (poolDepthShallow > poolDepthDeep) {
+        return fail(
+          'pool.depth.ordered',
+          'error',
+          'pool',
+          `The shallow end is set to ${round(poolDepthShallow)} ft against a deep end of ${round(poolDepthDeep)} ft, so the floor falls the wrong way.`,
+          {
+            field: 'poolDepth',
+            targetId: ctx.targets?.pool,
+            suggestedFix: 'Select the pool and swap Sh and Dp in the Geometry section',
+          },
+        )
+      }
+      if (outOfRange) {
+        return fail(
+          'pool.depth.ordered',
+          'error',
+          'pool',
+          `A depth of ${round(poolDepthShallow)} ft to ${round(poolDepthDeep)} ft is outside the ${MIN_DEPTH_FT} to ${MAX_DEPTH_FT} ft a pool holds water at.`,
+          {
+            field: 'poolDepth',
+            targetId: ctx.targets?.pool,
+            suggestedFix: 'Select the pool and set Sh and Dp in the Geometry section',
+          },
+        )
+      }
+      return null
     },
   },
   {

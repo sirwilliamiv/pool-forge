@@ -7,6 +7,11 @@ import { db } from '@/lib/db'
 import { ProjectForm } from '@/components/project/ProjectForm'
 import { ProjectActions } from '@/components/project/ProjectActions'
 import { ShareProposalCard } from '@/components/project/ShareProposalCard'
+import {
+  ProjectLineItems,
+  type PriceBookChoice,
+  type ProjectLineItemView,
+} from '@/components/project/ProjectLineItems'
 import { poolFieldsSchema, readPoolFields } from '@/modules/projects/pool-fields'
 import { computeMeasurements } from '@/modules/measurements/engine'
 import type { Shape } from '@/modules/editor/state/shapes'
@@ -127,6 +132,46 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
   const pool = readPoolFields(project.poolFields)
 
+  // Amounts put on this job by hand, and the builder's own rates to start from.
+  // Both are org-scoped: the project id already implies the organisation, and
+  // asking for both means nothing here can read another org's numbers.
+  const [lineItemRows, priceBookRows] = await Promise.all([
+    db.projectLineItem.findMany({
+      where: { projectId: project.id, orgId },
+      select: {
+        id: true,
+        category: true,
+        name: true,
+        unitType: true,
+        quantity: true,
+        unitPrice: true,
+        note: true,
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    }),
+    db.priceBookItem.findMany({
+      where: { priceBook: { orgId, isActive: true } },
+      select: { id: true, category: true, name: true, unitType: true, retailPrice: true },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+    }),
+  ])
+  const lineItems: ProjectLineItemView[] = lineItemRows.map((row) => ({
+    id: row.id,
+    category: row.category,
+    name: row.name,
+    unitType: row.unitType,
+    quantity: Number(row.quantity),
+    unitPrice: Number(row.unitPrice),
+    note: row.note,
+  }))
+  const priceBookChoices: PriceBookChoice[] = priceBookRows.map((row) => ({
+    id: row.id,
+    category: row.category,
+    name: row.name,
+    unitType: row.unitType,
+    retailPrice: Number(row.retailPrice),
+  }))
+
   // Depth is read from the drawing, because the drawing is where it lives. The
   // form used to ask for it again in two free-text boxes that priced nothing
   // and printed nowhere, so one pool could report three different depths: the
@@ -199,6 +244,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               }
             : null
         }
+      />
+      <ProjectLineItems
+        projectId={project.id}
+        items={lineItems}
+        priceBookChoices={priceBookChoices}
       />
       <ProjectForm
         projectId={project.id}

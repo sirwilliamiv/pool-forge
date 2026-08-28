@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { deleteItem } from '@/app/(app)/settings/price-book/actions'
+import { optionLabel } from '@/modules/pricing/engine'
 import { PriceBookItemDialog, type ExistingItem } from './PriceBookItemDialog'
 
 export interface PriceBookItemRowProps {
@@ -34,6 +35,11 @@ export function PriceBookItemRow({ item }: PriceBookItemRowProps) {
   if (item.internalOnly) flags.push('internal')
   if (item.required) flags.push('required')
   if (item.upgradeOnly) flags.push('upgrade')
+  // Which selection switches this line on, spelled out. A builder looking at a
+  // heater and a salt cell in the same category needs to see at a glance which
+  // one is tied to which answer, because the failure this fixed was invisible
+  // from the price book: both lines looked identical and both billed together.
+  if (item.optionKey) flags.push(`only with ${optionLabel(item.optionKey).toLowerCase()}`)
 
   return (
     <>

@@ -515,6 +515,18 @@ const EXERCISES: Record<string, Exercise> = {
     kind: 'server',
     why: 'Prices the project against the org price book in the database. Covered by the pricing module tests.',
   },
+  'add.projectLineItem': {
+    kind: 'server',
+    why: 'Writes a ProjectLineItem row against the project, after checking it is this organisation\'s. What it means for the money is covered by the pricing engine tests and its properties.',
+  },
+  'update.projectLineItem': {
+    kind: 'server',
+    why: 'Updates a ProjectLineItem row in the database. Covered by the pricing engine tests.',
+  },
+  'remove.projectLineItem': {
+    kind: 'server',
+    why: 'Deletes a ProjectLineItem row from the database. Covered by the pricing engine tests.',
+  },
 
   // ---------- validation ----------
   'run.validation': {

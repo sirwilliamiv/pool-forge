@@ -30,7 +30,13 @@ const PRICE_ITEM_IDS = {
   finishPebbleBlueGranite: 'seed-item-finish-pebbletec-blue-granite',
   tileGlassAqua: 'seed-item-tile-glass-aqua',
   equipment: 'seed-item-pump-vsp',
+  heater: 'seed-item-heater-gas-400k',
+  saltCell: 'seed-item-salt-chlorinator',
+  screenCage: 'seed-item-screen-mansard-cage',
   lighting: 'seed-item-led-light',
+  permitFees: 'seed-item-permit-fees',
+  retainingWall: 'seed-item-paver-retaining-wall',
+  panelUpgrade: 'seed-item-panel-upgrade',
 } as const
 
 const TEMPLATE_IDS = {
@@ -161,6 +167,7 @@ async function main() {
     unitCost: string
     retailPrice: string
     required?: boolean
+    optionKey?: string
   }> = [
     {
       id: PRICE_ITEM_IDS.pool,
@@ -256,6 +263,45 @@ async function main() {
       retailPrice: '1750.00',
       required: true,
     },
+    // Two pieces of equipment, two different questions. Both of these used to
+    // be switched on by one flag meaning "a heater OR a salt system", and the
+    // engine handed that single answer to every item in the category: a
+    // customer who asked for salt was billed $5,800 for a heater, on a proposal
+    // whose own equipment schedule said the heater was not included. Each line
+    // names the option it belongs to now.
+    {
+      id: PRICE_ITEM_IDS.heater,
+      category: PriceCategory.EQUIPMENT,
+      name: 'Gas Heater — 400k BTU',
+      unitType: UnitType.EACH,
+      unitCost: '3100.00',
+      retailPrice: '5800.00',
+      optionKey: 'heater',
+    },
+    {
+      id: PRICE_ITEM_IDS.saltCell,
+      category: PriceCategory.EQUIPMENT,
+      name: 'Salt Chlorination System',
+      unitType: UnitType.EACH,
+      unitCost: '1100.00',
+      retailPrice: '2200.00',
+      optionKey: 'salt',
+    },
+    {
+      // Sold as one thing, because a cage is not measured by anything in the
+      // drawing. This line used to be per square foot and billed the deck's
+      // area, which is neither the footprint a cage covers nor the panel area a
+      // screen contractor charges for. A per-square-foot cage rate now bills
+      // nothing and says so; a builder who wants one prices the cage on the job
+      // with the square footage they measured on site.
+      id: PRICE_ITEM_IDS.screenCage,
+      category: PriceCategory.SCREEN,
+      name: 'Screen Enclosure — Mansard Cage',
+      unitType: UnitType.LUMP,
+      unitCost: '11800.00',
+      retailPrice: '21500.00',
+      optionKey: 'screen',
+    },
     {
       id: PRICE_ITEM_IDS.lighting,
       category: PriceCategory.LIGHTING,
@@ -263,6 +309,35 @@ async function main() {
       unitType: UnitType.EACH,
       unitCost: '180.00',
       retailPrice: '450.00',
+    },
+    // Rates for scope no drawing measures. These are kept here because they are
+    // the builder's real numbers, and put on a job from the project page, where
+    // somebody says how many. They used to be accepted into the book, listed,
+    // and then absent from every quote: "Permit fees $2,000" saved, shown, and
+    // billed to nobody.
+    {
+      id: PRICE_ITEM_IDS.permitFees,
+      category: PriceCategory.MISC,
+      name: 'Permit & Impact Fees',
+      unitType: UnitType.LUMP,
+      unitCost: '2000.00',
+      retailPrice: '2000.00',
+    },
+    {
+      id: PRICE_ITEM_IDS.retainingWall,
+      category: PriceCategory.WALL,
+      name: 'Paver Retaining Wall',
+      unitType: UnitType.LF,
+      unitCost: '48.00',
+      retailPrice: '94.00',
+    },
+    {
+      id: PRICE_ITEM_IDS.panelUpgrade,
+      category: PriceCategory.ELECTRICAL,
+      name: 'Sub-panel & Equipment Bonding',
+      unitType: UnitType.LUMP,
+      unitCost: '1450.00',
+      retailPrice: '2900.00',
     },
   ]
 
@@ -276,6 +351,7 @@ async function main() {
         unitCost: new Prisma.Decimal(item.unitCost),
         retailPrice: new Prisma.Decimal(item.retailPrice),
         required: item.required ?? false,
+        optionKey: item.optionKey ?? null,
       },
       create: {
         id: item.id,
@@ -286,6 +362,7 @@ async function main() {
         unitCost: new Prisma.Decimal(item.unitCost),
         retailPrice: new Prisma.Decimal(item.retailPrice),
         required: item.required ?? false,
+        optionKey: item.optionKey ?? null,
       },
     })
   }

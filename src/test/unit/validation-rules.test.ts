@@ -93,6 +93,58 @@ const FULLY_POPULATED = {
   selections: { heaterSelected: true, screenSelected: true },
 }
 
+describe('validation — a pool nobody can build says so', () => {
+  // The command schemas refuse an out-of-range dimension at the door, so
+  // nothing typed today reaches these rules. Drawings saved before those bounds
+  // existed do: the $155,928,492 pool is a row in the database, and it prices,
+  // exports and prints exactly as it always did. The checklist is the only thing
+  // that will ever say so.
+  function sized(lengthFt: number, widthFt: number): Shape {
+    return { ...poolShape(), width: lengthFt * 12, height: widthFt * 12 }
+  }
+
+  it('flags the 99999-foot pool as an error, not a warning', () => {
+    expect(level(makeCtx({ shapes: [sized(99_999, 14)] }), 'pool.size.buildable')).toBe('error')
+  })
+
+  it('flags a pool too small to build as well as one too big', () => {
+    expect(level(makeCtx({ shapes: [sized(0.5, 14)] }), 'pool.size.buildable')).toBe('error')
+  })
+
+  it('passes an ordinary pool', () => {
+    expect(level(makeCtx({ shapes: [sized(30, 14)] }), 'pool.size.buildable')).toBe('pass')
+    expect(level(makeCtx({ shapes: [sized(400, 400)] }), 'pool.size.buildable')).toBe('pass')
+  })
+
+  it('says nothing when there is no pool to measure', () => {
+    expect(level(makeCtx({ shapes: [deckShape()] }), 'pool.size.buildable')).toBeUndefined()
+  })
+
+  it('names the measurement rather than an internal field', () => {
+    const item = runValidation(makeCtx({ shapes: [sized(99_999, 14)] })).items.find(
+      (i) => i.id === 'pool.size.buildable',
+    )
+    expect(item?.message).toContain('99,999')
+    expect(item?.message).not.toMatch(/poolLengthFt|width|p1/)
+    expect(item?.field).toBe('Pool size')
+  })
+
+  it('flags a shallow end deeper than the deep end', () => {
+    expect(
+      level(makeCtx({ shapes: [poolShape({ shallow: 8, deep: 4 })] }), 'pool.depth.ordered'),
+    ).toBe('error')
+    expect(
+      level(makeCtx({ shapes: [poolShape({ shallow: 3, deep: 5 })] }), 'pool.depth.ordered'),
+    ).toBe('pass')
+  })
+
+  it('flags a depth no pool holds water at', () => {
+    expect(
+      level(makeCtx({ shapes: [poolShape({ shallow: 3, deep: 90 })] }), 'pool.depth.ordered'),
+    ).toBe('error')
+  })
+})
+
 describe('validation — required fields read the real keys', () => {
   it('customer name: error when blank, pass when set', () => {
     expect(level(makeCtx({ customerName: '' }), 'customer.name.required')).toBe('error')

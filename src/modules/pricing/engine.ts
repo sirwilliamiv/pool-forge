@@ -12,6 +12,13 @@ export interface PriceBookItemLite {
   retailPrice: number
   /** Required count-unit items are forced onto the quote at qty 1 (e.g. the pump). */
   required?: boolean
+  /**
+   * The customer selection that switches this line on. See `PricingOptionKey`.
+   *
+   * Null or empty means "billed by this item's category rule", which is what
+   * every book held before the column existed.
+   */
+  optionKey?: string | null
 }
 
 /** A `PriceBookItem` row as Prisma returns it (`retailPrice` is a Decimal). */
@@ -22,6 +29,7 @@ export interface PriceBookItemRow {
   unitType: UnitType
   retailPrice: unknown
   required?: boolean
+  optionKey?: string | null
 }
 
 /**
@@ -37,6 +45,158 @@ export function toPriceBookItems(rows: readonly PriceBookItemRow[]): PriceBookIt
     unitType: r.unitType,
     retailPrice: Number(r.retailPrice) || 0,
     required: r.required ?? false,
+    optionKey: r.optionKey ?? null,
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Options: which customer choice turns a price-book line on.
+// ---------------------------------------------------------------------------
+
+/**
+ * The customer selections a price-book line can name.
+ *
+ * Every EQUIPMENT item used to be gated by a single flag meaning "a heater OR a
+ * salt system was chosen", and the engine handed that one answer to every item
+ * in the category. A book holding a $5,800 heater and a $2,200 salt cell
+ * therefore billed both the moment a customer asked for either, and somebody
+ * who wanted salt was charged for a heater on a proposal whose own equipment
+ * schedule said "Heater: not included".
+ *
+ * A line names the thing it belongs to now.
+ */
+export const PRICING_OPTIONS = ['heater', 'salt', 'screen'] as const
+
+export type PricingOptionKey = (typeof PRICING_OPTIONS)[number]
+
+const OPTION_LABELS: Record<PricingOptionKey, string> = {
+  heater: 'Heater',
+  salt: 'Salt system',
+  screen: 'Screen enclosure',
+}
+
+/** The user-facing name of an option. Never print the raw key. */
+export function optionLabel(key: PricingOptionKey): string {
+  return OPTION_LABELS[key]
+}
+
+/** Where an option's money lives, so a missing one can be reported precisely. */
+const OPTION_CATEGORY: Record<PricingOptionKey, PriceCategory> = {
+  heater: PriceCategory.EQUIPMENT,
+  salt: PriceCategory.EQUIPMENT,
+  screen: PriceCategory.SCREEN,
+}
+
+// Spellings a builder plausibly types or an import plausibly carries. The
+// price-book form offers the three keys as a list, so this only has to absorb
+// what arrives from an import or a direct write.
+const OPTION_SYNONYMS: Readonly<Record<string, PricingOptionKey>> = {
+  heater: 'heater',
+  heat: 'heater',
+  heating: 'heater',
+  heatpump: 'heater',
+  gasheater: 'heater',
+  salt: 'salt',
+  saltsystem: 'salt',
+  saltcell: 'salt',
+  saltwater: 'salt',
+  saltchlorinator: 'salt',
+  chlorinator: 'salt',
+  screen: 'screen',
+  screenenclosure: 'screen',
+  enclosure: 'screen',
+  cage: 'screen',
+}
+
+/**
+ * The option a stored key means, or null if it names nothing this app asks for.
+ *
+ * Null is not "no gate": a key nobody can select is reported rather than
+ * quietly falling back to the category rule, because a line that bills on a
+ * question the customer was never asked is the bug this column exists to fix.
+ */
+export function normalizeOptionKey(raw: string | null | undefined): PricingOptionKey | null {
+  if (raw === null || raw === undefined) return null
+  const cleaned = raw.trim().toLowerCase().replace(/[^a-z]/g, '')
+  if (cleaned === '') return null
+  return OPTION_SYNONYMS[cleaned] ?? null
+}
+
+/** Does this item carry an option key at all? */
+function isGated(item: PriceBookItemLite): boolean {
+  return (item.optionKey ?? '').trim() !== ''
+}
+
+type OptionGate = 'ungated' | 'on' | 'off' | 'unknown'
+
+function optionChosen(key: PricingOptionKey, sel: PricingSelections): boolean {
+  switch (key) {
+    case 'heater':
+      return sel.heaterSelected === true
+    case 'salt':
+      return sel.saltSystemSelected === true
+    case 'screen':
+      return sel.screenSelected === true
+  }
+}
+
+function optionGate(item: PriceBookItemLite, sel: PricingSelections): OptionGate {
+  if (!isGated(item)) return 'ungated'
+  const key = normalizeOptionKey(item.optionKey)
+  if (key === null) return 'unknown'
+  return optionChosen(key, sel) ? 'on' : 'off'
+}
+
+// ---------------------------------------------------------------------------
+// Per-job line items: money nothing in a drawing measures.
+// ---------------------------------------------------------------------------
+
+/**
+ * An amount a builder put on one job by hand.
+ *
+ * Five price categories — lanai, fence, wall, electrical and other — have no
+ * measurement behind them: no drawing says how many feet of fence or what the
+ * permit costs. They were accepted into the price book, listed there, and then
+ * absent from every quote, because the engine asked their category for a
+ * quantity and the category answered zero. A builder typed "Paver retaining
+ * wall $9,400", watched it save, and sent a proposal without it.
+ *
+ * These are per-job amounts rather than catalogue lines, so the builder says
+ * how many. A line item may be copied out of the price book (`priceBookItemId`
+ * records where it came from) or typed as a one-off.
+ */
+export interface ProjectLineItemLite {
+  id: string
+  category: PriceCategory
+  name: string
+  unitType: UnitType
+  quantity: number
+  unitPrice: number
+  note?: string | null
+}
+
+/** A `ProjectLineItem` row as Prisma returns it (the numbers are Decimals). */
+export interface ProjectLineItemRow {
+  id: string
+  category: PriceCategory
+  name: string
+  unitType: UnitType
+  quantity: unknown
+  unitPrice: unknown
+  note?: string | null
+}
+
+export function toProjectLineItems(
+  rows: readonly ProjectLineItemRow[],
+): ProjectLineItemLite[] {
+  return rows.map((r) => ({
+    id: r.id,
+    category: r.category,
+    name: r.name,
+    unitType: r.unitType,
+    quantity: Number(r.quantity) || 0,
+    unitPrice: Number(r.unitPrice) || 0,
+    note: r.note ?? null,
   }))
 }
 
@@ -75,6 +235,14 @@ export interface PricingSelections {
    * cannot tell one travertine from another.
    */
   finishItemIds?: readonly string[]
+  /**
+   * Amounts put on this job by hand. See `ProjectLineItemLite`.
+   *
+   * They sit here rather than alongside the price book because they are not
+   * catalogue: they belong to one project, they carry their own quantity, and
+   * nothing measures them.
+   */
+  projectLineItems?: readonly ProjectLineItemLite[]
 }
 
 export interface QuoteLine {
@@ -116,6 +284,20 @@ export interface UnpricedScope {
   quantity: number
   unit: string
   reason: string
+  /**
+   * How wide the claim is.
+   *
+   * `'category'` says the whole category is unpriced, so nothing in it may be
+   * billing at the same time. `'detail'` names one specific thing inside a
+   * category that is otherwise perfectly well priced: a finish the book has no
+   * row for, two items fighting over one measurement, an option the book
+   * cannot bill. A pool with an unbillable interior still has a pool shell
+   * line, and both statements are true at once.
+   *
+   * Written down rather than inferred so the invariant "never says a category
+   * is unpriced while billing for it" can be stated without a text match.
+   */
+  scope: 'category' | 'detail'
 }
 
 export interface QuoteSummary {
@@ -223,6 +405,10 @@ function quantityForItem(
     case PriceCategory.BENCH:
       return { quantity: m.benchLinearFeet, source: 'Bench length' }
     case PriceCategory.EQUIPMENT:
+      // The fallback for an item that names no option: it bills when the
+      // customer asked for equipment at all. `computeQuote` gates anything
+      // carrying an `optionKey` on that option alone, which is how a heater
+      // and a salt cell in one book stop billing as a pair.
       return {
         quantity: sel.heaterSelected || sel.saltSystemSelected ? 1 : 0,
         source: 'Equipment selection',
@@ -239,10 +425,21 @@ function quantityForItem(
         ? { quantity: m.waterFeatureCount, source: 'Water features in drawing' }
         : { quantity: 0, source: 'Manual' }
     case PriceCategory.SCREEN:
-      return {
-        quantity: sel.screenSelected ? m.deckArea : 0,
-        source: 'Screen over deck',
-      }
+      // A cage is not a deck. This used to bill deck area, which is neither the
+      // footprint a cage covers (it spans the pool as well) nor the thing a
+      // screen contractor charges by (panel and mesh area over a footprint,
+      // with a roof style and a height), and nothing in the drawing measures
+      // either. A 770 sq ft deck therefore invoiced 770 sq ft of screen at the
+      // per-square-foot rate, and the figure was wrong in both directions
+      // depending on the yard.
+      //
+      // A cage sold as one thing bills as one thing. A cage sold by the square
+      // foot cannot be measured here, so it bills nothing and the quote says
+      // so, exactly as an unpriceable waterfall does.
+      if (!sel.screenSelected) return { quantity: 0, source: 'Screen not selected' }
+      return COUNT_UNIT_TYPES.has(item.unitType)
+        ? { quantity: 1, source: 'Screen enclosure selected' }
+        : { quantity: 0, source: 'Cage not measured by the drawing' }
     case PriceCategory.FENCE:
     case PriceCategory.WALL:
     case PriceCategory.ELECTRICAL:
@@ -300,18 +497,107 @@ function scopePresent(
     { category: PriceCategory.BENCH, quantity: m.benchLinearFeet, unit: 'LF' },
     { category: PriceCategory.LIGHTING, quantity: effectiveLightingQuantity(m, sel), unit: 'placed' },
     { category: PriceCategory.WATER_FEATURE, quantity: m.waterFeatureCount, unit: 'placed' },
-    {
-      category: PriceCategory.SCREEN,
-      quantity: sel.screenSelected ? m.deckArea : 0,
-      unit: 'sq ft',
-    },
-    {
-      category: PriceCategory.EQUIPMENT,
-      quantity: sel.heaterSelected || sel.saltSystemSelected ? 1 : 0,
-      unit: 'selected',
-    },
     { category: PriceCategory.EARTHWORK, quantity: m.cutYards + m.fillYards, unit: 'cu yd' },
   ]
+  // EQUIPMENT and SCREEN are deliberately absent: both are driven by a customer
+  // choice rather than by a measurement, and `unpricedOptions` reports them one
+  // option at a time. "Equipment is unpriced" was never something a builder
+  // could act on when the missing thing was the salt cell and the pump was
+  // billing perfectly well beside it.
+}
+
+/**
+ * An option the customer asked for that no price-book line bills.
+ *
+ * Reported per option rather than per category, because the category is
+ * usually priced: a job with a pump on it has an EQUIPMENT line whatever else
+ * is missing, so nothing at the category level looks wrong while the salt
+ * system the customer chose adds nothing to the total.
+ */
+function unpricedOptions(
+  items: readonly PriceBookItemLite[],
+  lineItems: readonly QuoteLine[],
+  sel: PricingSelections,
+): UnpricedScope[] {
+  const keyOf = new Map(items.map((i) => [i.id, normalizeOptionKey(i.optionKey)]))
+  // Categories where the book has started naming options. Once one item in a
+  // category says which option it belongs to, an option is covered only by a
+  // line that names it. Until then the old behaviour stands and any line in the
+  // category counts, so a book nobody has keyed yet raises no new warnings.
+  const keyed = new Set(items.filter(isGated).map((i) => i.category))
+
+  const out: UnpricedScope[] = []
+  for (const key of PRICING_OPTIONS) {
+    if (!optionChosen(key, sel)) continue
+    const category = OPTION_CATEGORY[key]
+    const label = OPTION_LABELS[key]
+    const billing = lineItems.filter((line) => line.category === category)
+    const covered = keyed.has(category)
+      ? billing.some((line) => keyOf.get(line.itemId) === key)
+      : billing.length > 0
+    if (covered) continue
+
+    out.push({
+      category,
+      scope: 'detail',
+      label,
+      quantity: 1,
+      unit: 'selected',
+      reason: optionReason(key, items),
+    })
+  }
+  return out
+}
+
+function optionReason(key: PricingOptionKey, items: readonly PriceBookItemLite[]): string {
+  const label = OPTION_LABELS[key].toLowerCase()
+  const category = OPTION_CATEGORY[key]
+  const inBook = items.some((i) => i.category === category)
+  if (!inBook) {
+    return `The customer asked for a ${label} and the price book has no ${categoryLabel(
+      category,
+    ).toLowerCase()} item, so nothing is billed for it`
+  }
+  if (key === 'screen') {
+    return 'The customer asked for a screen enclosure, and a cage is not measured by the drawing. Price it as a single item, or add the cage to this job as a line item with the square footage you measured'
+  }
+  return `The customer asked for a ${label} and no price-book item bills one, so nothing is charged for it`
+}
+
+/**
+ * A hand-entered amount that would add nothing, named rather than dropped.
+ *
+ * The bug this whole model exists for is a line a builder entered and never saw
+ * again. A line item at zero quantity must not repeat it quietly.
+ */
+function unpricedLineItems(added: readonly ProjectLineItemLite[]): UnpricedScope[] {
+  const out: UnpricedScope[] = []
+  for (const item of added) {
+    if (item.quantity > 0) continue
+    out.push({
+      category: item.category,
+      scope: 'detail',
+      label: item.name,
+      quantity: 0,
+      unit: unitLabel(item.unitType),
+      reason: 'This was added to the job at a quantity of zero, so it bills nothing. Set a quantity and it will be charged',
+    })
+  }
+  return out
+}
+
+const UNIT_LABELS: Record<UnitType, string> = {
+  [UnitType.SQFT]: 'sq ft',
+  [UnitType.LF]: 'LF',
+  [UnitType.EACH]: 'each',
+  [UnitType.LUMP]: 'lump sum',
+  [UnitType.HOUR]: 'hours',
+  [UnitType.CUYD]: 'cu yd',
+}
+
+/** The user-facing name of a unit type. Never print the raw enum. */
+export function unitLabel(unitType: UnitType): string {
+  return UNIT_LABELS[unitType]
 }
 
 /**
@@ -343,6 +629,7 @@ function unpricedFinishes(m: MeasurementSummary, sel: PricingSelections): Unpric
     if (quantity <= 0) continue
     out.push({
       category: finish.slot === 'coping' ? PriceCategory.COPING : PriceCategory.POOL,
+      scope: 'detail',
       label: `${finish.slotLabel} — ${finish.materialName}`,
       quantity: Math.round(quantity * 100) / 100,
       unit,
@@ -372,6 +659,7 @@ function collisionScope(
     const label = categoryLabel(collision.category)
     return {
       category: collision.category,
+      scope: 'detail' as const,
       label,
       quantity: scope ? Math.round(scope.quantity * 100) / 100 : 0,
       unit: scope?.unit ?? '',
@@ -401,6 +689,7 @@ function unpricedScope(
     const label = categoryLabel(scope.category)
     out.push({
       category: scope.category,
+      scope: 'category',
       label,
       quantity: Math.round(scope.quantity * 100) / 100,
       unit: scope.unit,
@@ -522,14 +811,23 @@ export function computeQuote(
   options: QuoteOptions = {},
 ): QuoteSummary {
   const taxRatePct = Math.max(0, options.taxRatePct ?? 0)
+  const added = selections.projectLineItems ?? []
+  const drawn = hasBillableScope(measurements)
 
   // Nothing drawn is not "$0 of work agreed", it is "no answer yet". Return
   // before any required item is forced onto the sheet.
-  if (!hasBillableScope(measurements)) return emptyQuote('NOTHING_DRAWN', taxRatePct)
+  //
+  // An amount somebody typed onto this job is scope, though, whether or not
+  // anything has been drawn: a builder who has entered a $2,000 permit fee and
+  // no design has told us about $2,000 of work.
+  if (!drawn && added.length === 0) {
+    return emptyQuote('NOTHING_DRAWN', taxRatePct)
+  }
 
   // A drawing with no price book behind it cannot be priced at all. Quoting it
   // at $0 told twenty-one projects in this database that they were free.
-  if (items.length === 0) {
+  // Hand-entered lines carry their own price, so they still bill.
+  if (items.length === 0 && added.length === 0) {
     return emptyQuote(
       'NO_PRICE_BOOK',
       taxRatePct,
@@ -552,9 +850,29 @@ export function computeQuote(
       const derived = quantityForItem(item, measurements, selections)
       let quantity = derived.quantity
       let source = derived.source
-      if (item.required && quantity <= 0 && COUNT_UNIT_TYPES.has(item.unitType)) {
+      // Only onto a job that has a design in it. A permit fee typed against an
+      // empty canvas is scope, and it must not drag the required pump on with
+      // it: "$1,855 for nothing" is the defect the drawn-scope gate exists to
+      // stop, and it would have come back through this door.
+      if (drawn && item.required && quantity <= 0 && COUNT_UNIT_TYPES.has(item.unitType)) {
         quantity = 1
         source = 'Required'
+      }
+      // The option gate runs after `required`, so it wins over it. A line that
+      // names the heater is not on this job when the customer did not ask for a
+      // heater, however the book has it flagged: "required" means "the default
+      // when this applies", and this does not apply.
+      const gate = optionGate(item, selections)
+      if (gate === 'off') {
+        quantity = 0
+        const key = normalizeOptionKey(item.optionKey)
+        source = key ? `${OPTION_LABELS[key]} not selected` : 'Option not selected'
+      } else if (gate === 'unknown') {
+        // A key nobody can tick. Zeroed rather than billed, and reported below
+        // by name, because a line switched on by a question the customer is
+        // never asked is the defect this column was added to end.
+        quantity = 0
+        source = 'Option not offered'
       }
       if (claimedByAFinish.has(item.id) && !chosenFinishItems.has(item.id)) {
         quantity = 0
@@ -579,7 +897,30 @@ export function computeQuote(
 
   // Before anything is added up: two items cannot bill one measurement.
   const collisions = resolveAlternatives(priced, items, claimedByAFinish)
-  const lineItems = priced.filter((l) => l.quantity > 0)
+
+  // Hand-entered lines join after the collision pass rather than during it.
+  // Nothing here is competing for a measurement: the builder said what it is,
+  // how many, and what it costs, and two retaining walls on one job are two
+  // walls. Running them through the alternatives rule would suspend the second
+  // one for looking like the first.
+  const addedLines: QuoteLine[] = added.map((line) => {
+    // Three decimals because that is what the column holds; the total is
+    // derived from the rounded quantity so `quantity × unit price` still
+    // reconciles against the printed figure.
+    const quantity = Math.round(Math.max(0, line.quantity) * 1000) / 1000
+    const unitPrice = Math.max(0, Number(line.unitPrice) || 0)
+    return {
+      itemId: line.id,
+      name: line.name,
+      category: line.category,
+      source: 'Added to this job',
+      quantity,
+      unitPrice,
+      total: Math.round(quantity * unitPrice * 100) / 100,
+    }
+  })
+
+  const lineItems = [...priced.filter((l) => l.quantity > 0), ...addedLines.filter((l) => l.quantity > 0)]
 
   const subtotal = Math.round(lineItems.reduce((sum, l) => sum + l.total, 0) * 100) / 100
   const taxAmount = Math.round(subtotal * (taxRatePct / 100) * 100) / 100
@@ -599,7 +940,36 @@ export function computeQuote(
         selections,
         new Set(collisions.map((c) => c.category)),
       ),
+      ...unpricedOptions(items, lineItems, selections),
+      ...unofferedOptions(items),
+      ...unpricedLineItems(added),
       ...collisionScope(collisions, measurements, selections),
     ],
   }
+}
+
+/**
+ * Price-book lines keyed to an option the app never asks about.
+ *
+ * The price-book form offers the three real options as a list, so this should
+ * be empty for anything a builder typed. It is here for what arrives another
+ * way — a spreadsheet import, a script — because the alternative is a line that
+ * sits in the book billing nothing and saying nothing about why.
+ */
+function unofferedOptions(items: readonly PriceBookItemLite[]): UnpricedScope[] {
+  const out: UnpricedScope[] = []
+  for (const item of items) {
+    if (!isGated(item)) continue
+    if (normalizeOptionKey(item.optionKey) !== null) continue
+    out.push({
+      category: item.category,
+      scope: 'detail',
+      label: item.name,
+      quantity: 0,
+      unit: unitLabel(item.unitType),
+      reason:
+        'This item is switched on by an option the app does not ask the customer about, so it never bills. Point it at heater, salt system or screen enclosure, or clear the option and let its category price it',
+    })
+  }
+  return out
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { areaSquareFeet, depthFeet, withOrderedDepths } from '@/lib/commands/dimensions'
 import { register } from '@/modules/commands/registry'
 
 register({
@@ -6,11 +7,15 @@ register({
   label: 'Set pool depth',
   description: 'Set the shallow and/or deep end depths of a pool.',
   category: 'measurement',
-  inputSchema: z.object({
-    id: z.string(),
-    shallow: z.number().positive().optional(),
-    deep: z.number().positive().optional(),
-  }),
+  inputSchema: withOrderedDepths(
+    z.object({
+      id: z.string(),
+      shallow: depthFeet('Shallow end depth').optional(),
+      deep: depthFeet('Deep end depth').optional(),
+    }),
+    'shallow',
+    'deep',
+  ),
   outputSchema: z.object({
     id: z.string(),
     shallow: z.number().nullable(),
@@ -32,7 +37,12 @@ register({
   runsOn: 'client',
   inputSchema: z.object({
     id: z.string(),
-    targetAreaSqft: z.number().positive().describe('Target surface area in square feet.'),
+    // Bounded by the footprint it has to fit inside: the client half scales
+    // both sides by the square root of the ratio, so an area nothing can be
+    // built at produces a pool nothing can be built at.
+    targetAreaSqft: areaSquareFeet('Target surface area').describe(
+      'Target surface area in square feet.',
+    ),
   }),
   outputSchema: z.object({
     id: z.string(),

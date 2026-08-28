@@ -55,8 +55,11 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
   // save, which is why widening a pool moved the surface area and not the
   // price, and why the dock and the proposal could disagree by $1,350.
   const priced = await loadProjectQuote(project.id, orgId)
+  // A job with no price book but a hand-entered amount on it still has a price,
+  // so the dock gets its inputs. Gating on the catalogue alone would blank the
+  // dock for a builder whose only money so far is a $9,400 retaining wall.
   const pricing =
-    priced && priced.items.length > 0
+    priced && (priced.items.length > 0 || priced.projectLineItems.length > 0)
       ? { items: priced.items, selections: priced.selections, taxRatePct: priced.taxRatePct }
       : null
 

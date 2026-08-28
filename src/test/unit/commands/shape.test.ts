@@ -124,10 +124,14 @@ describe('shape commands — execute returns ok', () => {
   })
 
   it('pool.depth.set returns id', async () => {
+    // Feet, which is what the schema says and what a builder says out loud. This
+    // read 36 and 84 until the depth bounds landed and refused them: inches,
+    // passed to a field documented in feet, describing a pool seven storeys
+    // deep. Nothing caught it because nothing bounded a depth.
     const data = (await runOk('pool.depth.set', {
       id: 's1',
-      shallowDepth: 36,
-      deepDepth: 84,
+      shallowDepth: 3,
+      deepDepth: 7,
     })) as { id: string }
     expect(data.id).toBe('s1')
   })

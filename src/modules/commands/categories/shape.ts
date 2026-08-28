@@ -1,5 +1,15 @@
 import { z } from 'zod'
 import { register } from '@/modules/commands/registry'
+import {
+  coordinateInches,
+  depthFeet,
+  featureHeightInches,
+  rotationDegrees,
+  sizeFeet,
+  sizeInches,
+  slopeRatio,
+  withOrderedDepths,
+} from '@/lib/commands/dimensions'
 import { STENCILS } from '@/modules/editor/stencils'
 
 // Server `execute` for shape commands records intent and echoes input so the
@@ -35,10 +45,13 @@ register({
     // rectangle on the canvas that looks like the app is broken. Offering the
     // real ids means a wrong guess cannot be expressed.
     stencilId: z.enum(STENCIL_IDS).describe(stencilIdHelp()),
-    x: z.number().describe('Distance from the left edge, in inches.'),
-    y: z.number().describe('Distance from the top edge, in inches.'),
-    width: z.number().positive().optional().describe('Width in inches. 32 feet is 384.'),
-    height: z.number().positive().optional().describe('Height in inches. 16 feet is 192.'),
+    x: coordinateInches('X position').describe('Distance from the left edge, in inches.'),
+    y: coordinateInches('Y position').describe('Distance from the top edge, in inches.'),
+    // Bounded, not merely positive. Nothing used to stop a size here, and a
+    // stencil dropped at 99999 inches a side is a nineteen-mile pool that
+    // prices like one.
+    width: sizeInches('Width').optional().describe('Width in inches. 32 feet is 384.'),
+    height: sizeInches('Height').optional().describe('Height in inches. 16 feet is 192.'),
     displayHint: z.record(z.unknown()).optional(),
   }),
   outputSchema: z.object({
@@ -84,8 +97,8 @@ register({
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    x: z.number(),
-    y: z.number(),
+    x: coordinateInches('X position'),
+    y: coordinateInches('Y position'),
     relative: z.boolean().optional(),
   }),
   outputSchema: z.object({
@@ -116,8 +129,8 @@ register({
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    width: z.number().positive(),
-    height: z.number().positive(),
+    width: sizeInches('Width'),
+    height: sizeInches('Height'),
   }),
   outputSchema: z.object({
     id: z.string(),
@@ -143,7 +156,7 @@ register({
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    degrees: z.number(),
+    degrees: rotationDegrees('Rotation'),
     relative: z.boolean().optional(),
   }),
   outputSchema: z.object({
@@ -193,8 +206,8 @@ register({
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    offsetX: z.number().optional(),
-    offsetY: z.number().optional(),
+    offsetX: coordinateInches('Horizontal offset').optional(),
+    offsetY: coordinateInches('Vertical offset').optional(),
   }),
   outputSchema: z.object({
     sourceId: z.string(),
@@ -339,15 +352,28 @@ register({
   // these are feet while add.shape next door says to multiply feet by twelve,
   // a model sent 360 for "thirty feet" and reported back "the pool is now 30
   // feet long". A field called lengthFt cannot be misread that way.
-  inputSchema: z.object({
-    id: z.string(),
-    lengthFt: z.number().positive().optional().describe('Length in feet, not inches.'),
-    widthFt: z.number().positive().optional().describe('Width in feet, not inches.'),
-    avgDepthFt: z.number().positive().optional().describe('Average depth in feet.'),
-    shallowDepthFt: z.number().positive().optional().describe('Shallow end depth in feet.'),
-    deepDepthFt: z.number().positive().optional().describe('Deep end depth in feet.'),
-    slope: z.number().optional().describe('Floor slope, rise over run.'),
-  }),
+  // Every field is bounded, and the bound is the same one the drag handles
+  // enforce (`src/lib/geometry/limits.ts`). Before this, `.positive()` was the
+  // whole check: a reviewer typed 99999 into the length field and the app took
+  // it, the layers panel read 99999' x 14', and the live quote read
+  // $155,928,492. `.min`/`.max` also survive into the voice tool schema as
+  // `minimum`/`maximum`, so the model is told the range rather than discovering
+  // it by being refused.
+  inputSchema: withOrderedDepths(
+    z.object({
+      id: z.string(),
+      lengthFt: sizeFeet('Pool length').optional().describe('Length in feet, not inches.'),
+      widthFt: sizeFeet('Pool width').optional().describe('Width in feet, not inches.'),
+      avgDepthFt: depthFeet('Average depth').optional().describe('Average depth in feet.'),
+      shallowDepthFt: depthFeet('Shallow end depth')
+        .optional()
+        .describe('Shallow end depth in feet.'),
+      deepDepthFt: depthFeet('Deep end depth').optional().describe('Deep end depth in feet.'),
+      slope: slopeRatio('Floor slope').optional().describe('Floor slope, rise over run.'),
+    }),
+    'shallowDepthFt',
+    'deepDepthFt',
+  ),
   outputSchema: z.object({
     id: z.string(),
   }),
@@ -442,14 +468,22 @@ register({
   description:
     'Patch the depth profile of the selected pool. Depths are in FEET; sun-shelf and bubbler heights are in INCHES, since those are spoken in inches.',
   category: 'shape',
-  inputSchema: z.object({
-    id: z.string(),
-    shallowDepth: z.number().optional().describe('Shallow end depth in feet.'),
-    deepDepth: z.number().optional().describe('Deep end depth in feet.'),
-    slope: z.number().optional().describe('Floor slope, rise over run.'),
-    sunShelfElevation: z.number().optional().describe('Sun shelf height above the floor, in inches.'),
-    bubblerHeight: z.number().optional().describe('Bubbler height above the water, in inches.'),
-  }),
+  inputSchema: withOrderedDepths(
+    z.object({
+      id: z.string(),
+      shallowDepth: depthFeet('Shallow end depth').optional().describe('Shallow end depth in feet.'),
+      deepDepth: depthFeet('Deep end depth').optional().describe('Deep end depth in feet.'),
+      slope: slopeRatio('Floor slope').optional().describe('Floor slope, rise over run.'),
+      sunShelfElevation: featureHeightInches('Sun shelf height')
+        .optional()
+        .describe('Sun shelf height above the floor, in inches.'),
+      bubblerHeight: featureHeightInches('Bubbler height')
+        .optional()
+        .describe('Bubbler height above the water, in inches.'),
+    }),
+    'shallowDepth',
+    'deepDepth',
+  ),
   outputSchema: z.object({
     id: z.string(),
   }),

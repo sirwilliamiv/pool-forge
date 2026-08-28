@@ -158,6 +158,7 @@ model Project {
   importSessions    ImportSession[]
   intakeSubmissions IntakeSubmission[]
   siteCaptures      SiteCapture[]
+  projectLineItems  ProjectLineItem[]
 
   @@unique([orgId, jobNumber])
   @@index([orgId])
@@ -423,6 +424,12 @@ model PriceBookItem {
   internalOnly    Boolean       @default(false)
   required        Boolean       @default(false)
   upgradeOnly     Boolean       @default(false)
+  /// Which customer selection turns this line on, e.g. "heater" or "salt".
+  ///
+  /// Every EQUIPMENT item used to be gated by one flag that meant "heater OR
+  /// salt", so ticking salt billed a heater as well. A line names the thing it
+  /// belongs to now. Null keeps the old behaviour: billed by its category rule.
+  optionKey       String?
 
   priceBook PriceBook @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
 
@@ -502,6 +509,15 @@ model Export {
   url           String?
   generatedAt   DateTime   @default(now())
   generatedById String?
+
+  /// The rendered document itself, in the blob store.
+  ///
+  /// Export was a browser print, so nothing recorded what was sent to whom. A
+  /// proposal is contract-adjacent and "what did we send them in March" has to
+  /// have an answer that is not "whatever the app would render today".
+  storageKey  String?
+  contentHash String?
+  byteSize    Int?
 
   project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   generatedBy User?   @relation("ExportGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
@@ -676,6 +692,51 @@ model StencilDef {
   shapeKind           ShapeKind           @default(STENCIL)
 
   @@index([category])
+}
+
+/// One-off money on a single job, priced by hand.
+///
+/// Five price categories return a quantity of zero because nothing in a drawing
+/// measures them: a permit fee, a panel upgrade, a retaining wall, a fence run.
+/// They were accepted into the price book and then silently absent from every
+/// quote. They are per-job amounts rather than catalogue lines, so they live on
+/// the project and the builder says how many.
+model ProjectLineItem {
+  id              String        @id @default(cuid())
+  projectId       String
+  orgId           String
+  category        PriceCategory
+  name            String
+  unitType        UnitType
+  quantity        Decimal       @default(1) @db.Decimal(12, 3)
+  unitPrice       Decimal       @default(0) @db.Decimal(12, 4)
+  note            String?
+  /// Where it came from, when a builder picked it out of the price book.
+  priceBookItemId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([orgId])
+}
+
+/// An atomic counter behind a rate limit.
+///
+/// In-memory buckets are per process, so N instances collectively allow N times
+/// the limit. This is the counter the limit actually reads, incremented with an
+/// upsert so two requests racing cannot both see the same count.
+model RateLimitCounter {
+  /// What is being limited, e.g. "login:ip:203.0.113.0/64".
+  key         String
+  /// Start of the window this row counts, so old rows are trivially prunable.
+  windowStart DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@id([key, windowStart])
+  @@index([windowStart])
 }
 
 // ============================================================

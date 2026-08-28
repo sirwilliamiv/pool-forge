@@ -9,6 +9,13 @@
 // the width and rotates about the centre, and getting that backwards is what
 // once placed every clicked shape half its own size away from the cursor.
 
+// The size bounds moved to `src/lib/geometry/limits.ts` so the typed and spoken
+// paths could meet the same numbers; they are re-exported here because this
+// file is where they were, and every existing caller imports them from here.
+import { clampSizeIn } from '@/lib/geometry/limits'
+
+export { MAX_SIZE_IN, MIN_SIZE_IN } from '@/lib/geometry/limits'
+
 /** Corners, then edges. The rotate grip is handled separately: it is not a resize. */
 export const RESIZE_HANDLES = [
   'nw', 'ne', 'se', 'sw',
@@ -16,23 +23,6 @@ export const RESIZE_HANDLES = [
 ] as const
 
 export type ResizeHandle = (typeof RESIZE_HANDLES)[number]
-
-/**
- * Smallest thing worth having on a drawing, in inches.
- *
- * A shape below this is hard to grab again, and a zero-extent one cannot be
- * clicked at all: the drag that made it also loses it.
- */
-export const MIN_SIZE_IN = 12
-
-/**
- * Largest, in inches. Four hundred feet.
- *
- * A pool cannot be bigger than the lot and a lot is not half a mile wide. This
- * exists because nothing bounded a dimension before: a tester typed 99999 into
- * the inspector, the app took it, and quoted the job at $144,116,399.
- */
-export const MAX_SIZE_IN = 400 * 12
 
 /** Degrees a rotation snaps to when the user asks for a snap. */
 export const ROTATE_SNAP_DEG = 15
@@ -54,7 +44,6 @@ export interface Point {
 }
 
 const rad = (deg: number) => (deg * Math.PI) / 180
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
 export function centreOf(box: Box): Point {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
@@ -144,8 +133,8 @@ export function resizeBox(
   let width = start.width
   let height = start.height
 
-  if (axes.x !== 0) width = clamp(Math.abs(local.x - anchorX), MIN_SIZE_IN, MAX_SIZE_IN)
-  if (axes.y !== 0) height = clamp(Math.abs(local.y - anchorY), MIN_SIZE_IN, MAX_SIZE_IN)
+  if (axes.x !== 0) width = clampSizeIn(Math.abs(local.x - anchorX))
+  if (axes.y !== 0) height = clampSizeIn(Math.abs(local.y - anchorY))
 
   if (options.preserveRatio) {
     const ratio = start.width / start.height
@@ -153,18 +142,18 @@ export function resizeBox(
       // A corner: let the axis that moved furthest lead, so the shape follows
       // the cursor rather than lagging on whichever axis happens to be smaller.
       if (Math.abs(width - start.width) >= Math.abs(height - start.height)) {
-        height = clamp(width / ratio, MIN_SIZE_IN, MAX_SIZE_IN)
-        width = clamp(height * ratio, MIN_SIZE_IN, MAX_SIZE_IN)
+        height = clampSizeIn(width / ratio)
+        width = clampSizeIn(height * ratio)
       } else {
-        width = clamp(height * ratio, MIN_SIZE_IN, MAX_SIZE_IN)
-        height = clamp(width / ratio, MIN_SIZE_IN, MAX_SIZE_IN)
+        width = clampSizeIn(height * ratio)
+        height = clampSizeIn(width / ratio)
       }
     } else if (axes.x !== 0) {
-      height = clamp(width / ratio, MIN_SIZE_IN, MAX_SIZE_IN)
-      width = clamp(height * ratio, MIN_SIZE_IN, MAX_SIZE_IN)
+      height = clampSizeIn(width / ratio)
+      width = clampSizeIn(height * ratio)
     } else {
-      width = clamp(height * ratio, MIN_SIZE_IN, MAX_SIZE_IN)
-      height = clamp(width / ratio, MIN_SIZE_IN, MAX_SIZE_IN)
+      width = clampSizeIn(height * ratio)
+      height = clampSizeIn(width / ratio)
     }
   }
 

@@ -9,6 +9,25 @@ import { Separator } from '@/components/ui/separator'
 import { AddItemButton } from '@/components/settings/AddItemButton'
 import { PriceBookItemRow } from '@/components/settings/PriceBookItemRow'
 import type { ExistingItem } from '@/components/settings/PriceBookItemDialog'
+import { categoryLabel, normalizeOptionKey } from '@/modules/pricing/engine'
+import { PriceCategory } from '@prisma/client'
+
+/**
+ * Categories no drawing measures, and what to do about them.
+ *
+ * These five used to accept a price, list it here, and never put it on a quote.
+ * The price is still worth keeping — it is the builder's rate — but the
+ * quantity belongs to one job, so it is added there. Said on the screen where
+ * the item is entered, because that is where somebody forms the belief that
+ * entering it was enough.
+ */
+const PER_JOB_CATEGORIES: ReadonlySet<string> = new Set([
+  PriceCategory.LANAI,
+  PriceCategory.FENCE,
+  PriceCategory.WALL,
+  PriceCategory.ELECTRICAL,
+  PriceCategory.MISC,
+])
 
 export default async function PriceBookSettingsPage() {
   const session = await auth()
@@ -37,6 +56,7 @@ export default async function PriceBookSettingsPage() {
     internalOnly: it.internalOnly,
     required: it.required,
     upgradeOnly: it.upgradeOnly,
+    optionKey: normalizeOptionKey(it.optionKey),
   }))
 
   const grouped = new Map<string, ExistingItem[]>()
@@ -87,6 +107,14 @@ export default async function PriceBookSettingsPage() {
                     <CardTitle className="text-base">{cat}</CardTitle>
                     <span className="text-xs text-muted-foreground">{list.length} items</span>
                   </div>
+                  {PER_JOB_CATEGORIES.has(cat) ? (
+                    <p className="pt-1 text-xs text-amber-700 dark:text-amber-400">
+                      Nothing in a drawing measures{' '}
+                      {categoryLabel(cat as PriceCategory).toLowerCase()}, so these are not billed
+                      automatically. Open a project and add one under “Added to this job” to put it
+                      on that quote.
+                    </p>
+                  ) : null}
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="overflow-x-auto">

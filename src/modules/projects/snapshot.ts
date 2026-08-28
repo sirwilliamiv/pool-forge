@@ -7,8 +7,10 @@ import { computeMeasurements, withEarthwork, type MeasurementSummary } from '@/m
 import {
   computeQuote,
   toPriceBookItems,
+  toProjectLineItems,
   type PriceBookItemLite,
   type PricingSelections,
+  type ProjectLineItemLite,
   type QuoteSummary,
 } from '@/modules/pricing/engine'
 import { buildFinishCatalog, resolveFinishes, type FinishCatalog, type MaterialRow } from '@/modules/materials/catalog'
@@ -46,6 +48,12 @@ export interface ProjectSnapshot {
   poolFields: PoolFields
   /** The material list joined to the price book that bills it. */
   finishCatalog: FinishCatalog
+  /**
+   * Amounts put on this job by hand: a retaining wall, a permit fee, a fence
+   * run. Nothing in the drawing measures these, so the builder enters them and
+   * they bill like any other line.
+   */
+  projectLineItems: ProjectLineItemLite[]
   taxRatePct: number
   validationProject: ValidationProject
 }
@@ -107,6 +115,26 @@ export async function loadProjectSnapshot(
   const finishCatalog = buildFinishCatalog(materialRows as MaterialRow[], items)
   const finishes = resolveFinishes(shapes, finishCatalog)
 
+  // Org-scoped as well as project-scoped: the project id already implies the
+  // organisation, and asking for both means a line item written against
+  // somebody else's project can never be read back through this loader.
+  const lineItemRows = await db.projectLineItem.findMany({
+    where: { projectId: project.id, orgId },
+    select: {
+      id: true,
+      category: true,
+      name: true,
+      unitType: true,
+      quantity: true,
+      unitPrice: true,
+      note: true,
+    },
+    // Explicit, with a stable tiebreaker: without it the order is whatever the
+    // planner returns, and a quote that reshuffles its own lines between two
+    // loads is a quote nobody can check against the last one they read.
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+  })
+
   return {
     id: project.id,
     name: project.name,
@@ -119,6 +147,7 @@ export async function loadProjectSnapshot(
     priceBookId: priceBook?.id ?? null,
     poolFields: poolFieldsWithFinishes(project.poolFields, finishes),
     finishCatalog,
+    projectLineItems: toProjectLineItems(lineItemRows),
     taxRatePct: project.org?.taxRatePct ?? 0,
     validationProject: {
       name: project.name,
@@ -151,6 +180,8 @@ export interface ProjectQuote {
   poolFields: PoolFields
   /** The material list joined to the price book, so a client can re-resolve. */
   finishCatalog: FinishCatalog
+  /** The hand-entered amounts on this job. Already folded into `selections`. */
+  projectLineItems: ProjectLineItemLite[]
   taxRatePct: number
   priceBookId: string | null
 }
@@ -179,6 +210,7 @@ export async function loadProjectQuote(
     ...pricingSelectionsFrom(snapshot.poolFields),
     finishes,
     finishItemIds: snapshot.finishCatalog.claimedItemIds,
+    projectLineItems: snapshot.projectLineItems,
   }
   return {
     shapes: snapshot.shapes,
@@ -187,6 +219,7 @@ export async function loadProjectQuote(
     items: snapshot.items,
     poolFields: snapshot.poolFields,
     finishCatalog: snapshot.finishCatalog,
+    projectLineItems: snapshot.projectLineItems,
     taxRatePct: snapshot.taxRatePct,
     priceBookId: snapshot.priceBookId,
     quote: computeQuote(snapshot.items, snapshot.measurements, selections, {

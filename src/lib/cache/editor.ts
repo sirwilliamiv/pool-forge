@@ -9,7 +9,12 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, toPriceBookItems, type QuoteSummary } from '@/modules/pricing/engine'
+import {
+  computeQuote,
+  toPriceBookItems,
+  toProjectLineItems,
+  type QuoteSummary,
+} from '@/modules/pricing/engine'
 import {
   buildFinishCatalog,
   resolveFinishes,
@@ -152,11 +157,34 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
     })
     const finishCatalog = buildFinishCatalog(materialRows as MaterialRow[], items)
     const finishes = resolveFinishes(shapes, finishCatalog)
+
+    // The hand-entered amounts on this job. Left out here, the cached total on
+    // the project card would sit below the one on the dock by exactly the
+    // retaining wall the builder added, which is the same class of defect as
+    // leaving the finishes out was.
+    const lineItemRows = await db.projectLineItem.findMany({
+      where: { projectId, orgId },
+      select: {
+        id: true,
+        category: true,
+        name: true,
+        unitType: true,
+        quantity: true,
+        unitPrice: true,
+        note: true,
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    const projectLineItems = toProjectLineItems(lineItemRows)
     const poolFields = poolFieldsWithFinishes(project.poolFields, finishes) as unknown as Record<
       string,
       unknown
     >
 
+    // Still gated on a price book, because the cached row is keyed to one. A
+    // job whose only money is a hand-entered line has no cached total and shows
+    // none, which is the existing "cannot be priced" answer rather than a wrong
+    // one; the dock and the documents compute it live either way.
     if (priceBook) {
       const summary = computeQuote(
         items,
@@ -165,6 +193,7 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
           ...pricingSelectionsFrom(poolFields),
           finishes,
           finishItemIds: finishCatalog.claimedItemIds,
+          projectLineItems,
         },
         { taxRatePct: project.org?.taxRatePct ?? 0 },
       )

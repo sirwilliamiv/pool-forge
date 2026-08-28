@@ -33,7 +33,8 @@ import {
 } from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useViewStore, type FocusTarget } from '@/modules/editor/state/viewStore'
-import { ShapeKind, type Shape } from '@/modules/editor/state/shapes'
+import { ShapeKind, isPool, type Shape } from '@/modules/editor/state/shapes'
+import { depthOrderMessage } from '@/lib/commands/dimensions'
 import {
   PROPERTY_LINE_STENCIL,
   STRUCTURE_STENCIL,
@@ -73,9 +74,36 @@ function requireComment(id: string): void {
  * then told the user the deck was gone while they were looking at it, three
  * times in a row, and had no way to tell it was wrong.
  */
-function requireShape(id: string): void {
+function requireShape(id: string): Shape {
   const shape = useShapesStore.getState().shapes.find((s) => s.id === id)
   if (!shape) throw new Error(`There is nothing on the canvas with id ${id}.`)
+  return shape
+}
+
+/**
+ * Refuse a depth pair that would turn the pool upside down.
+ *
+ * The command schema catches this when both depths arrive together. This is the
+ * other half: the inspector sends one field at a time, so a shallow end of nine
+ * feet is only wrong relative to the deep end already on the pool, which is
+ * client state and reaches no schema. Without it the check is trivially
+ * side-stepped by typing into the two boxes separately, which is the only way
+ * anybody actually uses them.
+ *
+ * A slope is derived from these two and a length elsewhere in the app, so an
+ * inverted pair is not a cosmetic problem: it is a negative fall on a
+ * construction packet.
+ */
+function refuseInvertedDepths(
+  shape: Shape,
+  patch: { depthShallow?: number; depthDeep?: number },
+): void {
+  if (patch.depthShallow === undefined && patch.depthDeep === undefined) return
+  if (!isPool(shape)) return
+  const shallow = patch.depthShallow ?? shape.depthShallow
+  const deep = patch.depthDeep ?? shape.depthDeep
+  if (shallow <= deep) return
+  throw new Error(`${depthOrderMessage(shallow, deep)} Nothing was changed.`)
 }
 
 /**
@@ -520,7 +548,7 @@ export function ClientCommandHandlers() {
       },
       { id: string }
     >('pool.geometry.update', (input) => {
-      requireShape(input.id)
+      const shape = requireShape(input.id)
       const patch: Partial<{
         width: number
         height: number
@@ -538,9 +566,10 @@ export function ClientCommandHandlers() {
       // an old field name parses cleanly and carries no values at all.
       if (Object.keys(patch).length === 0) {
         throw new Error(
-          'No geometry was given. Use lengthFt, widthFt, shallowDepthFt or deepDepthFt, all in feet.',
+          'Nothing in that change was a pool dimension. Set the length, the width, or the shallow or deep end depth, in feet. Nothing was changed.',
         )
       }
+      refuseInvertedDepths(shape, patch)
       useShapesStore.getState().updateShape(input.id, patch)
       return { id: input.id }
     })
@@ -593,7 +622,7 @@ export function ClientCommandHandlers() {
       },
       { id: string }
     >('pool.depth.set', (input) => {
-      requireShape(input.id)
+      const shape = requireShape(input.id)
       const patch: Partial<{ depthShallow: number; depthDeep: number }> = {}
       if (input.shallowDepth != null) patch.depthShallow = input.shallowDepth
       if (input.deepDepth != null) patch.depthDeep = input.deepDepth
@@ -602,9 +631,10 @@ export function ClientCommandHandlers() {
       // an old field name parses cleanly and carries no values at all.
       if (Object.keys(patch).length === 0) {
         throw new Error(
-          'No geometry was given. Use lengthFt, widthFt, shallowDepthFt or deepDepthFt, all in feet.',
+          'Nothing in that change was a depth. Set the shallow or the deep end, in feet. Nothing was changed.',
         )
       }
+      refuseInvertedDepths(shape, patch)
       useShapesStore.getState().updateShape(input.id, patch)
       return { id: input.id }
     })

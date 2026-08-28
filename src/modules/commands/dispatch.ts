@@ -85,7 +85,7 @@ export async function dispatchCommand<T = unknown>(
       result: { ok: false, error: `invalid input: ${technical}` },
       source,
     })
-    return { ok: false, error: humanCommandInputError(command.label, parsed.error) }
+    return { ok: false, error: humanCommandInputError(command.label, parsed.error, input) }
   }
 
   let result: CommandResult

@@ -89,9 +89,33 @@ describe('pricing — selection gating reaches the quote', () => {
 
   it('the screen line appears only when the screen is selected', () => {
     const m = computeMeasurements([poolShape(), deckShape()])
-    expect(computeQuote(items, m, {}).lineItems.find((l) => l.itemId === 'screen')).toBeUndefined()
+    const cage: PriceBookItemLite = {
+      id: 'cage',
+      category: PriceCategory.SCREEN,
+      name: 'Mansard cage',
+      unitType: UnitType.LUMP,
+      retailPrice: 21500,
+    }
+    const book = [...items, cage]
+    expect(computeQuote(book, m, {}).lineItems.find((l) => l.itemId === 'cage')).toBeUndefined()
+    const q = computeQuote(book, m, { screenSelected: true })
+    expect(q.lineItems.find((l) => l.itemId === 'cage')?.quantity).toBe(1)
+  })
+
+  it('a per-square-foot screen item never bills the deck area', () => {
+    // The reviewer's finding: `screen` is priced per square foot and the engine
+    // handed it `deckArea`. A cage spans the pool as well as the deck and is
+    // sold on panel area over a footprint with a roof style and a height, so
+    // the deck's 770 sq ft was not the cage's size in either direction. Nothing
+    // in the drawing measures a cage, so it bills nothing and says so.
+    const m = computeMeasurements([poolShape(), deckShape()])
+    expect(m.deckArea).toBeGreaterThan(0)
     const q = computeQuote(items, m, { screenSelected: true })
-    expect(q.lineItems.find((l) => l.itemId === 'screen')?.quantity ?? 0).toBeGreaterThan(0)
+    expect(q.lineItems.find((l) => l.itemId === 'screen')).toBeUndefined()
+
+    const told = q.unpriced.find((u) => u.category === PriceCategory.SCREEN)
+    expect(told?.label).toBe('Screen enclosure')
+    expect(told?.reason).toContain('not measured by the drawing')
   })
 
   it('the lighting quantity flows to the lighting line', () => {

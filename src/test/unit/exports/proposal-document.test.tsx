@@ -326,6 +326,7 @@ describe('the proposal states the scope and the exclusions', () => {
       unpriced: [
         {
           category: PriceCategory.EARTHWORK,
+          scope: 'category',
           label: 'Earthwork',
           quantity: 42,
           unit: 'cu yd',

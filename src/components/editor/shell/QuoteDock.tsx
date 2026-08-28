@@ -150,7 +150,11 @@ export function QuoteDock() {
               </div>
               <ul className="mt-1 space-y-0.5">
                 {quote.unpriced.map((u) => (
-                  <li key={u.category} className="text-[11px] leading-snug text-amber-900">
+                  // Keyed on the label as well as the category. One category can now
+                  // hold several entries — a heater and a salt system are both
+                  // equipment — and a duplicate React key drops all but one of them,
+                  // which would put the silence straight back.
+                  <li key={`${u.category}:${u.label}`} className="text-[11px] leading-snug text-amber-900">
                     <span className="font-medium">
                       {u.label} ({fmtQuantity(u.quantity)} {u.unit})
                     </span>{': '}
