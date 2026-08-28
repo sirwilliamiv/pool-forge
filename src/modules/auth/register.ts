@@ -1,9 +1,21 @@
-'use server'
+// Deliberately NOT a `'use server'` module.
+//
+// It used to be, and that was two problems in one line. Next refuses a
+// `'use server'` file that exports anything other than an async function, and
+// this one exports `registerSchema`, so every submission of the sign-up form
+// died with "A 'use server' file can only export async functions, found object"
+// and the customer saw the crash boundary. The second problem is the reason not
+// to fix it by moving the schema out: every export of a `'use server'` module
+// becomes an independently callable server action, so `registerUser` was a
+// second way into account creation that the throttle on `registerAction` did not
+// cover. Registration is reached through the action in
+// `app/(auth)/register/actions.ts`, which is where the ceiling is spent.
 
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
+import { safeAuthFailure } from './errors'
 
 export const registerSchema = z.object({
   email: z.string().email().toLowerCase(),
@@ -48,6 +60,8 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       return { ok: false, error: 'An account with that email already exists' }
     }
-    return { ok: false, error: 'Could not create account' }
+    // Anything else is a server fault: a Prisma message, a connection string, a
+    // constraint name. Logged scrubbed against a ref; the caller gets the ref.
+    return { ok: false, error: safeAuthFailure(err, 'register.create', 'registerUnavailable').message }
   }
 }

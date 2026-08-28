@@ -1,3 +1,6 @@
 export * from './session'
 export { registerUser, registerSchema } from './register'
 export type { RegisterInput, RegisterResult } from './register'
+export * from './errors'
+export * from './rate-limit'
+export * from './request-ip'
