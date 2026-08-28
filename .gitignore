@@ -63,7 +63,10 @@ demo-videos/
 demo-small/
 electron/voice/
 services/voice-relay/dist/
-.next-e2e/
+# Every scratch build directory, not just the e2e one. `NEXT_DIST_DIR` is how
+# a second dev server is run beside the first, and 125 files from one of those
+# were swept into a commit by an unrelated `git add -A`.
+.next-*/
 
 # Throwaway repro scripts written while driving the running app.
 __*.mjs

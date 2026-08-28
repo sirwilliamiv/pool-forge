@@ -33,7 +33,6 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    ".next-bounds/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
     ".next-monitoring/types/**/*.ts",
     ".next-rl/types/**/*.ts",
