@@ -1,21 +1,27 @@
+import { ExportKind } from '@prisma/client'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
-import { effectiveLightingQuantity } from '@/modules/pricing/engine'
-import { loadProjectQuote } from '@/modules/projects/snapshot'
-import {
-  COMPANY_PROFILE_SELECT,
-  DEFAULT_PROPOSAL_TERMS,
-  parsePaymentSchedule,
-} from '@/modules/organization/company'
-import { ProposalDocument } from '@/components/exports/ProposalDocument'
+import { buildExportDocument } from '@/modules/exports/document/build'
+import { readStoredExportParts, storedProposalForShare } from '@/modules/exports/document/read'
+import { PAGE_CSS } from '@/modules/exports/document/print-css'
 import { AcceptProposalForm } from '@/components/exports/AcceptProposalForm'
 
-// Public, unauthenticated, always fresh.
+// Public, unauthenticated. Dynamic because acceptance state changes what this
+// page shows; the document itself is a stored file, not a fresh render.
 export const dynamic = 'force-dynamic'
 
 const fmtDate = (d: Date | null) =>
   d ? d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : ''
+
+const fmtDateTime = (d: Date) =>
+  d.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 
 export async function generateMetadata({
   params,
@@ -39,73 +45,71 @@ export default async function SharedProposalPage({
 
   const project = await db.project.findUnique({
     where: { shareToken: token },
-    include: {
-      customer: true,
-      // The same company details, the same schedule and the same terms the
-      // builder's own copy prints. The customer's copy is the one that gets
-      // signed, so it cannot be the thinner document of the two.
-      org: {
-        select: {
-          ...COMPANY_PROFILE_SELECT,
-          taxRatePct: true,
-          paymentSchedule: true,
-          proposalTerms: true,
-          proposalValidDays: true,
-        },
-      },
+    select: {
+      id: true,
+      orgId: true,
+      proposalAcceptedAt: true,
+      proposalAcceptedName: true,
     },
   })
   if (!project) notFound()
-
-  // The customer's copy is priced by the same loader as the salesperson's.
-  const priced = await loadProjectQuote(project.id, project.orgId)
-  if (!priced) notFound()
-  const { measurements, quote, selections, shapes, poolFields } = priced
 
   const accepted = project.proposalAcceptedAt
     ? { name: project.proposalAcceptedName ?? 'Customer', at: fmtDate(project.proposalAcceptedAt) }
     : null
 
+  // The copy that was sent, not a fresh render.
+  //
+  // This page used to price the project from whichever price book was active at
+  // the moment the customer happened to open the link, which meant a proposal
+  // somebody had already signed could quietly change its own total. The stored
+  // file settles it: before acceptance the customer sees the last copy that was
+  // sent, and after acceptance they see the copy that stood when they signed,
+  // for as long as the link lives.
+  const stored = await storedProposalForShare(project)
+  const parts = stored ? await readStoredExportParts(stored) : null
+
+  // Only for a project shared before documents were stored, or one whose stored
+  // file cannot be read. A live render is worse than a stored one, but showing
+  // the customer nothing at all is worse than both.
+  const live =
+    parts === null
+      ? await buildExportDocument({
+          kind: ExportKind.CUSTOMER_PROPOSAL,
+          projectId: project.id,
+          orgId: project.orgId,
+          options: {},
+        })
+      : null
+  if (parts === null && !live) notFound()
+
   return (
     <div className="min-h-screen bg-slate-100 py-6">
+      {/* The stored file's own stylesheet, or the page rules for a live render.
+          The stored CSS is stock Tailwind compiled from the stored markup, so
+          it defines exactly the utilities that markup uses and nothing else. */}
+      <style dangerouslySetInnerHTML={{ __html: parts?.css ?? PAGE_CSS[ExportKind.CUSTOMER_PROPOSAL] }} />
       <div className="mx-auto mb-4 w-full max-w-[8.5in] px-4">
         <div className="rounded-lg border bg-white p-4 shadow-sm">
           <AcceptProposalForm token={token} accepted={accepted} />
         </div>
       </div>
+      {stored && parts ? (
+        <div className="no-print mx-auto mb-4 w-full max-w-[8.5in] px-4 text-xs text-slate-500">
+          Issued {fmtDateTime(stored.generatedAt)}.{' '}
+          {accepted ? 'This is the copy you accepted.' : 'This is the copy that was sent to you.'}{' '}
+          <a href={`/share/${token}/document`} className="underline">
+            Download it
+          </a>
+          .
+        </div>
+      ) : null}
       <div className="mx-auto w-full max-w-[8.5in] bg-white p-[0.6in] shadow-sm">
-        <ProposalDocument
-          // The loader's pool fields, so the customer's copy prints the finish
-          // the pool is drawn with — the same row the salesperson's copy shows.
-          project={{ ...project, poolFields }}
-          customer={project.customer}
-          measurements={measurements}
-          quote={quote}
-          selections={{
-            heaterSelected: selections.heaterSelected ?? false,
-            saltSystemSelected: selections.saltSystemSelected ?? false,
-            screenSelected: selections.screenSelected ?? false,
-            lightingQuantity: effectiveLightingQuantity(measurements, selections),
-          }}
-          company={{
-            name: project.org.name,
-            logoUrl: project.org.logoUrl,
-            brandColor: project.org.brandColor,
-            address: project.org.address,
-            phone: project.org.phone,
-            email: project.org.email,
-            licenseNumber: project.org.licenseNumber,
-          }}
-          // Never assigned here: this page is public, and a write reachable
-          // without a session is a write anyone holding the link can trigger.
-          // The number is stamped when the project is created and when the
-          // builder opens the proposal or creates the share link.
-          jobNumber={project.jobNumber}
-          paymentSchedule={parsePaymentSchedule(project.org.paymentSchedule)}
-          proposalValidDays={project.org.proposalValidDays}
-          terms={project.org.proposalTerms?.trim() || DEFAULT_PROPOSAL_TERMS}
-          shapes={shapes}
-        />
+        {parts ? (
+          <div className={parts.rootClassName} dangerouslySetInnerHTML={{ __html: parts.markup }} />
+        ) : (
+          live?.element
+        )}
       </div>
     </div>
   )

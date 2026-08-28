@@ -1,10 +1,8 @@
+import { ExportKind } from '@prisma/client'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { loadProjectQuote } from '@/modules/projects/snapshot'
-import { ScreenEnclosureQuoteDocument } from '@/components/exports/ScreenEnclosureQuoteDocument'
+import { buildExportDocument } from '@/modules/exports/document/build'
 import { PrintButton } from '@/components/exports/PrintButton'
-import './screen-enclosure-quote.css'
 
 function flag(v: string | string[] | undefined): boolean {
   const raw = Array.isArray(v) ? v[0] : v
@@ -29,18 +27,17 @@ export default async function ScreenEnclosureQuotePage({
   const showInternalPricing = flag(sp.pricing)
   const showScreenScopeRetail = flag(sp.subtotal)
 
-  const project = await db.project.findFirst({
-    where: { id, orgId },
-    include: { customer: true, org: { select: { name: true, taxRatePct: true } } },
+  const built = await buildExportDocument({
+    kind: ExportKind.SCREEN_ENCLOSURE_QUOTE,
+    projectId: id,
+    orgId,
+    options: { showInternalPricing, showScreenScopeRetail },
   })
-  if (!project) notFound()
-
-  const priced = await loadProjectQuote(project.id, orgId)
-  if (!priced) notFound()
-  const { shapes, measurements, quote } = priced
+  if (!built) notFound()
 
   return (
     <div className="min-h-screen bg-neutral-100 py-6">
+      <style dangerouslySetInnerHTML={{ __html: built.pageCss }} />
       <div className="no-print fixed right-4 top-4 z-50 flex items-center gap-2">
         <a
           href={`?${showInternalPricing ? '' : 'pricing=1'}`}
@@ -56,32 +53,7 @@ export default async function ScreenEnclosureQuotePage({
         </a>
         <PrintButton label="Print / Save as PDF" />
       </div>
-      <ScreenEnclosureQuoteDocument
-        project={{
-          id: project.id,
-          name: project.name,
-          salesperson: project.salesperson,
-          internalNotes: project.internalNotes,
-          poolFields: project.poolFields,
-          createdAt: project.createdAt,
-        }}
-        customer={
-          project.customer
-            ? {
-                name: project.customer.name,
-                email: project.customer.email,
-                phone: project.customer.phone,
-                address: project.customer.address,
-              }
-            : null
-        }
-        shapes={shapes}
-        measurements={measurements}
-        quote={quote}
-        companyName={project.org.name}
-        showInternalPricing={showInternalPricing}
-        showScreenScopeRetail={showScreenScopeRetail}
-      />
+      {built.element}
     </div>
   )
 }

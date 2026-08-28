@@ -6,24 +6,59 @@ import {
   type ExportCommandId,
   type ExportRouteInput,
 } from '@/modules/exports/routes'
+import type { DocumentKind, DocumentOptions } from '@/modules/exports/document/kinds'
 
 // CLIENT: each export command has a handler in
 // `components/exports/ExportCommandHandlers.tsx` that opens the returned URL in
-// a new tab. The server half verifies org scope and records the `Export` row —
-// the artifact ledger for "who generated which document, when".
+// a new tab. The server half verifies org scope, renders the document, stores
+// the bytes, and records the `Export` row.
+//
+// The row used to carry a URL and a timestamp, which answered "somebody
+// exported something" and nothing else. A route re-renders from today's data,
+// so a row pointing at one was a receipt for a document that no longer existed.
+// The command now produces the artifact: the bytes go to the blob store and the
+// row carries the key, the sha256 and the length. That is what makes "what did
+// we send the Alvarezes in March" answerable.
 
 const exportOutput = z.object({
   exportId: z.string(),
   url: z.string(),
+  /** Blob address of the stored copy. */
+  storageKey: z.string(),
+  /** sha256 of the stored bytes: the document's identity. */
+  contentHash: z.string(),
+  byteSize: z.number().int().nonnegative(),
 })
 
 type ExportOutput = z.infer<typeof exportOutput>
 
-// `db` is imported lazily so the registry stays loadable in the jsdom unit
-// tests, which import every category to assert the catalog.
+/**
+ * Only the options this kind actually reads.
+ *
+ * Built field by field rather than spread: `exactOptionalPropertyTypes` is on,
+ * and spreading an absent option would write the key as `undefined`.
+ */
+function optionsFor(commandId: ExportCommandId, input: ExportRouteInput): DocumentOptions {
+  const options: DocumentOptions = {}
+  if (commandId === 'export.constructionPacket' && input.pageSize !== undefined) {
+    options.pageSize = input.pageSize
+  }
+  if (commandId === 'export.screenEnclosureQuote') {
+    if (input.showInternalPricing !== undefined) {
+      options.showInternalPricing = input.showInternalPricing
+    }
+    if (input.showScreenScopeRetail !== undefined) {
+      options.showScreenScopeRetail = input.showScreenScopeRetail
+    }
+  }
+  return options
+}
+
+// The document modules are imported lazily so the registry stays loadable in
+// the jsdom unit tests, which import every category to assert the catalog.
 async function recordExport(
   commandId: ExportCommandId,
-  kind: ExportKind,
+  kind: DocumentKind,
   input: ExportRouteInput,
   ctx: CommandContext,
 ): Promise<CommandResult<ExportOutput>> {
@@ -31,24 +66,27 @@ async function recordExport(
 
   if (ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
 
-  const { db } = await import('@/lib/db')
-  const project = await db.project.findFirst({
-    where: { id: input.projectId, orgId: ctx.orgId },
-    select: { id: true },
+  const { storeExportDocument } = await import('@/modules/exports/document/store')
+  const stored = await storeExportDocument({
+    projectId: input.projectId,
+    orgId: ctx.orgId,
+    kind,
+    url,
+    generatedById: ctx.userId === 'anonymous' ? null : ctx.userId,
+    options: optionsFor(commandId, input),
   })
-  if (!project) return { ok: false, error: 'Project not found' }
+  if (!stored.ok) return { ok: false, error: stored.error }
 
-  const row = await db.export.create({
+  return {
+    ok: true,
     data: {
-      projectId: project.id,
-      kind,
+      exportId: stored.data.exportId,
       url,
-      generatedById: ctx.userId === 'anonymous' ? null : ctx.userId,
+      storageKey: stored.data.storageKey,
+      contentHash: stored.data.contentHash,
+      byteSize: stored.data.byteSize,
     },
-    select: { id: true },
-  })
-
-  return { ok: true, data: { exportId: row.id, url } }
+  }
 }
 
 register({

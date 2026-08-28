@@ -1,10 +1,8 @@
+import { ExportKind } from '@prisma/client'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { loadProjectQuote } from '@/modules/projects/snapshot'
-import { SitePlanDocument } from '@/components/exports/SitePlanDocument'
+import { buildExportDocument } from '@/modules/exports/document/build'
 import { PrintButton } from '@/components/exports/PrintButton'
-import './site-plan.css'
 
 export default async function SitePlanPage({
   params,
@@ -17,58 +15,22 @@ export default async function SitePlanPage({
   if (!orgId) redirect('/login')
 
   const { id } = await params
-  const project = await db.project.findFirst({
-    where: { id, orgId },
-    include: { customer: true },
+
+  const built = await buildExportDocument({
+    kind: ExportKind.SITE_PLAN,
+    projectId: id,
+    orgId,
+    options: {},
   })
-  if (!project) notFound()
-
-  const priced = await loadProjectQuote(project.id, orgId)
-  if (!priced) notFound()
-  const { shapes, measurements } = priced
-
-  // Survey image overlay is stored as a data URL in the editor state today; once
-  // it lives on the server (Phase B follow-up), read it here. For now, render
-  // without an underlay if unavailable.
-  const surveyImageUrl: string | null = null
-
-  // Columns, not `poolFields`. These are permit facts about the property, they
-  // are typed on the project page, and the sheet printed a dash for both
-  // because nothing had ever written the JSON keys this used to read.
-  const jurisdiction = project.jurisdiction?.trim() || null
-  const parcelId = project.parcelId?.trim() || null
+  if (!built) notFound()
 
   return (
     <div className="min-h-screen bg-neutral-100 py-6">
+      <style dangerouslySetInnerHTML={{ __html: built.pageCss }} />
       <div className="no-print fixed right-4 top-4 z-50">
         <PrintButton label="Print / Save as PDF" />
       </div>
-      <SitePlanDocument
-        project={{
-          id: project.id,
-          name: project.name,
-          salesperson: project.salesperson,
-          designer: project.designer,
-          internalNotes: project.internalNotes,
-          poolFields: project.poolFields,
-          createdAt: project.createdAt,
-        }}
-        customer={
-          project.customer
-            ? {
-                name: project.customer.name,
-                email: project.customer.email,
-                phone: project.customer.phone,
-                address: project.customer.address,
-              }
-            : null
-        }
-        shapes={shapes}
-        measurements={measurements}
-        surveyImageUrl={surveyImageUrl}
-        jurisdiction={jurisdiction}
-        parcelId={parcelId}
-      />
+      {built.element}
     </div>
   )
 }

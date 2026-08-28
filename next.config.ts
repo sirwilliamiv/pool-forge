@@ -14,7 +14,18 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  serverExternalPackages: ['sharp', '@hyzyla/pdfium', 'libheif-js'],
+  // `tailwindcss` and `postcss` are here because a stored export document
+  // compiles its own stylesheet at render time (see
+  // `modules/exports/document/stylesheet.ts`). Bundled, Tailwind loses the
+  // `.css` files it reads from its own package at runtime and its optional
+  // plugin resolution, and every export fails with an ENOENT on preflight.css.
+  serverExternalPackages: [
+    'sharp',
+    '@hyzyla/pdfium',
+    'libheif-js',
+    'tailwindcss',
+    'postcss',
+  ],
   webpack: (config) => {
     config.externals = [...(config.externals ?? []), { canvas: 'commonjs canvas' }]
     return config
