@@ -80,10 +80,12 @@ export function LoginForm() {
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? 'Signing in…' : 'Sign in'}
           </Button>
+          {/* No "create one" link any more: Pool Forge is invite only, and a
+              sign-up link that leads to a refusal is worse than no link. What a
+              locked-out builder actually needs is the next line. */}
           <p className="text-sm text-muted-foreground">
-            No account?{' '}
-            <Link href="/register" className="underline underline-offset-4">
-              Create one
+            <Link href="/forgot-password" className="underline underline-offset-4">
+              Forgotten your password?
             </Link>
           </p>
         </CardFooter>

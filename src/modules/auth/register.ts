@@ -1,22 +1,32 @@
-// Deliberately NOT a `'use server'` module.
+// Public registration is closed.
 //
-// It used to be, and that was two problems in one line. Next refuses a
-// `'use server'` file that exports anything other than an async function, and
-// this one exports `registerSchema`, so every submission of the sign-up form
-// died with "A 'use server' file can only export async functions, found object"
-// and the customer saw the crash boundary. The second problem is the reason not
-// to fix it by moving the schema out: every export of a `'use server'` module
-// becomes an independently callable server action, so `registerUser` was a
-// second way into account creation that the throttle on `registerAction` did not
-// cover. Registration is reached through the action in
-// `app/(auth)/register/actions.ts`, which is where the ceiling is spent.
+// This module used to create a `User`, an `Organization` and an OWNER membership
+// for anybody who filled in a form. Pool Forge is going out to a handful of
+// chosen builders, so that door is shut: the only way a `User` row comes into
+// existence now is `modules/invites/invites.ts#acceptInvite`, which requires a
+// single-use link somebody with a role issued.
+//
+// WHY THIS FILE STILL EXISTS
+//
+// Deleting it would have been tidier and worse. `registerUser` was reachable as
+// a server action in its own right, which is exactly why the previous pass put
+// the rate-limit ceiling on the route rather than in here. A file that is gone
+// cannot refuse anything, whereas this one is a single closed door that every
+// old call site, every stale import and every bundled action reference now runs
+// into. When the last of those is gone, so is this.
+//
+// It creates nothing, it touches no table, and it answers the same way for every
+// input. In particular it does NOT say whether the address already has an
+// account: the old implementation returned "an account with that email already
+// exists", which was an enumeration oracle that the throttle only made
+// expensive rather than closing.
 
-import bcrypt from 'bcryptjs'
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
-import { db } from '@/lib/db'
-import { safeAuthFailure } from './errors'
 
+/**
+ * Kept so old imports still type-check. Nothing validates against it any more,
+ * and nothing should: there is no self-service registration input.
+ */
 export const registerSchema = z.object({
   email: z.string().email().toLowerCase(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -30,38 +40,19 @@ export type RegisterResult =
   | { ok: true; userId: string; orgId: string }
   | { ok: false; error: string }
 
-export async function registerUser(input: RegisterInput): Promise<RegisterResult> {
-  const parsed = registerSchema.safeParse(input)
-  if (!parsed.success) {
-    const first = parsed.error.issues[0]
-    return { ok: false, error: first?.message ?? 'Invalid input' }
-  }
-  const { email, password, name, orgName } = parsed.data
-  const passwordHash = await bcrypt.hash(password, 12)
-  const resolvedOrgName = orgName?.trim() || (name ? `${name}'s Org` : `${email.split('@')[0]}'s Org`)
+/** What anybody trying to sign themselves up is told. */
+export const REGISTRATION_CLOSED =
+  'Pool Forge is invite only at the moment. Ask whoever told you about it for an invite, ' +
+  'and check your inbox for a link.'
 
-  try {
-    const result = await db.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: { email, passwordHash, name: name ?? null },
-        select: { id: true },
-      })
-      const org = await tx.organization.create({
-        data: { name: resolvedOrgName },
-        select: { id: true },
-      })
-      await tx.organizationMember.create({
-        data: { userId: user.id, orgId: org.id, role: 'OWNER' },
-      })
-      return { userId: user.id, orgId: org.id }
-    })
-    return { ok: true, ...result }
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      return { ok: false, error: 'An account with that email already exists' }
-    }
-    // Anything else is a server fault: a Prisma message, a connection string, a
-    // constraint name. Logged scrubbed against a ref; the caller gets the ref.
-    return { ok: false, error: safeAuthFailure(err, 'register.create', 'registerUnavailable').message }
-  }
+/**
+ * Always refuses.
+ *
+ * Not `throw`, because a throw from a server action reaches a customer as the
+ * error boundary, and "the app crashed" is not what "we are invite only" should
+ * look like. Not conditional on any input either: an answer that varied would be
+ * something to probe.
+ */
+export async function registerUser(_input: RegisterInput): Promise<RegisterResult> {
+  return { ok: false, error: REGISTRATION_CLOSED }
 }

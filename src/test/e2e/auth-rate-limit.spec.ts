@@ -145,26 +145,20 @@ test('an address with no account is throttled exactly like a real one', async ({
 test.describe('signing up', () => {
   test.use({ extraHTTPHeaders: { 'x-forwarded-for': IP_SIGNUP } })
 
-  test('is capped per address, and the page still works at all', async ({ page }) => {
-    // Submitted with an address that already has an account, so this test creates
-    // nothing. The rejection it gets back is itself the enumeration oracle the
-    // ceiling exists to make expensive.
+  test('is not a thing that exists any more', async ({ page }) => {
+    // This used to spend a per-address ceiling on account creation. There is no
+    // account creation to throttle: Pool Forge is invite only, `registerAction`
+    // creates nothing whatever it is handed, and the only door is an invite link.
     //
-    // It also stands guard over a crash: `modules/auth/register.ts` used to carry
-    // a `'use server'` marker while exporting a Zod schema, which Next refuses,
-    // so every sign-up ended at the error boundary. A throttle on a route that
-    // 500s would have looked like it was working.
-    const seen: string[] = []
-    for (let i = 0; i < 7; i += 1) {
-      await page.goto('/register')
-      await page.getByLabel(/email/i).fill(DEMO_EMAIL)
-      await page.getByLabel(/password/i).fill('a-long-enough-password')
-      await page.getByRole('button', { name: /create account/i }).click()
-      const error = page.locator('p.text-destructive').first()
-      await error.waitFor({ state: 'visible', timeout: 60_000 })
-      seen.push((await error.innerText()).trim())
-    }
-    expect(seen[0]).toMatch(/already exists/i)
-    expect(seen[seen.length - 1]).toMatch(/too many sign-up attempts/i)
+    // A ceiling is still needed on the doors that DID open, reset requests and
+    // link redemption, and those are covered in `invites.spec.ts` and the
+    // rate-limit unit suite. What is left here is the one assertion that still
+    // means something at this address: however this page is answered, no session
+    // comes out of it.
+    await page.goto('/register')
+    await page.waitForLoadState('domcontentloaded')
+    expect(page.url()).not.toContain('/dashboard')
+    const cookies = await page.context().cookies()
+    expect(cookies.some((c) => c.name.includes('authjs.session-token'))).toBe(false)
   })
 })

@@ -12,10 +12,31 @@ import {
   technicalIssueList,
 } from '@/lib/commands/errors'
 import { get } from './registry'
-import type { CommandContext, CommandResult } from './registry'
+import type { CommandContext, CommandResult, EditorCommand } from './registry'
 import { DEFAULT_COMMAND_SOURCE, type CommandSourceValue } from './source'
 
 const ANONYMOUS = 'anonymous'
+
+/**
+ * What the audit row is allowed to keep.
+ *
+ * Applied on BOTH audit paths, including the one where the input failed its
+ * schema and was never parsed, because that is the path a password too short by
+ * one character takes. A redaction that only ran on valid input would be a
+ * redaction that missed the case it exists for.
+ */
+export function auditableInput(
+  command: EditorCommand<unknown, unknown> | undefined,
+  input: unknown,
+): unknown {
+  if (!command?.redactForAudit) return input
+  try {
+    return command.redactForAudit(input)
+  } catch {
+    // A redactor that throws must not be the reason the secret gets logged.
+    return { redacted: true }
+  }
+}
 
 function identity(value: string | undefined): string | null {
   if (!value || value === ANONYMOUS) return null
@@ -81,7 +102,7 @@ export async function dispatchCommand<T = unknown>(
     await writeAudit({
       commandId,
       ctx,
-      input,
+      input: auditableInput(command, input),
       result: { ok: false, error: `invalid input: ${technical}` },
       source,
     })
@@ -95,6 +116,12 @@ export async function dispatchCommand<T = unknown>(
     result = { ok: false, error: err instanceof Error ? err.message : 'unknown error' }
   }
 
-  await writeAudit({ commandId, ctx, input: parsed.data, result, source })
+  await writeAudit({
+    commandId,
+    ctx,
+    input: auditableInput(command, parsed.data),
+    result,
+    source,
+  })
   return result as CommandResult<T>
 }

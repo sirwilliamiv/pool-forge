@@ -9,6 +9,10 @@ import {
 } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { STENCILS } from '../src/modules/editor/stencils'
+import {
+  STARTER_PRICE_BOOK_NAME,
+  STARTER_PRICE_BOOK_VERSION,
+} from '../src/modules/onboarding/starter-price-book'
 
 const db = new PrismaClient()
 
@@ -147,14 +151,27 @@ async function main() {
     },
   })
 
+  // Named for the lineage, not for the demo.
+  //
+  // This book used to be called "Default Price Book", and `createBookVersion`
+  // and `getOrCreateActiveBookId` both look for one called exactly "Default".
+  // So pressing "new version" in the demo org forked a second lineage at v1,
+  // deactivated this one, and the demo builder lost their whole list. Keyed by
+  // id rather than by name so an existing dev database is renamed in place
+  // instead of growing a second book beside it.
   const priceBook = await db.priceBook.upsert({
-    where: { orgId_name_version: { orgId: org.id, name: 'Default Price Book', version: 1 } },
-    update: { isActive: true },
+    where: { id: PRICE_BOOK_ID },
+    update: {
+      orgId: org.id,
+      name: STARTER_PRICE_BOOK_NAME,
+      version: STARTER_PRICE_BOOK_VERSION,
+      isActive: true,
+    },
     create: {
       id: PRICE_BOOK_ID,
       orgId: org.id,
-      name: 'Default Price Book',
-      version: 1,
+      name: STARTER_PRICE_BOOK_NAME,
+      version: STARTER_PRICE_BOOK_VERSION,
       isActive: true,
     },
   })

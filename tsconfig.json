@@ -37,7 +37,8 @@
     ".next-monitoring/types/**/*.ts",
     ".next-rl/types/**/*.ts",
     ".next/types/**/*.ts",
-    "next-env.d.ts"
+    "next-env.d.ts",
+    ".next-waitlist/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

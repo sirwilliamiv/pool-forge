@@ -60,7 +60,41 @@ Optionally seed a demo org/price book on a brand-new database:
 | `MONITORING_ENV` | no | deployment label in logs and alerts, e.g. `beta`. Defaults to `NODE_ENV` |
 | `MONITORING_RELEASE` | no | build identifier, usually the git sha |
 | `MONITORING_ALERT_WEBHOOK_URL` | no | https endpoint that accepts a JSON POST. Empty disables alerting |
+| `IDENTITY_PLATFORM_API_KEY` | no, but see below | the project's browser API key. Enables Google Identity Platform for credentials |
+| `IDENTITY_PLATFORM_TENANT_ID` | no | only for a multi-tenant Identity Platform setup |
+| `APP_URL` | yes in any deployment | origin that invite and password links point at. Defaults to `http://localhost:3001` |
 | `BACKUP_DIR`, `BACKUP_RETENTION_DAYS`, `PG_IMAGE` | no | only read by the backup scripts, not by the app |
+
+### Identity Platform
+
+Passwords, password hashing, reset emails and eventually MFA are Google Identity
+Platform's. NextAuth is still the session layer: only the credential check moved,
+so `auth()` is unchanged everywhere it is used. What stays in this database is
+what Identity Platform has no opinion about: which organisation somebody belongs
+to, what they may do in it, and everything they have drawn, joined by
+`User.identityUid`.
+
+Setting it up on a project:
+
+```sh
+gcloud services enable identitytoolkit.googleapis.com --project "$PROJECT"
+# Then, once in the console: Identity Platform > provision, and enable the
+# Email/Password provider. Copy the browser API key into IDENTITY_PLATFORM_API_KEY.
+gcloud services api-keys list --project "$PROJECT"
+```
+
+**It needs no service account and no application default credentials.** Only
+three API-key endpoints are called (`accounts:signUp`, `signInWithPassword`,
+`sendOobCode`), all of which require a password before they do anything.
+
+**With the key unset the app still boots and still signs people in**, against the
+legacy `User.passwordHash` column. That is deliberate: a missing variable must
+degrade rather than take sign-in down. Accounts created while the key is unset
+get a local bcrypt hash and migrate across on the first sign-in after it is set.
+
+Accounts that predate Identity Platform migrate one at a time, on their next
+successful sign-in: the password is verified locally, written to Identity
+Platform, and `passwordHash` is nulled. Nobody is asked to reset.
 
 **Error monitoring needs none of these to work.** With nothing set, every
 server error and every browser error boundary still produces one redacted JSON

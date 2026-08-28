@@ -15,6 +15,7 @@ import {
 } from '@/lib/commands/errors'
 import { captureError } from '@/modules/monitoring'
 import { initCommands } from '@/modules/commands/init'
+import { auditableInput } from '@/modules/commands/dispatch'
 import { get } from '@/modules/commands/registry'
 import type { CommandContext, CommandResult } from '@/modules/commands/registry'
 
@@ -126,7 +127,7 @@ export async function POST(req: Request): Promise<Response> {
       userId,
       orgId,
       commandId: id,
-      input,
+      input: auditableInput(command, input),
       result: { ok: false, error: `invalid input: ${technical}` },
       source,
     })
@@ -168,7 +169,7 @@ export async function POST(req: Request): Promise<Response> {
     userId,
     orgId,
     commandId: id,
-    input: inputParsed.data,
+    input: auditableInput(command, inputParsed.data),
     result: auditResult,
     source,
   })

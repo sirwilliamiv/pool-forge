@@ -95,6 +95,43 @@ export const LOGIN_EMAIL_RULE: AuthRateRule = { ceiling: 50, windowMs: 60 * MINU
  */
 export const REGISTER_IP_RULE: AuthRateRule = { ceiling: 5, windowMs: 60 * MINUTE }
 
+/**
+ * Password-reset requests from one address.
+ *
+ * Each one either sends mail or asks Identity Platform to send mail, so the
+ * ceiling is a spend limit on somebody else's outbound reputation as well as a
+ * limit on probing. Higher than the per-address ceiling below because an office
+ * behind one NAT is a real thing.
+ */
+export const RESET_REQUEST_IP_RULE: AuthRateRule = { ceiling: 10, windowMs: 60 * MINUTE }
+
+/**
+ * Password-reset requests naming one address, from anywhere.
+ *
+ * This is the mail-bomb ceiling: without it, anyone who knows a builder's email
+ * can put a hundred reset links in their inbox, which is both harassment and a
+ * good way to get the sending domain listed as spam. Deliberately generous
+ * enough that a person who clicks the button twice, gets impatient and clicks it
+ * again is never refused.
+ */
+export const RESET_REQUEST_EMAIL_RULE: AuthRateRule = { ceiling: 5, windowMs: 60 * MINUTE }
+
+/**
+ * Attempts to redeem a one-time link from one address: invite acceptance and
+ * reset completion together.
+ *
+ * The token itself is 256 bits and is not going to be guessed. What this ceiling
+ * actually buys is a limit on the work a stranger can make the server do per
+ * attempt, which is now a database transaction plus a round trip to an identity
+ * service, and a limit on somebody walking a list of harvested links.
+ *
+ * Note the deliberate asymmetry with sign-in: accepting an invite for an address
+ * that ALREADY has an account checks that account's password, and that check
+ * spends the ordinary login buckets as well, because it is a password guess
+ * whatever page it happens on.
+ */
+export const TOKEN_ATTEMPT_IP_RULE: AuthRateRule = { ceiling: 20, windowMs: 15 * MINUTE }
+
 /** How long a spent row is kept before `sweepExpiredAuthRateCounters` may drop it. */
 export const AUTH_RATE_RETENTION_MS = 24 * 60 * MINUTE
 
@@ -142,6 +179,22 @@ export function loginRateKeys(ipBucket: string, email: string): LoginRateKeys {
 
 export function registerRateKey(ipBucket: string): string {
   return `register:ip:${ipBucket}`
+}
+
+export interface ResetRateKeys {
+  readonly ip: string
+  readonly email: string
+}
+
+export function resetRequestRateKeys(ipBucket: string, email: string): ResetRateKeys {
+  return {
+    ip: `reset:ip:${ipBucket}`,
+    email: `reset:email:${emailKeyHash(email)}`,
+  }
+}
+
+export function tokenAttemptRateKey(ipBucket: string): string {
+  return `token:ip:${ipBucket}`
 }
 
 /**
@@ -291,6 +344,59 @@ export async function consumeRegisterAttempt(
 }
 
 /**
+ * Gate one password-reset request.
+ *
+ * Both buckets are spent whatever the outcome, and crucially BEFORE anything
+ * looks the address up. Spending only when the account exists would make the
+ * limiter itself the enumeration oracle the neutral response is there to
+ * prevent: unknown addresses would stay cheap forever while real ones started
+ * refusing, and a stopwatch would read the difference.
+ */
+export async function consumeResetRequest(
+  ipBucket: string,
+  email: string,
+  now: Date = new Date(),
+): Promise<LoginGateResult> {
+  const keys = resetRequestRateKeys(ipBucket, email)
+  const checks: ReadonlyArray<{ key: string; rule: AuthRateRule; scope: LoginRateScope }> = [
+    { key: keys.ip, rule: RESET_REQUEST_IP_RULE, scope: 'ip' },
+    { key: keys.email, rule: RESET_REQUEST_EMAIL_RULE, scope: 'email' },
+  ]
+  for (const check of checks) {
+    const ok = await consumeAuthCounter(check.key, check.rule, now)
+    if (!ok) {
+      return {
+        allowed: false,
+        scope: check.scope,
+        retryAfterSeconds: retryAfterSeconds(now, check.rule.windowMs),
+      }
+    }
+  }
+  return { allowed: true }
+}
+
+/**
+ * Gate one attempt to redeem a one-time link, whichever kind.
+ *
+ * Keyed on the address only. A per-token counter would be pointless (a token
+ * gets one use by construction) and a per-email counter would leak: the email is
+ * inside the token, so counting by it would mean an unknown token could be told
+ * apart from a known one by whether a bucket moved.
+ */
+export async function consumeTokenAttempt(
+  ipBucket: string,
+  now: Date = new Date(),
+): Promise<LoginGateResult> {
+  const ok = await consumeAuthCounter(tokenAttemptRateKey(ipBucket), TOKEN_ATTEMPT_IP_RULE, now)
+  if (ok) return { allowed: true }
+  return {
+    allowed: false,
+    scope: 'ip',
+    retryAfterSeconds: retryAfterSeconds(now, TOKEN_ATTEMPT_IP_RULE.windowMs),
+  }
+}
+
+/**
  * Drop rows whose window closed long enough ago that nothing will read them
  * again. Nothing schedules this yet; it exists so the table has a defined way to
  * stop growing, and it is safe to call from any future sweep job.
@@ -301,6 +407,9 @@ export async function sweepExpiredAuthRateCounters(now: Date = new Date()): Prom
     LOGIN_IP_EMAIL_RULE.windowMs,
     LOGIN_EMAIL_RULE.windowMs,
     REGISTER_IP_RULE.windowMs,
+    RESET_REQUEST_IP_RULE.windowMs,
+    RESET_REQUEST_EMAIL_RULE.windowMs,
+    TOKEN_ATTEMPT_IP_RULE.windowMs,
   )
   const cutoff = new Date(now.getTime() - longestWindowMs - AUTH_RATE_RETENTION_MS)
   // Scoped to the keys this module owns. `RateLimitCounter` is a general table
@@ -309,6 +418,11 @@ export async function sweepExpiredAuthRateCounters(now: Date = new Date()): Prom
   return db.$executeRaw(Prisma.sql`
     DELETE FROM "RateLimitCounter"
     WHERE "windowStart" < ${cutoff}
-      AND ("key" LIKE 'login:%' OR "key" LIKE 'register:%')
+      AND (
+        "key" LIKE 'login:%'
+        OR "key" LIKE 'register:%'
+        OR "key" LIKE 'reset:%'
+        OR "key" LIKE 'token:%'
+      )
   `)
 }

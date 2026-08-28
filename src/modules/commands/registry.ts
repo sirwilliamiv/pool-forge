@@ -64,6 +64,24 @@ export type EditorCommand<I = unknown, O = unknown> = {
    * failing test rather than a confident lie.
    */
   runsOn?: 'server' | 'client'
+  /**
+   * What the audit row records instead of the raw input.
+   *
+   * `CommandAuditLog` keeps `inputJson` forever, which is exactly what makes it
+   * the answer to "what did the user actually do". It is also why a command
+   * whose input contains a secret cannot be audited raw: the credential
+   * endpoints hand over a password somebody is choosing, and a password sitting
+   * in a log table is a password that has leaked to anyone with SELECT on it.
+   *
+   * Declared per command rather than inferred, and typed on `unknown` rather
+   * than `I`, because the audit write also happens on the path where the input
+   * FAILED its schema and was never parsed. A redaction that only worked on
+   * valid input would miss the "password too short" case, which is precisely the
+   * one where a person's real password is in the payload.
+   *
+   * Commands without one are audited exactly as before.
+   */
+  redactForAudit?: (input: unknown) => unknown
   execute: (input: I, ctx: CommandContext) => Promise<CommandResult<O>>
 }
 

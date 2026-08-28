@@ -9,7 +9,13 @@ import { Separator } from '@/components/ui/separator'
 import { AddItemButton } from '@/components/settings/AddItemButton'
 import { PriceBookItemRow } from '@/components/settings/PriceBookItemRow'
 import type { ExistingItem } from '@/components/settings/PriceBookItemDialog'
+import { PriceBookCoverage } from '@/components/settings/PriceBookCoverage'
 import { categoryLabel, normalizeOptionKey } from '@/modules/pricing/engine'
+import { priceBookCoverage } from '@/modules/onboarding/coverage'
+import {
+  PLACEHOLDER_PRICE_NOTICE,
+  unchangedStarterLines,
+} from '@/modules/onboarding/starter-price-book'
 import { PriceCategory } from '@prisma/client'
 
 /**
@@ -69,6 +75,12 @@ export default async function PriceBookSettingsPage() {
 
   const bookLabel = book ? `${book.name} v${book.version}` : 'No active book'
 
+  // Coverage is computed from the same stencil mapping the quote engine reads,
+  // so what this panel calls a hole is exactly what a quote would refuse to
+  // price. The placeholder count falls as the builder replaces our numbers.
+  const coverage = priceBookCoverage(items)
+  const placeholderCount = unchangedStarterLines(items).length
+
   return (
     <div className="container py-8 space-y-6 max-w-5xl">
       <div className="flex items-end justify-between">
@@ -88,6 +100,12 @@ export default async function PriceBookSettingsPage() {
           <AddItemButton />
         </div>
       </div>
+
+      <PriceBookCoverage
+        rows={coverage}
+        placeholderCount={placeholderCount}
+        placeholderNotice={PLACEHOLDER_PRICE_NOTICE}
+      />
 
       {items.length === 0 ? (
         <Card>

@@ -646,6 +646,14 @@ const EXERCISES: Record<string, Exercise> = {
       'it: contract content rewritten from misheard audio is not found until a customer has ' +
       'signed the result.',
   },
+  'settings.firstRun.dismiss': {
+    kind: 'server',
+    why:
+      'Writes the org AppSetting row that hides the first-run setup checklist. Covered by ' +
+      'onboarding/first-run.test.ts against the real DB. Deliberately carries no voice ' +
+      'examples: there is nothing to gain from closing a checklist by voice and a whole card ' +
+      'to lose if the model mishears something else as it.',
+  },
   'settings.voice.set': {
     kind: 'server',
     why:
@@ -654,6 +662,70 @@ const EXERCISES: Record<string, Exercise> = {
       'refuses it: a safety gate the assistant can switch off is not a gate.',
   },
   'auth.signOut': { kind: 'stub' },
+
+  // ---------- team and credentials ----------
+  //
+  // All seven are 'server': every one of them writes a User, an
+  // OrganizationMember or an AuthToken through Prisma, and none of them touches
+  // a client store, so there is nothing for this harness to observe. They are
+  // covered against the real database in `invites/invite-flow.test.ts`,
+  // `auth/password-reset.test.ts` and `auth/credentials.test.ts`, and end to end
+  // through a browser in `e2e/invites.spec.ts`.
+  //
+  // None carries voice examples, which is deliberate rather than an oversight:
+  // the converter refuses a command without them, so the agent is never offered
+  // any of these. "Make Sam an owner" is a sentence a model can mishear into
+  // handing somebody the keys to a business.
+  'team.invite': {
+    kind: 'server',
+    why:
+      'Writes an AuthToken row carrying the organisation and the role, org-scoped. Takes only ' +
+      'sha256 of the link, never the link. Covered by invites/invite-flow.test.ts against the ' +
+      'real DB and by e2e/invites.spec.ts through a browser.',
+  },
+  'team.invite.revoke': {
+    kind: 'server',
+    why:
+      'Retires a pending AuthToken, org-scoped in the WHERE clause so another team\'s invite is ' +
+      'not found rather than found and refused. Covered by invites/invite-flow.test.ts and ' +
+      'e2e/invites.spec.ts.',
+  },
+  'team.member.setRole': {
+    kind: 'server',
+    why:
+      'Updates OrganizationMember.role, org-scoped, refusing to demote the last owner. Covered ' +
+      'by invites/permissions.test.ts for the rules and invites/invite-flow.test.ts against the ' +
+      'real DB.',
+  },
+  'team.member.remove': {
+    kind: 'server',
+    why:
+      'Deletes an OrganizationMember and retires that address\'s outstanding invites, org-scoped. ' +
+      'Never deletes the User: other organisations point at it. Covered by ' +
+      'invites/invite-flow.test.ts.',
+  },
+  'team.member.resetPassword': {
+    kind: 'server',
+    why:
+      'Writes a PASSWORD_RESET AuthToken for a member so an owner can hand the link over. Takes ' +
+      'only sha256 of the link. Covered by auth/password-reset.test.ts and e2e/invites.spec.ts.',
+  },
+  'team.invite.accept': {
+    kind: 'server',
+    why:
+      'The only code path in the product that creates a User: provisions the Identity Platform ' +
+      'account, writes the local row with its identityUid, and joins it to the inviting ' +
+      'organisation. Reached before there is a session. Carries redactForAudit, checked by ' +
+      'commands/audit-redaction.test.ts. Covered by invites/invite-flow.test.ts and ' +
+      'e2e/invites.spec.ts.',
+  },
+  'auth.password.reset': {
+    kind: 'server',
+    why:
+      'Spends a PASSWORD_RESET AuthToken and writes the new password, moving a legacy account ' +
+      'across to Identity Platform as it goes. Carries redactForAudit. Covered by ' +
+      'auth/password-reset.test.ts and e2e/invites.spec.ts.',
+  },
 
   // ---------- grade ----------
   'grade.enable': {

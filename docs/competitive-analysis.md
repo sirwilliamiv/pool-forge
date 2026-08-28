@@ -2,6 +2,33 @@
 
 Research date: 2026-07-24. Method: live product inspection where accessible (Cedreo planner driven directly; network + UI observed) plus deep web research for paywalled/desktop products. Every competitor is scored against the same framework so profiles are comparable. Unknowns are marked, never fabricated.
 
+---
+
+## Re-verification log
+
+**Pass 2 · 2026-08-28.** Baseline capture date for this document remains **2026-07-24**. Anything below not explicitly stamped `verified 2026-08-28` was **not** re-checked in this pass and should be read as "as recorded 2026-07-24".
+
+**Added this pass:** JobTread (§4.7) and Pool Brain (§4.8) in Track 4, plus a new **Market context** section (Florida permit data) that is customer research, not a competitor profile. Both new entries are in the scorecard.
+
+**Re-checked against vendor pages loaded 2026-08-28:** Structure Studios (Pool Studio, Vip3D, VizTerra, YARD), ProDBX, Poologics. Figures that moved are shown inline as `was → now` so the change stays visible; nothing was silently overwritten.
+
+| Figure | 2026-07-24 | 2026-08-28 | Status |
+|---|---|---|---|
+| Pool Studio | $147/mo · $125/mo annual · $95 setup | identical | **Confirmed unchanged** |
+| Vip3D | $197/mo · $167/mo annual | identical | **Confirmed unchanged** |
+| Vip3D intro promo | ~$127/mo first 3 months | gone; site now states it does not offer promotions or special pricing | **Withdrawn** |
+| VizTerra | $97/mo · $84/mo annual | identical | **Confirmed unchanged** |
+| YARD | $30/mo add-on | $30/mo confirmed; **$25/user/mo annual** newly published (in `llms.txt` only, not on the human pricing page) | **Confirmed + new detail** |
+| Structure Studios system reqs | Win 11 · i7 · 16GB · RTX 4060+ · 50GB | identical on the requirements page; a stricter hardware-guidance page dated 08.24.2026 now warns off any card "ending in 50" (RTX 3050/4050/5050) and a `llms.txt` spec adds PassMark 4500 min / 32GB recommended | **Confirmed, floor effectively rising** |
+| ProDBX | $0 / $19 / $79 / $119 per user/mo (GetApp-sourced) | vendor now self-publishes: list **$19 / $59 / $99 / $139** per user/mo, with a 6-month intro column at $0 / $39 / $79 / $119, and **seat minimums of 5 / 5 / 10** | **Moved.** Old figures were the promo column mirrored by a stale GetApp listing |
+| ProDBX QuickBooks | "notably no QuickBooks" | **Wrong now.** A one-way ProDBX→QBO sync exists | **Corrected** |
+| Poologics | $249/mo annual · $279 quarterly · $299 month-to-month | **$279/mo annual ($3,348/yr) · $329/mo monthly**; quarterly tier removed; new **20-user cap** | **Moved: up ~12% annual, ~10% monthly** |
+
+**Not re-checked in this pass** (still 2026-07-24 figures): Cedreo, Realtime Landscaping, Uvision, PRO-SUITE, PoolDraw, D5, Lumion, Twinmotion, MyPoolDesigner.ai, Latham, PoolDes, Hearth, Houzz Pro, QuoteIQ, Jobber. Two of those carry a known risk of drift: Hearth and Houzz Pro were demo-gated / volume-quoted at capture, so their ranges were never firm.
+
+**Two dossier links are now dead** and are corrected in Track 1: `structurestudios.com/pricing` 404s (canonical is `/landscape-design-software-and-pool-design-software-pricing-compare`), and the Vip3D product page moved to `/vip3d-3d-outdoor-living-design-software` with a hard 404 and no redirect on the old slug.
+
+
 ## The evaluation framework (applies to every profile)
 
 - **A · Snapshot** — product + vendor, positioning, primary user, maturity/market signal
@@ -25,22 +52,31 @@ Vendor: Structure Studios (Henderson, NV), founded 1999 by Noah Nehlich, family-
 
 **Cross-suite fact #1 (the big one):** the entire pro suite (Pool Studio, Vip3D, VizTerra) is a **Windows-only native desktop install requiring a discrete NVIDIA RTX GPU** (V4 recommends Win 11 + i7 + 16GB + **RTX 4060+** + 50GB). **No web app, no mobile browser, anywhere.** YARD (their only mobile product) is a native iPad-Pro-with-LiDAR app. Note: Capterra/GetApp list "Web, Android, iPhone" — that is **inaccurate auto-tagged metadata**; the vendor's own [system-requirements page](https://www.structurestudios.com/vip3d-vizterra-pool-studio-system-requirements) is authoritative.
 
-## 1.1 Pool Studio ($147/mo, or $125/mo annual, + $95 setup)
+**Cross-suite fact #1, re-verified 2026-08-28 and now stated more bluntly by the vendor than we had it.** The requirements page still publishes exactly what we recorded (Version 4 minimum-recommended: Windows 11, Intel Core i7 10th gen+, 16GB+, "Nvidia GeForce RTX 4060 (or greater)", 50GB). Three things are new and all of them harden the platform lockout:
+
+- **Mac is now explicitly and permanently ruled out**, not "contact us." [Hardware recommendations](https://www.structurestudios.com/help/computer-hardware-recommendations) (page stamped "as of 08.24.2026"): *"Will the software run on macOS? No, the software cannot be installed on macOS or OS X. **We have no plans to add native support.**"* Parallels 15 "is not suggested", "VMWare Fusion will not work", and [llms.txt](https://www.structurestudios.com/llms.txt) adds that Apple Silicon Macs "cannot run the software" at all since Boot Camp is gone. The Boot Camp escape hatch only ever existed for Intel Macs, which are now end-of-life hardware. **The Mac door is closed, permanently, by the vendor's own statement.**
+- **The real hardware floor is higher than the published minimum.** The same hardware page warns: *"Video cards with model numbers ending in '50' are underpowered for demanding tasks. Avoid models such as the RTX 3050, 4050, and 5050."* Its recommended machines run RTX 5060 to 5080 at **$1,099 to $3,519**, with a "Best Possible" tier at RTX 5090 / 64-128GB RAM. `llms.txt` adds a benchmark floor ("PassMark score 4500 minimum", 32GB RAM recommended) and states *"Integrated graphics (such as Intel integrated GPUs) are not supported."* VR (Vip3D only) needs "RTX 4070 or greater" plus a Meta Quest 3.
+- **Still no web app, no browser version, no cloud version** anywhere on any page loaded 2026-08-28.
+
+**URL corrections:** the old `/pricing` path now 404s; canonical pricing is [/landscape-design-software-and-pool-design-software-pricing-compare](https://www.structurestudios.com/landscape-design-software-and-pool-design-software-pricing-compare). The Vip3D product page moved to [/vip3d-3d-outdoor-living-design-software](https://www.structurestudios.com/vip3d-3d-outdoor-living-design-software) (hard 404, no redirect, on the old "pool-and-landscape" slug). The slug change from "pool and landscape" to "outdoor living" is worth noting on its own: their flagship is drifting away from the word "pool".
+
+## 1.1 Pool Studio ($147/mo, or $125/mo annual, + $95 setup) · **all three figures verified unchanged 2026-08-28**
 
 - **A:** Mid-tier, pool-focused CAD + real-time 3D for pro pool builders/designers. ([product page](https://www.structurestudios.com/pool-studio-3d-swimming-pool-design-software))
-- **B:** Windows desktop install; Mac = "contact us." **Mobile browser: no.** Customer views on the designer's screen, exported media, or YARD iPad.
+- **B:** Windows desktop install; Mac = **now "no plans to add native support"** (was "contact us", see cross-suite note above). **Mobile browser: no.** Customer views on the designer's screen, exported media, or YARD iPad.
 - **C:** 2D+3D one file, one-click switch. Freeform AND geometric pools, spas/raised spas, tanning ledges, step entries, water features, spillovers/scuppers, coping, decks, pergolas, fiberglass shells. **Parametric smart objects.** Library: **2,924 objects / 1,503 HD materials / 1,748 plants** (pre-V4). Import: AutoCAD DWG, GIS/aerial + parcel/setbacks, topo lines, scanned sitemaps. 3D praised as easy; 2D weaker than true CAD.
 - **D:** Real-time on **local NVIDIA GPU (client-side)** — V4 path tracing + DLSS + dynamic GI. Photorealism **~4/5** (HDRI/4K-video/VR gated to Vip3D). Stills to 8K; video storyboard. Manual camera.
 - **E:** Strong construction docs (triangulation, sqft/lf, material takeoffs, "Smart Data" like nozzle counts and raised-pool concrete). **No priced estimating, no price book, no tax, no quotes/proposals.**
 - **F:** Customer = **passive viewer** of designer-led walkthroughs/exports. **No shareable link, no options-toggling, no live price, no e-sign, no financing.**
 - **G:** **No AI.**
-- **H:** Subscription per-seat, cancel anytime; 30-day trial, no card.
+- **H:** Subscription per-seat, cancel anytime; 30-day trial, no card. **Verified 2026-08-28**, vendor FAQ verbatim: *"Pool Studio costs $147 per month, or $125 per month when billed annually"*; *"Subscriptions start with a one-time setup fee of $95"*; *"You can try the software free for 30 days with full access to all features — no credit card required to start."*
 - **I:** Closed ecosystem. Import-only (DWG/GIS). No CRM/QB/financing.
 - **J:** **Match:** parametric pool objects + trusted GPU realism. **Exploit:** Windows/RTX lockout + zero pricing + zero shareable link. **Win:** "any device, design a pool, send a live interactive priced link with one-click accept."
 
-## 1.2 Vip3D ($197/mo, or $167/mo annual; promo ~$127/mo first 3 mo)
+## 1.2 Vip3D ($197/mo, or $167/mo annual) · **verified 2026-08-28; the intro promo is gone**
 
 - **A:** Premium tier: Pool Studio + full landscape/hardscape + top-end viz + advanced docs. "Most Popular."
+- **H (moved):** `promo ~$127/mo first 3 months` **→ withdrawn.** The base figures are confirmed verbatim (*"Vip3D... is $197 per month, or $167 per month billed annually"*), but no promo language survives anywhere on the site, and the pricing page now carries an explicit statement that **"We do not offer promotions or special pricing."** Read that as a deliberate no-discount posture, which matters if we ever expect them to price-fight a browser challenger: they have publicly taken discounting off the table.
 - **B:** Same Windows/RTX constraints. **Mobile browser: no.**
 - **C:** Adds full landscape (planting plans), hardscape, wood decks, outdoor kitchens, fire features, grading/drafting; **SketchUp + FBX import** on top of DWG/GIS; largest library (2,930 objects pre-V4); cross-sections, scaled plans.
 - **D (their moat):** V4 path tracing on local RTX. Marketing explicitly: "reflections move, shadows shift, light refracts in translucent water and glass," **pool water caustics**, **HDRI skies** (import your own). **~4.5/5 photorealism.** Output: 8K stills, 4K video, **one-click 360°/VR**, storyboard queue, AR via YARD. Manual camera.
@@ -55,13 +91,14 @@ Vendor: Structure Studios (Henderson, NV), founded 1999 by Noah Nehlich, family-
 - **B:** Same Windows/RTX. Reviews flag it resource-heavy.
 - **C:** 2D→3D one click; hardscape, kitchens, wood decks, terrain/grading, retaining walls; strong plant library; **recurring reviewer complaint: 2D side is "cumbersome," not CAD-standard.**
 - **D:** Same V4 engine, tier-capped (**no VR/360, video QHD only**). ~4/5.
-- **E/F/G:** Quantities-on-plans only; passive-viewer delivery; no AI.
+- **E/F/G:** Quantities-on-plans only; passive-viewer delivery; no AI. Pricing verified unchanged 2026-08-28 ($97/mo, $84/mo annual).
+- **E, new and the most strategically useful thing found this pass:** Structure Studios has since launched a dedicated [landscape estimating software](https://www.structurestudios.com/vizterra-best-landscape-estimating-software) page, headlined "Landscape Estimating Software That Wins the Bid". **They ship an estimating marketing page and then explicitly refuse to price anything**, verbatim: *"VizTerra doesn't build the quote for you. Smart Data hands you the exact quantities, and you apply the pricing, labor rates, and margin your business runs on."* And in the FAQ: *"Does VizTerra price my takeoffs or build client quotes? **No.** Smart Data gives you the accurate quantities, and you apply your own pricing, labor rates, and margin. **That is by design.**"* This is the incumbent stating on the record that the priced-quote gap is a **product decision, not a backlog item**. It is the single best piece of evidence in this dossier that the design-to-dollars loop is not about to be closed by the market leader, and it is quotable on a public comparison page because it is their own words.
 - **J:** For the landscape adjacency: browser + solid 2D drafting + instant priced proposals undercuts their weak 2D and install barrier.
 
-## 1.4 YARD ($30/mo add-on) — AR app
+## 1.4 YARD ($30/mo add-on, or $25/user/mo annual) — AR app · **verified 2026-08-28**
 
 - **A:** AR companion that drops finished desktop designs into the real backyard on-site. Pro-facing, not homeowner self-serve.
-- **B:** **Native iOS, iPad Pro with LiDAR required.** No Android, no web. Requires a paid desktop seat.
+- **B:** **Native iOS, iPad Pro with LiDAR required.** No Android, no web. Requires a paid desktop seat, confirmed verbatim 2026-08-28: *"YARD is available as an add-on companion app for active Pool Studio, VizTerra, and Vip3D members. It is not available as a standalone product."* New detail: an annual rate of **$25/user/mo** is published, but only in [llms.txt](https://www.structurestudios.com/llms.txt), not on the human-facing pricing page. A vendor publishing a price to machine readers that it does not show buyers is a small tell about where their attention is.
 - **C/D:** Imports suite projects; on-site AR sketching; LiDAR-anchored 1:1 placement; ~3.5/5 mobile-AR fidelity. The one place the customer controls the camera (walking the iPad around).
 - **F:** **In-person only, tethered to the pro's iPad.** No remote link, no take-home, no pricing/accept.
 - **J:** **Exploit with WebXR/WebAR in the mobile browser** — the homeowner's own phone, via a share link, no $30 app, no iPad Pro. Turns AR from a supervised demo into a remote self-serve proposal.
@@ -71,22 +108,22 @@ Vendor: Structure Studios (Henderson, NV), founded 1999 by Noah Nehlich, family-
 - **Tech:** path tracing + **NVIDIA DLSS** + fully dynamic global illumination — a native-GPU, game-engine-class real-time path tracer. **Computes on the client's local RTX GPU; no cloud farm anywhere.** Real-time preview; final photo/video renders queued/batched.
 - **Fidelity ~4.5/5:** PBR materials, HDRI skies, **pool water caustics** + 12 water-feature options, day→dusk→night sun/moon, deep vegetation. Stills 8K, video 4K, one-click 360/VR (Vip3D).
 - **V4 also added:** ~1,000 new assets (+456 plants, +148 materials, dynamic doors/rockwork), cross-section tool, scaled 3D plan views, bigger GIS, 2,550×2,550 ft grid.
-- **V4 did NOT add:** any AI (DLSS aside), any pricing/proposal tooling, any web/share capability. Hardware floor went **up** (RTX 4060+).
+- **V4 did NOT add:** any AI (DLSS aside), any pricing/proposal tooling, any web/share capability. Hardware floor went **up** (RTX 4060+). **Re-checked 2026-08-28: still no AI feature anywhere in the product.** The only "AI" strings on the whole site are `AI.txt` and an "LLM Info Page" footer link, which are crawler-facing documents about the company, not product capabilities.
 - Sources: [Pool Magazine](https://www.poolmagazine.com/news/press-releases/structure-studios-launches-version-4-of-its-professional-pool-and-landscape-design-software-suite/), [V4 blog](https://www.structurestudios.com/blog/new-version4-vip3d-poolstudio-vizterra-update), [Green Industry Pros](https://www.greenindustrypros.com/design-installation/design/product/22964970/structure-studios-structure-studios-launches-v4-design-software-suite).
 
 ## Track 1 synthesis
 
 | Dimension | Structure Studios | Pool Forge opening |
 |---|---|---|
-| Platform | Windows-only install; **RTX 4060+ required**; no browser/mobile (YARD = iPad-Pro-only) | Browser on any device, no install |
+| Platform | Windows-only install; **RTX 4060+ required** (vendor now warns off anything ending in "50", so effectively RTX 5060+); no browser/mobile (YARD = iPad-Pro-only); **Mac ruled out permanently** | Browser on any device, no install |
 | Rendering | Best-in-class local-GPU path tracing (the bar) | Aim "great," not "equal"; server render + WebGL preview |
-| Estimating | Takeoffs/quantities only — **no dollars anywhere** | Priced estimating + proposals = wide open |
+| Estimating | Takeoffs/quantities only, **no dollars anywhere**, and now confirmed as a deliberate refusal: *"That is by design"* | Priced estimating + proposals = wide open |
 | Customer delivery | Designer-led exports/VR/in-person AR; **no link/e-sign/financing/live price** | Shareable no-login interactive link + price + accept + financing |
-| AI | **None** (2026!) | Photo→design, AI estimating, auto-camera all uncontested |
+| AI | **None** (re-checked 2026-08-28) | Photo→design, AI estimating, auto-camera all uncontested |
 | Integrations | Closed | Open (QB, CRM, Hearth) |
 | Reputation | Entrenched, but G2 ~1.9 with **aggressive per-seat license enforcement** + "combative" support complaints | Friendly licensing + self-serve onboarding wedge |
 
-**Marked unknowns:** exact Mac path ("contact us"); active-user count; whether aggregator-listed "API access" is real (no public API documented); V4 exact render times; any undocumented share link (none found — appears absent).
+**Marked unknowns:** active-user count; whether aggregator-listed "API access" is real (no public API documented); V4 exact render times; any undocumented share link (none found — appears absent).
 
 ---
 
@@ -226,31 +263,46 @@ Hard constraint applied throughout: the customer views in a MOBILE BROWSER.
 
 ---
 
-# TRACK 4 — Estimating/CRM/proposal/financing stack (ProDBX, Poologics, Hearth, Houzz Pro, QuoteIQ, Jobber)
+# TRACK 4 — Estimating/CRM/proposal/financing stack (ProDBX, Poologics, Hearth, Houzz Pro, QuoteIQ, Jobber, JobTread, Pool Brain)
 
-The "business half" builders bolt onto a design tool. Five of six are design-blind; all prices marked reported/approx. where vendor-gated.
+The "business half" builders bolt onto a design tool. Seven of eight are design-blind; all prices marked reported/approx. where vendor-gated. **§4.7 JobTread and §4.8 Pool Brain added 2026-08-28.** Pool Brain is filed here for convenience but is explicitly labelled an **adjacency, not a competitor** (see its entry for why that distinction is load-bearing).
 
-## 4.1 ProDBX — prodbx.com
+Three of the eight are generalists rather than pool tools (Jobber, Houzz Pro, JobTread) and §4.7 draws the lines between them directly.
+
+## 4.1 ProDBX — prodbx.com · **re-verified 2026-08-28; pricing, QuickBooks and AI all moved**
 
 - **A:** All-in-one (CRM + estimating + PM + owned accounting) purpose-built for pool/fence contractors. Small install-base signal (GetApp 4.9/5 on only 14 reviews).
 - **B:** Cloud web + iOS/Android; mobile-browser capable. Customer touches a **Customer Portal** (view/approve/e-sign docs).
 - **C/D:** Business-only; no design/3D, no rendering.
 - **E (their moat):** pool estimate templates, auto material+labor calc, and **live distributor pricing via DistributorConnect API (1,000+ US distributors, real-time branch inventory)**; Pool360/SCP supply feeds; estimates → proposals/contracts/change orders; POs, inventory, payroll/commission.
 - **F:** Branded proposals + digital contracts, **e-sign yes**; **financing at proposal: none.**
-- **G:** Automated follow-ups/texting; no AI estimating.
-- **H:** Per-seat: Free CRM $0 / Express $19 / Professional $79 / Enterprise $119 per user/mo (GetApp; a pool round-up says "contact sales" — may be quote-based).
-- **I:** DistributorConnect; notably **no QuickBooks** (owns its accounting), no Zapier advertised.
+- **G (moved):** `no AI` **→ AI shipped.** Nav carries "*Now Featuring AI in DBX*"; the [AI page](https://prodbx.com/ai/) is headlined *"AI Isn't Coming to DBX. It's Here"* and names four capabilities: Email Generations, Email Rewrites, Job Notes Reports, Company and Address Research. In the pricing table, "AI Notes Summarization & Research" is on all four tiers and "AI Content Generation" on Essential and above. **Note what it is not:** none of the four touch estimating. It is correspondence and research assistance bolted onto a CRM, not AI applied to the priced quote. The AI-estimating gap stands.
+- **H (moved, and our old figures were wrong in a specific way worth understanding):** `Free CRM $0 / Express $19 / Professional $79 / Enterprise $119 per user/mo (GetApp-sourced)` **→** the vendor now self-publishes at [prodbx.com/pricing](https://prodbx.com/pricing/), and the shape is different:
+
+  | Tier | List | 6-month intro | Seat minimum |
+  |---|---|---|---|
+  | Basic | **$19** | Free | new customers only |
+  | Essential | **$59** | $39 | **min 5 users** |
+  | Professional | **$99** | $79 | **min 5 users** |
+  | Enterprise | **$139** | $119 | **min 10 users** |
+
+  All per user/mo. Vendor footnote verbatim: *"Special Introductory Pricing currently available in limited quantities to new customers only, and available for the first 6 months of service."* **The figures in our 2026-07-24 entry were the promo column, not the list column**, mirrored from a GetApp listing that still shows the old tier names (CRM Only / Express / Professional / Enterprise) despite claiming an August 2026 update. Treat that GetApp page as stale.
+
+  **The seat minimums are the real change in effective cost.** Professional at the 5-seat floor is **$495/mo list**, which reprices ProDBX from "cheapest per-seat option in Track 4" to "more expensive than Poologics for a small builder." Also published: 1,000 emails/mo free then $0.004 each; 100 SMS/mo free then $0.03 each.
+- **I (corrected):** `notably no QuickBooks` **→ wrong as of 2026-08-28.** A [QuickBooks integration](https://prodbx.com/quickbooks/) exists, but it is thin and they say so themselves: *"The integration is one-way from ProDBX to QuickBooks"* and *"The integration does not transfer the complete ProDBX customer or job record."* Gated to Essential and above. DistributorConnect is still marketed and now names its feeds explicitly (*"Instantly connect with more than 1000 distributors across the US"*, with **Heritage Pool Supply Live Pricing** and **SCP/Poolcorp Live Pricing** as separate checked rows). Still no Zapier advertised. **Financing: still none** (no financing page in their 83-URL sitemap; their payments page covers ACH and cards only).
 - **J:** Match distributor-price-feed estimating + pool templates. It's design-blind, financing-blind, small. **Win:** out-present it — our design→proposal front end vs its weak customer layer.
 
-## 4.2 Poologics — poologics.com
+## 4.2 Poologics — poologics.com · **re-verified 2026-08-28; prices went up**
 
 - **A:** Pool-specific CRM + estimating + proposals + PM; positioned as the migration target for Pentair Pool Builder refugees. iOS/Android apps.
 - **C/D:** Business-only ("take-offs" = quantity takeoffs, not modeling). "Visual proposal editor" formats documents, not renders.
 - **E (their moat):** unlimited estimates/proposals on **local pricebooks + price groups + budget accounts**, custom templates, estimate cloning, milestone payment schedules, warranties, punch lists, project accounting (cost overruns, profitability).
 - **F:** Emailed proposals with **e-sign**, client comment threads, invoices + reminders. **Financing: none.**
-- **G:** No AI.
-- **H:** Flat **per-company**: $249/mo annual · $279 quarterly · $299 month-to-month; no setup fee.
-- **I:** **QuickBooks Online**, calendar sync, ApproveThis. Payments/API unknown.
+- **G:** No AI (re-confirmed 2026-08-28).
+- **H (moved: this is the only price increase found this pass):** `$249/mo annual · $279 quarterly · $299 month-to-month` **→ $279/mo annual (billed $3,348/yr, marketed as "Save 15% vs. Monthly Subscription") · $329/mo month-to-month.** **The quarterly tier is gone.** That is roughly **+12% annual and +10% monthly in about five weeks**, on the closest pure-play business rival in the market. Still flat per-company, no setup fee, but a cap is now published that was not there before: *"SOFTWARE SUBSCRIPTION INCLUDES UP TO 20 USERS - NEED MORE USERS? CONTACT US"*. Purchase is self-serve, not demo-gated: the buttons go straight to Stripe checkout.
+- **H, trial (corrected):** `free trial unknown` **→ there is no free trial.** What they sell instead is a *"two-week onboarding"* with billing deferred: *"Our streamlined two-week onboarding process ensures your account is fully customized and your team is confident before you ever get billed."* The FAQ states no refunds before term end. That is a real competitive read: **Poologics has bet on human onboarding over self-serve**, which is slow, expensive, and exactly the thing a browser-native product with a working free tier can undercut.
+- **H, do not confuse:** they also sell a Website Design & Build product at $139/mo annual or $159/mo monthly **plus a $1,999 one-time build fee**. That is not the software price and must never be quoted as such on a comparison page.
+- **I (verified 2026-08-28, expanded):** **QuickBooks Online** ("Quickbooks Online Bill Integration"), Google Mail, Google Calendar, Outlook Mail, **Zapier**, and **Heritage** (*"Real-time access to products, pricing, and availability through direct integration with Heritage's ordering system"*). E-sign confirmed on the estimating page ("Proposal E-signatures"). **Financing: still none** (the only hit sitewide is passive: *"Whether your customers are paying out of pocket or receiving financing..."*, which is accommodation, not an offering). **AI: still none** in the platform; the only AI-adjacent string on the site ("SEO/LLM Page Optimizations") belongs to the website add-on. Open API: **not established**, nothing published.
 - **J:** The closest pure-play business rival — match its pricebook/proposal flow. Design- and financing-blind. **Win:** bolt real pool design/visualization + embedded financing onto exactly this flow.
 
 ## 4.3 Hearth — gethearth.com (the financing-UX benchmark)

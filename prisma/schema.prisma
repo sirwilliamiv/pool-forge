@@ -18,15 +18,31 @@ enum OrgRole {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
+  id    String @id @default(cuid())
+  email String @unique
+
+  /// Who this is according to Google Identity Platform.
+  ///
+  /// Credentials live there rather than here: password hashing, reset emails,
+  /// verification, multi-factor and eventually Google sign-in are all its job.
+  /// What stays ours is everything Identity Platform has no opinion about, which
+  /// is the whole of this schema: which organisation somebody belongs to, what
+  /// they are allowed to do in it, and everything they have drawn.
+  identityUid String? @unique
+
+  /// Only for accounts made before Identity Platform, and null for every account
+  /// made after. Kept so an existing sign-in does not break on the day of the
+  /// switch, and so a migration can move them across on their next successful
+  /// password entry rather than by asking everybody to reset at once.
+  passwordHash String?
   name         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   memberships    OrganizationMember[]
   exports        Export[]             @relation("ExportGeneratedBy")
+  authTokens     AuthToken[]          @relation("AuthTokenUser")
+  invitesSent    AuthToken[]          @relation("AuthTokenInviter")
   auditLogs      CommandAuditLog[]
   voiceSessions  VoiceSession[]
   sourceImages   SourceImage[]        @relation("SourceImageUploadedBy")
@@ -79,6 +95,7 @@ model Organization {
   intakeSubmissions   IntakeSubmission[]
   siteCaptures        SiteCapture[]
   priceChangeRequests PriceChangeRequest[]
+  authTokens          AuthToken[]
 }
 
 model OrganizationMember {
@@ -93,6 +110,73 @@ model OrganizationMember {
   @@unique([userId, orgId])
   @@index([orgId])
   @@index([userId])
+}
+
+/// What a one-time link is for. Both kinds are a secret in an email that
+/// becomes a password, so they share a table and a lifecycle rather than
+/// growing two near-identical ones that drift apart.
+enum AuthTokenKind {
+  INVITE
+  PASSWORD_RESET
+}
+
+/// A single-use link that lets somebody set a password.
+///
+/// The token itself is never stored. Only its sha256 lives here, so a dump of
+/// this table grants nobody an account: the secret exists in the recipient's
+/// email and nowhere else. Same reason a password column holds a hash.
+model AuthToken {
+  id        String        @id @default(cuid())
+  kind      AuthTokenKind
+  /// Lower-cased, because an invite to Sam@example.com is an invite to sam@.
+  email     String
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  /// Invites only: which organisation, and what they will be able to do.
+  orgId String?
+  role  OrgRole?
+
+  /// Resets only: whose account.
+  userId String?
+
+  invitedById String?
+  createdAt   DateTime @default(now())
+
+  org       Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user      User?         @relation("AuthTokenUser", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User?         @relation("AuthTokenInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([email, kind])
+  @@index([orgId])
+  @@index([expiresAt])
+}
+
+/// Somebody who asked to be let in.
+///
+/// Pool Forge is invite only on purpose while it is early, so the front door
+/// has to do something better than refuse. This is what it collects, and it is
+/// a sales pipeline rather than a mailing list: who they are, how big they are,
+/// and what they use today.
+model WaitlistSignup {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  company   String?
+  phone     String?
+  /// Roughly how many people would use it, which is the question that decides
+  /// whether they are worth a call this month or next quarter.
+  teamSize  String?
+  /// What they estimate with today. The honest competitive research.
+  usesToday String?
+  note      String?
+  /// Where they came from, so a campaign can be told apart from word of mouth.
+  source    String?
+  invitedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
 }
 
 // ============================================================

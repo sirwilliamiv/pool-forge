@@ -16,6 +16,7 @@ import './categories/voice'
 import './categories/grade'
 import './categories/site'
 import './categories/auth'
+import './categories/team'
 import './categories/settings'
 import './categories/scene'
 import './categories/palette'
@@ -23,6 +24,7 @@ import './categories/import'
 import './categories/capture'
 import './categories/intake'
 import './categories/comment'
+import './categories/onboarding'
 
 let _initialized = false
 

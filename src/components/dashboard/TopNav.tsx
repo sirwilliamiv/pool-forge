@@ -39,6 +39,9 @@ export async function TopNav() {
             <Link href="/settings/company" className="text-muted-foreground hover:text-foreground">
               Company
             </Link>
+            <Link href="/settings/team" className="text-muted-foreground hover:text-foreground">
+              Team
+            </Link>
             <Link href="/docs/tools" className="text-muted-foreground hover:text-foreground">
               Docs
             </Link>

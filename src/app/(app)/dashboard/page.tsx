@@ -9,6 +9,9 @@ import { StatusFilter } from '@/components/dashboard/StatusFilter'
 import { NewProjectDialog } from '@/components/dashboard/NewProjectDialog'
 import { ProjectCardMenu } from '@/components/dashboard/ProjectCardMenu'
 import { StatusDropdown } from '@/components/dashboard/StatusDropdown'
+import { FirstRunChecklist } from '@/components/onboarding/FirstRunChecklist'
+import { loadFirstRun } from '@/modules/onboarding/first-run'
+import { seedNewOrganization } from '@/modules/onboarding/seed-organization'
 
 const VALID_STATUSES: ProjectStatus[] = [
   'DRAFT',
@@ -59,7 +62,15 @@ export default async function DashboardPage({
   const orgId = session.user.orgId
   if (!orgId) redirect('/login')
 
-  const sp = await searchParams
+  // A backstop, not the intended call site. `seedNewOrganization` belongs in
+  // whatever creates the Organization row (registration today, invite
+  // acceptance next), inside the same transaction. It is also called here
+  // because this is where a new organisation lands, and an organisation that
+  // reached the app without a price book would otherwise be told its first
+  // drawing cannot be priced. It does nothing once a book exists.
+  await seedNewOrganization(orgId)
+
+  const [sp, firstRun] = await Promise.all([searchParams, loadFirstRun(orgId)])
   const status = parseStatus(sp.status)
 
   // Default view hides ARCHIVED unless filter explicitly selects it.
@@ -88,6 +99,8 @@ export default async function DashboardPage({
         </div>
         <NewProjectDialog action={createProjectAction} />
       </div>
+
+      {firstRun.visible ? <FirstRunChecklist steps={firstRun.steps} /> : null}
 
       <StatusFilter />
 
