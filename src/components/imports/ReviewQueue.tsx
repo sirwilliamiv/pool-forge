@@ -43,10 +43,10 @@ export function ReviewQueue({ intent, unreviewed, onJump }: ReviewQueueProps) {
 
   if (scored === 0) {
     return (
-      <div className="flex items-start gap-2 rounded-pfMd border border-border bg-rowHover px-3 py-2 text-[11.5px] text-textMuted">
+      <div className="flex items-start gap-2 rounded-brand12 border border-theme-line bg-theme-card px-3 py-2 text-bodyS text-theme-muted">
         <CircleDashed className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
         <span>
-          <span className="font-medium text-foreground">Nothing to review yet.</span> No field has
+          <span className="font-medium text-theme-fg">Nothing to review yet.</span> No field has
           been read from this image, so none has a confidence score. Run the analysis, or fill the
           fields in yourself, and anything read with low confidence will be listed here.
         </span>
@@ -57,7 +57,7 @@ export function ReviewQueue({ intent, unreviewed, onJump }: ReviewQueueProps) {
   if (unreviewed.length === 0) {
     const reviewed = fieldsRequiringReview(intent).length
     return (
-      <div className="flex items-start gap-2 rounded-pfMd border border-emerald-600/20 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-800">
+      <div className="flex items-start gap-2 rounded-brand12 border border-brand-green/20 bg-tint-mint px-3 py-2 text-bodyS text-theme-fg">
         <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
         <span>
           {reviewed === 0
@@ -76,16 +76,14 @@ export function ReviewQueue({ intent, unreviewed, onJump }: ReviewQueueProps) {
   return (
     <section
       aria-label="Fields needing review"
-      className="overflow-hidden rounded-pfMd border border-pfError/30 bg-white shadow-pfSm"
+      className="overflow-hidden rounded-brand12 border border-brand-red/30 bg-theme-bg shadow-elevation1"
     >
-      <header className="flex items-center gap-2 border-b border-pfError/20 bg-errorSoft px-3 py-2">
-        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-700" aria-hidden />
-        <h3 className="text-[11.5px] font-semibold text-red-800">{heading}</h3>
-        <p className="ml-auto text-[10.5px] text-red-700">
-          {summarise(unreviewed)}
-        </p>
+      <header className="flex items-center gap-2 border-b border-brand-red/20 bg-tint-blush px-3 py-2">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-brand-red" aria-hidden />
+        <h3 className="text-bodyS font-semibold text-theme-fg">{heading}</h3>
+        <p className="ml-auto text-formLabel text-theme-fg">{summarise(unreviewed)}</p>
       </header>
-      <ul className="divide-y divide-borderLight">
+      <ul className="divide-y divide-theme-lineSoft">
         {unreviewed.map((path) => {
           const descriptor = fieldByPath(path)
           const group = groupForPath(path)
@@ -96,21 +94,21 @@ export function ReviewQueue({ intent, unreviewed, onJump }: ReviewQueueProps) {
                 type="button"
                 onClick={() => onJump(path)}
                 className={cn(
-                  'flex w-full items-center gap-2 px-3 py-2 text-left transition-colors',
-                  'hover:bg-errorSoft/60 focus:bg-errorSoft/60 focus:outline-none',
+                  'flex w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-brand ease-brand',
+                  'hover:bg-tint-blush/60 focus:bg-tint-blush/60 focus:outline-none',
                 )}
               >
                 <div className="min-w-0 flex-1">
-                  <div className="text-[11.5px] font-medium text-foreground">
+                  <div className="text-bodyS font-medium text-theme-fg">
                     {labelForPath(path)}
                   </div>
-                  <div className="mt-0.5 text-[10px] uppercase tracking-wide text-textMuted">
+                  <div className="mt-0.5 font-brandMono text-formLabel uppercase tracking-wide text-theme-muted">
                     {group === null ? 'Design intent' : INTENT_GROUP_META[group].label}
                     {score === null ? '' : ` · read at ${Math.round(score * 100)}%`}
                     {descriptor === undefined ? ' · no editor on this screen' : ''}
                   </div>
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-textFaint" aria-hidden />
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-theme-faint" aria-hidden />
               </button>
             </li>
           )

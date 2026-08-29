@@ -39,7 +39,7 @@ export function StartImportState({ project }: StartImportProps) {
   return (
     <EmptyShell
       project={project}
-      icon={<ScanLine className="h-6 w-6 text-pfAccentStrong" aria-hidden />}
+      icon={<ScanLine className="h-6 w-6 text-family-accent" aria-hidden />}
       title="Turn an image into a measured design"
       body="Upload a dimensioned sketch, a surveyor plat, a concept render, or a backyard photo. Pool Forge reads the shape, the features, and the materials, then hands you every number to confirm before anything reaches the project."
     >
@@ -98,7 +98,7 @@ export function AwaitingImagesState({ project, sessionId }: UploadStateProps) {
   return (
     <EmptyShell
       project={project}
-      icon={<ImagePlus className="h-6 w-6 text-pfAccentStrong" aria-hidden />}
+      icon={<ImagePlus className="h-6 w-6 text-family-accent" aria-hidden />}
       title="This import has no images yet"
       body={`Drag images in, or choose them. Up to ${MAX_IMAGES_PER_SESSION}, ${megabytes} MB each. JPEG, PNG, WebP, HEIC, and single-page PDF are read. Location data is stripped before anything is stored or analyzed.`}
       dropProps={dropProps}
@@ -117,13 +117,13 @@ export function AwaitingImagesState({ project, sessionId }: UploadStateProps) {
           not knowing it exists. */}
       <div
         className={
-          'flex w-full flex-col items-center gap-2 rounded-pfLg border-2 border-dashed px-6 py-6 transition ' +
+          'flex w-full flex-col items-center gap-2 rounded-brand16 border-2 border-dashed px-6 py-6 transition duration-brand ease-brand ' +
           (dragging
-            ? 'border-pfAccent bg-pfAccentSoft'
-            : 'border-border bg-transparent hover:border-pfAccent/50')
+            ? 'border-family-accent bg-family-tint'
+            : 'border-theme-line bg-transparent hover:border-family-accent/50')
         }
       >
-        <p className="text-[12.5px] text-textMuted">
+        <p className="text-bodyS text-theme-muted">
           {dragging ? 'Drop to add them' : 'Drag images here'}
         </p>
         <Button onClick={() => inputRef.current?.click()} disabled={uploading}>
@@ -138,7 +138,7 @@ export function AwaitingImagesState({ project, sessionId }: UploadStateProps) {
       {error !== null ? (
         <p
           role="alert"
-          className="max-w-md rounded-pfXs border border-pfError/25 bg-errorSoft px-3 py-2 text-[11.5px] text-red-800"
+          className="max-w-md rounded-brand4 border border-brand-red/25 bg-tint-blush px-3 py-2 text-bodyS text-theme-fg"
         >
           {error}
         </p>
@@ -245,24 +245,25 @@ function EmptyShell({
     // The whole panel is the target, not only the dashed box. Aiming at a small
     // rectangle is a needless miss when the page has nothing else on it.
     <div
+      data-accent="azure"
       {...dropProps}
       className={
-        'flex min-h-[70vh] items-center justify-center px-6 py-16 transition ' +
-        (dragging ? 'bg-pfAccentSoft/40' : '')
+        'flex min-h-[70vh] items-center justify-center bg-theme-bg px-6 py-16 transition duration-brand ease-brand ' +
+        (dragging ? 'bg-family-tint/40' : '')
       }
     >
       <div className="flex max-w-lg flex-col items-center gap-4 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-pfLg border border-pfAccent/25 bg-pfAccentSoft">
+        <div className="flex h-12 w-12 items-center justify-center rounded-brand16 border border-family-accent/25 bg-family-tint">
           {icon}
         </div>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-textMuted">{body}</p>
+          <h1 className="text-title3 font-medium text-theme-fg">{title}</h1>
+          <p className="mt-2 text-bodyL leading-relaxed text-theme-muted">{body}</p>
         </div>
         <div className="flex flex-col items-center gap-2">{children}</div>
         <Link
           href={`/projects/${project.id}`}
-          className="text-xs text-textMuted underline underline-offset-2 hover:text-foreground"
+          className="text-bodyS text-theme-muted underline underline-offset-2 hover:text-theme-fg"
         >
           Back to {project.name}
         </Link>

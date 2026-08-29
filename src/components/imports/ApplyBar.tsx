@@ -28,11 +28,11 @@ export interface ApplyBarProps {
 }
 
 const KIND_STYLES: Record<string, string> = {
-  pool: 'border-pfAccent/40 bg-pfAccentSoft text-sky-900',
-  deck: 'border-border bg-rowHover text-foreground',
-  enclosure: 'border-border bg-rowHover text-foreground',
-  feature: 'border-border bg-white text-foreground',
-  site: 'border-border bg-rowHover text-textMuted',
+  pool: 'border-family-accent/40 bg-family-tint text-theme-fg',
+  deck: 'border-theme-line bg-theme-card text-theme-fg',
+  enclosure: 'border-theme-line bg-theme-card text-theme-fg',
+  feature: 'border-theme-line bg-theme-bg text-theme-fg',
+  site: 'border-theme-line bg-theme-card text-theme-muted',
 }
 
 export function ApplyBar({ intent, gate, applying, error, onApply, onCalibrate }: ApplyBarProps) {
@@ -43,19 +43,19 @@ export function ApplyBar({ intent, gate, applying, error, onApply, onCalibrate }
   return (
     <footer
       aria-label="Apply preview"
-      className="border-t border-border bg-white px-5 py-3 shadow-[0_-1px_0_rgba(15,23,42,0.04)]"
+      className="border-t border-theme-line bg-theme-bg px-5 py-3"
     >
       <div className="flex items-start gap-5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3 text-pfAccentStrong" aria-hidden />
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-textMuted">
+            <Sparkles className="h-3 w-3 text-family-accent" aria-hidden />
+            <h3 className="font-brandMono text-formLabel uppercase text-theme-muted">
               Applying creates
             </h3>
           </div>
 
           {items.length === 0 ? (
-            <p className="mt-1.5 text-[11.5px] text-textMuted">
+            <p className="mt-1.5 text-bodyS text-theme-muted">
               Nothing has been extracted yet, so there is nothing to create.
             </p>
           ) : (
@@ -64,8 +64,8 @@ export function ApplyBar({ intent, gate, applying, error, onApply, onCalibrate }
                 <li
                   key={item.key}
                   className={cn(
-                    'rounded-full border px-2.5 py-1 text-[11.5px] leading-none',
-                    KIND_STYLES[item.kind] ?? 'border-border bg-white',
+                    'rounded-full border px-2.5 py-1 text-bodyS leading-none',
+                    KIND_STYLES[item.kind] ?? 'border-theme-line bg-theme-bg',
                     blockedKeys.has(item.key) && 'border-dashed opacity-55 line-through',
                   )}
                 >
@@ -78,8 +78,8 @@ export function ApplyBar({ intent, gate, applying, error, onApply, onCalibrate }
           <p className="sr-only">{describeApplyDiff(items)}</p>
 
           {blocked.length > 0 ? (
-            <p className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-800">
-              <AlertTriangle className="mt-px h-3 w-3 shrink-0" aria-hidden />
+            <p className="mt-2 flex items-start gap-1.5 text-formLabel text-theme-fg">
+              <AlertTriangle className="mt-px h-3 w-3 shrink-0 text-brand-orange" aria-hidden />
               <span>
                 Struck-through items need a scale before they can be placed. Nothing else on this
                 screen is blocked by it.
@@ -90,7 +90,7 @@ export function ApplyBar({ intent, gate, applying, error, onApply, onCalibrate }
           {error !== null ? (
             <p
               role="alert"
-              className="mt-2 rounded-pfXs border border-pfError/30 bg-errorSoft px-2 py-1.5 text-[11px] text-red-800"
+              className="mt-2 rounded-brand4 border border-brand-red/30 bg-tint-blush px-2 py-1.5 text-formLabel text-theme-fg"
             >
               {error}
             </p>
@@ -114,7 +114,7 @@ export function ApplyBar({ intent, gate, applying, error, onApply, onCalibrate }
               'Apply to project'
             )}
           </Button>
-          <p className="text-right text-[10px] leading-tight text-textFaint">
+          <p className="text-right font-brandMono text-formLabel leading-tight text-theme-faint">
             One undoable action. Nothing is written until you press this.
           </p>
         </div>
@@ -126,7 +126,7 @@ export function ApplyBar({ intent, gate, applying, error, onApply, onCalibrate }
 function BlockReason({ gate, onCalibrate }: { gate: ApplyGateResult; onCalibrate: () => void }) {
   if (gate.reasons.includes('applied')) {
     return (
-      <p className="text-right text-[11px] leading-tight text-textMuted">
+      <p className="text-right text-formLabel leading-tight text-theme-muted">
         This import has already been applied to the project.
       </p>
     )
@@ -134,7 +134,7 @@ function BlockReason({ gate, onCalibrate }: { gate: ApplyGateResult; onCalibrate
 
   if (gate.reasons.includes('empty')) {
     return (
-      <p className="text-right text-[11px] leading-tight text-textMuted">
+      <p className="text-right text-formLabel leading-tight text-theme-muted">
         Analyze an image first: there is nothing extracted to apply.
       </p>
     )
@@ -142,14 +142,14 @@ function BlockReason({ gate, onCalibrate }: { gate: ApplyGateResult; onCalibrate
 
   if (gate.reasons.includes('scale')) {
     return (
-      <div className="w-full rounded-pfXs border border-amber-500/40 bg-warnSoft px-2 py-1.5 text-right">
-        <p className="text-[11px] font-medium leading-tight text-amber-900">
+      <div className="w-full rounded-brand4 border border-brand-orange/40 bg-tint-sand px-2 py-1.5 text-right">
+        <p className="text-formLabel font-medium leading-tight text-theme-fg">
           Set the scale before applying.
         </p>
         <button
           type="button"
           onClick={onCalibrate}
-          className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
+          className="mt-1 inline-flex items-center gap-1 text-formLabel font-medium text-theme-fg underline underline-offset-2 hover:opacity-80"
         >
           <Ruler className="h-3 w-3" aria-hidden />
           Calibrate the image
@@ -159,7 +159,7 @@ function BlockReason({ gate, onCalibrate }: { gate: ApplyGateResult; onCalibrate
   }
 
   return (
-    <p className="text-right text-[11px] leading-tight text-red-700">
+    <p className="text-right text-formLabel leading-tight text-brand-red">
       {gate.unreviewed.length === 1
         ? '1 field needs your review'
         : `${gate.unreviewed.length} fields need your review`}
