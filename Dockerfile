@@ -38,6 +38,12 @@ COPY . .
 ARG NEXT_PUBLIC_APP_URL=""
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
+# Where the browser opens its voice socket. Absent, `VoiceDock` reports the
+# feature unavailable and renders nothing at all, which is correct and is
+# exactly what shipped: a working agent that nobody could see.
+ARG NEXT_PUBLIC_VOICE_RELAY_URL=""
+ENV NEXT_PUBLIC_VOICE_RELAY_URL=$NEXT_PUBLIC_VOICE_RELAY_URL
+
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_OUTPUT=standalone
 

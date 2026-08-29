@@ -78,6 +78,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.5",
     "three": "^0.169.0",
+    "ws": "^8.21.3",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.25.2",
@@ -114,8 +115,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5",
-    "wait-on": "^9.0.5",
-    "ws": "^8.21.3"
+    "wait-on": "^9.0.5"
   },
   "packageManager": "pnpm@10.7.1"
 }

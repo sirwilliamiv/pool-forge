@@ -24,6 +24,8 @@ BUILD_SA="pool-forge-build@${PROJECT_ID}.iam.gserviceaccount.com"
 REPO="pool-forge"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/web"
 BUCKET="${BUCKET:-${PROJECT_ID}-blobs}"
+RELAY_SERVICE="${RELAY_SERVICE:-pool-forge-voice-relay}"
+RELAY_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/voice-relay"
 
 BUILD=1
 DRY=0
@@ -140,6 +142,7 @@ REQUIRED_SECRETS=(
 # Optional. Each turns a feature on. Absent, the app runs without that feature
 # rather than failing to boot, which is the property the code already has.
 OPTIONAL_SECRETS=(
+  "VOICE_TICKET_SECRET=pool-forge-voice-ticket-secret"
   "IDENTITY_PLATFORM_API_KEY=pool-forge-identity-api-key"
   "RESEND_API_KEY=pool-forge-resend-api-key"
   "MONITORING_ALERT_WEBHOOK_URL=pool-forge-monitoring-webhook"
@@ -185,6 +188,69 @@ for pair in "${OPTIONAL_SECRETS[@]}"; do
   fi
 done
 
+
+# ---------------------------------------------------------------- voice relay
+# The browser cannot talk to Vertex: ephemeral tokens are a Gemini Developer API
+# feature, Vertex has no equivalent, and Vertex is mandatory because these are
+# customer job details and the consumer endpoint permits training on prompts.
+# Vertex auth is ADC, which must never reach a browser. So the relay is not a
+# preference between two designs, it is the only shape this can take.
+#
+# Its own service because a WebSocket is one long request: the timeout has to
+# outlast the longest call, and concurrency is literally the simultaneous-call
+# ceiling per instance.
+say "Voice relay"
+if exists gcloud secrets describe pool-forge-voice-ticket-secret --project "$PROJECT_ID"; then
+  if [ "$BUILD" = "1" ]; then
+    RELAY_TAG="$(git rev-parse --short HEAD 2>/dev/null || echo manual)"
+    run gcloud builds submit \
+      --project "$PROJECT_ID" \
+      --config services/voice-relay/cloudbuild.yaml \
+      --service-account "projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA}" \
+      --default-buckets-behavior=REGIONAL_USER_OWNED_BUCKET \
+      --substitutions "_IMAGE=${RELAY_IMAGE},_TAG=${RELAY_TAG}" \
+      .
+  fi
+
+  # One instance, deliberately: the resumption handle lives in this process, so
+  # a reconnect landing on a second instance would find no session to resume.
+  # Concurrency 4, because that is literally the simultaneous-call ceiling and
+  # the default of 80 is absurd for sessions holding audio buffers. An hour of
+  # timeout, because a WebSocket is one long request and it has to outlast the
+  # longest call.
+  run gcloud run deploy "$RELAY_SERVICE" \
+    --project "$PROJECT_ID" \
+    --region "$REGION" \
+    --image "${RELAY_IMAGE}:latest" \
+    --service-account "$RUNTIME_SA" \
+    --allow-unauthenticated \
+    --port 8080 \
+    --cpu 1 --memory 512Mi \
+    --min-instances 0 \
+    --max-instances 1 \
+    --concurrency 4 \
+    --timeout 3600 \
+    --set-secrets "VOICE_TICKET_SECRET=pool-forge-voice-ticket-secret:latest" \
+    --set-env-vars "GCP_PROJECT_ID=${PROJECT_ID},VERTEX_LOCATION=us-central1,VOICE_LIVE=1"
+
+  if [ "$DRY" = "0" ]; then
+    RELAY_HTTPS="$(gcloud run services describe "$RELAY_SERVICE" --region "$REGION" --project "$PROJECT_ID" \
+      --format 'value(status.url)' 2>/dev/null || true)"
+    # The browser opens a socket, not a page: https becomes wss, and the app is
+    # built with that rather than told it at run time.
+    VOICE_RELAY_URL="${RELAY_HTTPS/https:\/\//wss://}"
+    # The app has its own switch, and it is not the same one. The relay knowing
+    # it is live does nothing for `/api/voice/surfaces`, which refuses with a
+    # 503 unless the app is told too. Set on the relay alone, the Talk button
+    # appears, opens a socket, and then cannot find out what it is allowed to
+    # do: an error a user reads as the whole feature being broken.
+    VOICE_ENV=",VOICE_LIVE=1"
+    echo "  relay at ${RELAY_HTTPS}"
+  fi
+else
+  echo "  skipped: no pool-forge-voice-ticket-secret, so voice stays off"
+fi
+
 # ---------------------------------------------------------------- build
 # The public URL is compiled into the client bundle, so it has to be known
 # before the first build, when the service does not exist to be asked. Cloud Run
@@ -213,7 +279,7 @@ if [ "$BUILD" = "1" ]; then
     --config cloudbuild.yaml \
     --service-account "projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA}" \
     --default-buckets-behavior=REGIONAL_USER_OWNED_BUCKET \
-    --substitutions "_IMAGE=${IMAGE},_PUBLIC_URL=${PUBLIC_URL},_TAG=${TAG}" \
+    --substitutions "_IMAGE=${IMAGE},_PUBLIC_URL=${PUBLIC_URL},_TAG=${TAG},_VOICE_RELAY_URL=${VOICE_RELAY_URL:-}" \
     .
 else
   say "Skipping the build, redeploying the current image"
@@ -231,7 +297,7 @@ run gcloud run deploy "$SERVICE" \
   --cpu 1 --memory 1Gi \
   --min-instances 0 --max-instances 4 \
   --set-secrets "$SECRETS" \
-  --set-env-vars "NODE_ENV=production,APP_URL=${PUBLIC_URL},AUTH_URL=${PUBLIC_URL},AUTH_TRUST_HOST=true,GCP_PROJECT_ID=${PROJECT_ID},VERTEX_LOCATION=global,VERTEX_LIVE=1,BLOB_STORE_DRIVER=gcs,BLOB_STORE_BUCKET=${BUCKET},MONITORING_ENV=production"
+  --set-env-vars "NODE_ENV=production,APP_URL=${PUBLIC_URL},AUTH_URL=${PUBLIC_URL},AUTH_TRUST_HOST=true,GCP_PROJECT_ID=${PROJECT_ID},VERTEX_LOCATION=global,VERTEX_LIVE=1,BLOB_STORE_DRIVER=gcs,BLOB_STORE_BUCKET=${BUCKET},MONITORING_ENV=production${VOICE_ENV:-}"
 
 say "Applying database migrations"
 # Run as a job rather than at container start: every instance starting would

@@ -1,0 +1,32 @@
+# Build the relay image. A config rather than `builds submit --tag`, because the
+# Dockerfile is not at the root of the build context: the bundle is produced
+# from the repository's own source, so the context is the whole repo and the
+# Dockerfile has to be named explicitly.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: relay
+    args:
+      - build
+      - --file
+      - services/voice-relay/Dockerfile
+      - --tag
+      - ${_IMAGE}:${_TAG}
+      - --tag
+      - ${_IMAGE}:latest
+      - --cache-from
+      - ${_IMAGE}:latest
+      - .
+
+images:
+  - ${_IMAGE}:${_TAG}
+  - ${_IMAGE}:latest
+
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/pool-forge-prod/pool-forge/voice-relay
+  _TAG: 'manual'
+
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1800s
