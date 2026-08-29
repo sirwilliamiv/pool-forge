@@ -245,6 +245,10 @@ function shortPlanLabel(shape: Shape): string {
       return 'PAVER DECK'
     case ShapeKind.GRASS_AREA:
       return 'LAWN'
+    case ShapeKind.SKETCH_PATH:
+      // Whatever the drawer called it, in the sheet's voice. A sketch with no
+      // label says nothing rather than inventing a name for a bare line.
+      return shape.labelText?.trim().toUpperCase() ?? ''
     case ShapeKind.STENCIL:
       return labelForShape(shape).replace(/\s+[\d.]+×[\d.]+.*$/, '').toUpperCase()
   }

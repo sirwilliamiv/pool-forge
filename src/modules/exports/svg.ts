@@ -26,6 +26,9 @@ const PALETTE: Record<ShapeKind, SvgFill> = {
   [ShapeKind.BENCH]: { fill: '#d6b88e', stroke: '#7c5e2a' },
   [ShapeKind.SPA]: { fill: '#1d4ed8', stroke: '#1e3a8a', dash: '6 4' },
   [ShapeKind.STENCIL]: { fill: '#e5e7eb', stroke: '#374151' },
+  // A drawn line reads as a line: no fill, and dashed so it is legible as
+  // construction geometry rather than as another object on the sheet.
+  [ShapeKind.SKETCH_PATH]: { fill: 'none', stroke: '#334155', dash: '4 3' },
 }
 
 export function fillForKind(kind: ShapeKind): SvgFill {
@@ -75,6 +78,8 @@ export function labelForShape(shape: Shape): string {
       return `Pool ${wFt}×${hFt} ft`
     case ShapeKind.POLYGON_POOL:
       return `Freeform pool ${wFt}×${hFt} ft`
+    case ShapeKind.SKETCH_PATH:
+      return shape.labelText?.trim() ? shape.labelText.trim() : `Sketch ${wFt}×${hFt} ft`
     case ShapeKind.CONCRETE_DECK:
       return `Concrete deck ${wFt}×${hFt} ft`
     case ShapeKind.PAVER_DECK:
