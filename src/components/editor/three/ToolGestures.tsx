@@ -177,6 +177,11 @@ export function ToolGestures() {
         const next = nextMeasurePoints({ a: store.measureA, b: store.measureB }, p)
         store.setMeasureA(next.a)
         store.setMeasureB(next.b)
+        // Two points is a measurement, so the tool is done. Left armed, the
+        // third click silently threw the measurement away and started another,
+        // and the only way out was to go and find the Move button. The reading
+        // stays on screen; it is the tool that stops.
+        if (next.a && next.b) store.setActiveTool('tool.select')
         return
       }
 
@@ -199,12 +204,13 @@ export function ToolGestures() {
     }
 
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        const tool = normalizeToolId(useEditorStore.getState().activeTool)
-        if (tool === 'tool.measure') {
-          useEditorStore.getState().clearMeasure()
-        }
-      }
+      if (e.key !== 'Escape') return
+      const store = useEditorStore.getState()
+      const tool = normalizeToolId(store.activeTool)
+      if (tool === 'tool.measure') store.clearMeasure()
+      // Escape puts the pointer down, whatever was in hand. A tool that keeps
+      // hold of the canvas after Escape has no obvious way out at all.
+      if (tool !== 'tool.select' && tool !== 'tool.pan') store.setActiveTool('tool.select')
     }
 
     el.addEventListener('pointerdown', onPointerDown)

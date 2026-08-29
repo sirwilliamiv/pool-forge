@@ -102,6 +102,45 @@ test.describe('drawing in 2D', () => {
     await expect(page.getByRole('tab', { name: 'Plan' })).toHaveAttribute('aria-selected', 'true')
   })
 
+  // Finishing has to actually finish. Left armed, the click after a line
+  // starts another one and the tool never appears to end.
+  test('finishing a line puts the pointer back to Move', async ({ page }) => {
+    await signInAsDemo(page)
+    await openEditor(page)
+
+    await armTool(page, /^Line/)
+    await expect(page.getByRole('button', { name: /^Line/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await clickCanvas(page, 0.35, 0.55)
+    await clickCanvas(page, 0.55, 0.55)
+    await page.keyboard.press('Enter')
+
+    await expect(page.getByRole('button', { name: /^Move/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(page.getByRole('button', { name: /^Line/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  test('escape lets go of a drawing tool', async ({ page }) => {
+    await signInAsDemo(page)
+    await openEditor(page)
+
+    await armTool(page, /^Freehand/)
+    await page.keyboard.press('Escape')
+
+    await expect(page.getByRole('button', { name: /^Move/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
   test('the grid size control is in the toolbar and changes the grid', async ({ page }) => {
     await signInAsDemo(page)
     await openEditor(page)

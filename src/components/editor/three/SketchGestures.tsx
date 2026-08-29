@@ -96,6 +96,23 @@ export function SketchGestures() {
       void dispatch('sketch.create', { points, closed })
       useDrawStore.getState().clearDraft()
       setArcAnchor(null)
+      disarm()
+    }
+
+    /**
+     * Put the pointer back to Move once a path is finished.
+     *
+     * Without this the tool stays armed, so the click after finishing starts
+     * another line and there is no way out except finding the Move button:
+     * the tool never appears to end. Same rule as every drawing application
+     * worth copying, Figma included.
+     *
+     * Set directly rather than dispatched. This is the tail of the action the
+     * user already took, not a new one, and routing it through `tool.activate`
+     * would put a second audit row against every line anybody draws.
+     */
+    function disarm(): void {
+      useEditorStore.getState().setActiveTool('tool.select')
     }
 
     function finish(): void {
@@ -183,8 +200,12 @@ export function SketchGestures() {
 
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === 'Escape') {
+        // Escape abandons the path and the tool with it. Clearing the draft but
+        // staying armed left people pressing Escape repeatedly at a tool that
+        // would not let go.
         useDrawStore.getState().clearDraft()
         setArcAnchor(null)
+        disarm()
         return
       }
       if (event.key === 'Enter') {
