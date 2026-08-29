@@ -1,0 +1,1095 @@
+/* The brand bible, as CSS.
+ *
+ * `docs/brand-bible.md` is the document; this file is the implementation, and
+ * when the two disagree the document is right and this file is stale.
+ *
+ * Everything is scoped under `.mk` on purpose. The authenticated app still runs
+ * on the shadcn `--background` / `--pf-*` tokens in `globals.css`, and the two
+ * systems must not leak into each other until the app is converted. Nothing in
+ * here sets a bare element selector outside `.mk`.
+ *
+ * The one rule worth restating before editing: almost nothing is a literal
+ * colour. Surfaces, borders and hovers are all `color-mix` off `--fg`, so
+ * flipping the theme is two hex values and the rest follows.
+ */
+
+.mk {
+  /* ---- core spectrum ---- */
+  --brand-orange: #ff7237;
+  --brand-red: #ff3737;
+  --brand-purple: #874fff;
+  --brand-blue: #00b6ff;
+  --brand-green: #24cb71;
+  --brand-ui-blue: #0d99ff;
+
+  /* ---- accent tints ---- */
+  --tint-ice: #c7f8fb;
+  --tint-pale-blue: #e5f4ff;
+  --tint-mint: #cff7d3;
+  --tint-honeydew: #f3ffe3;
+  --tint-sage: #95b9ac;
+  --tint-sand: #fadca2;
+  --tint-blush: #ffc9c1;
+  --tint-lilac: #cb9fd2;
+  --tint-periwinkle: #c4baff;
+  --tint-orchid: #e28cf8;
+  --tint-aqua: #33dfdf;
+  --tint-slate-mist: #d2d9e2;
+
+  /* ---- theme: the two values everything else is mixed from ---- */
+  --bg: #ffffff;
+  --fg: #000000;
+
+  --fg-muted: color-mix(in oklch, var(--fg), transparent 46%);
+  --fg-faint: color-mix(in oklch, var(--fg), transparent 62%);
+  --border: color-mix(in oklch, var(--fg), transparent 84%);
+  --border-soft: color-mix(in oklch, var(--fg), transparent 92%);
+  --card-bg: color-mix(in oklch, var(--fg), transparent 96%);
+  --input-bg: color-mix(in oklch, var(--fg), transparent 92%);
+  --btn-transparent-bg: color-mix(in oklch, var(--fg), transparent 96%);
+  --btn-transparent-hover: color-mix(in oklch, var(--fg), transparent 84%);
+  --btn-primary-hover: color-mix(in oklch, var(--fg), transparent 20%);
+
+  /* Per-page accent family. Overridden by the `data-accent` blocks below. */
+  --accent: var(--brand-blue);
+  --tint: var(--tint-pale-blue);
+  --tint-2: var(--tint-ice);
+
+  /* ---- type ---- */
+  --font-sans: var(--font-display-sans), 'SF Pro Display', system-ui, helvetica, sans-serif;
+  --font-mono: var(--font-display-mono), 'SF Mono', menlo, monospace;
+
+  --size-display1: 4.5rem;
+  --size-display2: 2.75rem;
+  --size-title1: 2.25rem;
+  --size-title2: 2rem;
+  --size-title3: 1.5rem;
+  --size-title4: 1.375rem;
+  --size-bodyxl: 1.125rem;
+  --size-bodyl: 1rem;
+  --size-body: 0.875rem;
+  --size-badge: 0.75rem;
+  --size-formlabel: 0.6875rem;
+
+  --lh-none: 1;
+  --lh-tight: 1.1;
+  --lh-snug: 1.2;
+  --lh-normal: 1.3;
+  --lh-relaxed: 1.4;
+  --lh-loose: 1.45;
+
+  --ls-tight: -0.078125rem;
+  --ls-standard: -0.04125rem;
+  --ls-slight: -0.0075rem;
+  --ls-none: 0;
+  --ls-wide: 0.03125rem;
+
+  /* ---- elevation: both of them ---- */
+  --elevation-1: 0 0.25rem 2rem color-mix(in oklch, #000, transparent 90%);
+  --elevation-2: 0 1.5rem 4.375rem color-mix(in oklch, #000, transparent 90%);
+
+  /* ---- grid ---- */
+  --max-content-width: 90rem;
+  --grid-margin: clamp(1rem, 4vw, 2.5rem);
+  --block-padding: 5rem;
+  --nav-height: 4.5rem;
+
+  /* ---- signature effect ---- */
+  --ray-fan: repeating-conic-gradient(
+    var(--accent) 0deg,
+    var(--accent) 18deg,
+    transparent 18deg,
+    transparent 30deg
+  );
+
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--size-bodyl);
+  line-height: var(--lh-relaxed);
+  letter-spacing: var(--ls-slight);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Accent families. Per the house rules this is the whole differentiation
+   system: same chassis, same type, same button, different tint. */
+.mk[data-accent='azure'] {
+  --accent: #00b6ff;
+  --tint: #e5f4ff;
+  --tint-2: #c7f8fb;
+}
+.mk[data-accent='sandbar'] {
+  --accent: #ff7237;
+  --tint: #fadca2;
+  --tint-2: #f3ffe3;
+}
+/* Dusk has no pale member: lilac, periwinkle and sage all sit mid-tone, and a
+   tint field at full strength stops being a backdrop and starts being a
+   surface. Mixed toward white it is still the family, at the same weight the
+   other two fields carry. The pure hues stay available for the shapes. */
+.mk[data-accent='dusk'] {
+  --accent: #874fff;
+  --tint: color-mix(in oklch, #c4baff, #fff 52%);
+  --tint-2: #cb9fd2;
+}
+
+/* The element reset lives in a layer so it always loses to the component
+   classes below, which are unlayered. Without this, `.mk a` (one type, one
+   class) outranks `.mk-btn--primary` (one class) and every link-shaped button
+   in the system renders with inherited black text on a black fill. */
+@layer mk-reset {
+  .mk *,
+  .mk *::before,
+  .mk *::after {
+    box-sizing: border-box;
+  }
+
+  .mk h1,
+  .mk h2,
+  .mk h3,
+  .mk h4,
+  .mk p,
+  .mk ul,
+  .mk ol,
+  .mk figure {
+    margin: 0;
+  }
+
+  .mk ul,
+  .mk ol {
+    padding: 0;
+    list-style: none;
+  }
+
+  .mk a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+.mk :focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------------------ type */
+
+.mk-display1 {
+  font-size: clamp(2.5rem, 7vw, var(--size-display1));
+  line-height: var(--lh-none);
+  letter-spacing: var(--ls-tight);
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+.mk-display2 {
+  font-size: clamp(2rem, 5vw, var(--size-display2));
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-standard);
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+.mk-title1 {
+  font-size: clamp(1.75rem, 4vw, var(--size-title1));
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-standard);
+  font-weight: 500;
+}
+
+.mk-title3 {
+  font-size: var(--size-title3);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-standard);
+  font-weight: 500;
+}
+
+.mk-title4 {
+  font-size: var(--size-title4);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-standard);
+  font-weight: 500;
+}
+
+.mk-lead {
+  font-size: var(--size-bodyxl);
+  line-height: var(--lh-relaxed);
+  letter-spacing: var(--ls-slight);
+  color: var(--fg-muted);
+  text-wrap: pretty;
+}
+
+.mk-body {
+  font-size: var(--size-bodyl);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-muted);
+  text-wrap: pretty;
+}
+
+.mk-caption {
+  font-size: var(--size-body);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-muted);
+}
+
+/* Mono means metadata. It never sets a sentence. */
+.mk-label {
+  font-family: var(--font-mono);
+  font-size: var(--size-badge);
+  line-height: var(--lh-none);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  font-weight: 500;
+}
+
+.mk-label--ink {
+  color: var(--fg);
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.mk-shell {
+  width: 100%;
+  max-width: var(--max-content-width);
+  margin-inline: auto;
+  padding-inline: var(--grid-margin);
+}
+
+.mk-block {
+  padding-block: var(--block-padding);
+}
+
+.mk-block--major {
+  padding-block: 7.5rem;
+}
+
+.mk-rule {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------- buttons */
+
+.mk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.875rem;
+  padding-inline: 1.375rem;
+  border-radius: 0.5rem;
+  border: 0;
+  font-family: inherit;
+  font-size: var(--size-bodyl);
+  font-weight: 500;
+  letter-spacing: var(--ls-slight);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease-out,
+    box-shadow 0.18s ease-out,
+    color 0.18s ease-out;
+}
+
+.mk-btn--primary {
+  background: var(--fg);
+  color: var(--bg);
+}
+.mk-btn--primary:hover {
+  background: var(--btn-primary-hover);
+}
+
+.mk-btn--secondary {
+  background: transparent;
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.mk-btn--secondary:hover {
+  background: var(--btn-transparent-bg);
+}
+
+.mk-btn--transparent {
+  background: var(--btn-transparent-bg);
+  color: var(--fg);
+}
+.mk-btn--transparent:hover {
+  background: var(--btn-transparent-hover);
+}
+
+/* Text link with the arrow that means "there is more of this elsewhere". */
+.mk-textlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 500;
+  letter-spacing: var(--ls-slight);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.125rem;
+  transition: border-color 0.18s ease-out;
+}
+.mk-textlink:hover {
+  border-color: var(--fg);
+}
+
+/* ------------------------------------------------------------------- nav */
+
+.mk-nav {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  height: var(--nav-height);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.mk-nav__inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.mk-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: var(--size-bodyl);
+  letter-spacing: var(--ls-standard);
+}
+
+.mk-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-left: 0.5rem;
+}
+
+.mk-nav__link {
+  font-size: var(--size-bodyl);
+  letter-spacing: var(--ls-slight);
+  color: var(--fg-muted);
+  padding-block: 0.25rem;
+  border-bottom: 1px solid transparent;
+  transition: color 0.18s ease-out;
+}
+.mk-nav__link:hover {
+  color: var(--fg);
+}
+.mk-nav__link[aria-current='page'] {
+  color: var(--fg);
+  border-bottom-color: var(--fg);
+}
+
+.mk-nav__end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (max-width: 60rem) {
+  .mk-nav__links {
+    display: none;
+  }
+}
+
+.mk-main {
+  padding-top: var(--nav-height);
+}
+
+/* ------------------------------------------------------------------ hero */
+
+/* The one orchestrated moment. The stage pins for a viewport while the page
+   scrolls beneath it; the shapes fly in from the crop edges and the plate
+   rises into place. Nothing below the fold moves. */
+.mk-hero {
+  position: relative;
+  padding-top: 3.5rem;
+}
+
+.mk-hero__stage {
+  position: relative;
+}
+
+.mk-hero__layout {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 3rem;
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+
+/* Above this, the headline and the plate share one viewport, which is the
+   only way the pin reads as a pin: the composition holds still while the page
+   scrolls under it, rather than the plate hanging below the fold where the
+   hold has nothing to show. */
+@media (min-width: 75rem) and (min-height: 42rem) {
+  .mk-hero {
+    min-height: 160vh;
+  }
+  .mk-hero__stage {
+    position: sticky;
+    top: var(--nav-height);
+    min-height: calc(100vh - var(--nav-height));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Clears the announcement bar, which rides the bottom of the viewport. */
+    padding-block: 1.5rem 6.5rem;
+  }
+  .mk-hero__layout {
+    grid-template-columns: minmax(0, 27rem) minmax(0, 1fr);
+    gap: 3.5rem;
+    align-items: center;
+  }
+  .mk-hero .mk-display1 {
+    font-size: clamp(2.75rem, 3.9vw, 3.75rem);
+  }
+  .mk-hero__plate {
+    margin-top: 0;
+  }
+}
+
+.mk-hero__head {
+  position: relative;
+  z-index: 2;
+}
+
+.mk-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.mk-hero__lead {
+  margin-top: 1.5rem;
+  max-width: 34rem;
+}
+
+.mk-hero__actions {
+  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.mk-hero__plate {
+  position: relative;
+  z-index: 2;
+}
+
+/* Tint field: a pastel block behind the lower part of the plate, so the card
+   straddles the boundary between white and tint. Depth comes from the overlap,
+   never from shadow.
+ *
+ * Deliberately contained rather than full-bleed. A tint that escapes its own
+ * column paints over whatever sibling was laid out beside it, because the
+ * element is later in the DOM and its whole stacking context lands on top —
+ * a negative z-index on the pseudo-element does not save you. The hero gets a
+ * full-width band a different way: `.mk-hero__tint`, which sits in the
+ * background layer with the shapes rather than inside the plate. */
+.mk-tintfield {
+  position: relative;
+}
+
+.mk-tintfield::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: -1.5rem;
+  right: -1.5rem;
+  top: 34%;
+  bottom: -2rem;
+  background: var(--tint);
+}
+
+/* Everything real in a tint field sits above its own band. */
+.mk-tintfield > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* The hero band, in the background layer where it cannot reach the headline. */
+.mk-hero__tint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44%;
+  background: var(--tint);
+}
+
+/* Abstract accents. Hard-edged, flat, full saturation, and cropped by the
+   viewport edge rather than sitting politely inside it. */
+.mk-shapes {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mk-shape {
+  position: absolute;
+  display: block;
+}
+
+/* Below the two-column hero the shapes have nowhere to crop to: a stacked
+   layout puts the headline across the full width, so a shape big enough to run
+   off the edge is also big enough to sit under the copy. The tint band stays,
+   the shapes go. */
+@media (max-width: 74.9375rem) {
+  .mk-shape {
+    display: none;
+  }
+}
+
+.mk-shape--bite {
+  -webkit-mask-image: radial-gradient(circle at 0 0, transparent 0 55%, #000 55%);
+  mask-image: radial-gradient(circle at 0 0, transparent 0 55%, #000 55%);
+}
+
+.mk-shape--petal {
+  border-radius: 100% 0 100% 0;
+}
+
+.mk-shape--check {
+  background-image:
+    conic-gradient(var(--shape-color) 0 25%, transparent 0 50%, var(--shape-color) 0 75%, transparent 0);
+  background-size: 1.5rem 1.5rem;
+}
+
+.mk-shape--fan {
+  border-radius: 50%;
+  background: var(--ray-fan);
+}
+
+.mk-shape--bar {
+  border-radius: 999px;
+}
+
+/* Ray fan as a section marker: the twelve-spoke starburst, small. */
+.mk-fan {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--ray-fan);
+  flex: none;
+}
+
+.mk-fan--lg {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+/* ---------------------------------------------------------------- plates */
+
+/* The base plane. Flat: no shadow, hairline border only. */
+.mk-plate {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.mk-plate__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.mk-plate__dots {
+  display: flex;
+  gap: 0.3125rem;
+}
+.mk-plate__dots span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.mk-plate__body {
+  padding: 1.25rem;
+}
+
+/* Picture-in-picture: one inset panel overlapping the lower-right corner and
+   breaking the frame edge. This is the only place elevation-2 is used, and
+   there is exactly one per composition. */
+.mk-pip {
+  position: relative;
+}
+
+.mk-pip__inset {
+  position: absolute;
+  right: -1rem;
+  bottom: -2rem;
+  width: min(22rem, 78%);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: var(--elevation-2);
+  z-index: 3;
+}
+
+@media (max-width: 48rem) {
+  .mk-pip__inset {
+    position: static;
+    width: 100%;
+    margin-top: 1rem;
+    box-shadow: var(--elevation-1);
+  }
+}
+
+.mk-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mk-panel__body {
+  padding: 0.5rem 1rem 1rem;
+}
+
+/* A row of label / value, the shape almost every panel in the app takes. */
+.mk-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.5rem;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--size-body);
+}
+.mk-row:last-child {
+  border-bottom: 0;
+}
+.mk-row__label {
+  color: var(--fg-muted);
+}
+.mk-row__value {
+  font-family: var(--font-mono);
+  font-size: var(--size-badge);
+  letter-spacing: var(--ls-wide);
+  color: var(--fg);
+  white-space: nowrap;
+}
+.mk-row__value--total {
+  font-size: var(--size-bodyl);
+  letter-spacing: var(--ls-slight);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------- content */
+
+.mk-sectionhead {
+  max-width: 44rem;
+}
+
+.mk-sectionhead__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.mk-sectionhead__lead {
+  margin-top: 1rem;
+}
+
+/* The 1px gap is the hairline, so the grid's own background shows through
+   between cells. That means the column count has to divide the cell count
+   exactly, or the empty tracks in the last row render as grey blocks. Hence
+   explicit counts rather than `auto-fit`: every grid is filled by
+   construction. */
+.mk-grid {
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  overflow: hidden;
+  margin-top: 3rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 44rem) {
+  .mk-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 68rem) {
+  .mk-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .mk-grid--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.mk-cell {
+  background: var(--bg);
+  padding: 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mk-cell__title {
+  font-size: var(--size-title4);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-standard);
+  font-weight: 500;
+}
+
+.mk-cell__body {
+  font-size: var(--size-body);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-muted);
+  text-wrap: pretty;
+}
+
+.mk-cell__meta {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+/* Two-column split: prose left, plate right. */
+.mk-split {
+  display: grid;
+  gap: 3rem;
+  align-items: center;
+  grid-template-columns: 1fr;
+  margin-top: 3rem;
+}
+
+@media (min-width: 62rem) {
+  .mk-split {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 4.5rem;
+  }
+  .mk-split--flip > :first-child {
+    order: 2;
+  }
+}
+
+.mk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+
+.mk-list__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.875rem;
+  align-items: start;
+}
+
+.mk-list__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 0.5rem;
+  flex: none;
+}
+
+.mk-list__text {
+  font-size: var(--size-bodyl);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-muted);
+}
+.mk-list__text strong {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+/* The honesty block. Every claim on these pages is something the app does
+   today, which only means anything if the gaps are named just as plainly. */
+.mk-gaps {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 2.5rem;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 56rem) {
+  .mk-gaps {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 4rem;
+    padding: 3rem;
+  }
+}
+
+.mk-gaps__list {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  align-content: start;
+}
+
+.mk-gaps__item {
+  display: flex;
+  gap: 0.625rem;
+  align-items: baseline;
+  font-size: var(--size-body);
+  color: var(--fg-muted);
+}
+
+.mk-gaps__item::before {
+  content: '×';
+  font-family: var(--font-mono);
+  color: var(--fg-faint);
+  flex: none;
+}
+
+/* Cross-links to the other two pages. */
+.mk-next {
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+
+.mk-next__card {
+  background: var(--bg);
+  padding: 2.5rem var(--grid-margin);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition:
+    background 0.18s ease-out,
+    color 0.18s ease-out;
+}
+
+/* Hovering a read-next card runs the core spectrum through it, a hue at a
+   time. Hard steps rather than a blend: the spectrum is meant to read as five
+   flat colours, and interpolating between them lands on the muddy midpoints
+   the palette exists to avoid.
+ *
+ * The foreground flips with the background because these are the saturated
+ * hues, not tints. Black on the purple is unreadable, white on the green and
+ * the orange is nearly as bad, so each step carries its own ink. */
+.mk-next__card:hover {
+  animation: mk-spectrum 3.75s steps(1, end) infinite;
+}
+
+@keyframes mk-spectrum {
+  0% {
+    background: #ff7237;
+    color: #000;
+  }
+  20% {
+    background: #ff3737;
+    color: #000;
+  }
+  40% {
+    background: #874fff;
+    color: #fff;
+  }
+  60% {
+    background: #00b6ff;
+    color: #000;
+  }
+  80% {
+    background: #24cb71;
+    color: #000;
+  }
+}
+
+/* The muted metadata line has to come with it, or it stays grey on orange. */
+.mk-next__card:hover .mk-label,
+.mk-next__card:hover .mk-caption {
+  color: inherit;
+  opacity: 0.72;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-next__card:hover {
+    animation: none;
+    background: #00b6ff;
+    color: #000;
+  }
+}
+
+/* --------------------------------------------------- announcement bar */
+
+/* The one full-bleed colour in the system. Sticky rather than fixed, so it
+   rides the bottom of the viewport and then comes to rest above the footer
+   instead of sitting on top of it forever. */
+.mk-announce {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  background: var(--brand-green);
+  color: #000;
+}
+
+.mk-announce__inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-block: 0.875rem;
+}
+
+.mk-announce__text {
+  font-size: var(--size-bodyl);
+  letter-spacing: var(--ls-slight);
+}
+
+.mk-announce__cta {
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  padding-inline: 1rem;
+  border-radius: 999px;
+  background: #000;
+  color: var(--brand-green);
+  font-size: var(--size-body);
+  font-weight: 500;
+  transition: opacity 0.18s ease-out;
+}
+.mk-announce__cta:hover {
+  opacity: 0.85;
+}
+
+.mk-announce__dismiss {
+  margin-left: auto;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  color: inherit;
+  border-radius: 999px;
+}
+.mk-announce__dismiss:hover {
+  background: color-mix(in oklch, #000, transparent 88%);
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.mk-footer {
+  padding-block: 3.5rem 4rem;
+}
+
+.mk-footer__inner {
+  display: grid;
+  gap: 2.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 48rem) {
+  .mk-footer__inner {
+    grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr));
+    gap: 3rem;
+  }
+}
+
+.mk-footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.mk-footer__link {
+  font-size: var(--size-body);
+  color: var(--fg-muted);
+  transition: color 0.18s ease-out;
+}
+.mk-footer__link:hover {
+  color: var(--fg);
+}
+
+.mk-footer__fine {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  justify-content: space-between;
+}
+
+/* ---------------------------------------------------- drawing primitives */
+
+/* Plan-sheet ink. The plates are drawn, not screenshotted, so these are the
+   only colours the drawings use. */
+/* `fill: none` is not optional here. An SVG path defaults to a black fill, so
+   an L-shaped leader line renders as a filled triangle rather than as two
+   strokes, which is a very loud way to find out. */
+.mk-ink-line {
+  fill: none;
+  stroke: color-mix(in oklch, var(--fg), transparent 20%);
+}
+.mk-ink-thin {
+  fill: none;
+  stroke: color-mix(in oklch, var(--fg), transparent 62%);
+}
+.mk-ink-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  fill: color-mix(in oklch, var(--fg), transparent 40%);
+}
+.mk-ink-label--ink {
+  fill: var(--fg);
+}
+
+/* ---------------------------------------------------------------- motion */
+
+@media (prefers-reduced-motion: no-preference) {
+  .mk-anim-plate {
+    animation: mk-rise 0.9s cubic-bezier(0.16, 0.84, 0.32, 1) 0.25s backwards;
+  }
+  .mk-anim-head {
+    animation: mk-settle 0.7s cubic-bezier(0.16, 0.84, 0.32, 1) backwards;
+  }
+  .mk-anim-shape {
+    animation: mk-fly 0.85s cubic-bezier(0.16, 0.84, 0.32, 1) backwards;
+  }
+}
+
+@keyframes mk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(3rem);
+  }
+}
+
+@keyframes mk-settle {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
+
+@keyframes mk-fly {
+  from {
+    opacity: 0;
+    transform: translate(var(--fly-x, 0), var(--fly-y, 0));
+  }
+}

@@ -50,7 +50,7 @@ export function PoolShapePicker() {
           aria-label="Pool shape"
           aria-pressed={active}
           className={cn(
-            'group relative flex h-9 w-9 items-center justify-center rounded-pfSm transition focus:outline-none focus:ring-2 focus:ring-pfAccent',
+            'group relative flex h-8 w-8 items-center justify-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-pfAccent',
             active
               ? 'bg-foreground text-white'
               : 'text-textMuted hover:bg-rowHover hover:text-foreground',
@@ -59,7 +59,7 @@ export function PoolShapePicker() {
           <Square className="h-4 w-4" aria-hidden />
           <span
             className={cn(
-              'pointer-events-none absolute bottom-0.5 right-0.5 font-mono text-[8px]',
+              'pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 font-mono text-[8px] leading-none',
               active ? 'text-white/70' : 'text-textFaint',
             )}
           >
@@ -67,7 +67,7 @@ export function PoolShapePicker() {
           </span>
           <ChevronDown
             className={cn(
-              'pointer-events-none absolute -bottom-0.5 right-0.5 h-2.5 w-2.5',
+              'pointer-events-none absolute bottom-0 right-0 h-2.5 w-2.5',
               active ? 'text-white/70' : 'text-textFaint',
             )}
             aria-hidden
