@@ -10,6 +10,7 @@ import { fillPage, type FillRequest } from '@/modules/editor/page-fill'
 import { readPage } from '@/modules/editor/page-read'
 import { screenForPath } from '@/modules/voice/scope'
 import { useVoiceSession } from '@/modules/voice/client/useVoiceSession'
+import { VoiceTranscript } from './VoiceTranscript'
 
 interface ClickReport {
   label: string
@@ -140,18 +141,7 @@ export function VoiceDock() {
     <>
       <DestructiveConfirm request={pendingConfirm} onDecide={decide} />
       <div className="pointer-events-none fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
-      {transcript.length > 0 && live && (
-        <div className="pointer-events-auto max-h-64 w-80 overflow-y-auto rounded-lg border border-slate-200 bg-white/95 p-3 text-sm shadow-lg backdrop-blur">
-          {transcript.map(line => (
-            <p
-              key={line.id}
-              className={line.role === 'user' ? 'mb-1 text-slate-900' : 'mb-1 text-slate-500'}
-            >
-              {line.text}
-            </p>
-          ))}
-        </div>
-      )}
+      {live ? <VoiceTranscript lines={transcript} /> : null}
 
       {error && (
         <p className="pointer-events-auto max-w-80 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 shadow">
