@@ -108,7 +108,7 @@ export function IntakeLinksPanel({ links }: { links: IntakeLinkView[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border bg-card p-4">
+      <div className="rounded-brand16 border border-theme-line bg-theme-bg p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1.5">
             <Label htmlFor="intake-label">New link label</Label>
@@ -127,43 +127,43 @@ export function IntakeLinksPanel({ links }: { links: IntakeLinkView[] }) {
             Create link
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-bodyS text-theme-muted">
           The label is for you. Customers only ever see your company name.
         </p>
       </div>
 
       {error !== null && (
-        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p role="alert" className="rounded-brand bg-[color-mix(in_oklch,var(--brand-red),transparent_88%)] px-3 py-2 text-bodyS text-brand-red">
           {error}
         </p>
       )}
 
       {links.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-brand16 border border-dashed border-theme-line p-10 text-center text-bodyS text-theme-muted">
           No upload links yet. Create one and send it to a customer.
         </div>
       ) : (
         <ul className="space-y-3">
           {links.map((link) => (
-            <li key={link.id} className="rounded-lg border bg-card p-4">
+            <li key={link.id} className="rounded-brand16 border border-theme-line bg-theme-bg p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate font-medium">{link.label}</span>
+                    <span className="truncate text-bodyL font-medium text-theme-fg">{link.label}</span>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
+                      className={`rounded-brand px-2 py-0.5 font-brandMono text-formLabel uppercase ${
                         link.active
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-slate-200 text-slate-600'
+                          ? 'bg-tint-honeydew text-brand-green'
+                          : 'bg-theme-card text-theme-muted'
                       }`}
                     >
                       {link.active ? 'Active' : 'Off'}
                     </span>
                   </div>
-                  <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                  <p className="mt-1 break-all font-brandMono text-formLabel text-theme-muted">
                     {link.url}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 font-brandMono text-formLabel text-theme-muted">
                     {link.submissionCount} submission{link.submissionCount === 1 ? '' : 's'}
                     {' · created '}
                     {link.createdAt}
