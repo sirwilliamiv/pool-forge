@@ -1,0 +1,252 @@
+/* The brand bible as tokens, available everywhere.
+ *
+ * `docs/brand-bible.md` is the document; this file is the single definition of
+ * every value in it. When the two disagree the document is right and this file
+ * is stale. Nothing else in the codebase may re-declare one of these values:
+ * `src/app/(marketing)/marketing.css` aliases them, `tailwind.config.ts`
+ * exposes them as utilities, and `src/lib/brand.ts` mirrors the palette for the
+ * places that need a real hex in JavaScript (three.js materials, SVG fills,
+ * export documents).
+ *
+ * Imported by `globals.css`, so `:root` here means every page in the app, not
+ * just the marketing surface.
+ *
+ * ── What this file does not do ─────────────────────────────────────────────
+ *
+ * It does not convert the app. The shadcn `--background` / `--foreground` HSL
+ * triplets and the `--pf-*` spec tokens are still what the authenticated
+ * screens are built from, and they are untouched. This adds a second, parallel
+ * vocabulary so a screen can be moved over one at a time rather than all at
+ * once. Two token systems is the deliberate cost of not doing a big-bang
+ * restyle; the `--pf-*` set goes away when the last screen stops using it.
+ */
+
+:root {
+  /* ---- core spectrum ------------------------------------------------- */
+  /* Five hues. Green does double duty: it is the only one allowed to run
+     full-bleed as a surface, and it carries the announcement bar. The other
+     four live in the mark and in illustration. */
+  --brand-orange: #ff7237;
+  --brand-red: #ff3737;
+  --brand-purple: #874fff;
+  --brand-blue: #00b6ff;
+  --brand-green: #24cb71;
+  --brand-ui-blue: #0d99ff;
+
+  /* ---- ink & neutrals ------------------------------------------------ */
+  --ink-black: #000000;
+  --ink-warm: #141413;
+  --ink-slate: #697485;
+  --ink-mist: #d2d9e2;
+  --ink-paper: #faf9f5;
+  --ink-white: #ffffff;
+
+  /* ---- accent tints -------------------------------------------------- */
+  --tint-ice: #c7f8fb;
+  --tint-pale-blue: #e5f4ff;
+  --tint-mint: #cff7d3;
+  --tint-honeydew: #f3ffe3;
+  --tint-sage: #95b9ac;
+  --tint-sand: #fadca2;
+  --tint-blush: #ffc9c1;
+  --tint-lilac: #cb9fd2;
+  --tint-periwinkle: #c4baff;
+  --tint-orchid: #e28cf8;
+  --tint-aqua: #33dfdf;
+  --tint-slate-mist: #d2d9e2;
+
+  /* ---- theme ---------------------------------------------------------- */
+  /* The two values everything else is mixed from. Almost nothing below is a
+     literal colour: surfaces, borders and hover states are all `color-mix` off
+     `--theme-fg`, so inverting the theme is these two lines and the rest
+     follows. Do not hard-code a grey anywhere; derive it. */
+  --theme-bg: #ffffff;
+  --theme-fg: #000000;
+
+  --theme-fg-muted: color-mix(in oklch, var(--theme-fg), transparent 46%);
+  --theme-fg-faint: color-mix(in oklch, var(--theme-fg), transparent 62%);
+  --theme-border: color-mix(in oklch, var(--theme-fg), transparent 84%);
+  --theme-border-soft: color-mix(in oklch, var(--theme-fg), transparent 92%);
+  --theme-card-bg: color-mix(in oklch, var(--theme-fg), transparent 96%);
+  --theme-input-bg: color-mix(in oklch, var(--theme-fg), transparent 92%);
+  --theme-btn-primary-bg: var(--theme-fg);
+  --theme-btn-primary-hover: color-mix(in oklch, var(--theme-fg), transparent 20%);
+  --theme-btn-transparent-bg: color-mix(in oklch, var(--theme-fg), transparent 96%);
+  --theme-btn-transparent-hover: color-mix(in oklch, var(--theme-fg), transparent 84%);
+
+  /* ---- accent family --------------------------------------------------- */
+  /* The default. Set `data-accent` on any wrapper to change it for everything
+     inside; see the family list below.
+   *
+   * Named `--family-*` rather than the bible's bare `--accent` / `--tint` for
+   * two reasons, both learned the hard way. `--accent` is already shadcn's, and
+   * Tailwind flattens its `@layer base` into plain rules, so `globals.css`
+   * silently won at `:root` and `var(--accent)` resolved to an HSL triplet
+   * rather than a colour. And a bare `--tint` sitting beside `--tint-ice` and
+   * `--tint-sand` reads like one of the palette entries when it is the
+   * currently selected one. */
+  --family-accent: var(--brand-blue);
+  --family-tint: var(--tint-pale-blue);
+  --family-tint-2: var(--tint-ice);
+
+  /* ---- type ------------------------------------------------------------ */
+  /* The font variables are set by whichever layout loaded the faces. The
+     in-var fallback matters: an unset `var()` with no fallback makes the whole
+     `font-family` declaration invalid rather than falling through to the next
+     family, so a screen that has not loaded the faces would lose its type
+     entirely instead of rendering the system stack. */
+  --font-sans: var(--font-display-sans, 'SF Pro Display'), system-ui, helvetica, sans-serif;
+  --font-mono: var(--font-display-mono, 'SF Mono'), menlo, monospace;
+
+  --size-display1: 4.5rem;
+  --size-display2: 2.75rem;
+  --size-title1: 2.25rem;
+  --size-title2: 2rem;
+  --size-title3: 1.5rem;
+  --size-title4: 1.375rem;
+  --size-bodyxl: 1.125rem;
+  --size-bodyl: 1rem;
+  --size-body: 0.875rem;
+  --size-badge: 0.75rem;
+  --size-formlabel: 0.6875rem;
+
+  --lh-none: 1;
+  --lh-tight: 1.1;
+  --lh-snug: 1.2;
+  --lh-normal: 1.3;
+  --lh-relaxed: 1.4;
+  --lh-loose: 1.45;
+
+  /* The bigger the type, the tighter the tracking. Positive tracking is for
+     mono and uppercase labels only; sans display always takes negative. */
+  --ls-tight: -0.078125rem;
+  --ls-standard: -0.04125rem;
+  --ls-slight: -0.0075rem;
+  --ls-none: 0;
+  --ls-wide: 0.03125rem;
+
+  /* ---- elevation: both of them ----------------------------------------- */
+  /* Same 10% black, differing only in blur and offset. There is no mid step and
+     no coloured shadow anywhere in the system. `elevation-2` belongs to the one
+     overlapping element in a composition; if two things in a frame have
+     shadows, the hierarchy has already collapsed. */
+  --elevation-1: 0 0.25rem 2rem color-mix(in oklch, #000, transparent 90%);
+  --elevation-2: 0 1.5rem 4.375rem color-mix(in oklch, #000, transparent 90%);
+
+  /* ---- shape ------------------------------------------------------------ */
+  /* Eight steps, of which four get used: 8px for every button, 2–4px for chrome
+     details, 16–24px for media cards, full for avatars and icon buttons. */
+  --radius-2: 2px;
+  --radius-4: 4px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-24: 24px;
+  --radius-28: 28px;
+  --radius-full: 9999px;
+
+  /* ---- grid -------------------------------------------------------------- */
+  --max-content-width: 90rem;
+  --grid-max-width: 95rem;
+  --grid-gutter: 1rem;
+  --grid-margin: clamp(1rem, 4vw, 2.5rem);
+  --block-padding: 5rem;
+  --block-padding-major: 7.5rem;
+  --nav-height: 4.5rem;
+
+  /* ---- signature effect --------------------------------------------------- */
+  /* The twelve-spoke starburst. One declaration, hue swapped per family. */
+  --ray-fan: repeating-conic-gradient(
+    var(--family-accent) 0deg,
+    var(--family-accent) 18deg,
+    transparent 18deg,
+    transparent 30deg
+  );
+}
+
+/* ── Dark ─────────────────────────────────────────────────────────────────
+ *
+ * Two hex values. Everything derived from `--theme-fg` follows on its own,
+ * which is the entire point of the mix-don't-hard-code rule. Hooked to the
+ * `.dark` class the app's Tailwind config already switches on, and to an
+ * explicit `data-theme` for surfaces that set it directly.
+ */
+.dark,
+[data-theme='dark'] {
+  --theme-bg: #000000;
+  --theme-fg: #ffffff;
+  /* The one token that is not a straight inversion: a raised surface needs more
+     lift out of black than it needs out of white. */
+  --theme-card-bg: color-mix(in oklch, var(--theme-fg), transparent 92%);
+}
+
+/* ── Accent families ──────────────────────────────────────────────────────
+ *
+ * The whole differentiation system. A product area, a marketing page or a
+ * campaign keeps the identical chassis and changes only its tint family: no
+ * per-surface typeface, layout or button style. Set `data-accent` on any
+ * wrapper and everything inside it follows.
+ *
+ * `Inverse` is deliberately absent. It is a sub-brand rather than a variant,
+ * and it wants a charcoal ground and its own type rendering, so it does not
+ * belong in a list you can switch into with one attribute.
+ */
+[data-accent='signal'] {
+  --family-accent: var(--brand-green);
+  --family-tint: var(--tint-aqua);
+  --family-tint-2: var(--tint-lilac);
+}
+[data-accent='azure'] {
+  --family-accent: var(--brand-blue);
+  --family-tint: var(--tint-pale-blue);
+  --family-tint-2: var(--tint-ice);
+}
+[data-accent='vapour'] {
+  --family-accent: var(--brand-blue);
+  --family-tint: var(--tint-mint);
+  --family-tint-2: var(--tint-pale-blue);
+}
+[data-accent='drift'] {
+  --family-accent: var(--brand-blue);
+  --family-tint: var(--tint-pale-blue);
+  --family-tint-2: var(--tint-mint);
+}
+[data-accent='sandbar'] {
+  --family-accent: var(--brand-orange);
+  --family-tint: var(--tint-sand);
+  --family-tint-2: var(--tint-honeydew);
+}
+/* Dusk has no pale member: lilac, periwinkle and sage all sit mid-tone, and a
+   tint field at full strength stops being a backdrop and starts being a
+   surface. Mixed toward white it is still the family, at the weight the other
+   fields carry. The pure hues stay available for illustration. */
+[data-accent='dusk'] {
+  --family-accent: var(--brand-purple);
+  --family-tint: color-mix(in oklch, var(--tint-periwinkle), #fff 52%);
+  --family-tint-2: var(--tint-lilac);
+}
+[data-accent='sage'] {
+  --family-accent: var(--tint-sage);
+  --family-tint: color-mix(in oklch, var(--tint-sage), #fff 62%);
+  --family-tint-2: var(--tint-honeydew);
+}
+[data-accent='meadow'] {
+  --family-accent: var(--tint-sage);
+  --family-tint: var(--tint-honeydew);
+  --family-tint-2: var(--tint-mint);
+}
+[data-accent='bloom'] {
+  --family-accent: var(--tint-orchid);
+  --family-tint: var(--tint-blush);
+  --family-tint-2: var(--tint-lilac);
+}
+[data-accent='frost'] {
+  --family-accent: var(--brand-ui-blue);
+  --family-tint: var(--tint-ice);
+  --family-tint-2: var(--tint-slate-mist);
+}
+[data-accent='neutral'] {
+  --family-accent: var(--ink-slate);
+  --family-tint: var(--tint-slate-mist);
+  --family-tint-2: var(--ink-paper);
+}
