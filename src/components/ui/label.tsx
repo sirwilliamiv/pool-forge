@@ -5,8 +5,12 @@ import * as LabelPrimitive from '@radix-ui/react-label'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
+// Brand bible: mono means metadata, and a field label is metadata about the
+// field. 11px uppercase with positive tracking, which is the one place mono is
+// allowed to carry positive tracking and the one place it is allowed at all
+// outside badges, versions and dates.
 const labelVariants = cva(
-  'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
+  'font-brandMono text-formLabel uppercase text-theme-fg peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
 )
 
 const Label = React.forwardRef<
