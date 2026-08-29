@@ -18,7 +18,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PriceCategory, UnitType } from '@prisma/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -112,11 +112,11 @@ export function ProjectLineItems({ projectId, items, priceBookChoices }: Project
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle className="text-base">Added to this job</CardTitle>
-            <p className="pt-1 text-sm text-muted-foreground">
+            <CardTitle className="text-bodyXL font-medium">Added to this job</CardTitle>
+            <CardDescription className="pt-1">
               Walls, fences, electrical, permits and anything else the drawing cannot measure. What
               you add here is billed on this project&rsquo;s quote and prints on its documents.
-            </p>
+            </CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={() => setAddOpen(true)} disabled={pending}>
             <Plus className="mr-1 h-4 w-4" />
@@ -126,13 +126,13 @@ export function ProjectLineItems({ projectId, items, priceBookChoices }: Project
       </CardHeader>
       <CardContent className="pt-0">
         {items.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">
+          <p className="py-4 text-bodyS text-theme-muted">
             Nothing added yet. This job is priced entirely from the drawing and the price book.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <table className="w-full text-bodyS">
+              <thead className="border-b border-theme-line text-left font-brandMono text-badge uppercase text-theme-muted">
                 <tr>
                   <th className="px-3 py-2 font-medium">Item</th>
                   <th className="px-3 py-2 font-medium">Category</th>
@@ -144,26 +144,30 @@ export function ProjectLineItems({ projectId, items, priceBookChoices }: Project
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.id} className="border-b last:border-0">
+                  <tr key={item.id} className="border-b border-theme-line last:border-0">
                     <td className="px-3 py-2">
-                      <div className="font-medium">{item.name}</div>
+                      <div className="font-medium text-theme-fg">{item.name}</div>
                       {item.note ? (
-                        <div className="text-xs text-muted-foreground">{item.note}</div>
+                        <div className="text-bodyS text-theme-muted">{item.note}</div>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {categoryLabel(item.category)}
+                    <td className="px-3 py-2">
+                      <span className="font-brandMono text-badge uppercase text-theme-muted">
+                        {categoryLabel(item.category)}
+                      </span>
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatQuantity(item.quantity)}{' '}
-                      <span className="text-xs text-muted-foreground">
+                    <td className="px-3 py-2 text-right">
+                      <span className="font-brandMono tabular-nums text-theme-fg">
+                        {formatQuantity(item.quantity)}
+                      </span>{' '}
+                      <span className="font-brandMono text-badge uppercase text-theme-muted">
                         {unitLabel(item.unitType)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="px-3 py-2 text-right font-brandMono tabular-nums text-theme-fg">
                       {formatUsdCents(item.unitPrice)}
                     </td>
-                    <td className="px-3 py-2 text-right font-medium tabular-nums">
+                    <td className="px-3 py-2 text-right font-brandMono font-medium tabular-nums text-theme-fg">
                       {formatUsd(lineTotal(item))}
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -173,6 +177,7 @@ export function ProjectLineItems({ projectId, items, priceBookChoices }: Project
                         onClick={() => handleRemove(item)}
                         disabled={pending}
                         title={`Remove ${item.name}`}
+                        className="text-theme-muted hover:text-brand-red"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -182,10 +187,13 @@ export function ProjectLineItems({ projectId, items, priceBookChoices }: Project
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4} className="px-3 py-2 text-right text-xs uppercase tracking-wide text-muted-foreground">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-2 text-right font-brandMono text-badge uppercase text-theme-muted"
+                  >
                     Added to this job
                   </td>
-                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                  <td className="px-3 py-2 text-right font-brandMono font-semibold tabular-nums text-theme-fg">
                     {formatUsd(subtotal)}
                   </td>
                   <td />
@@ -319,10 +327,10 @@ function AddLineItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="bg-theme-bg border-theme-line sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add to this job</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-title3 font-medium">Add to this job</DialogTitle>
+          <DialogDescription className="text-bodyL text-theme-muted">
             Start from a rate in your price book, or type a one-off. Either way it bills on this
             project only.
           </DialogDescription>
@@ -429,8 +437,11 @@ function AddLineItemDialog({
           </div>
 
           {previewTotal !== null ? (
-            <p className="text-sm text-muted-foreground">
-              This adds <span className="font-medium text-foreground">{formatUsd(previewTotal)}</span>{' '}
+            <p className="text-bodyS text-theme-muted">
+              This adds{' '}
+              <span className="font-brandMono font-medium tabular-nums text-theme-fg">
+                {formatUsd(previewTotal)}
+              </span>{' '}
               to the quote, before tax.
             </p>
           ) : null}

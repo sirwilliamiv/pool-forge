@@ -239,11 +239,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="container py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/dashboard" className="hover:underline">
+    <div className="container space-y-8 py-10 bg-theme-bg text-theme-fg" data-accent="azure">
+      <div className="space-y-1">
+        <h1 className="text-title2 font-medium text-theme-fg">{project.name}</h1>
+        <p className="text-bodyS text-theme-muted">
+          <Link
+            href="/dashboard"
+            className="hover:text-theme-fg transition-colors duration-brand ease-brand"
+          >
             ← Back to projects
           </Link>
         </p>
