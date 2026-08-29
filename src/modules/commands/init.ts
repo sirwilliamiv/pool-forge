@@ -24,6 +24,7 @@ import './categories/import'
 import './categories/capture'
 import './categories/intake'
 import './categories/comment'
+import './categories/sketch'
 import './categories/onboarding'
 
 let _initialized = false

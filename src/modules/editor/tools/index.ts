@@ -1,5 +1,59 @@
 import type { Tool } from './types'
 
+const drawing2d: Tool[] = [
+  {
+    id: 'tool.line',
+    status: 'built',
+    name: 'Line',
+    icon: 'PenLine',
+    tooltip: 'Draw straight lines',
+    shortcut: 'p',
+    description:
+      'Click to place each corner of a straight path. Hold shift to lock a segment horizontal, vertical or to 45 degrees, and hold alt to step off the grid for one point. Double-click or press Enter to finish, backspace to take back the last corner, Escape to abandon it. Ending near where you started closes the path, which is what makes it an outline with an area rather than a line.',
+    category: 'drawing',
+    inputs: ['click positions on the ground plane'],
+    outputs: ['a SKETCH_PATH shape'],
+    sideEffects: ['adds a shape via sketch.create'],
+    errorStates: ['fewer than two points, which is not a path'],
+    undoBehavior: 'undoable as one shape',
+    voiceCommandExamples: ['draw the lot line', 'start a line'],
+  },
+  {
+    id: 'tool.curve',
+    status: 'built',
+    name: 'Curve',
+    icon: 'Spline',
+    tooltip: 'Draw an arc through three points',
+    shortcut: 'a',
+    description:
+      'Three clicks: where the arc starts, a point it passes through, and where it ends. The arc is stored as segments, so everything downstream (area, perimeter, the 3D footprint, the construction sheet) treats it the same as any other path. Three points in a line have no arc through them and become a straight segment.',
+    category: 'drawing',
+    inputs: ['three click positions'],
+    outputs: ['arc segments appended to the path'],
+    sideEffects: ['adds a shape via sketch.create'],
+    errorStates: ['collinear points, which degrade to a straight segment'],
+    undoBehavior: 'undoable as one shape',
+    voiceCommandExamples: ['draw a curve', 'curve the deck edge'],
+  },
+  {
+    id: 'tool.freehand',
+    status: 'built',
+    name: 'Freehand',
+    icon: 'Signature',
+    tooltip: 'Draw by dragging, then snap it to the grid',
+    shortcut: 'n',
+    description:
+      'Drag to draw. On release the path is simplified to the corners you actually meant, snapped to the current grid, and stripped of the duplicate points snapping creates. Hold alt while releasing to keep it off the grid. A loop that ends near where it began becomes a closed outline.',
+    category: 'drawing',
+    inputs: ['a pointer drag'],
+    outputs: ['a simplified, snapped SKETCH_PATH shape'],
+    sideEffects: ['adds a shape via sketch.create'],
+    errorStates: ['a drag too short to be a path'],
+    undoBehavior: 'undoable as one shape',
+    voiceCommandExamples: ['sketch the pool outline', 'draw freehand'],
+  },
+]
+
 const selection: Tool[] = [
   {
     id: 'tool.select',
@@ -987,6 +1041,7 @@ const toolbar: Tool[] = [
 
 export const TOOLS: Tool[] = [
   ...toolbar,
+  ...drawing2d,
   ...selection,
   ...drawing,
   ...transform,

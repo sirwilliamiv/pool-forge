@@ -1,6 +1,5 @@
-# Pool Forge Command Reference
-
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **98**.
+Wrote 115 commands to /Users/b/Desktop/code/Pool-forge/docs/commands.md
+s/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **115**.
 
 ## Project
 
@@ -334,6 +333,15 @@ Add a new line item to the active price book.
 - "Add a new price book item for salt cell maintenance."
 - "Add an upgrade for LED lighting."
 
+### `add.projectLineItem` — Add a line item to this job
+
+Put an amount on one project by hand: a retaining wall, a fence run, a permit fee, a panel upgrade. Nothing in a drawing measures these, so you say what it is, how many, and what it costs.
+
+**Voice examples:**
+- "Add a paver retaining wall to this job for nine thousand four hundred dollars."
+- "Put two thousand dollars of permit fees on this project."
+- "Add sixty feet of aluminium fence at forty-two dollars a foot."
+
 ### `generate.quote` — Generate quote
 
 Price the current design against the active price book and report the total. Read-only: it prices what is saved, it does not change anything.
@@ -344,6 +352,14 @@ Price the current design against the active price book and report the total. Rea
 - "How much is this pool?"
 - "Give me the total."
 
+### `remove.projectLineItem` — Remove a line item from this job
+
+Take a hand-entered amount back off this project. It stops billing immediately.
+
+**Voice examples:**
+- "Take the retaining wall off this job."
+- "Remove the permit fee."
+
 ### `select.equipment` — Select equipment
 
 Choose equipment options (heater, pump, sanitation, lighting, etc.) for the project.
@@ -352,6 +368,14 @@ Choose equipment options (heater, pump, sanitation, lighting, etc.) for the proj
 - "Add a Pentair salt system."
 - "Use the heat pump heater."
 - "Pick the premium light package."
+
+### `update.projectLineItem` — Change a line item on this job
+
+Change the name, quantity, price or note of an amount already added to this job.
+
+**Voice examples:**
+- "Change the retaining wall to eleven thousand dollars."
+- "Make the permit fee twenty-five hundred."
 
 ## Validation
 
@@ -460,6 +484,10 @@ Choose which saved scene new projects start from. Pass no template to go back to
 
 ## Auth
 
+### `auth.password.reset` — Set a new password
+
+Redeem a password link and set a new password on the account it belongs to.
+
 ### `auth.signOut` — Sign out
 
 Sign the current user out of the session.
@@ -468,11 +496,39 @@ Sign the current user out of the session.
 - "Sign me out."
 - "Log out."
 
+### `team.invite` — Invite somebody to the team
+
+Invite an email address to join this organisation with a role. Creates a single-use, expiring link; the caller supplies only the hash of the link it minted.
+
+### `team.invite.accept` — Accept an invite
+
+Redeem an invite link: create the account if the address is new, and join it to the inviting organisation with the role the invite carried.
+
+### `team.invite.revoke` — Cancel an invite
+
+Retire a pending invite so its link stops working.
+
+### `team.member.remove` — Remove somebody from the team
+
+Remove a member from this organisation. Their account and any other organisations they belong to are untouched.
+
+### `team.member.resetPassword` — Send a team member a password link
+
+Mint a single-use password link for a member, for an owner to pass on. The caller supplies only the hash of the link it minted.
+
+### `team.member.setRole` — Change what somebody can do
+
+Set a team member’s role in this organisation.
+
 ## Settings
 
 ### `settings.company.update` — Update company settings
 
 Save the organization business details that print on customer documents: name, branding, address, phone, email, contractor licence number, default sales tax, proposal validity window, payment schedule and proposal terms.
+
+### `settings.firstRun.dismiss` — Dismiss the setup checklist
+
+Hide the first-run setup checklist for this organization. The steps it names are not changed; the card simply stops being shown.
 
 ### `settings.update` — Update setting
 

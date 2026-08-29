@@ -10,6 +10,7 @@ import { Ground } from './Ground'
 import { Lighting } from './Lighting'
 import { RevealNewShapes } from './RevealNewShapes'
 import { SceneRoot } from './SceneRoot'
+import { SketchGestures } from './SketchGestures'
 import { SelectionHalo } from './SelectionHalo'
 import { SelectionHandles } from './SelectionHandles'
 import { SelectionLabel } from './SelectionLabel'
@@ -37,6 +38,7 @@ export function SceneCanvas() {
       <SelectionHandles />
       <SelectionLabel />
       <ToolGestures />
+      <SketchGestures />
       <CommentPins />
     </Canvas>
   )

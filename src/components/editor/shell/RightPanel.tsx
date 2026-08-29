@@ -13,6 +13,8 @@ import { focusRing, useFocusFlash } from './useFocusFlash'
 
 export interface RightPanelProps {
   selectionCardSlot?: ReactNode
+  /** Only rendered for a drawn path: what it is, and what it can become. */
+  sketchSlot?: ReactNode
   positionSlot?: ReactNode
   geometrySlot?: ReactNode
   materialSlot?: ReactNode
@@ -28,6 +30,7 @@ const TABS: { id: RightTab; label: string }[] = [
 
 export function RightPanel({
   selectionCardSlot,
+  sketchSlot,
   positionSlot,
   geometrySlot,
   materialSlot,
@@ -99,6 +102,7 @@ export function RightPanel({
         {rightTab === 'design' ? (
           <div className="flex flex-col">
             <Slot label="Selection card" node={selectionCardSlot} hero />
+            {sketchSlot}
             <Slot label="Position" node={positionSlot} />
             <Slot label="Geometry" node={geometrySlot} />
             <Slot label="Material / Finish" node={materialSlot} />

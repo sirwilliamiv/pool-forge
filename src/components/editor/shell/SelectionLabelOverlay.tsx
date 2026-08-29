@@ -14,6 +14,8 @@ function labelFor(shape: Shape | undefined): string {
       return 'Pool — Rectangle'
     case ShapeKind.POLYGON_POOL:
       return 'Pool · Freeform'
+    case ShapeKind.SKETCH_PATH:
+      return shape.labelText?.trim() ? shape.labelText.trim() : shape.closed ? 'Outline' : 'Line'
     case ShapeKind.CONCRETE_DECK:
       return 'Concrete deck'
     case ShapeKind.PAVER_DECK:

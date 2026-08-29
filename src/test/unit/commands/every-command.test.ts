@@ -52,6 +52,7 @@ import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useCommentsStore } from '@/modules/editor/state/commentsStore'
+import { useDrawStore } from '@/modules/editor/state/drawStore'
 import { buildFinishCatalog } from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useSurveyStore } from '@/modules/editor/state/surveyStore'
@@ -122,6 +123,7 @@ const STORES = {
   screenSelection: useScreenSelectionStore,
   save: useSaveStatusStore,
   comments: useCommentsStore,
+  draw: useDrawStore,
 }
 
 type Snapshot = Record<string, unknown>
@@ -234,6 +236,20 @@ async function must(id: string, input: unknown): Promise<Record<string, unknown>
   const result = await run(id, input)
   if (!result.ok) throw new Error(`${id} failed during setup: ${result.error}`)
   return result.data as Record<string, unknown>
+}
+
+/** Draw a closed square outline, the way the freehand tool would. */
+async function addSketch(closed = true): Promise<string> {
+  const data = await must('sketch.create', {
+    points: [
+      { x: 0, y: 0 },
+      { x: 120, y: 0 },
+      { x: 120, y: 120 },
+      { x: 0, y: 120 },
+    ],
+    closed,
+  })
+  return String(data.shapeId)
 }
 
 /** Add a shape the way a user would, and hand back its id. */
@@ -611,6 +627,44 @@ const EXERCISES: Record<string, Exercise> = {
   'comment.resolve': {
     kind: 'mutates',
     input: async () => ({ commentId: await addComment(), resolved: true }),
+  },
+
+  // ---------- sketch ----------
+  'sketch.create': {
+    kind: 'mutates',
+    undoLeaves: { paths: ['selection.selectedIds'], why: SELECTION_IS_A_POINTER },
+    input: async () => ({
+      points: [
+        { x: 0, y: 0 },
+        { x: 120, y: 0 },
+        { x: 120, y: 120 },
+      ],
+      closed: false,
+    }),
+  },
+  'sketch.label': {
+    kind: 'mutates',
+    input: async () => ({ id: await addSketch(), label: 'Lot line' }),
+  },
+  'sketch.toPool': {
+    kind: 'mutates',
+    undoLeaves: { paths: ['selection.selectedIds'], why: SELECTION_IS_A_POINTER },
+    input: async () => ({ id: await addSketch() }),
+  },
+  'sketch.toDeck': {
+    kind: 'mutates',
+    undoLeaves: { paths: ['selection.selectedIds'], why: SELECTION_IS_A_POINTER },
+    input: async () => ({ id: await addSketch(), surface: 'concrete' as const }),
+  },
+  'grid.set': {
+    kind: 'mutates',
+    input: async () => ({ spacing: 'small' }),
+    notUndoable: CHROME_NOT_DRAWING,
+  },
+  'grid.snap.toggle': {
+    kind: 'mutates',
+    input: async () => ({ on: false }),
+    notUndoable: CHROME_NOT_DRAWING,
   },
 
   // ---------- context ----------

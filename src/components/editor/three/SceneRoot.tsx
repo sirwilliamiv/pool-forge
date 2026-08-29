@@ -17,6 +17,7 @@ import { Coping } from './objects/Coping'
 import { Deck } from './objects/Deck'
 import { EquipmentPad } from './objects/EquipmentPad'
 import { GenericStencil } from './objects/GenericStencil'
+import { SketchPathObject } from './SketchPathObject'
 import { HouseWall } from './objects/HouseWall'
 import { LedLights } from './objects/LedLights'
 import { Loungers } from './objects/Loungers'
@@ -144,6 +145,8 @@ function renderShape(shape: Shape, shapes: Shape[]) {
     case ShapeKind.PAVER_DECK:
     case ShapeKind.GRASS_AREA:
       return <Deck shape={shape} cutouts={cutoutsFor(shape, shapes)} />
+    case ShapeKind.SKETCH_PATH:
+      return <SketchPathObject shape={shape} />
     case ShapeKind.STENCIL:
       return renderStencilShape(shape)
   }

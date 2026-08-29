@@ -33,7 +33,10 @@ import {
 } from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useViewStore, type FocusTarget } from '@/modules/editor/state/viewStore'
-import { ShapeKind, isPool, type Shape } from '@/modules/editor/state/shapes'
+import { ShapeKind, isPool, isSketchPath, type Shape } from '@/modules/editor/state/shapes'
+import { polygonArea, polygonBounds } from '@/lib/geometry/polygon-footprint'
+import { gridInches, type GridSpacingId, type Point } from '@/lib/geometry/drawing'
+import { useDrawStore } from '@/modules/editor/state/drawStore'
 import { depthOrderMessage } from '@/lib/commands/dimensions'
 import {
   PROPERTY_LINE_STENCIL,
@@ -283,6 +286,13 @@ function boundsOf(
 // register({...}) block under src/modules/commands/categories/.
 
 const HANDLER_IDS: string[] = [
+  // sketch category
+  'sketch.create',
+  'sketch.label',
+  'sketch.toPool',
+  'sketch.toDeck',
+  'grid.set',
+  'grid.snap.toggle',
   // shape category
   'add.shape',
   'select.shape',
@@ -1197,6 +1207,106 @@ export function ClientCommandHandlers() {
         return { commentId: input.commentId, resolved: input.resolved }
       },
     )
+
+    // ---------------------------------------------------------------- sketch
+    //
+    // A drawn path becomes a shape only when the drawing is finished, so these
+    // take the finished points and nothing about how they were produced. That
+    // keeps the line tool, the arc tool, the freehand drag, the palette and the
+    // voice agent all landing on one implementation.
+
+    registerClientHandler<
+      { points: Point[]; closed: boolean; label?: string },
+      { shapeId: string }
+    >('sketch.create', (input) => {
+      const bounds = polygonBounds(input.points)
+      const store = useShapesStore.getState()
+      // Points are stored relative to the shape origin, matching PolygonPool,
+      // so moving the path later never rewrites a single vertex. Everything is
+      // passed at birth rather than patched afterwards: addShape and
+      // updateShape each push their own history entry, and drawing one line
+      // must cost exactly one undo.
+      const relative = input.points.map((p) => ({ x: p.x - bounds.minX, y: p.y - bounds.minY }))
+      const opts: Parameters<typeof store.addShape>[3] = {
+        width: Math.max(1, bounds.maxX - bounds.minX),
+        height: Math.max(1, bounds.maxY - bounds.minY),
+        points: relative,
+        closed: input.closed,
+      }
+      if (input.label?.trim()) opts.labelText = input.label.trim()
+      const shapeId = store.addShape(ShapeKind.SKETCH_PATH, bounds.minX, bounds.minY, opts)
+      useSelectionStore.getState().select(shapeId)
+      return { shapeId }
+    })
+
+    registerClientHandler<{ id: string; label: string }, { id: string; label: string }>(
+      'sketch.label',
+      (input) => {
+        const shape = requireShape(input.id)
+        if (!isSketchPath(shape)) throw new Error('That is not a drawn path.')
+        useShapesStore
+          .getState()
+          .updateShape(input.id, { labelText: input.label } as Partial<Shape>)
+        return { id: input.id, label: input.label }
+      },
+    )
+
+    registerClientHandler<
+      { id: string; depthShallow?: number; depthDeep?: number },
+      { shapeId: string; areaSqft: number }
+    >('sketch.toPool', (input) => {
+      const shape = requireShape(input.id)
+      if (!isSketchPath(shape)) throw new Error('That is not a drawn path.')
+      // An open path has no inside. Refusing here, by name, beats extruding a
+      // squiggle into a pool with a nonsensical area and a price to match.
+      if (!shape.closed || shape.points.length < 3) {
+        throw new Error('Close the outline first: a line has no area to make a pool from.')
+      }
+
+      // One step, so one undo. The sketch does not survive the conversion:
+      // leaving it would double every measurement taken off the plan.
+      const poolId = useShapesStore.getState().replaceShape(input.id, ShapeKind.POLYGON_POOL, {
+        points: shape.points.map((p) => ({ ...p })),
+        depthShallow: input.depthShallow ?? 3,
+        depthDeep: input.depthDeep ?? 5,
+      })
+      if (!poolId) throw new Error('That drawing is no longer on the plan.')
+      useSelectionStore.getState().select(poolId)
+      return { shapeId: poolId, areaSqft: polygonArea(shape.points) / 144 }
+    })
+
+    registerClientHandler<
+      { id: string; surface: 'concrete' | 'paver' | 'grass' },
+      { shapeId: string }
+    >('sketch.toDeck', (input) => {
+      const shape = requireShape(input.id)
+      if (!isSketchPath(shape)) throw new Error('That is not a drawn path.')
+      if (!shape.closed || shape.points.length < 3) {
+        throw new Error('Close the outline first: a line has no area to surface.')
+      }
+      const kind =
+        input.surface === 'paver'
+          ? ShapeKind.PAVER_DECK
+          : input.surface === 'grass'
+            ? ShapeKind.GRASS_AREA
+            : ShapeKind.CONCRETE_DECK
+      const deckId = useShapesStore.getState().replaceShape(input.id, kind)
+      if (!deckId) throw new Error('That drawing is no longer on the plan.')
+      useSelectionStore.getState().select(deckId)
+      return { shapeId: deckId }
+    })
+
+    registerClientHandler<{ spacing: GridSpacingId }, { spacing: string }>('grid.set', (input) => {
+      useDrawStore.getState().setGridSpacing(input.spacing)
+      return { spacing: `${gridInches(input.spacing)} in` }
+    })
+
+    registerClientHandler<{ on?: boolean }, { on: boolean }>('grid.snap.toggle', (input) => {
+      const store = useDrawStore.getState()
+      if (input.on === undefined) store.toggleSnap()
+      else store.setSnap(input.on)
+      return { on: useDrawStore.getState().snapEnabled }
+    })
 
     return () => {
       for (const id of HANDLER_IDS) unregisterClientHandler(id)

@@ -3,6 +3,9 @@
 import {
   ChevronDown,
   Hand,
+  PenLine,
+  Spline,
+  Signature,
   Lightbulb,
   MessageSquare,
   MousePointer2,
@@ -17,6 +20,7 @@ import type { LucideIcon } from 'lucide-react'
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
+import { GridControl } from './GridControl'
 import { PoolShapePicker } from './PoolShapePicker'
 
 interface ToolItem {
@@ -25,7 +29,7 @@ interface ToolItem {
   label: string
   shortcut?: string
   hasChevron?: boolean
-  group: 'create' | 'surface' | 'annotate' | 'ai'
+  group: 'create' | 'draw' | 'surface' | 'annotate' | 'ai'
 }
 
 const TOOLS: ToolItem[] = [
@@ -33,6 +37,11 @@ const TOOLS: ToolItem[] = [
   { id: 'tool.steps', icon: StretchHorizontal, label: 'Steps & shelves', shortcut: 'S', group: 'create' },
   { id: 'tool.water-feature', icon: Waves, label: 'Water feature', shortcut: 'W', group: 'create' },
   { id: 'tool.lights', icon: Lightbulb, label: 'Lights', shortcut: 'L', group: 'create' },
+  // Drawing in plan, which is where a 2D-first designer starts: house, lot
+  // line, deck edge, pool outline, before any of it is a priced object.
+  { id: 'tool.line', icon: PenLine, label: 'Line', shortcut: 'P', group: 'draw' },
+  { id: 'tool.curve', icon: Spline, label: 'Curve', shortcut: 'A', group: 'draw' },
+  { id: 'tool.freehand', icon: Signature, label: 'Freehand', shortcut: 'N', group: 'draw' },
   { id: 'tool.deck', icon: Hand, label: 'Deck', shortcut: 'D', group: 'surface' },
   { id: 'tool.material-brush', icon: PaintBucket, label: 'Material brush', shortcut: 'B', group: 'surface' },
   { id: 'tool.measure', icon: Ruler, label: 'Measure', shortcut: 'M', group: 'annotate' },
@@ -53,6 +62,9 @@ export function Toolbar() {
       {renderGroup('create').slice(0, 1)}
       <PoolShapePicker />
       {renderGroup('create').slice(1)}
+      <Divider />
+      {renderGroup('draw')}
+      <GridControl />
       <Divider />
       {renderGroup('surface')}
       <Divider />

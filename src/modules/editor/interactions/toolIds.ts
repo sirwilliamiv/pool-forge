@@ -25,6 +25,11 @@ export const EDITOR_TOOL_IDS = [
   'tool.measure',
   'tool.annotation',
   'tool.comment',
+  // Drawing in plan. Kelby's workflow starts here: house, lot line, deck edge,
+  // pool outline, before any of it is a priced object.
+  'tool.line',
+  'tool.curve',
+  'tool.freehand',
 ] as const
 
 export type EditorToolId = (typeof EDITOR_TOOL_IDS)[number]

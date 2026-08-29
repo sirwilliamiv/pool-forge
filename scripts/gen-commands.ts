@@ -50,6 +50,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   import: 'Import',
   capture: 'Site capture',
   comment: 'Notes on the drawing',
+  sketch: 'Drawing in plan and turning what was drawn into priced objects',
 }
 
 function groupByCategory(

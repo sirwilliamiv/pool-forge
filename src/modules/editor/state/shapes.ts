@@ -100,6 +100,27 @@ export interface FeatureShape extends ShapeBase {
     | typeof ShapeKind.SPA
 }
 
+/**
+ * A line, arc or freehand outline drawn in plan.
+ *
+ * The primitive a 2D-first designer actually starts from: the house, the lot
+ * line, a deck edge, the pool outline, drawn before any of it is a priced
+ * object yet. `points` are inches relative to the shape origin, matching
+ * `PolygonPool`, so the same translate and bounding-box code serves both and a
+ * closed sketch can become a pool without moving a single vertex.
+ *
+ * `closed` is stored rather than inferred from the first and last point being
+ * equal. A closed ring and an open path that happens to end where it started
+ * are different intentions, and only the first has an area worth pricing.
+ */
+export interface SketchPath extends ShapeBase {
+  kind: typeof ShapeKind.SKETCH_PATH
+  points: { x: number; y: number }[]
+  closed: boolean
+  /** What the drawer called it: "House", "Lot line", "Deck edge". */
+  labelText?: string
+}
+
 // Generic shape backed by an entry in the StencilDef catalog. Display +
 // measurement behavior are derived via stencilId from the catalog entry.
 export interface StencilShape extends ShapeBase {
@@ -107,7 +128,11 @@ export interface StencilShape extends ShapeBase {
   stencilId: string
 }
 
-export type Shape = RectanglePool | PolygonPool | DeckShape | FeatureShape | StencilShape
+export type Shape = RectanglePool | PolygonPool | DeckShape | FeatureShape | StencilShape | SketchPath
+
+export function isSketchPath(shape: Shape): shape is SketchPath {
+  return shape.kind === ShapeKind.SKETCH_PATH
+}
 
 export function isPool(shape: Shape): shape is RectanglePool {
   return shape.kind === ShapeKind.RECTANGLE_POOL
@@ -146,6 +171,9 @@ export function shapeKindFromPrisma(k: ShapeKind): ShapeKind {
 export const SHAPE_DEFAULTS: Record<ShapeKind, { width: number; height: number; label: string }> = {
   [ShapeKind.RECTANGLE_POOL]: { width: 25 * 12, height: 12 * 12, label: 'Rectangle Pool' },
   [ShapeKind.POLYGON_POOL]: { width: 25 * 12, height: 12 * 12, label: 'Freeform Pool' },
+  // A sketch is sized by what was drawn, so the default is only what a zero
+  // length path falls back to rather than a shape anybody places at this size.
+  [ShapeKind.SKETCH_PATH]: { width: 10 * 12, height: 10 * 12, label: 'Sketch' },
   [ShapeKind.CONCRETE_DECK]: { width: 35 * 12, height: 22 * 12, label: 'Concrete Deck' },
   [ShapeKind.PAVER_DECK]: { width: 35 * 12, height: 22 * 12, label: 'Paver Deck' },
   [ShapeKind.GRASS_AREA]: { width: 20 * 12, height: 20 * 12, label: 'Grass Area' },

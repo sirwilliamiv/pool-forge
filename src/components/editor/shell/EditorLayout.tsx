@@ -27,6 +27,7 @@ import { ViewCube } from './ViewCube'
 import { SelectionCard } from './inspector/SelectionCard'
 import { PositionSection } from './inspector/PositionSection'
 import { GeometrySection } from './inspector/GeometrySection'
+import { SketchSection } from './inspector/SketchSection'
 import { MaterialSection } from './inspector/MaterialSection'
 import { ComputedMetrics } from './inspector/ComputedMetrics'
 import { QuoteContribution } from './inspector/QuoteContribution'
@@ -130,6 +131,7 @@ export function EditorLayout({
 
       <RightPanel
         selectionCardSlot={<SelectionCard />}
+        sketchSlot={<SketchSection />}
         positionSlot={<PositionSection />}
         geometrySlot={<GeometrySection />}
         materialSlot={<MaterialSection />}

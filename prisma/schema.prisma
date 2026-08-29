@@ -757,6 +757,9 @@ enum ShapeKind {
   BENCH
   SPA
   STENCIL
+  /// A line, arc or freehand outline drawn in plan. Open or closed, and the
+  /// thing a 2D-first designer draws before anything is a pool yet.
+  SKETCH_PATH
 }
 
 model StencilDef {

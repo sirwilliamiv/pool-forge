@@ -21,12 +21,20 @@ interface AddShapeOptions {
    */
   name?: string
   rotation?: number
+  /** The ring or path itself, for the kinds that carry one. Same reason as `name`. */
+  points?: { x: number; y: number }[]
+  closed?: boolean
+  depthShallow?: number
+  depthDeep?: number
+  labelText?: string
 }
 
 interface ShapesState {
   shapes: Shape[]
   hydrate: (shapes: Shape[]) => void
   addShape: (kind: ShapeKind, x: number, y: number, opts?: AddShapeOptions) => string
+  /** Swap one shape for another kind in a single undo step. */
+  replaceShape: (id: string, kind: ShapeKind, opts?: AddShapeOptions) => string | null
   addStencil: (stencilId: string, x: number, y: number) => string
   updateShape: (id: string, patch: Partial<Shape>) => void
   renameShape: (id: string, name: string) => void
@@ -105,14 +113,14 @@ function defaultsFor(
       return {
         ...base,
         kind: ShapeKind.POLYGON_POOL,
-        points: [
+        points: opts?.points ?? [
           { x: 0, y: 0 },
           { x: width, y: 0 },
           { x: width, y: height },
           { x: 0, y: height },
         ],
-        depthShallow: 3,
-        depthDeep: 5,
+        depthShallow: opts?.depthShallow ?? 3,
+        depthDeep: opts?.depthDeep ?? 5,
       }
     case ShapeKind.CONCRETE_DECK:
     case ShapeKind.PAVER_DECK:
@@ -122,6 +130,18 @@ function defaultsFor(
     case ShapeKind.BENCH:
     case ShapeKind.SPA:
       return { ...base, kind }
+    case ShapeKind.SKETCH_PATH:
+      // Empty on purpose. A sketch is created by drawing it, and the tool that
+      // did the drawing writes the points immediately after. Seeding a default
+      // ring here would put a phantom rectangle on the plan every time somebody
+      // started a line and thought better of it.
+      return {
+        ...base,
+        kind: ShapeKind.SKETCH_PATH,
+        points: opts?.points ?? [],
+        closed: opts?.closed ?? false,
+        ...(opts?.labelText ? { labelText: opts.labelText } : {}),
+      }
     case ShapeKind.STENCIL:
       return { ...base, kind: ShapeKind.STENCIL, stencilId: opts?.stencilId ?? 'unknown' }
   }
@@ -176,6 +196,25 @@ export const useShapesStore = create<ShapesState>((set, get) => {
       const shape = defaultsFor(kind, x, y, z, opts)
       set({ shapes: [...get().shapes, shape] })
       return shape.id
+    },
+
+    replaceShape(id, kind, opts) {
+      // One history entry, because converting a drawing into a pool is one
+      // decision. Doing it as remove-then-add cost two undos to take back one
+      // action, and the first undo left the pool without the outline it came
+      // from, which is a state the user never created.
+      commitOpenTx()
+      pushHistory()
+      const existing = get().shapes.find((s) => s.id === id)
+      if (!existing) return null
+      const z = nextZ++
+      const replacement = defaultsFor(kind, existing.x, existing.y, z, {
+        width: existing.width,
+        height: existing.height,
+        ...opts,
+      })
+      set({ shapes: [...get().shapes.filter((s) => s.id !== id), replacement] })
+      return replacement.id
     },
 
     addStencil(stencilId, x, y) {
