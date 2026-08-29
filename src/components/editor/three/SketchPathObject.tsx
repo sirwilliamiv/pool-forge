@@ -5,7 +5,24 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
+import { useDrawStore } from '@/modules/editor/state/drawStore'
 import type { SketchPath } from '@/modules/editor/state/shapes'
+
+/**
+ * The ring as a flat fill, for the drop-target wash.
+ *
+ * Built in the XY plane and laid down by the mesh's own rotation, because
+ * THREE.Shape is two dimensional and the plan's y is the world's z.
+ */
+function fillShape(points: THREE.Vector3[]): THREE.Shape {
+  const outline = new THREE.Shape()
+  const first = points[0]
+  if (!first) return outline
+  outline.moveTo(first.x, first.z)
+  for (const point of points.slice(1)) outline.lineTo(point.x, point.z)
+  outline.closePath()
+  return outline
+}
 
 /** Just above the ground, so a line on the deck is not fighting it for pixels. */
 const LIFT = 0.04
@@ -20,6 +37,10 @@ const LIFT = 0.04
  * until somebody says otherwise.
  */
 export function SketchPathObject({ shape }: { shape: SketchPath }) {
+  // Lit while something is being dragged over it, so the space that will catch
+  // the drop is obvious before the drop happens.
+  const isDropTarget = useDrawStore(state => state.dropTargetId === shape.id)
+
   const points = useMemo(() => {
     const world = shape.points.map(
       p => new THREE.Vector3(feet(shape.x + p.x), LIFT, feet(shape.y + p.y)),
@@ -36,10 +57,35 @@ export function SketchPathObject({ shape }: { shape: SketchPath }) {
 
   return (
     <group userData={{ id: shape.id }}>
+      {/* A filled wash under the outline while it is a live drop target, so
+          the whole area reads as the thing that will catch the object, not just
+          its edge. Drawn below the line and never picked, so it cannot swallow
+          the drag it is describing. */}
+      {isDropTarget && shape.closed && points.length > 2 ? (
+        <mesh
+          position={[0, LIFT - 0.02, 0]}
+          // Laid flat. A THREE.Shape is built in XY, and +90 degrees about X is
+          // the rotation that carries its y to world +z: -90 would mirror the
+          // wash about the outline it is meant to fill.
+          rotation={[Math.PI / 2, 0, 0]}
+          raycast={() => null}
+        >
+          <shapeGeometry args={[fillShape(points)]} />
+          <meshBasicMaterial
+            color="#F59E0B"
+            transparent
+            opacity={0.18}
+            depthWrite={false}
+            // That rotation points the face down, and the plan view looks down
+            // at it. Single-sided, the wash would simply not be there.
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ) : null}
       <Line
         points={points}
-        color={shape.closed ? '#0EA5E9' : '#334155'}
-        lineWidth={2}
+        color={isDropTarget ? '#F59E0B' : shape.closed ? '#0EA5E9' : '#334155'}
+        lineWidth={isDropTarget ? 4 : 2}
         dashed={!shape.closed}
         dashSize={0.6}
         gapSize={0.35}

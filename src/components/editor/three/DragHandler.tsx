@@ -18,6 +18,7 @@ import {
 } from '@/modules/editor/interactions/drag'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
+import { useDrawStore } from '@/modules/editor/state/drawStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 
 export function DragHandler() {
@@ -134,6 +135,23 @@ export function DragHandler() {
       drag.lastX = newX
       drag.lastY = newY
 
+      // Light up the space this would land in, while the drag is happening.
+      // The fit itself still waits for the release, but the target must not:
+      // a rule that only reveals itself after you let go is one people meet by
+      // being surprised by it.
+      const all = useShapesStore.getState().shapes
+      const moving = all.find((s) => s.id === drag?.id)
+      if (moving) {
+        const target = spaceUnder(
+          { x: newX + moving.width / 2, y: newY + moving.height / 2 },
+          all,
+          drag.id,
+        )
+        const store = useDrawStore.getState()
+        const id = target?.id ?? null
+        if (store.dropTargetId !== id) store.setDropTarget(id)
+      }
+
       // Direct mutation, no dispatch — coalesced commit on pointerup.
       useShapesStore.getState().updateShape(drag.id, { x: newX, y: newY })
     }
@@ -142,6 +160,7 @@ export function DragHandler() {
       if (!drag || e.pointerId !== drag.pointerId) return
       const finished = drag
       drag = null
+      useDrawStore.getState().setDropTarget(null)
 
       try {
         dom.releasePointerCapture(finished.pointerId)
@@ -218,6 +237,7 @@ export function DragHandler() {
     function onPointerCancel(e: PointerEvent) {
       if (!drag || e.pointerId !== drag.pointerId) return
       drag = null
+      useDrawStore.getState().setDropTarget(null)
     }
 
     // Capture phase so we can stopImmediatePropagation() before CustomOrbit's

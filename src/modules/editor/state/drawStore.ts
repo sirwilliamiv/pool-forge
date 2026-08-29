@@ -23,6 +23,15 @@ export interface DrawState {
   /** Set while a freehand drag is in progress. */
   freehand: boolean
 
+  /**
+   * The drawn space a drag is currently over, if any.
+   *
+   * Held here rather than in the drag handler so the scene can light it up.
+   * A drop zone nobody can see is a rule people discover by being surprised
+   * by it, which is the opposite of what a drop zone is for.
+   */
+  dropTargetId: string | null
+
   setGridSpacing: (id: GridSpacingId) => void
   toggleSnap: () => void
   setSnap: (on: boolean) => void
@@ -31,6 +40,7 @@ export interface DrawState {
   addDraftPoint: (point: Point) => void
   setCursor: (point: Point | null) => void
   setFreehand: (on: boolean) => void
+  setDropTarget: (id: string | null) => void
   /** Undo the last committed vertex, which is what backspace means mid-draw. */
   popDraftPoint: () => void
   clearDraft: () => void
@@ -43,6 +53,7 @@ export const useDrawStore = create<DrawState>((set) => ({
   draft: [],
   cursor: null,
   freehand: false,
+  dropTargetId: null,
 
   setGridSpacing: (gridSpacing) => set({ gridSpacing }),
   toggleSnap: () => set((state) => ({ snapEnabled: !state.snapEnabled })),
@@ -52,6 +63,7 @@ export const useDrawStore = create<DrawState>((set) => ({
   addDraftPoint: (point) => set((state) => ({ draft: [...state.draft, point] })),
   setCursor: (cursor) => set({ cursor }),
   setFreehand: (freehand) => set({ freehand }),
+  setDropTarget: (dropTargetId) => set({ dropTargetId }),
   popDraftPoint: () => set((state) => ({ draft: state.draft.slice(0, -1) })),
   clearDraft: () => set({ draft: [], cursor: null, freehand: false }),
 }))
