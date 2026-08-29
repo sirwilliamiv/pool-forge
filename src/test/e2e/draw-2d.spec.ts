@@ -26,6 +26,14 @@ async function openEditor(page: Page): Promise<void> {
 }
 
 /** Click a point in the canvas, in fractions of its box. */
+/** Arm a drawing tool and let the plan camera settle before clicking. */
+async function armTool(page: Page, name: RegExp): Promise<void> {
+  await page.getByRole('button', { name }).click()
+  // Arming switches the view to plan, which swaps the camera. A click landing
+  // in the gap would be measured against the camera that just left.
+  await page.waitForTimeout(800)
+}
+
 async function clickCanvas(page: Page, fx: number, fy: number): Promise<void> {
   const canvas = page.locator('canvas')
   const box = await canvas.boundingBox()
@@ -38,7 +46,7 @@ test.describe('drawing in 2D', () => {
     await signInAsDemo(page)
     await openEditor(page)
 
-    await page.getByRole('button', { name: /^Line/ }).click()
+    await armTool(page, /^Line/)
 
     // A square, ending back where it started so the path closes.
     await clickCanvas(page, 0.35, 0.55)
@@ -67,7 +75,7 @@ test.describe('drawing in 2D', () => {
     await signInAsDemo(page)
     await openEditor(page)
 
-    await page.getByRole('button', { name: /^Line/ }).click()
+    await armTool(page, /^Line/)
     await clickCanvas(page, 0.3, 0.35)
     await clickCanvas(page, 0.6, 0.35)
     await page.keyboard.press('Enter')
@@ -76,6 +84,22 @@ test.describe('drawing in 2D', () => {
     // No convert button at all, and an explanation instead of a dead control.
     await expect(page.getByRole('button', { name: /Convert to a 3D pool/i })).toHaveCount(0)
     await expect(page.getByText(/open line has no inside/i)).toBeVisible()
+  })
+
+  // Everybody draws a plan from above. Section is the case that would be
+  // actively wrong: that camera looks along the ground plane every click is
+  // measured against, so a click either misses it or lands hundreds of feet
+  // away depending on a pixel.
+  test('arming a drawing tool switches to the plan view, even from section', async ({ page }) => {
+    await signInAsDemo(page)
+    await openEditor(page)
+
+    await page.getByRole('tab', { name: 'Section' }).click()
+    await expect(page.getByRole('tab', { name: 'Section' })).toHaveAttribute('aria-selected', 'true')
+
+    await page.getByRole('button', { name: /^Freehand/ }).click()
+
+    await expect(page.getByRole('tab', { name: 'Plan' })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('the grid size control is in the toolbar and changes the grid', async ({ page }) => {

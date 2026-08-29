@@ -19,6 +19,7 @@ import { feet, inches } from '@/lib/three/units'
 import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
 import { activeSnapInches, useDrawStore } from '@/modules/editor/state/drawStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
+import { useViewStore } from '@/modules/editor/state/viewStore'
 
 /** Inches. How far apart the ends can be and still mean a closed outline. */
 const CLOSE_TOLERANCE = 18
@@ -57,7 +58,19 @@ export function SketchGestures() {
     if (!drawing) {
       useDrawStore.getState().clearDraft()
       setArcAnchor(null)
+      return
     }
+    // Everybody draws a plan from above, so arming a drawing tool goes to plan
+    // rather than leaving somebody drawing across a perspective view and
+    // wondering why the rectangle is a trapezium.
+    //
+    // Section is the case that would actually be wrong rather than merely odd:
+    // that camera looks along the ground, so the plane every click is measured
+    // against is edge-on, and a click either misses it entirely or lands
+    // hundreds of feet away depending on a pixel. Switching out of it is the
+    // only sane answer.
+    const view = useViewStore.getState()
+    if (view.viewMode !== 'plan') view.setViewMode('plan')
   }, [drawing, tool])
 
   useEffect(() => {
