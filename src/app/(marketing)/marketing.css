@@ -665,6 +665,59 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  transition:
+    background 0.18s ease-out,
+    color 0.18s ease-out;
+}
+
+/* Hovering a cell fills it with one of the core hues, assigned by position, so
+   running across a row walks the spectrum: orange, red, purple, blue, green.
+ *
+ * A fixed hue per cell rather than the read-next cards' cycle, because the
+ * counts are different. Two cards can only ever show two of five hues standing
+ * still, so those animate; a grid of four or six shows most of the spectrum at
+ * rest, and six cells each running their own loop is a fairground.
+ *
+ * Each step carries its own ink. These are the saturated hues, not the tints:
+ * black on the purple fails contrast and white fails on everything else, so the
+ * pairing is per hue rather than one rule for all five. */
+.mk-cell {
+  --cell-hover-bg: var(--brand-blue);
+  --cell-hover-fg: var(--ink-black);
+}
+.mk-cell:nth-child(5n + 1) {
+  --cell-hover-bg: var(--brand-orange);
+  --cell-hover-fg: var(--ink-black);
+}
+.mk-cell:nth-child(5n + 2) {
+  --cell-hover-bg: var(--brand-red);
+  --cell-hover-fg: var(--ink-black);
+}
+.mk-cell:nth-child(5n + 3) {
+  --cell-hover-bg: var(--brand-purple);
+  --cell-hover-fg: var(--ink-white);
+}
+.mk-cell:nth-child(5n + 4) {
+  --cell-hover-bg: var(--brand-blue);
+  --cell-hover-fg: var(--ink-black);
+}
+.mk-cell:nth-child(5n + 5) {
+  --cell-hover-bg: var(--brand-green);
+  --cell-hover-fg: var(--ink-black);
+}
+
+.mk-cell:hover {
+  background: var(--cell-hover-bg);
+  color: var(--cell-hover-fg);
+}
+
+/* The body and the mono label are muted greys off `--fg`, which stay grey on a
+   saturated ground. They come with it, at full strength: dimming the body copy
+   on the red is the one pairing that drops under contrast. */
+.mk-cell:hover .mk-cell__body,
+.mk-cell:hover .mk-cell__meta,
+.mk-cell:hover .mk-label {
+  color: inherit;
 }
 
 .mk-cell__title {
