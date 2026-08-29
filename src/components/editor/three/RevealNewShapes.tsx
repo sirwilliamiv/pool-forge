@@ -57,6 +57,30 @@ export function RevealNewShapes() {
       })
       if (fullyVisible(projected)) return
 
+      // Plan and section are orthographic, and CustomOrbit's transitions are
+      // perspective-orbit only: `frameSelection` is ignored there, so in 2D the
+      // reveal would report success and leave the view exactly where it was.
+      // Those cameras are moved by writing their position, which is what
+      // panning already does to them.
+      if (camera instanceof THREE.OrthographicCamera) {
+        const lookDir = new THREE.Vector3()
+        camera.getWorldDirection(lookDir)
+        const right = new THREE.Vector3().crossVectors(lookDir, camera.up).normalize()
+        const up = new THREE.Vector3().crossVectors(right, lookDir).normalize()
+        // Slide along the two screen axes only. Moving along the view direction
+        // would push the object through the near plane in plan view.
+        const centre = new THREE.Vector3(
+          feet(shape.x + shape.width / 2),
+          0,
+          feet(shape.y + shape.height / 2),
+        )
+        const offset = centre.clone().sub(camera.position)
+        camera.position.addScaledVector(right, offset.dot(right))
+        camera.position.addScaledVector(up, offset.dot(up))
+        camera.updateMatrixWorld()
+        return
+      }
+
       const { pose, target } = framingFor({
         x: shape.x,
         y: shape.y,
