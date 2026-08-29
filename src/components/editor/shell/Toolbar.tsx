@@ -53,9 +53,12 @@ export function Toolbar() {
   const activeTool = useEditorStore((s) => s.activeTool)
   const setActiveTool = useEditorStore((s) => s.setActiveTool)
 
+  // The bar is a pill, so the things inside it are round too and sit far enough
+  // in that the outer curve never crops one. A square button at either end of a
+  // 4px inset reads as clipped, which is what it was.
   return (
     <div
-      className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-border bg-white p-1 shadow-pfLg"
+      className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-border bg-white px-2 py-1.5 shadow-pfLg"
       role="toolbar"
       aria-label="Editor tools"
     >
@@ -80,7 +83,7 @@ export function Toolbar() {
         title="Commands: add features, export documents, run the checklist (⌘K)"
         aria-label="Open the command palette"
         aria-keyshortcuts="Meta+K Control+K"
-        className="ml-0.5 flex h-9 items-center gap-1.5 rounded-pfSm bg-gradient-to-br from-fuchsia-500 to-pink-500 pl-2 pr-2.5 text-white shadow-pfSm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-pfAccent"
+        className="ml-0.5 flex h-8 items-center gap-1.5 rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-500 pl-2.5 pr-3 text-white shadow-pfSm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-pfAccent"
       >
         <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
         <span className="text-[11.5px] font-medium leading-none">Commands</span>
@@ -102,7 +105,7 @@ export function Toolbar() {
           aria-label={tool.label}
           aria-pressed={active}
           className={cn(
-            'group relative flex h-9 w-9 items-center justify-center rounded-pfSm transition focus:outline-none focus:ring-2 focus:ring-pfAccent',
+            'group relative flex h-8 w-8 items-center justify-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-pfAccent',
             active
               ? 'bg-foreground text-white'
               : 'text-textMuted hover:bg-rowHover hover:text-foreground',
@@ -112,7 +115,8 @@ export function Toolbar() {
           {tool.shortcut && (
             <span
               className={cn(
-                'pointer-events-none absolute bottom-0.5 right-0.5 font-mono text-[8px]',
+                // Centred, not cornered: a round button has no corner to sit in.
+                'pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 font-mono text-[8px] leading-none',
                 active ? 'text-white/70' : 'text-textFaint',
               )}
             >
@@ -122,7 +126,7 @@ export function Toolbar() {
           {tool.hasChevron && (
             <ChevronDown
               className={cn(
-                'pointer-events-none absolute -bottom-0.5 right-0.5 h-2.5 w-2.5',
+                'pointer-events-none absolute bottom-0 right-0 h-2.5 w-2.5',
                 active ? 'text-white/70' : 'text-textFaint',
               )}
               aria-hidden

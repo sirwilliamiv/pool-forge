@@ -33,7 +33,7 @@ export function GridControl() {
         onChange={event => {
           void dispatch('grid.set', { spacing: event.target.value })
         }}
-        className="h-8 rounded-pfSm border border-border bg-white px-2 text-[12px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent"
+        className="h-8 rounded-full border border-border bg-white pl-3 pr-2 text-[12px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent"
         title="Grid size"
       >
         {GRID_SPACINGS.map(option => (
@@ -49,7 +49,7 @@ export function GridControl() {
         aria-pressed={snapEnabled}
         title={snapEnabled ? 'Snapping on. Hold Alt to step off the grid.' : 'Snapping off'}
         className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-pfSm transition-colors',
+          'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
           snapEnabled ? 'bg-foreground text-white' : 'text-textMuted hover:bg-rowHover',
         )}
       >
@@ -63,7 +63,7 @@ export function GridControl() {
         aria-pressed={gridVisible}
         title={gridVisible ? 'Hide the grid' : 'Show the grid'}
         className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-pfSm transition-colors',
+          'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
           gridVisible ? 'bg-rowHover text-foreground' : 'text-textMuted hover:bg-rowHover',
         )}
       >
