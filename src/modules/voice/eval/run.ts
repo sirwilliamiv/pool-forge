@@ -200,7 +200,7 @@ export async function runCase(testCase: EvalCase, config?: VoiceConfig): Promise
   await session.close()
 
   const failures = testCase.expect
-    .map(expectation => check(expectation, calls))
+    .map(expectation => check(expectation, calls, spoken))
     .filter((failure): failure is string => failure !== null)
 
   return {
@@ -215,10 +215,15 @@ export async function runCase(testCase: EvalCase, config?: VoiceConfig): Promise
 }
 
 /** Judge one expectation. Returns null when it holds, or why it did not. */
-function check(expectation: Expectation, calls: ToolCall[]): string | null {
+function check(expectation: Expectation, calls: ToolCall[], spoken = ''): string | null {
   const matching = calls.filter(call => 'commandId' in expectation && call.commandId === expectation.commandId)
 
   switch (expectation.kind) {
+    case 'saysLike': {
+      const matched = new RegExp(expectation.pattern, 'is').test(spoken.trim())
+      return matched ? null : `said ${JSON.stringify(spoken.trim().slice(0, 80))}, expected /${expectation.pattern}/`
+    }
+
     case 'callsNothing':
       return calls.length === 0
         ? null

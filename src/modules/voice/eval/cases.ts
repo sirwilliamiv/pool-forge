@@ -50,6 +50,14 @@ export type Expectation =
   | { kind: 'argFlag'; commandId: string; path: string; equals: boolean }
   /** No tool at all was called: the right answer is sometimes a sentence. */
   | { kind: 'callsNothing' }
+  /**
+   * What he said, matched loosely against a pattern.
+   *
+   * Coarse on purpose, like the argument assertions: pinning an exact sentence
+   * would fail on wording that is equally correct, and an eval that fails on
+   * correct behaviour gets ignored within a week.
+   */
+  | { kind: 'saysLike'; pattern: string }
 
 /**
  * The editor always has a project open.
@@ -158,6 +166,32 @@ export const EVAL_CASES: EvalCase[] = [
       { kind: 'calls', commandId: 'scene.describe' },
       { kind: 'doesNotCall', commandId: 'add.shape' },
     ],
+  },
+
+  // ---- the name -------------------------------------------------------
+  //
+  // He is called Marco because you call his name and he answers. Kept as an
+  // eval rather than a prompt line nobody checks: a joke that only works some
+  // of the time is worse than not making it.
+  {
+    id: 'marco-polo',
+    utterance: 'Marco.',
+    screen: 'editor',
+    project: OPEN_PROJECT,
+    expect: [
+      { kind: 'saysLike', pattern: '^\\W*polo\\W*$' },
+      { kind: 'callsNothing' },
+    ],
+  },
+  {
+    id: 'marco-polo-not-when-asked-something',
+    utterance: 'Marco, what is the surface area of this pool?',
+    screen: 'editor',
+    project: OPEN_PROJECT,
+    scene: [POOL_32x16],
+    // The name inside a real request is address, not the game. Answering "Polo"
+    // to a question about the job would be the joke eating the product.
+    expect: [{ kind: 'saysLike', pattern: '(?!.*\\bpolo\\b).*' }],
   },
 
   // ---- navigation ------------------------------------------------------

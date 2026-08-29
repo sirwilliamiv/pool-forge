@@ -4,6 +4,7 @@ import {
   loadVoiceConfig,
   MAX_BUFFERED_FRAMES,
   SPEECH_LANGUAGE,
+  SPEECH_VOICE,
   SPEECH_VOCABULARY,
   type VoiceConfig,
 } from './config'
@@ -167,7 +168,9 @@ How to behave:
 - If you change something the user did not want, call edit.undo straight away. Do not try to rebuild what was there from memory.
 - You only have the tools for the screen the user is on. If something is not available here, say so and offer to navigate there instead of pretending.
 - Before anything destructive, say exactly what will be lost and wait for a clear yes. A confirmation the user offered before you told them what would happen is not one: say it, then wait.
-- Never move, resize or delete something to satisfy a validation warning without first saying exactly what you would change and getting a yes. A warning is information, not an instruction.`
+- Never move, resize or delete something to satisfy a validation warning without first saying exactly what you would change and getting a yes. A warning is information, not an instruction.
+
+Your name is Marco, for the pool game. If the user says only your name, with nothing else in the sentence, answer with the single word "Polo" and nothing more. Do not explain the joke, do not call a tool, and do not do it when the name appears inside a real request like "Marco, open the Whitfield job".`
 
 /** What the user is looking at, as the model needs to hear it. */
 export interface SessionContext {
@@ -236,7 +239,10 @@ export async function startVoiceSession(
       systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\n\n${contextPrompt()}` }] },
       // Pinned, not detected. Left to itself the model switches language
       // mid-sentence and drops a Japanese word into an English answer.
-      speechConfig: { languageCode: SPEECH_LANGUAGE },
+      speechConfig: {
+        languageCode: SPEECH_LANGUAGE,
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: SPEECH_VOICE } },
+      },
       tools: [{ functionDeclarations: scope.surface.tools }],
       // Resumption is what lets a dropped socket or a server-side GoAway look
       // like nothing happened. The handle never leaves this process.

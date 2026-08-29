@@ -23,7 +23,25 @@ export const DEFAULT_LIVE_MODEL = 'gemini-live-2.5-flash-native-audio'
  * drift mid-conversation and answer an English question with a Japanese word in
  * the middle of the sentence, which reads as the app being broken.
  */
-export const SPEECH_LANGUAGE = 'en-US'
+export const SPEECH_LANGUAGE = process.env['VOICE_LANGUAGE']?.trim() || 'en-GB'
+
+/**
+ * Which prebuilt voice speaks.
+ *
+ * Env-driven for the same reason the model id is: these are preview names that
+ * churn, and picking a voice is a taste decision somebody should be able to make
+ * without a deploy. The Live API's prebuilt set at time of writing includes
+ * Charon, Puck, Fenrir and Orus reading male, and Kore, Aoede and Leda female.
+ *
+ * Charon by default: the lower and more measured of the male voices, which
+ * suits an assistant that mostly reads measurements and prices back to somebody
+ * standing in a plant room.
+ *
+ * Accent follows `SPEECH_LANGUAGE` rather than the voice name. There is no
+ * British voice as such; `en-GB` is what shapes the delivery, and how convincing
+ * it is has to be judged with an ear rather than asserted here.
+ */
+export const SPEECH_VOICE = process.env['VOICE_NAME']?.trim() || 'Charon'
 
 /**
  * Terms the recogniser is told to expect.

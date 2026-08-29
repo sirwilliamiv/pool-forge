@@ -5,6 +5,7 @@
 // A fake Live connection drives the whole conversation, so none of this needs
 // credentials or a network.
 
+import { SPEECH_LANGUAGE, SPEECH_VOICE } from '@/modules/voice/config'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { initCommands } from '@/modules/commands/init'
@@ -281,7 +282,19 @@ describe('voice session', () => {
     const { host } = hostWith(async () => ok)
     const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
     const input = h.lastConfig?.['inputAudioTranscription'] as { languageCodes?: string[] }
-    expect(input?.languageCodes).toEqual(['en-US'])
+    expect(input?.languageCodes).toEqual([SPEECH_LANGUAGE])
+    await session.close()
+  })
+
+  // A voice was never set at all, so it shipped with whatever the API defaults
+  // to. Which voice is taste and lives in an env var; that one is chosen is not.
+  it('names the voice rather than accepting whatever the API defaults to', async () => {
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+    const speech = h.lastConfig?.['speechConfig'] as
+      | { voiceConfig?: { prebuiltVoiceConfig?: { voiceName?: string } } }
+      | undefined
+    expect(speech?.voiceConfig?.prebuiltVoiceConfig?.voiceName).toBe(SPEECH_VOICE)
     await session.close()
   })
 
@@ -290,7 +303,7 @@ describe('voice session', () => {
     // Japanese word into an English answer, which reads as a broken app.
     const { host } = hostWith(async () => ok)
     const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
-    expect((h.lastConfig?.['speechConfig'] as { languageCode?: string })?.languageCode).toBe('en-US')
+    expect((h.lastConfig?.['speechConfig'] as { languageCode?: string })?.languageCode).toBe(SPEECH_LANGUAGE)
     await session.close()
   })
 
