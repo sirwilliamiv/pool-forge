@@ -52,6 +52,7 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   comment: 'Notes on the drawing',
   sketch: 'Drawing in plan and turning what was drawn into priced objects',
   version: 'Many designs for one job',
+  guide: 'Showing somebody where a control is, without pressing it',
 }
 
 function groupByCategory(

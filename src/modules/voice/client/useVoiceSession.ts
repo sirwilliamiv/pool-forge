@@ -54,6 +54,20 @@ export interface UseVoiceSession {
 /** How many lines of transcript to keep on screen. */
 const TRANSCRIPT_LIMIT = 40
 
+/**
+ * How long a session may sit with nobody saying anything, in milliseconds.
+ *
+ * A live session holds the microphone open and bills for every minute of it
+ * against a per-organisation budget, so one left running because a builder put
+ * the laptop down and went to look at a pump is a cost and an open microphone
+ * nobody meant to leave open. Two minutes is long enough to think and short
+ * enough that walking away ends it.
+ */
+const IDLE_LIMIT_MS = 120_000
+
+/** How long before that the user is warned, so it is never a silent cut. */
+const IDLE_WARNING_MS = 30_000
+
 export function useVoiceSession(
   screen: VoiceScreen,
   projectId?: string,
@@ -118,8 +132,14 @@ export function useVoiceSession(
   // than continuing the last answer's sentence.
   const startNewLine = useRef(false)
 
+  /** Set once `touchIdle` exists, so `addLine` can reach it from above. */
+  const touchIdleRef = useRef<(() => void) | null>(null)
+
   const addLine = useCallback((role: 'user' | 'model', text: string) => {
     if (!text.trim()) return
+    // A long answer is not an idle session, and neither is a long question, so
+    // both directions count.
+    touchIdleRef.current?.()
     setTranscript(previous => {
       const last = previous[previous.length - 1]
       // The Live API streams transcription in fragments. Appending to the last
@@ -156,12 +176,45 @@ export function useVoiceSession(
     if (held) void dispatch('voice.session.end', { sessionId: held })
   }, [])
 
+  /**
+   * End a session nobody is using.
+   *
+   * Reset on anything anybody says, in either direction: a long answer is not
+   * an idle session, and neither is a long question.
+   */
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const warnTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearIdleTimers = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current)
+    if (warnTimer.current) clearTimeout(warnTimer.current)
+    idleTimer.current = null
+    warnTimer.current = null
+  }, [])
+
   const stop = useCallback(async () => {
+    clearIdleTimers()
     await teardown()
     await bridge.current?.stop()
     await releaseBudget()
     setStatus(bridge.current ? 'idle' : 'unavailable')
-  }, [releaseBudget, teardown])
+  }, [clearIdleTimers, releaseBudget, teardown])
+
+  /** Restart the countdown. Called on every turn, in either direction. */
+  const touchIdle = useCallback(() => {
+    clearIdleTimers()
+    warnTimer.current = setTimeout(() => {
+      // Said, not silently done. A session that ends without warning reads as a
+      // dropped connection, and the next thing somebody does is press the
+      // button again and wonder why it keeps failing.
+      setError('Still there? This will close in thirty seconds.')
+    }, IDLE_LIMIT_MS - IDLE_WARNING_MS)
+    idleTimer.current = setTimeout(() => {
+      setError('Closed after two minutes with nothing said. Press Marco to start again.')
+      void stop()
+    }, IDLE_LIMIT_MS)
+  }, [clearIdleTimers, stop])
+  touchIdleRef.current = touchIdle
 
   const start = useCallback(async () => {
     if (status === 'live' || status === 'starting') return
@@ -280,6 +333,11 @@ export function useVoiceSession(
     }
 
     setStatus('live')
+    // Armed from the moment it opens, so a session nobody speaks into at all
+    // still ends rather than holding the microphone until the tab closes.
+    // Through the ref, like `addLine`: naming it as a dependency would rebuild
+    // `start` on every render, and `start` is bound to a click handler.
+    touchIdleRef.current?.()
   }, [addLine, askUser, projectId, projectName, releaseBudget, screen, status, teardown])
 
   // Moving between screens swaps what the agent can do, and moving between

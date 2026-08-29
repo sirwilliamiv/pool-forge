@@ -629,6 +629,30 @@ const EXERCISES: Record<string, Exercise> = {
     input: async () => ({ commentId: await addComment(), resolved: true }),
   },
 
+  // ---------- guide ----------
+  //
+  // All three act on the rendered page: they resolve controls by accessible
+  // name and ring them. This harness renders no page, so every target resolves
+  // to nothing and the commands correctly do nothing, which is indistinguishable
+  // here from being broken. Classified like `page.read` for the same reason and
+  // covered where the DOM is real, in guide/targets.test.ts.
+  'guide.point': {
+    kind: 'server',
+    why:
+      'Resolves controls in the rendered page and highlights them. No page here, so nothing ' +
+      'resolves. Covered by guide/targets.test.ts against real markup.',
+  },
+  'guide.clear': {
+    kind: 'server',
+    why: 'Clears the highlight set. Covered by guide/targets.test.ts and the guide store.',
+  },
+  'guide.list': {
+    kind: 'server',
+    why:
+      'Lists the controls actually present in the rendered page. No page here. Covered by ' +
+      'guide/targets.test.ts.',
+  },
+
   // ---------- sketch ----------
   'sketch.create': {
     kind: 'mutates',

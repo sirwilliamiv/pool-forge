@@ -22,6 +22,7 @@ export type CommandCategory =
   | 'comment'
   | 'sketch'
   | 'version'
+  | 'guide'
 
 export type CommandContext = {
   userId: string

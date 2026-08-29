@@ -38,6 +38,11 @@ export default defineConfig({
       // moment that server is not running: a suite that passes or fails
       // depending on an unrelated process.
       AUTH_URL: 'http://localhost:3100',
+      // A dummy relay, so the dock renders and Marco can be tested. It gates
+      // rendering only: nothing in this suite opens a session, and the local
+      // tour needs no model at all. Pointing it at the real relay would make
+      // the suite depend on a deployed service and a live API key.
+      NEXT_PUBLIC_VOICE_RELAY_URL: 'wss://voice.invalid',
       // Deliberately blank. Identity Platform is proved against the real service
       // by an end-to-end run; this suite must pass on any machine, with no
       // credential and no network, so it exercises the local-password path that

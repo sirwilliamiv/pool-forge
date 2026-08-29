@@ -32,7 +32,10 @@ export type VoiceScreen = (typeof VOICE_SCREENS)[number]
  * never have to fix before they can ask to go elsewhere. Reading, because "what
  * does this say" belongs to no particular page.
  */
-const ALWAYS: CommandCategory[] = ['navigation', 'palette', 'context']
+// Guide is everywhere for the same reason reading is: "where is that" is a
+// question about whatever screen somebody is on, and the answer must never
+// depend on having navigated somewhere first.
+const ALWAYS: CommandCategory[] = ['navigation', 'palette', 'context', 'guide']
 
 const BY_SCREEN: Record<VoiceScreen, CommandCategory[]> = {
   dashboard: ['project'],

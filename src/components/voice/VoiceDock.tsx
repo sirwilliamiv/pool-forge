@@ -12,6 +12,8 @@ import { screenForPath } from '@/modules/voice/scope'
 import { useVoiceSession } from '@/modules/voice/client/useVoiceSession'
 import { VoiceTranscript } from './VoiceTranscript'
 import { Marco, type MarcoState } from './Marco'
+import { MarcoActions } from './MarcoActions'
+import { GuideHighlight } from './GuideHighlight'
 
 interface ClickReport {
   label: string
@@ -131,6 +133,11 @@ export function VoiceDock() {
     )
   }, [router])
 
+  // Above the early return, or the hook count changes between renders and
+  // React tears the component down mid-session with "rendered more hooks than
+  // during the previous render".
+  const [hovered, setHovered] = useState(false)
+
   // The dialog renders even when the dock is hidden, because a destructive
   // request outliving the button that started it is still a request.
   if (status === 'unavailable') return <DestructiveConfirm request={pendingConfirm} onDecide={decide} />
@@ -162,7 +169,12 @@ export function VoiceDock() {
   return (
     <>
       <DestructiveConfirm request={pendingConfirm} onDecide={decide} />
-      <div className="pointer-events-none fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+      <GuideHighlight />
+      <div
+        className="pointer-events-none fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
       {live ? <VoiceTranscript lines={transcript} /> : null}
 
       {error && (
@@ -170,6 +182,10 @@ export function VoiceDock() {
           {error}
         </p>
       )}
+
+      {/* Offered on hover, and only while he is not already in a conversation:
+          a menu over a live session is chrome in the way of the thing it opened. */}
+      <MarcoActions visible={hovered && !live && !busy} onTalk={() => void start()} />
 
       <button
         type="button"
