@@ -29,11 +29,20 @@ async function runOk<I>(id: string, input: I): Promise<unknown> {
 describe('shape commands — execute returns ok', () => {
   it('add.shape', async () => {
     const data = (await runOk('add.shape', {
-      stencilId: 'rect-pool',
+      stencilId: 'pool.rectangle',
       x: 0,
       y: 0,
     })) as { shapeId: string }
     expect(typeof data.shapeId).toBe('string')
+  })
+
+  it('add.shape rejects a stencil id that does not exist', () => {
+    // An unknown id does not fail loudly downstream: addShape falls back to a
+    // generic STENCIL kind and drops a blank rectangle on the canvas. Catching
+    // it at the schema is what keeps a model from inventing one.
+    const schema = cmd('add.shape').inputSchema
+    expect(schema.safeParse({ stencilId: 'rectangle_pool', x: 0, y: 0 }).success).toBe(false)
+    expect(schema.safeParse({ stencilId: 'pool.rectangle', x: 0, y: 0 }).success).toBe(true)
   })
 
   it('select.shape echoes ids', async () => {
@@ -115,10 +124,14 @@ describe('shape commands — execute returns ok', () => {
   })
 
   it('pool.depth.set returns id', async () => {
+    // Feet, which is what the schema says and what a builder says out loud. This
+    // read 36 and 84 until the depth bounds landed and refused them: inches,
+    // passed to a field documented in feet, describing a pool seven storeys
+    // deep. Nothing caught it because nothing bounded a depth.
     const data = (await runOk('pool.depth.set', {
       id: 's1',
-      shallowDepth: 36,
-      deepDepth: 84,
+      shallowDepth: 3,
+      deepDepth: 7,
     })) as { id: string }
     expect(data.id).toBe('s1')
   })
@@ -147,9 +160,20 @@ describe('shape commands — input validation rejects bad input', () => {
     expect(r.success).toBe(false)
   })
 
-  it('pool.geometry.update rejects negative length', () => {
+  it('pool.geometry.update rejects a negative length', () => {
     const c = cmd('pool.geometry.update')
-    const r = c.inputSchema.safeParse({ id: 's1', length: -5 })
-    expect(r.success).toBe(false)
+    expect(c.inputSchema.safeParse({ id: 's1', lengthFt: -5 }).success).toBe(false)
+    expect(c.inputSchema.safeParse({ id: 's1', lengthFt: 30 }).success).toBe(true)
+  })
+
+  it('pool.geometry.update ignores a field name that no longer exists', () => {
+    // Zod strips unknown keys, so the old `length` parses cleanly and carries
+    // nothing. On its own that is a command reporting success and doing
+    // nothing, which is why the handler refuses an input it recognises no
+    // fields in rather than quietly succeeding.
+    const c = cmd('pool.geometry.update')
+    const parsed = c.inputSchema.safeParse({ id: 's1', length: 30 })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(Object.keys(parsed.data as object)).not.toContain("lengthFt")
   })
 })

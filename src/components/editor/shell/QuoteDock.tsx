@@ -1,105 +1,78 @@
 'use client'
 
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { formatUsd } from '@/lib/money'
 import { cn } from '@/lib/utils'
+import { useLiveQuote } from './LiveQuote'
+import { groupTotals } from './quote-groups'
 
-interface QuoteLineItemView {
-  id: string
-  name: string
-  source: string
-  total: number | string
-}
-
-interface QuoteView {
-  id: string
-  subtotal: number | string
-  total: number | string
-  delta?: number | string
-  lineItems: QuoteLineItemView[]
-}
-
-interface QuoteDockProps {
-  quote: QuoteView | null
-}
-
-const CATEGORY_ORDER: { key: string; label: string; swatch: string }[] = [
-  { key: 'pool', label: 'Pool shell & finish', swatch: 'bg-sky-500' },
-  { key: 'spa', label: 'Spa', swatch: 'bg-orange-400' },
-  { key: 'equipment', label: 'Equipment', swatch: 'bg-violet-500' },
-  { key: 'deck', label: 'Deck & coping', swatch: 'bg-emerald-500' },
-  { key: 'lighting', label: 'Lighting & features', swatch: 'bg-pink-500' },
-]
-
-const PERMITS_DEFAULT = 2000
-
-function toNumber(v: number | string | undefined | null): number {
-  if (v === null || v === undefined) return 0
-  if (typeof v === 'number') return v
-  const n = Number(v)
-  return Number.isFinite(n) ? n : 0
-}
-
-function fmt(n: number): string {
-  return `$${Math.round(n).toLocaleString()}`
-}
-
-function fmtDelta(n: number): string {
-  const sign = n > 0 ? '+' : n < 0 ? '−' : ''
-  return `${sign}${fmt(Math.abs(n))}`
-}
-
-function classifySource(source: string): string {
-  const s = source.toLowerCase()
-  if (s.includes('spa')) return 'spa'
-  if (s.includes('deck') || s.includes('coping') || s.includes('travertine'))
-    return 'deck'
-  if (s.includes('light') || s.includes('led') || s.includes('feature'))
-    return 'lighting'
-  if (
-    s.includes('pump') ||
-    s.includes('heater') ||
-    s.includes('filter') ||
-    s.includes('equipment') ||
-    s.includes('automation')
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="pointer-events-auto w-60 rounded-pfMd border border-border bg-white p-3 shadow-pfMd">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-textMuted">
+        Live quote
+      </div>
+      {children}
+    </div>
   )
-    return 'equipment'
-  return 'pool'
 }
 
-export function QuoteDock({ quote }: QuoteDockProps) {
+function fmtQuantity(n: number): string {
+  return n === Math.round(n) ? String(n) : n.toFixed(1)
+}
+
+export function QuoteDock() {
+  const quote = useLiveQuote()
   const [expanded, setExpanded] = useState(false)
 
-  const totals = useMemo(() => {
-    if (!quote) return null
-    const buckets: Record<string, number> = {}
-    for (const li of quote.lineItems) {
-      const key = classifySource(li.source)
-      buckets[key] = (buckets[key] ?? 0) + toNumber(li.total)
-    }
-    return buckets
-  }, [quote])
+  const groups = useMemo(
+    () => (quote ? groupTotals(quote.lineItems).filter((g) => g.total > 0) : []),
+    [quote],
+  )
 
+  // No price book loaded into the client at all: say so, do not print a figure.
   if (!quote) {
     return (
-      <div
-        className={cn(
-          'pointer-events-auto rounded-pfMd border border-border bg-white shadow-pfMd',
-          'w-60 p-3',
-        )}
-      >
-        <div className="text-[10px] font-semibold uppercase tracking-wide text-textMuted">
-          Live quote
-        </div>
-        <div className="mt-1 text-sm text-textMuted">No quote yet.</div>
-      </div>
+      <Shell>
+        <div className="mt-1 text-sm text-textMuted">Not priced.</div>
+        <p className="mt-1 text-[11px] leading-snug text-textFaint">
+          This project has no pricing inputs loaded, so no total can be shown.
+        </p>
+      </Shell>
     )
   }
 
-  const total = toNumber(quote.total)
-  const subtotal = toNumber(quote.subtotal)
-  const delta = toNumber(quote.delta)
+  if (quote.status === 'NOTHING_DRAWN') {
+    return (
+      <Shell>
+        <div className="mt-1 text-sm font-medium text-foreground">No price yet</div>
+        <p className="mt-1 text-[11px] leading-snug text-textFaint">
+          Nothing is drawn, so there is nothing to price. Place a pool to start the quote.
+        </p>
+      </Shell>
+    )
+  }
+
+  if (quote.status === 'NO_PRICE_BOOK') {
+    return (
+      <Shell>
+        <div className="mt-1 flex items-center gap-1.5 text-sm font-medium text-amber-700">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Cannot price this
+        </div>
+        <p className="mt-1 text-[11px] leading-snug text-textFaint">
+          There is no active price book for this company, so the design cannot be costed. Add one
+          in Price book, then reopen this project.
+        </p>
+      </Shell>
+    )
+  }
+
+  const groupedTotal = groups.reduce((sum, g) => sum + g.total, 0)
+  // Anything the grouping did not claim still has to appear, or the parts stop
+  // adding up to the subtotal.
+  const otherTotal = Math.round((quote.subtotal - groupedTotal) * 100) / 100
 
   return (
     <div
@@ -120,20 +93,9 @@ export function QuoteDock({ quote }: QuoteDockProps) {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-[18px] font-semibold tabular-nums text-foreground">
-              {fmt(total)}
+              {formatUsd(quote.total)}
             </span>
-            {delta !== 0 && (
-              <span
-                className={cn(
-                  'rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums',
-                  delta > 0
-                    ? 'bg-pfAccentSoft text-pfAccentStrong'
-                    : 'bg-emerald-100 text-emerald-700',
-                )}
-              >
-                {fmtDelta(delta)}
-              </span>
-            )}
+            <span className="text-[10px] text-textFaint">incl. tax</span>
           </div>
         </div>
         {expanded ? (
@@ -146,39 +108,62 @@ export function QuoteDock({ quote }: QuoteDockProps) {
       {expanded && (
         <div className="border-t border-borderLight px-3 py-2 text-xs">
           <ul className="space-y-1.5">
-            {CATEGORY_ORDER.map(({ key, label, swatch }) => (
-              <li key={key} className="flex items-center justify-between gap-2">
+            {groups.map(({ label, swatch, total }) => (
+              <li key={label} className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-foreground">
-                  <span
-                    className={cn('h-2.5 w-2.5 rounded-full', swatch)}
-                    aria-hidden
-                  />
+                  <span className={cn('h-2.5 w-2.5 rounded-full', swatch)} aria-hidden />
                   {label}
                 </span>
-                <span className="tabular-nums text-textMuted">
-                  {fmt(totals?.[key] ?? 0)}
-                </span>
+                <span className="tabular-nums text-textMuted">{formatUsd(total)}</span>
               </li>
             ))}
+            {otherTotal !== 0 && (
+              <li className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-foreground">
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-400" aria-hidden />
+                  Other
+                </span>
+                <span className="tabular-nums text-textMuted">{formatUsd(otherTotal)}</span>
+              </li>
+            )}
           </ul>
           <div className="mt-2 border-t border-borderLight pt-2">
             <div className="flex items-center justify-between text-foreground">
               <span>Subtotal</span>
-              <span className="tabular-nums">{fmt(subtotal)}</span>
+              <span className="tabular-nums">{formatUsd(quote.subtotal)}</span>
             </div>
             <div className="flex items-center justify-between text-textMuted">
-              <span>Permits & misc</span>
-              <span className="tabular-nums">{fmt(PERMITS_DEFAULT)}</span>
+              <span>Sales tax ({quote.taxRatePct}%)</span>
+              <span className="tabular-nums">{formatUsd(quote.taxAmount)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between border-t border-borderLight pt-1 text-[13px] font-semibold text-foreground">
+              <span>Total</span>
+              <span className="tabular-nums">{formatUsd(quote.total)}</span>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2">
-            <Button variant="outline" size="sm" className="flex-1 text-[11px]">
-              Compare options
-            </Button>
-            <Button size="sm" className="flex-1 text-[11px]">
-              Generate proposal
-            </Button>
-          </div>
+
+          {quote.unpriced.length > 0 && (
+            <div className="mt-2 rounded-pfSm border border-amber-200 bg-amber-50 px-2 py-1.5">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+                Drawn but not priced
+              </div>
+              <ul className="mt-1 space-y-0.5">
+                {quote.unpriced.map((u) => (
+                  // Keyed on the label as well as the category. One category can now
+                  // hold several entries — a heater and a salt system are both
+                  // equipment — and a duplicate React key drops all but one of them,
+                  // which would put the silence straight back.
+                  <li key={`${u.category}:${u.label}`} className="text-[11px] leading-snug text-amber-900">
+                    <span className="font-medium">
+                      {u.label} ({fmtQuantity(u.quantity)} {u.unit})
+                    </span>{': '}
+                    {u.reason}.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -18,32 +18,85 @@ enum OrgRole {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
+  id    String @id @default(cuid())
+  email String @unique
+
+  /// Who this is according to Google Identity Platform.
+  ///
+  /// Credentials live there rather than here: password hashing, reset emails,
+  /// verification, multi-factor and eventually Google sign-in are all its job.
+  /// What stays ours is everything Identity Platform has no opinion about, which
+  /// is the whole of this schema: which organisation somebody belongs to, what
+  /// they are allowed to do in it, and everything they have drawn.
+  identityUid String? @unique
+
+  /// Only for accounts made before Identity Platform, and null for every account
+  /// made after. Kept so an existing sign-in does not break on the day of the
+  /// switch, and so a migration can move them across on their next successful
+  /// password entry rather than by asking everybody to reset at once.
+  passwordHash String?
   name         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships OrganizationMember[]
-  exports     Export[]             @relation("ExportGeneratedBy")
-  auditLogs   CommandAuditLog[]
+  memberships    OrganizationMember[]
+  exports        Export[]             @relation("ExportGeneratedBy")
+  authTokens     AuthToken[]          @relation("AuthTokenUser")
+  invitesSent    AuthToken[]          @relation("AuthTokenInviter")
+  auditLogs      CommandAuditLog[]
+  voiceSessions  VoiceSession[]
+  sourceImages   SourceImage[]        @relation("SourceImageUploadedBy")
+  sceneTemplates SceneTemplate[]
+  designVersions DesignVersion[]      @relation("DesignVersionAuthor")
 }
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
+  id         String  @id @default(cuid())
+  name       String
+  // Branding used on customer-facing proposals.
+  logoUrl    String?
+  brandColor String?
+  // Default sales-tax rate applied to the quote subtotal, as a percentage.
+  taxRatePct Float   @default(0)
+
+  // The business behind the paperwork. A proposal is contract-adjacent and a
+  // permit sheet is submitted to a county: both need to say who is offering the
+  // work. Settings held a name, a logo, a colour and a tax rate, so there was
+  // nowhere to put any of this and every document went out without it.
+  address           String?
+  phone             String?
+  email             String?
+  // Florida requires the contractor licence number on a pool contract. Other
+  // states differ; the field is free text so it can hold whichever applies.
+  licenseNumber     String?
+  // Deposit and draws, as ordered stages. Every pool contract has a schedule
+  // and the proposal printed none.
+  paymentSchedule   Json    @default("[]")
+  // The terms paragraph, so a builder's own wording ships instead of ours.
+  proposalTerms     String?
+  // How long a quote stands, used when nobody sets a date by hand.
+  proposalValidDays Int     @default(30)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members        OrganizationMember[]
-  customers      Customer[]
-  projects       Project[]
-  shapeTemplates ShapeTemplate[]
-  materials      Material[]
-  priceBooks     PriceBook[]
-  appSettings    AppSetting[]
-  auditLogs      CommandAuditLog[]
+  members             OrganizationMember[]
+  customers           Customer[]
+  projects            Project[]
+  shapeTemplates      ShapeTemplate[]
+  sceneTemplates      SceneTemplate[]
+  materials           Material[]
+  priceBooks          PriceBook[]
+  appSettings         AppSetting[]
+  auditLogs           CommandAuditLog[]
+  voiceSessions       VoiceSession[]
+  sourceImages        SourceImage[]
+  importSessions      ImportSession[]
+  intakeLinks         IntakeLink[]
+  intakeSubmissions   IntakeSubmission[]
+  siteCaptures        SiteCapture[]
+  priceChangeRequests PriceChangeRequest[]
+  authTokens          AuthToken[]
 }
 
 model OrganizationMember {
@@ -58,6 +111,73 @@ model OrganizationMember {
   @@unique([userId, orgId])
   @@index([orgId])
   @@index([userId])
+}
+
+/// What a one-time link is for. Both kinds are a secret in an email that
+/// becomes a password, so they share a table and a lifecycle rather than
+/// growing two near-identical ones that drift apart.
+enum AuthTokenKind {
+  INVITE
+  PASSWORD_RESET
+}
+
+/// A single-use link that lets somebody set a password.
+///
+/// The token itself is never stored. Only its sha256 lives here, so a dump of
+/// this table grants nobody an account: the secret exists in the recipient's
+/// email and nowhere else. Same reason a password column holds a hash.
+model AuthToken {
+  id        String        @id @default(cuid())
+  kind      AuthTokenKind
+  /// Lower-cased, because an invite to Sam@example.com is an invite to sam@.
+  email     String
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  /// Invites only: which organisation, and what they will be able to do.
+  orgId String?
+  role  OrgRole?
+
+  /// Resets only: whose account.
+  userId String?
+
+  invitedById String?
+  createdAt   DateTime @default(now())
+
+  org       Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user      User?         @relation("AuthTokenUser", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User?         @relation("AuthTokenInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([email, kind])
+  @@index([orgId])
+  @@index([expiresAt])
+}
+
+/// Somebody who asked to be let in.
+///
+/// Pool Forge is invite only on purpose while it is early, so the front door
+/// has to do something better than refuse. This is what it collects, and it is
+/// a sales pipeline rather than a mailing list: who they are, how big they are,
+/// and what they use today.
+model WaitlistSignup {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  company   String?
+  phone     String?
+  /// Roughly how many people would use it, which is the question that decides
+  /// whether they are worth a call this month or next quarter.
+  teamSize  String?
+  /// What they estimate with today. The honest competitive research.
+  usesToday String?
+  note      String?
+  /// Where they came from, so a campaign can be told apart from word of mouth.
+  source    String?
+  invitedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
 }
 
 // ============================================================
@@ -89,26 +209,48 @@ enum ProjectStatus {
 }
 
 model Project {
-  id                String        @id @default(cuid())
-  orgId             String
-  customerId        String?
-  name              String
-  salesperson       String?
-  designer          String?
-  status            ProjectStatus @default(DRAFT)
-  proposalExpiresAt DateTime?
-  internalNotes     String?
-  poolFields        Json          @default("{}")
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                   String        @id @default(cuid())
+  orgId                String
+  customerId           String?
+  name                 String
+  // A number a builder can say on the phone. The proposal used the tail of the
+  // cuid, which is not a reference anybody can read back.
+  jobNumber            Int?
+  salesperson          String?
+  designer             String?
+  status               ProjectStatus @default(DRAFT)
+  // Printed on the permit set, which is rejected without them.
+  jurisdiction         String?
+  parcelId             String?
+  proposalExpiresAt    DateTime?
+  internalNotes        String?
+  poolFields           Json          @default("{}")
+  // Public read-only proposal share link + customer acceptance.
+  shareToken           String?       @unique
+  sharedAt             DateTime?
+  proposalAcceptedAt   DateTime?
+  proposalAcceptedName String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
-  org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  customer    Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  drawing     Drawing?
-  quotes      Quote[]
-  exports     Export[]
-  validations ValidationResult[]
+  org               Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer          Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  drawing           Drawing?
+  versions          DesignVersion[]    @relation("ProjectVersions")
+  /// Which saved version the working drawing currently holds, so the rack can
+  /// show what is open without guessing.
+  activeVersionId   String?            @unique
+  activeVersion     DesignVersion?     @relation("ProjectActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  quotes            Quote[]
+  exports           Export[]
+  validations       ValidationResult[]
+  sourceImages      SourceImage[]
+  importSessions    ImportSession[]
+  intakeSubmissions IntakeSubmission[]
+  siteCaptures      SiteCapture[]
+  projectLineItems  ProjectLineItem[]
 
+  @@unique([orgId, jobNumber])
   @@index([orgId])
   @@index([status])
   @@index([orgId, status, updatedAt])
@@ -128,6 +270,59 @@ model Drawing {
 
   project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   objects DrawingObject[]
+}
+
+/// Who drew a version.
+///
+/// Kept as an enum rather than inferred from whether `createdById` is set,
+/// because a builder drawing on a customer's behalf is still a builder version,
+/// and a customer who happens to have an account is still a customer one.
+enum DesignVersionSource {
+  BUILDER
+  CUSTOMER
+}
+
+/// One saved design for a project. A job has as many as it needs.
+///
+/// Builders draw several before anyone agrees on one, and customers will draw
+/// their own through a share link. Both are the same thing: a named alternative
+/// with its own drawing, browsable side by side.
+///
+/// Versions sit beside the working `Drawing` rather than replacing it. Every
+/// existing query that asks a project for its one drawing keeps working, and
+/// activating a version copies its payload into that drawing, which is the
+/// operation the editor, the quote and every export already understand.
+model DesignVersion {
+  id        String              @id @default(cuid())
+  projectId String
+  /// Denormalised so a version can be scoped without joining through project,
+  /// which every query in this app has to do.
+  orgId     String
+  name      String
+  note      String?
+  source    DesignVersionSource @default(BUILDER)
+
+  /// Null for a customer working through a share link, who has no account.
+  createdById   String?
+  /// What to show when there is no user behind it.
+  createdByName String?
+
+  /// The drawing itself, the same shape as `Drawing.rootJson`.
+  rootJson Json @default("{}")
+
+  /// The quote total when this version was saved, so a rack of versions can
+  /// show what each one costs without recomputing every one of them.
+  totalCents Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("DesignVersionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  activeFor Project? @relation("ProjectActiveVersion")
+
+  @@index([projectId, createdAt])
+  @@index([orgId])
 }
 
 model DrawingObject {
@@ -158,6 +353,34 @@ model DrawingObject {
 // ============================================================
 // Shape templates & materials
 // ============================================================
+
+/// A whole saved scene: the drawing a new project can start from.
+///
+/// Distinct from `ShapeTemplate`, which models one shape. A scene is the set of
+/// objects a builder keeps reaching for, so it is stored as a drawing payload
+/// rather than being forced into the single-shape shape.
+model SceneTemplate {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  description String?
+  /// A `DrawingPayload`: the shapes, and nothing else.
+  payload     Json     @default("{}")
+  /// Kept alongside so a picker can show size without parsing the payload.
+  objectCount Int      @default(0)
+  /// At most one per org. New projects start from it.
+  isDefault   Boolean  @default(false)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator User?        @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, name])
+  @@index([orgId, isDefault])
+  @@index([orgId, updatedAt])
+}
 
 model ShapeTemplate {
   id                  String  @id @default(cuid())
@@ -204,6 +427,82 @@ model Material {
 // Pricing
 // ============================================================
 
+// A proposed change to the price list, reviewed before it reaches anyone.
+//
+// The workflow this models is real and was described by a prospect: one person
+// keeps the list, six to eight salespeople quote from it, and when one of them
+// needs a price changed they ask the keeper, who edits and re-sends. The ask
+// lives in a text message, the reasoning is lost, and nobody can see what
+// changed between one copy and the next.
+//
+// So: anyone may open a request, only a keeper may approve one, and approving
+// publishes a new version. The request records who asked, why, what it was
+// worth before, and who decided. A price on a customer's proposal can then be
+// traced back to the person who asked for it.
+enum PriceChangeStatus {
+  OPEN
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PriceChangeKind {
+  ADD
+  UPDATE
+  REMOVE
+}
+
+model PriceChangeRequest {
+  id     String            @id @default(cuid())
+  orgId  String
+  title  String
+  note   String?
+  status PriceChangeStatus @default(OPEN)
+
+  /// The version this was written against. If the active version moves past it,
+  /// the request is stale and has to be looked at again rather than applied
+  /// blindly over somebody else's edit.
+  baseBookId   String
+  /// The version approving it produced. Null until then.
+  resultBookId String?
+
+  openedById   String
+  decidedById  String?
+  decidedAt    DateTime?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org        Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  baseBook   PriceBook     @relation("ChangeRequestBase", fields: [baseBookId], references: [id], onDelete: Cascade)
+  resultBook PriceBook?    @relation("ChangeRequestResult", fields: [resultBookId], references: [id], onDelete: SetNull)
+  changes    PriceChange[]
+
+  @@index([orgId, status])
+  @@index([baseBookId])
+}
+
+model PriceChange {
+  id        String          @id @default(cuid())
+  requestId String
+  kind      PriceChangeKind
+
+  /// The item in the base version this touches. Null for an addition.
+  itemId     String?
+  /// What the item looked like when the request was opened, so a reviewer sees
+  /// what it was as well as what it would become, and so a later edit to the
+  /// same item is visible as a conflict rather than silently overwritten.
+  beforeJson Json?
+  /// What it should become. Null for a removal.
+  afterJson  Json?
+  reason     String?
+
+  request PriceChangeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
 model PriceBook {
   id        String   @id @default(cuid())
   orgId     String
@@ -217,11 +516,16 @@ model PriceBook {
   rules  PricingRule[]
   quotes Quote[]
 
+  changeRequestsBase   PriceChangeRequest[] @relation("ChangeRequestBase")
+  changeRequestsResult PriceChangeRequest[] @relation("ChangeRequestResult")
+
   @@unique([orgId, name, version])
   @@index([orgId])
 }
 
 enum PriceCategory {
+  /// Moving earth: excavation out, fill in, and hauling either way.
+  EARTHWORK
   POOL
   SPA
   DECK
@@ -245,6 +549,8 @@ enum UnitType {
   EACH
   LUMP
   HOUR
+  /// Cubic yards, for earthwork. Cut and fill are sold by the yard.
+  CUYD
 }
 
 model PriceBookItem {
@@ -261,6 +567,12 @@ model PriceBookItem {
   internalOnly    Boolean       @default(false)
   required        Boolean       @default(false)
   upgradeOnly     Boolean       @default(false)
+  /// Which customer selection turns this line on, e.g. "heater" or "salt".
+  ///
+  /// Every EQUIPMENT item used to be gated by one flag that meant "heater OR
+  /// salt", so ticking salt billed a heater as well. A line names the thing it
+  /// belongs to now. Null keeps the old behaviour: billed by its category rule.
+  optionKey       String?
 
   priceBook PriceBook @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
 
@@ -328,6 +640,8 @@ model ValidationResult {
 enum ExportKind {
   CUSTOMER_PROPOSAL
   CONSTRUCTION_PACKET
+  SITE_PLAN
+  SCREEN_ENCLOSURE_QUOTE
   IMAGE
 }
 
@@ -339,22 +653,65 @@ model Export {
   generatedAt   DateTime   @default(now())
   generatedById String?
 
+  /// The rendered document itself, in the blob store.
+  ///
+  /// Export was a browser print, so nothing recorded what was sent to whom. A
+  /// proposal is contract-adjacent and "what did we send them in March" has to
+  /// have an answer that is not "whatever the app would render today".
+  storageKey  String?
+  contentHash String?
+  byteSize    Int?
+
   project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   generatedBy User?   @relation("ExportGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
 
   @@index([projectId])
 }
 
+/// One voice session, open or finished.
+///
+/// Rows rather than a counter: a counter cannot answer "which sessions are open
+/// right now" after a crash, and the concurrency check needs exactly that.
+model VoiceSession {
+  id        String    @id @default(cuid())
+  orgId     String
+  userId    String?
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  /// Filled in when the session closes. Billing is by the second.
+  seconds   Int       @default(0)
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  /// The concurrency check: open sessions for one org.
+  @@index([orgId, endedAt])
+  /// The daily-minutes check.
+  @@index([orgId, startedAt])
+}
+
+enum CommandSource {
+  UI
+  VOICE
+  API
+  IMPORT
+  CRON
+}
+
 model CommandAuditLog {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   userId       String?
   orgId        String?
   commandId    String
-  inputJson    Json     @default("{}")
-  outputJson   Json     @default("{}")
-  success      Boolean  @default(false)
+  inputJson    Json          @default("{}")
+  outputJson   Json          @default("{}")
+  success      Boolean       @default(false)
   errorMessage String?
-  ranAt        DateTime @default(now())
+  /// How the command was triggered. Without it a spoken action and a button
+  /// click are indistinguishable in the log, so "what does the voice agent
+  /// actually get wrong" is unanswerable.
+  source       CommandSource @default(UI)
+  ranAt        DateTime      @default(now())
 
   user User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   org  Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
@@ -365,6 +722,8 @@ model CommandAuditLog {
   @@index([ranAt])
   @@index([userId, ranAt])
   @@index([orgId, commandId, ranAt])
+  // The eval question: what did voice do, and did it work.
+  @@index([orgId, source, ranAt])
 }
 
 model AppSetting {
@@ -449,6 +808,7 @@ enum EditableProperty {
 
 enum ShapeKind {
   RECTANGLE_POOL
+  POLYGON_POOL
   CONCRETE_DECK
   PAVER_DECK
   GRASS_AREA
@@ -456,6 +816,9 @@ enum ShapeKind {
   BENCH
   SPA
   STENCIL
+  /// A line, arc or freehand outline drawn in plan. Open or closed, and the
+  /// thing a 2D-first designer draws before anything is a pool yet.
+  SKETCH_PATH
 }
 
 model StencilDef {
@@ -475,4 +838,310 @@ model StencilDef {
   shapeKind           ShapeKind           @default(STENCIL)
 
   @@index([category])
+}
+
+/// One-off money on a single job, priced by hand.
+///
+/// Five price categories return a quantity of zero because nothing in a drawing
+/// measures them: a permit fee, a panel upgrade, a retaining wall, a fence run.
+/// They were accepted into the price book and then silently absent from every
+/// quote. They are per-job amounts rather than catalogue lines, so they live on
+/// the project and the builder says how many.
+model ProjectLineItem {
+  id              String        @id @default(cuid())
+  projectId       String
+  orgId           String
+  category        PriceCategory
+  name            String
+  unitType        UnitType
+  quantity        Decimal       @default(1) @db.Decimal(12, 3)
+  unitPrice       Decimal       @default(0) @db.Decimal(12, 4)
+  note            String?
+  /// Where it came from, when a builder picked it out of the price book.
+  priceBookItemId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([orgId])
+}
+
+/// An atomic counter behind a rate limit.
+///
+/// In-memory buckets are per process, so N instances collectively allow N times
+/// the limit. This is the counter the limit actually reads, incremented with an
+/// upsert so two requests racing cannot both see the same count.
+model RateLimitCounter {
+  /// What is being limited, e.g. "login:ip:203.0.113.0/64".
+  key         String
+  /// Start of the window this row counts, so old rows are trivially prunable.
+  windowStart DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@id([key, windowStart])
+  @@index([windowStart])
+}
+
+// ============================================================
+// Image ingestion: source images, analyses, review sessions, intake funnel.
+// Bytes never live in Postgres: `storageKey` addresses a BlobStore object.
+// ============================================================
+
+enum SourceImageKind {
+  SKETCH
+  SITE_PLAN
+  CONCEPT_RENDER
+  SITE_PHOTO
+  SCREENSHOT
+  UNKNOWN
+}
+
+enum ImageOrigin {
+  BUILDER
+  CUSTOMER_INTAKE
+}
+
+model SourceImage {
+  id         String          @id @default(cuid())
+  orgId      String
+  projectId  String?
+  kind       SourceImageKind @default(UNKNOWN)
+  // Opaque key into the configured BlobStore. Never a URL, never bytes.
+  storageKey String
+  mimeType   String
+  bytes      Int
+  // Hex sha256 of the stored bytes. Drives dedupe and the analysis cache.
+  sha256     String
+  widthPx    Int
+  heightPx   Int
+  uploadedBy String?
+  origin     ImageOrigin     @default(BUILDER)
+  createdAt  DateTime        @default(now())
+
+  org      Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project  Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  uploader User?           @relation("SourceImageUploadedBy", fields: [uploadedBy], references: [id], onDelete: SetNull)
+  analyses ImageAnalysis[]
+
+  @@index([orgId])
+  @@index([orgId, sha256])
+  @@index([projectId])
+}
+
+enum AnalysisStage {
+  CLASSIFY
+  EXTRACT
+  CALIBRATE
+  TRANSLATE
+}
+
+enum AnalysisStatus {
+  PENDING
+  OK
+  FAILED
+}
+
+model ImageAnalysis {
+  id               String         @id @default(cuid())
+  sourceImageId    String
+  stage            AnalysisStage
+  // Bumped whenever a prompt or parser changes, so cached rows stay honest.
+  extractorVersion String
+  model            String
+  promptHash       String
+  rawJson          Json           @default("{}")
+  parsedJson       Json           @default("{}")
+  tokensIn         Int            @default(0)
+  tokensOut        Int            @default(0)
+  latencyMs        Int            @default(0)
+  status           AnalysisStatus @default(PENDING)
+  // Correlation ref (`err_<12 hex>`) for a server-logged failure. Never raw
+  // third-party error text: that can carry key fragments, tokens, or PII.
+  errorRef         String?
+  createdAt        DateTime       @default(now())
+
+  sourceImage SourceImage @relation(fields: [sourceImageId], references: [id], onDelete: Cascade)
+
+  // Re-analysis is idempotent and cached on this triple.
+  @@unique([sourceImageId, stage, extractorVersion])
+  @@index([sourceImageId])
+  @@index([status])
+}
+
+enum ImportSessionStatus {
+  DRAFT
+  READY
+  APPLIED
+  DISCARDED
+}
+
+model ImportSession {
+  id                String              @id @default(cuid())
+  orgId             String
+  projectId         String?
+  status            ImportSessionStatus @default(DRAFT)
+  // A `DesignIntent` v1 document (src/modules/imports/intent.ts).
+  designIntentJson  Json                @default("{}")
+  appliedAt         DateTime?
+  // Command ids emitted by `import.intent.apply`, so the batch is traceable
+  // back through CommandAuditLog and coalesces to one undo entry.
+  appliedCommandIds String[]
+  // Dotted DesignIntent paths a human has explicitly corrected via
+  // `import.intent.patch`. Gate 2 in the design spec: a field whose confidence
+  // is below CONFIDENCE_REVIEW_REQUIRED cannot be applied until it appears
+  // here. Accumulates, never resets, so the record survives re-extraction.
+  touchedFieldPaths String[]
+  // Queue state for customer-intake analysis (src/modules/imports/intake/queue.ts).
+  // Written to PENDING inside the submission transaction, before any model call
+  // is attempted, so a polling client sees progress immediately instead of
+  // nothing until a blocking call returns. A worker claims a row with
+  // `UPDATE ... WHERE analysisStatus = 'PENDING'`, which is atomic across
+  // instances. A plain String rather than a Prisma enum keeps the claim
+  // predicate literal and adds no new DB type; the allowed values live in one
+  // const map, `INTAKE_ANALYSIS_STATUS`.
+  analysisStatus    String              @default("NONE")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([projectId])
+  @@index([orgId, status, updatedAt])
+  @@index([analysisStatus, createdAt])
+}
+
+/**
+ * The public intake funnel's rate limiter. The ONE new model this track adds.
+ * Counting has to be atomic across every running instance: an in-memory token
+ * bucket is per-process, so N instances collectively let through N times the
+ * ceiling. Every request runs a single
+ * `INSERT ... ON CONFLICT ... DO UPDATE ... WHERE count < ceiling`; Postgres
+ * reports zero affected rows exactly when the bucket is spent.
+ * `bucketKey` is already normalized by the caller: an IP key is reduced to its
+ * IPv6 /64 prefix so rotating addresses inside one allocation share a bucket.
+ */
+model IntakeRateCounter {
+  id          String   @id @default(cuid())
+  // 'ip' or 'token'. Keeps the two ceilings in separate namespaces.
+  scope       String
+  bucketKey   String
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([scope, bucketKey, windowStart])
+  @@index([expiresAt])
+}
+
+model IntakeLink {
+  id        String    @id @default(cuid())
+  orgId     String
+  token     String    @unique
+  label     String
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  submissions IntakeSubmission[]
+
+  @@index([orgId])
+  @@index([orgId, active])
+}
+
+enum IntakeSubmissionStatus {
+  NEW
+  REVIEWED
+  CONVERTED
+  DISCARDED
+}
+
+model IntakeSubmission {
+  id           String                 @id @default(cuid())
+  orgId        String
+  intakeLinkId String
+  projectId    String?
+  customerName String?
+  email        String?
+  phone        String?
+  notes        String?
+  status       IntakeSubmissionStatus @default(NEW)
+  createdAt    DateTime               @default(now())
+
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  intakeLink IntakeLink   @relation(fields: [intakeLinkId], references: [id], onDelete: Cascade)
+  project    Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([intakeLinkId])
+  @@index([orgId, status, createdAt])
+}
+
+// ============================================================
+// LiDAR site capture
+//
+// A builder walks the yard in lawnmower stripes and the phone paints the ground
+// as it goes. What lands here is not a mesh: it is a heightfield plus the mask
+// saying which cells anybody actually walked. The mask is the whole point. An
+// interpolated surface and a measured one look identical, and the difference is
+// a cut-and-fill number on a signed contract, so the mask is kept for the life
+// of the project and every volume derived from it can be asked how much of its
+// ground was real.
+// ============================================================
+
+model SiteCapture {
+  id        String @id @default(cuid())
+  orgId     String
+  projectId String
+
+  /// The phone's own id for this walk, stable across a retried upload. Unique
+  /// within the organisation, so a lost connection re-sends rather than
+  /// recording the same yard twice.
+  captureId String
+
+  /// Grid shape. Row-major throughout, `cols * rows` cells.
+  cols Int
+  rows Int
+
+  /// Geometry, already converted: canvas inches, feet on the site datum.
+  /// Metres stop at `src/modules/capture/units.ts` and never reach the database.
+  cellSizeIn   Float
+  originXIn    Float
+  originYIn    Float
+  benchmarkXIn Float
+  benchmarkYIn Float
+
+  /// The height of ground nobody measured, set by the benchmark tap.
+  datumFt        Float
+  benchmarkLabel String?
+
+  /// Row-major heights, one little-endian float32 per cell, in feet on the
+  /// datum. Bytes rather than a Json array: 60,000 cells is 240KB here and
+  /// about 1.2MB as JSON text, re-parsed on every read.
+  elevationsFt Bytes
+
+  /// Row-major coverage, one byte per cell, 0 to 255 meaning 0 to 1.
+  coverage Bytes
+
+  /// Summary, so a list view never has to decode the arrays.
+  measuredCells Int
+  shotCount     Int
+  maxErrorFt    Float
+
+  capturedAt DateTime
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, captureId])
+  @@index([orgId])
+  @@index([projectId, capturedAt])
 }

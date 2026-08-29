@@ -1,0 +1,52 @@
+{
+  "shapeFamily": "kidney",
+  "poolPolygon": [
+    { "x": 0.180, "y": 0.400 },
+    { "x": 0.260, "y": 0.330 },
+    { "x": 0.370, "y": 0.300 },
+    { "x": 0.480, "y": 0.320 },
+    { "x": 0.560, "y": 0.390 },
+    { "x": 0.520, "y": 0.470 },
+    { "x": 0.560, "y": 0.560 },
+    { "x": 0.480, "y": 0.640 },
+    { "x": 0.360, "y": 0.670 },
+    { "x": 0.240, "y": 0.630 },
+    { "x": 0.170, "y": 0.540 },
+    { "x": 0.160, "y": 0.460 }
+  ],
+  "gridVisible": false,
+  "scaleLegendText": null,
+  "dimensions": [
+    {
+      "p1": { "x": 0.160, "y": 0.740 },
+      "p2": { "x": 0.560, "y": 0.740 },
+      "text": "about thirty-ish",
+      "appliesTo": "pool-length"
+    },
+    {
+      "p1": { "x": 0.120, "y": 0.300 },
+      "p2": { "x": 0.120, "y": 0.670 },
+      "text": "14",
+      "appliesTo": "pool-width"
+    }
+  ],
+  "depths": { "shallowText": "3'", "deepText": null },
+  "features": [{ "label": "tanning ledge", "count": 1, "lengthText": null, "widthText": null }],
+  "deck": { "material": "concrete", "widthText": null },
+  "enclosure": { "present": false, "kind": "none", "heightText": null },
+  "materials": {
+    "interiorFinish": null,
+    "copingMaterial": null,
+    "tileBand": null,
+    "deckMaterial": "concrete"
+  },
+  "notes": ["the length dimension is written in cursive and hard to read"],
+  "confidence": {
+    "shapeFamily": 0.78,
+    "polygon": 0.7,
+    "dimensions": 0.55,
+    "depths": 0.6,
+    "features": 0.72,
+    "materials": 0.5
+  }
+}

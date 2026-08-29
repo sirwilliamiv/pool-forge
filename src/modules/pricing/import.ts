@@ -23,6 +23,17 @@ export interface RowError {
   message: string
 }
 
+/**
+ * A row that imported, with something about it worth saying out loud.
+ *
+ * Separate from `RowError`, which drops the row. A warning keeps it: the
+ * spreadsheet had a price and a name, so refusing it would lose the builder's
+ * own number. What it did not have was a category anybody recognised, and
+ * landing quietly in "Other" is how a $9,400 wall came to sit in a book,
+ * looking imported, billing nothing.
+ */
+export type RowWarning = RowError
+
 export function parseSheet(buffer: ArrayBuffer): ImportPreview {
   const wb = read(buffer, { type: 'array' })
   const firstName = wb.SheetNames[0]
@@ -88,10 +99,17 @@ function normalizeUnit(raw: unknown): UnitType {
   return UnitType.EACH
 }
 
-// Map free-form category strings to a typed PriceCategory enum.
-function normalizeCategory(raw: unknown): PriceCategory {
+/**
+ * Map free-form category strings to a typed PriceCategory enum.
+ *
+ * Null when nothing matches, so the caller can say so. It used to answer MISC
+ * for anything it did not recognise and for a blank cell alike, which meant an
+ * unclassified line arrived in the book indistinguishable from one the builder
+ * had deliberately filed under "Other".
+ */
+function matchCategory(raw: unknown): PriceCategory | null {
   const v = String(raw ?? '').trim().toLowerCase()
-  if (!v) return PriceCategory.MISC
+  if (!v) return null
   if (v.includes('pool')) return PriceCategory.POOL
   if (v.includes('spa')) return PriceCategory.SPA
   if (v.includes('deck')) return PriceCategory.DECK
@@ -106,15 +124,17 @@ function normalizeCategory(raw: unknown): PriceCategory {
   if (v.includes('fence')) return PriceCategory.FENCE
   if (v.includes('wall')) return PriceCategory.WALL
   if (v.includes('lanai')) return PriceCategory.LANAI
-  return PriceCategory.MISC
+  if (v.includes('misc') || v.includes('other')) return PriceCategory.MISC
+  return null
 }
 
 export function rowsToItems(
   rows: Record<string, unknown>[],
   mapping: Partial<Record<keyof ImportRow, string>>,
-): { items: ImportRow[]; errors: RowError[] } {
+): { items: ImportRow[]; errors: RowError[]; warnings: RowWarning[] } {
   const items: ImportRow[] = []
   const errors: RowError[] = []
+  const warnings: RowWarning[] = []
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -144,7 +164,18 @@ export function rowsToItems(
       continue
     }
 
-    const category = normalizeCategory(mapping.category ? row[mapping.category] : '')
+    const rawCategory = mapping.category ? row[mapping.category] : ''
+    const matched = matchCategory(rawCategory)
+    const category = matched ?? PriceCategory.MISC
+    if (matched === null) {
+      const written = String(rawCategory ?? '').trim()
+      warnings.push({
+        rowIndex: i,
+        message: written
+          ? `"${name}": no category matches "${written}", so it is filed under Other. Nothing in a drawing measures Other, so it is added to a job by hand rather than billed automatically.`
+          : `"${name}": no category given, so it is filed under Other. Nothing in a drawing measures Other, so it is added to a job by hand rather than billed automatically.`,
+      })
+    }
     const unitType = normalizeUnit(mapping.unitType ? row[mapping.unitType] : '')
 
     const item: ImportRow = { category, name, unitType, retailPrice: retail }
@@ -159,5 +190,5 @@ export function rowsToItems(
     items.push(item)
   }
 
-  return { items, errors }
+  return { items, errors, warnings }
 }

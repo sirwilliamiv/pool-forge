@@ -2,7 +2,20 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import {
+  COMMAND_SOURCES,
+  DEFAULT_COMMAND_SOURCE,
+  type CommandSourceValue,
+} from '@/modules/commands/source'
+import {
+  humanCommandCrashError,
+  humanCommandInputError,
+  humanUnknownCommandError,
+  technicalIssueList,
+} from '@/lib/commands/errors'
+import { captureError } from '@/modules/monitoring'
 import { initCommands } from '@/modules/commands/init'
+import { auditableInput } from '@/modules/commands/dispatch'
 import { get } from '@/modules/commands/registry'
 import type { CommandContext, CommandResult } from '@/modules/commands/registry'
 
@@ -11,6 +24,14 @@ initCommands()
 const requestSchema = z.object({
   id: z.string().min(1),
   input: z.unknown(),
+  /**
+   * How the caller triggered this.
+   *
+   * A hint from the client, so it is treated as one: it labels the audit row and
+   * nothing else. It grants no permission and changes no behaviour, which is why
+   * an unrecognised value is simply ignored rather than rejected.
+   */
+  source: z.enum(COMMAND_SOURCES).optional(),
 })
 
 async function writeAudit(args: {
@@ -19,6 +40,7 @@ async function writeAudit(args: {
   commandId: string
   input: unknown
   result: CommandResult | { ok: false; error: string }
+  source: CommandSourceValue
 }): Promise<void> {
   try {
     await db.commandAuditLog.create({
@@ -30,6 +52,7 @@ async function writeAudit(args: {
         outputJson: (args.result.ok ? args.result.data : {}) as object,
         success: args.result.ok,
         errorMessage: args.result.ok ? null : args.result.error,
+        source: args.source,
       },
     })
   } catch (err) {
@@ -39,22 +62,30 @@ async function writeAudit(args: {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // These two are malformed requests rather than bad user input, so there is no
+  // command to name, but the string still ends up in a toast, so it is still a
+  // sentence rather than a parser's complaint.
+  const MALFORMED =
+    'Pool Forge could not send that action to the server. Nothing was changed. Please try again.'
+
   let body: unknown
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ ok: false, error: 'invalid JSON body' }, { status: 400 })
+    console.warn('[commands] request body was not JSON')
+    return NextResponse.json({ ok: false, error: MALFORMED }, { status: 400 })
   }
 
   const parsed = requestSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { ok: false, error: `invalid request: ${parsed.error.issues.map(i => i.message).join('; ')}` },
-      { status: 400 },
+    console.warn(
+      `[commands] malformed request: ${parsed.error.issues.map(i => i.message).join('; ')}`,
     )
+    return NextResponse.json({ ok: false, error: MALFORMED }, { status: 400 })
   }
 
   const { id, input } = parsed.data
+  const source = parsed.data.source ?? DEFAULT_COMMAND_SOURCE
   const command = get(id)
 
   // Resolve session (Track B may not be wired up yet — fall back gracefully).
@@ -69,19 +100,41 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   if (!command) {
-    const result = { ok: false as const, error: `unknown command: ${id}` }
-    await writeAudit({ userId, orgId, commandId: id, input, result })
-    return NextResponse.json(result, { status: 404 })
+    // Two audiences, two messages: the audit row keeps the id that was asked
+    // for, the response carries a sentence rather than an internal identifier.
+    await writeAudit({
+      userId,
+      orgId,
+      commandId: id,
+      input,
+      result: { ok: false, error: `unknown command: ${id}` },
+      source,
+    })
+    return NextResponse.json(
+      { ok: false, error: humanUnknownCommandError() },
+      { status: 404 },
+    )
   }
 
   const inputParsed = command.inputSchema.safeParse(input)
   if (!inputParsed.success) {
-    const result = {
-      ok: false as const,
-      error: `invalid input: ${inputParsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
-    }
-    await writeAudit({ userId, orgId, commandId: id, input, result })
-    return NextResponse.json(result, { status: 400 })
+    // The Zod issue list is a developer's sentence, and it used to be shown to
+    // the user in a toast. It stays here, where it is useful, and the response
+    // carries the plain-English half.
+    const technical = technicalIssueList(inputParsed.error)
+    console.warn(`[commands] ${id} refused its input: ${technical}`)
+    await writeAudit({
+      userId,
+      orgId,
+      commandId: id,
+      input: auditableInput(command, input),
+      result: { ok: false, error: `invalid input: ${technical}` },
+      source,
+    })
+    return NextResponse.json(
+      { ok: false, error: humanCommandInputError(command.label, inputParsed.error, input) },
+      { status: 400 },
+    )
   }
 
   const ctx: CommandContext = {
@@ -90,12 +143,35 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   let result: CommandResult
+  // Two audiences again. A thrown error's own message can quote the row it
+  // choked on, so it never reaches the browser; it is captured, redacted and
+  // logged against a ref, the caller gets a sentence carrying that ref, and the
+  // audit row records the ref rather than the generic copy so the two can be
+  // joined later.
+  let auditResult: CommandResult | { ok: false; error: string }
   try {
     result = await command.execute(inputParsed.data, ctx)
+    auditResult = result
   } catch (err) {
-    result = { ok: false, error: err instanceof Error ? err.message : 'unknown error' }
+    const report = captureError({
+      error: err,
+      code: 'command_execute',
+      origin: 'server',
+      route: `/api/commands/${id}`,
+      userId,
+      orgId,
+    })
+    result = { ok: false, error: humanCommandCrashError(command.label, report.errorRef) }
+    auditResult = { ok: false, error: `command threw (${report.errorRef}): ${report.name}` }
   }
 
-  await writeAudit({ userId, orgId, commandId: id, input: inputParsed.data, result })
+  await writeAudit({
+    userId,
+    orgId,
+    commandId: id,
+    input: auditableInput(command, inputParsed.data),
+    result: auditResult,
+    source,
+  })
   return NextResponse.json(result)
 }

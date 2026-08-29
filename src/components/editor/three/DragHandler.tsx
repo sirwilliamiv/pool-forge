@@ -3,13 +3,23 @@
 import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { toast } from 'sonner'
 import { dispatch } from '@/lib/commands/dispatch'
-import { inches } from '@/lib/three/units'
+import { pickShapeId } from '@/lib/three/pick'
+import { clientToNdc } from '@/modules/editor/interactions/pointer'
+import {
+  canDragShape,
+  dragTranslation,
+  fitIntoSpace,
+  isNoOpMove,
+  passesDragThreshold,
+  spaceName,
+  spaceUnder,
+} from '@/modules/editor/interactions/drag'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
+import { useDrawStore } from '@/modules/editor/state/drawStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
-
-const DRAG_THRESHOLD_PX = 4
 
 export function DragHandler() {
   const { gl, camera, scene } = useThree()
@@ -38,50 +48,34 @@ export function DragHandler() {
     let drag: DragState | null = null
 
     function projectToGround(clientX: number, clientY: number): THREE.Vector3 | null {
-      const rect = dom.getBoundingClientRect()
-      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1
-      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1
+      const screen = clientToNdc(clientX, clientY, dom.getBoundingClientRect())
+      if (!screen) return null
+      ndc.set(screen.x, screen.y)
       raycaster.setFromCamera(ndc, camera)
       const ok = raycaster.ray.intersectPlane(groundPlane, hitPoint)
       if (!ok) return null
       return hitPoint.clone()
     }
 
-    function pickShapeId(clientX: number, clientY: number): string | null {
-      const rect = dom.getBoundingClientRect()
-      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1
-      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(ndc, camera)
-      const intersects = raycaster.intersectObjects(scene.children, true)
-      for (const hit of intersects) {
-        let obj: THREE.Object3D | null = hit.object
-        while (obj && !(obj.userData && obj.userData.id) && obj.parent) {
-          obj = obj.parent
-        }
-        if (obj && obj.userData && obj.userData.id) {
-          return obj.userData.id as string
-        }
-      }
-      return null
-    }
-
     function onPointerDown(e: PointerEvent) {
       // Only left button.
       if (e.button !== 0) return
 
-      // Only when select tool is active.
-      const tool = useEditorStore.getState().activeTool
-      if (tool !== 'tool.select' && tool !== 'select') return
-
-      const id = pickShapeId(e.clientX, e.clientY)
+      const id = pickShapeId(raycaster, camera, scene, dom, e.clientX, e.clientY)
       if (!id) return
-
-      const selected = useSelectionStore.getState().selectedIds
-      if (!selected.includes(id)) return
 
       const shape = useShapesStore.getState().shapes.find((s) => s.id === id)
       if (!shape) return
-      if (shape.locked) return
+      // Right tool, already selected, not locked, not hidden.
+      if (
+        !canDragShape({
+          activeTool: useEditorStore.getState().activeTool,
+          shape,
+          selectedIds: useSelectionStore.getState().selectedIds,
+        })
+      ) {
+        return
+      }
 
       const ground = projectToGround(e.clientX, e.clientY)
       if (!ground) return
@@ -110,8 +104,10 @@ export function DragHandler() {
       // Threshold: don't start moving until we exceed 4px.
       if (!drag.moved) {
         if (
-          Math.abs(e.clientX - drag.startClientX) <= DRAG_THRESHOLD_PX &&
-          Math.abs(e.clientY - drag.startClientY) <= DRAG_THRESHOLD_PX
+          !passesDragThreshold(
+            { x: drag.startClientX, y: drag.startClientY },
+            { x: e.clientX, y: e.clientY },
+          )
         ) {
           return
         }
@@ -126,13 +122,35 @@ export function DragHandler() {
       const ground = projectToGround(e.clientX, e.clientY)
       if (!ground) return
 
-      const dxFeet = ground.x - drag.startGroundX
-      const dzFeet = ground.z - drag.startGroundZ
-      const newX = drag.startShapeX + inches(dxFeet)
-      const newY = drag.startShapeY + inches(dzFeet)
+      const { x: newX, y: newY } = dragTranslation({
+        startGroundX: drag.startGroundX,
+        startGroundZ: drag.startGroundZ,
+        groundX: ground.x,
+        groundZ: ground.z,
+        startShapeX: drag.startShapeX,
+        startShapeY: drag.startShapeY,
+        snap: useEditorStore.getState().snapEnabled,
+      })
 
       drag.lastX = newX
       drag.lastY = newY
+
+      // Light up the space this would land in, while the drag is happening.
+      // The fit itself still waits for the release, but the target must not:
+      // a rule that only reveals itself after you let go is one people meet by
+      // being surprised by it.
+      const all = useShapesStore.getState().shapes
+      const moving = all.find((s) => s.id === drag?.id)
+      if (moving) {
+        const target = spaceUnder(
+          { x: newX + moving.width / 2, y: newY + moving.height / 2 },
+          all,
+          drag.id,
+        )
+        const store = useDrawStore.getState()
+        const id = target?.id ?? null
+        if (store.dropTargetId !== id) store.setDropTarget(id)
+      }
 
       // Direct mutation, no dispatch — coalesced commit on pointerup.
       useShapesStore.getState().updateShape(drag.id, { x: newX, y: newY })
@@ -142,6 +160,7 @@ export function DragHandler() {
       if (!drag || e.pointerId !== drag.pointerId) return
       const finished = drag
       drag = null
+      useDrawStore.getState().setDropTarget(null)
 
       try {
         dom.releasePointerCapture(finished.pointerId)
@@ -151,9 +170,63 @@ export function DragHandler() {
 
       if (!finished.moved) return
 
-      // Stop the click from also reaching SelectionPicker as a "click" — its
-      // pointerup uses a 4px threshold, so a real drag won't register as a
-      // click anyway.
+      // A drag that ends where it started is not a move. Committing it would
+      // write a history entry and an audit row for nothing, so the user's next
+      // undo would appear to do nothing at all.
+      if (
+        isNoOpMove(
+          { x: finished.startShapeX, y: finished.startShapeY },
+          { x: finished.lastX, y: finished.lastY },
+        )
+      ) {
+        return
+      }
+
+      // Dropped into a space somebody drew? Put it in the space.
+      //
+      // Decided on release rather than during the drag, so the object follows
+      // the pointer honestly and only settles when it is let go. Snapping it
+      // mid-drag would make it jump between spaces as the cursor crossed an
+      // edge, which reads as the object fighting the hand holding it.
+      const shapes = useShapesStore.getState().shapes
+      const dragged = shapes.find((s) => s.id === finished.id)
+      if (dragged) {
+        const centre = {
+          x: finished.lastX + dragged.width / 2,
+          y: finished.lastY + dragged.height / 2,
+        }
+        const space = spaceUnder(centre, shapes, finished.id)
+        if (space) {
+          const fit = fitIntoSpace(
+            { x: finished.lastX, y: finished.lastY, width: dragged.width, height: dragged.height },
+            space,
+          )
+          if (fit.outcome === 'moved' || fit.outcome === 'resized') {
+            void dispatch('move.shape', { id: finished.id, x: fit.box.x, y: fit.box.y })
+            if (fit.outcome === 'resized') {
+              void dispatch('resize.shape', {
+                id: finished.id,
+                width: fit.box.width,
+                height: fit.box.height,
+              })
+              toast.info(
+                `Scaled to fit ${spaceName(space)}.`,
+              )
+            }
+            return
+          }
+          // Too small to hold it. Left where it was dropped and said so, rather
+          // than silently placing it somewhere the user did not point at.
+          if (fit.outcome === 'impossible') {
+            toast.warning(
+              `That will not fit inside ${spaceName(space)}.`,
+            )
+          }
+        }
+      }
+
+      // SelectionPicker's own pointerup uses the same 4px slop, so a real drag
+      // never registers there as a click.
       void dispatch('move.shape', {
         id: finished.id,
         x: finished.lastX,
@@ -164,6 +237,7 @@ export function DragHandler() {
     function onPointerCancel(e: PointerEvent) {
       if (!drag || e.pointerId !== drag.pointerId) return
       drag = null
+      useDrawStore.getState().setDropTarget(null)
     }
 
     // Capture phase so we can stopImmediatePropagation() before CustomOrbit's

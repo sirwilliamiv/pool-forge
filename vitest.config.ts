@@ -16,7 +16,14 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/test/unit/**/*.test.ts', 'src/test/unit/**/*.test.tsx'],
+    include: [
+      'src/test/unit/**/*.test.ts',
+      'src/test/unit/**/*.test.tsx',
+      // Property tests live alongside the example tests and run in the same
+      // gate. A property that only runs when someone remembers to run it is a
+      // property nobody is checking.
+      'src/test/property/**/*.property.test.ts',
+    ],
     css: false,
   },
 })

@@ -1,13 +1,69 @@
 import type { Tool } from './types'
 
+const drawing2d: Tool[] = [
+  {
+    id: 'tool.line',
+    status: 'built',
+    name: 'Line',
+    icon: 'PenLine',
+    tooltip: 'Draw straight lines',
+    shortcut: 'p',
+    description:
+      'Click to place each corner of a straight path. Hold shift to lock a segment horizontal, vertical or to 45 degrees, and hold alt to step off the grid for one point. Double-click or press Enter to finish, backspace to take back the last corner, Escape to abandon it. Ending near where you started closes the path, which is what makes it an outline with an area rather than a line.',
+    category: 'drawing',
+    inputs: ['click positions on the ground plane'],
+    outputs: ['a SKETCH_PATH shape'],
+    sideEffects: ['adds a shape via sketch.create'],
+    errorStates: ['fewer than two points, which is not a path'],
+    undoBehavior: 'undoable as one shape',
+    voiceCommandExamples: ['draw the lot line', 'start a line'],
+  },
+  {
+    id: 'tool.curve',
+    status: 'built',
+    name: 'Curve',
+    icon: 'Spline',
+    tooltip: 'Draw an arc through three points',
+    shortcut: 'a',
+    description:
+      'Three clicks: where the arc starts, a point it passes through, and where it ends. The arc is stored as segments, so everything downstream (area, perimeter, the 3D footprint, the construction sheet) treats it the same as any other path. Three points in a line have no arc through them and become a straight segment.',
+    category: 'drawing',
+    inputs: ['three click positions'],
+    outputs: ['arc segments appended to the path'],
+    sideEffects: ['adds a shape via sketch.create'],
+    errorStates: ['collinear points, which degrade to a straight segment'],
+    undoBehavior: 'undoable as one shape',
+    voiceCommandExamples: ['draw a curve', 'curve the deck edge'],
+  },
+  {
+    id: 'tool.freehand',
+    status: 'built',
+    name: 'Freehand',
+    icon: 'Signature',
+    tooltip: 'Draw by dragging, then snap it to the grid',
+    shortcut: 'n',
+    description:
+      'Drag to draw. On release the path is simplified to the corners you actually meant, snapped to the current grid, and stripped of the duplicate points snapping creates. Hold alt while releasing to keep it off the grid. A loop that ends near where it began becomes a closed outline.',
+    category: 'drawing',
+    inputs: ['a pointer drag'],
+    outputs: ['a simplified, snapped SKETCH_PATH shape'],
+    sideEffects: ['adds a shape via sketch.create'],
+    errorStates: ['a drag too short to be a path'],
+    undoBehavior: 'undoable as one shape',
+    voiceCommandExamples: ['sketch the pool outline', 'draw freehand'],
+  },
+]
+
 const selection: Tool[] = [
   {
     id: 'tool.select',
+    status: 'built',
     name: 'Select',
     icon: 'MousePointer2',
     tooltip: 'Select objects',
     shortcut: 'v',
-    description: 'Click an object to select it. Shift-click to add to selection.',
+    description:
+      'Click an object to select it, shift-click to add to the selection, and drag a selected object to move it. The toolbar calls this Move.',
     category: 'selection',
     inputs: ['pointer position'],
     outputs: ['selection set'],
@@ -18,6 +74,7 @@ const selection: Tool[] = [
   },
   {
     id: 'tool.pan',
+    status: 'built',
     name: 'Pan',
     icon: 'Hand',
     tooltip: 'Pan the canvas',
@@ -33,6 +90,7 @@ const selection: Tool[] = [
   },
   {
     id: 'tool.zoom',
+    status: 'planned',
     name: 'Zoom',
     icon: 'ZoomIn',
     tooltip: 'Zoom in or out',
@@ -48,6 +106,7 @@ const selection: Tool[] = [
   },
   {
     id: 'tool.multi-select',
+    status: 'planned',
     name: 'Multi select',
     icon: 'BoxSelect',
     tooltip: 'Drag a marquee to select multiple objects',
@@ -63,10 +122,13 @@ const selection: Tool[] = [
   },
   {
     id: 'tool.group',
+    status: 'planned',
     name: 'Group',
     icon: 'Group',
     tooltip: 'Group selected objects',
-    shortcut: 'mod+g',
+    // No command and no binding behind it, so no shortcut is advertised: a
+    // reader who tries the key concludes the keyboard is broken.
+    shortcut: null,
     description: 'Combine selected objects into a group.',
     category: 'selection',
     inputs: ['selection set'],
@@ -78,10 +140,13 @@ const selection: Tool[] = [
   },
   {
     id: 'tool.ungroup',
+    status: 'planned',
     name: 'Ungroup',
     icon: 'Ungroup',
     tooltip: 'Ungroup selected objects',
-    shortcut: 'mod+shift+g',
+    // No command and no binding behind it, so no shortcut is advertised: a
+    // reader who tries the key concludes the keyboard is broken.
+    shortcut: null,
     description: 'Disband a group, leaving its children selected.',
     category: 'selection',
     inputs: ['group id'],
@@ -93,6 +158,7 @@ const selection: Tool[] = [
   },
   {
     id: 'tool.lock',
+    status: 'planned',
     name: 'Lock',
     icon: 'Lock',
     tooltip: 'Lock selected objects',
@@ -108,6 +174,7 @@ const selection: Tool[] = [
   },
   {
     id: 'tool.hide',
+    status: 'planned',
     name: 'Hide',
     icon: 'EyeOff',
     tooltip: 'Hide selected objects',
@@ -126,6 +193,7 @@ const selection: Tool[] = [
 const drawing: Tool[] = [
   {
     id: 'tool.add-pool',
+    status: 'planned',
     name: 'Add pool',
     icon: 'Square',
     tooltip: 'Draw a rectangle pool',
@@ -141,6 +209,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-freeform-pool',
+    status: 'planned',
     name: 'Add freeform pool',
     icon: 'Spline',
     tooltip: 'Draw a freeform pool',
@@ -156,6 +225,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-deck',
+    status: 'planned',
     name: 'Add deck',
     icon: 'Square',
     tooltip: 'Draw a deck',
@@ -171,6 +241,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-lanai',
+    status: 'planned',
     name: 'Add lanai',
     icon: 'Home',
     tooltip: 'Draw a lanai',
@@ -186,6 +257,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-spa',
+    status: 'planned',
     name: 'Add spa',
     icon: 'Hexagon',
     tooltip: 'Draw a spa',
@@ -201,6 +273,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-steps',
+    status: 'planned',
     name: 'Add steps',
     icon: 'Steps',
     tooltip: 'Add pool steps',
@@ -216,6 +289,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-bench',
+    status: 'planned',
     name: 'Add bench',
     icon: 'Minus',
     tooltip: 'Add a bench',
@@ -231,6 +305,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-tanning-ledge',
+    status: 'planned',
     name: 'Add tanning ledge',
     icon: 'Sun',
     tooltip: 'Add a tanning ledge',
@@ -246,6 +321,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-drain',
+    status: 'planned',
     name: 'Add drain',
     icon: 'Disc',
     tooltip: 'Add main drain or deco drain',
@@ -261,6 +337,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-dimension-line',
+    status: 'planned',
     name: 'Add dimension line',
     icon: 'Ruler',
     tooltip: 'Add a labeled dimension line',
@@ -276,6 +353,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-label',
+    status: 'planned',
     name: 'Add label',
     icon: 'Type',
     tooltip: 'Add a text label',
@@ -291,6 +369,7 @@ const drawing: Tool[] = [
   },
   {
     id: 'tool.add-callout',
+    status: 'planned',
     name: 'Add callout',
     icon: 'MessageCircle',
     tooltip: 'Add a numbered callout',
@@ -307,23 +386,14 @@ const drawing: Tool[] = [
 ]
 
 const transform: Tool[] = [
-  {
-    id: 'tool.move',
-    name: 'Move',
-    icon: 'Move',
-    tooltip: 'Move selected objects',
-    shortcut: null,
-    description: 'Drag selected objects to a new position.',
-    category: 'transform',
-    inputs: ['delta'],
-    outputs: ['new position'],
-    sideEffects: ['mutates DrawingObject geometry'],
-    errorStates: ['object locked'],
-    undoBehavior: 'restore previous position',
-    voiceCommandExamples: ['move pool right 2 feet'],
-  },
+  // 'tool.move' used to be listed here as a tool of its own. It is not: "Move"
+  // is the toolbar's label for the select tool and the name the V hotkey sends,
+  // and `normalizeToolId` maps it onto tool.select. Documenting it separately
+  // meant the reference described the same tool twice under two ids, one of
+  // which nothing in the app would answer to.
   {
     id: 'tool.resize',
+    status: 'planned',
     name: 'Resize',
     icon: 'Scale',
     tooltip: 'Resize selected objects',
@@ -339,6 +409,7 @@ const transform: Tool[] = [
   },
   {
     id: 'tool.rotate',
+    status: 'planned',
     name: 'Rotate',
     icon: 'RotateCw',
     tooltip: 'Rotate selected objects',
@@ -354,6 +425,7 @@ const transform: Tool[] = [
   },
   {
     id: 'tool.flip-horizontal',
+    status: 'planned',
     name: 'Flip horizontal',
     icon: 'FlipHorizontal',
     tooltip: 'Mirror across vertical axis',
@@ -369,6 +441,7 @@ const transform: Tool[] = [
   },
   {
     id: 'tool.flip-vertical',
+    status: 'planned',
     name: 'Flip vertical',
     icon: 'FlipVertical',
     tooltip: 'Mirror across horizontal axis',
@@ -384,6 +457,7 @@ const transform: Tool[] = [
   },
   {
     id: 'tool.align',
+    status: 'planned',
     name: 'Align',
     icon: 'AlignStartHorizontal',
     tooltip: 'Align selected objects',
@@ -399,6 +473,7 @@ const transform: Tool[] = [
   },
   {
     id: 'tool.distribute',
+    status: 'planned',
     name: 'Distribute',
     icon: 'Columns3',
     tooltip: 'Distribute selected objects evenly',
@@ -414,6 +489,7 @@ const transform: Tool[] = [
   },
   {
     id: 'tool.bring-forward',
+    status: 'planned',
     name: 'Bring forward',
     icon: 'ChevronUp',
     tooltip: 'Bring selection one step forward',
@@ -429,6 +505,7 @@ const transform: Tool[] = [
   },
   {
     id: 'tool.send-backward',
+    status: 'planned',
     name: 'Send backward',
     icon: 'ChevronDown',
     tooltip: 'Send selection one step backward',
@@ -447,6 +524,7 @@ const transform: Tool[] = [
 const measurement: Tool[] = [
   {
     id: 'tool.measure-area',
+    status: 'planned',
     name: 'Measure area',
     icon: 'SquareDashed',
     tooltip: 'Measure surface area',
@@ -462,6 +540,7 @@ const measurement: Tool[] = [
   },
   {
     id: 'tool.measure-perimeter',
+    status: 'planned',
     name: 'Measure perimeter',
     icon: 'Frame',
     tooltip: 'Measure perimeter',
@@ -477,6 +556,7 @@ const measurement: Tool[] = [
   },
   {
     id: 'tool.measure-length',
+    status: 'planned',
     name: 'Measure length',
     icon: 'MoveHorizontal',
     tooltip: 'Measure length',
@@ -492,6 +572,7 @@ const measurement: Tool[] = [
   },
   {
     id: 'tool.measure-width',
+    status: 'planned',
     name: 'Measure width',
     icon: 'MoveVertical',
     tooltip: 'Measure width',
@@ -507,6 +588,7 @@ const measurement: Tool[] = [
   },
   {
     id: 'tool.measure-angle',
+    status: 'planned',
     name: 'Measure angle',
     icon: 'Triangle',
     tooltip: 'Measure angle',
@@ -522,6 +604,7 @@ const measurement: Tool[] = [
   },
   {
     id: 'tool.set-scale',
+    status: 'planned',
     name: 'Set scale',
     icon: 'Compass',
     tooltip: 'Set canvas scale',
@@ -537,6 +620,7 @@ const measurement: Tool[] = [
   },
   {
     id: 'tool.resize-by-target-area',
+    status: 'planned',
     name: 'Resize by target area',
     icon: 'Maximize2',
     tooltip: 'Resize pool to a target square footage',
@@ -552,6 +636,7 @@ const measurement: Tool[] = [
   },
   {
     id: 'tool.show-radius',
+    status: 'planned',
     name: 'Show radius',
     icon: 'CircleDot',
     tooltip: 'Show curve radius labels',
@@ -570,6 +655,7 @@ const measurement: Tool[] = [
 const pricing: Tool[] = [
   {
     id: 'tool.open-quote',
+    status: 'planned',
     name: 'Open quote',
     icon: 'FileText',
     tooltip: 'Open the live quote panel',
@@ -585,6 +671,7 @@ const pricing: Tool[] = [
   },
   {
     id: 'tool.add-line-item',
+    status: 'planned',
     name: 'Add line item',
     icon: 'Plus',
     tooltip: 'Add a manual line item to the quote',
@@ -600,6 +687,7 @@ const pricing: Tool[] = [
   },
   {
     id: 'tool.remove-line-item',
+    status: 'planned',
     name: 'Remove line item',
     icon: 'Minus',
     tooltip: 'Remove a line item from the quote',
@@ -615,6 +703,7 @@ const pricing: Tool[] = [
   },
   {
     id: 'tool.select-equipment',
+    status: 'planned',
     name: 'Select equipment',
     icon: 'Wrench',
     tooltip: 'Choose equipment package',
@@ -630,6 +719,7 @@ const pricing: Tool[] = [
   },
   {
     id: 'tool.select-finish',
+    status: 'planned',
     name: 'Select finish',
     icon: 'Palette',
     tooltip: 'Choose interior finish',
@@ -645,6 +735,7 @@ const pricing: Tool[] = [
   },
   {
     id: 'tool.select-deck-material',
+    status: 'planned',
     name: 'Select deck material',
     icon: 'LayoutGrid',
     tooltip: 'Choose deck material',
@@ -660,6 +751,7 @@ const pricing: Tool[] = [
   },
   {
     id: 'tool.select-heater',
+    status: 'planned',
     name: 'Select heater',
     icon: 'Flame',
     tooltip: 'Choose heater',
@@ -675,6 +767,7 @@ const pricing: Tool[] = [
   },
   {
     id: 'tool.apply-discount',
+    status: 'planned',
     name: 'Apply discount',
     icon: 'BadgePercent',
     tooltip: 'Apply a discount',
@@ -690,6 +783,7 @@ const pricing: Tool[] = [
   },
   {
     id: 'tool.recalculate-quote',
+    status: 'planned',
     name: 'Recalculate quote',
     icon: 'RefreshCw',
     tooltip: 'Recalculate all line items',
@@ -708,6 +802,7 @@ const pricing: Tool[] = [
 const exportTools: Tool[] = [
   {
     id: 'tool.export-proposal',
+    status: 'planned',
     name: 'Export proposal',
     icon: 'FileDown',
     tooltip: 'Export customer proposal PDF',
@@ -723,6 +818,7 @@ const exportTools: Tool[] = [
   },
   {
     id: 'tool.export-construction-packet',
+    status: 'planned',
     name: 'Export construction packet',
     icon: 'FileBox',
     tooltip: 'Export construction packet PDF',
@@ -738,6 +834,7 @@ const exportTools: Tool[] = [
   },
   {
     id: 'tool.export-image',
+    status: 'planned',
     name: 'Export image',
     icon: 'Image',
     tooltip: 'Export drawing as PNG',
@@ -753,6 +850,7 @@ const exportTools: Tool[] = [
   },
   {
     id: 'tool.print',
+    status: 'planned',
     name: 'Print',
     icon: 'Printer',
     tooltip: 'Print the current view',
@@ -768,6 +866,7 @@ const exportTools: Tool[] = [
   },
   {
     id: 'tool.duplicate-project',
+    status: 'planned',
     name: 'Duplicate project',
     icon: 'Copy',
     tooltip: 'Duplicate this project',
@@ -783,7 +882,166 @@ const exportTools: Tool[] = [
   },
 ]
 
+
+/**
+ * The tools the toolbar actually exposes.
+ *
+ * Written from the toolbar and the gesture handlers rather than from a design
+ * note, because the rest of this file was written the other way round and ended
+ * up describing an editor that does not exist.
+ */
+const toolbar: Tool[] = [
+  {
+    id: 'tool.pool-shape',
+    status: 'built',
+    name: 'Pool shape',
+    icon: 'Square',
+    tooltip: 'Place a pool',
+    shortcut: 'r',
+    description:
+      'Pick a pool from the catalogue, then click the canvas to place it. All seventeen shapes are listed.',
+    category: 'drawing',
+    inputs: ['chosen stencil', 'click position'],
+    outputs: ['a pool on the canvas'],
+    sideEffects: ['dispatches add.shape'],
+    errorStates: ['nothing is placed if the pointer moves more than four pixels, which reads as an orbit'],
+    undoBehavior: 'undoable',
+    voiceCommandExamples: ['add a rectangular pool thirty two by sixteen', 'make that pool an oval'],
+  },
+  {
+    id: 'tool.steps',
+    status: 'built',
+    name: 'Steps and shelves',
+    icon: 'StretchHorizontal',
+    tooltip: 'Place steps, benches and sun shelves',
+    shortcut: 's',
+    description: 'Click to place an interior feature: steps, a bench, a sun shelf or a tanning ledge.',
+    category: 'drawing',
+    inputs: ['click position'],
+    outputs: ['a feature on the canvas'],
+    sideEffects: ['dispatches add.shape'],
+    errorStates: [],
+    undoBehavior: 'undoable',
+    voiceCommandExamples: ['give it a sun shelf', 'add corner steps'],
+  },
+  {
+    id: 'tool.water-feature',
+    status: 'built',
+    name: 'Water feature',
+    icon: 'Waves',
+    tooltip: 'Place bubblers, deck jets and spillovers',
+    shortcut: 'w',
+    description: 'Click to place a water feature. Bubblers sit in the pool; deck jets arc from the deck.',
+    category: 'drawing',
+    inputs: ['click position'],
+    outputs: ['a water feature on the canvas'],
+    sideEffects: ['dispatches add.shape'],
+    errorStates: [],
+    undoBehavior: 'undoable',
+    voiceCommandExamples: ['add bubblers to the sun shelf', 'put deck jets along the back'],
+  },
+  {
+    id: 'tool.lights',
+    status: 'built',
+    name: 'Lights',
+    icon: 'Lightbulb',
+    tooltip: 'Place pool lights',
+    shortcut: 'l',
+    description: 'Click to place a light. Lighting count drives the lighting line on the quote.',
+    category: 'drawing',
+    inputs: ['click position'],
+    outputs: ['a light on the canvas'],
+    sideEffects: ['dispatches add.shape', 'changes the lighting quantity on the quote'],
+    errorStates: [],
+    undoBehavior: 'undoable',
+    voiceCommandExamples: ['add two lights', 'put a light at the deep end'],
+  },
+  {
+    id: 'tool.deck',
+    status: 'built',
+    name: 'Deck',
+    icon: 'Hand',
+    tooltip: 'Place decking and paving',
+    shortcut: 'd',
+    description:
+      'Click to place decking. A deck laid over a pool is cut around it, so the water still shows.',
+    category: 'drawing',
+    inputs: ['click position'],
+    outputs: ['a deck on the canvas'],
+    sideEffects: ['dispatches add.shape', 'changes deck area on the quote'],
+    errorStates: [],
+    undoBehavior: 'undoable',
+    voiceCommandExamples: ['put a paver deck around the pool with four feet of clearance'],
+  },
+  {
+    id: 'tool.material-brush',
+    status: 'built',
+    name: 'Material brush',
+    icon: 'PaintBucket',
+    tooltip: 'Apply a material to a surface',
+    shortcut: 'b',
+    description: 'Pick a material, then click a surface to apply it.',
+    category: 'transform',
+    inputs: ['chosen material', 'click target'],
+    outputs: ['the material recorded on the shape'],
+    sideEffects: ['dispatches set.shape.material or pool.material.set'],
+    errorStates: [],
+    undoBehavior: 'undoable',
+    voiceCommandExamples: ['make the interior cobalt', 'set the coping to travertine'],
+  },
+  {
+    id: 'tool.measure',
+    status: 'built',
+    name: 'Measure',
+    icon: 'Ruler',
+    tooltip: 'Measure between two points',
+    shortcut: 'm',
+    description: 'Click a start point, then an end point. A third click starts a new measurement.',
+    category: 'measurement',
+    inputs: ['two click positions'],
+    outputs: ['a distance on screen'],
+    sideEffects: ['none, it measures rather than changing the drawing'],
+    errorStates: [],
+    undoBehavior: 'none',
+    voiceCommandExamples: ['how big is this pool', 'how much decking is there'],
+  },
+  {
+    id: 'tool.annotation',
+    status: 'built',
+    name: 'Annotation',
+    icon: 'Type',
+    tooltip: 'Add a note to the drawing',
+    shortcut: 't',
+    description: 'Click where the note belongs and type it. Annotations print on the construction sheet.',
+    category: 'drawing',
+    inputs: ['click position', 'typed text'],
+    outputs: ['a note on the drawing'],
+    sideEffects: ['dispatches add.shape'],
+    errorStates: [],
+    undoBehavior: 'undoable',
+    voiceCommandExamples: ['add a note saying gas line runs here', 'put a label on the equipment pad'],
+  },
+  {
+    id: 'tool.comment',
+    status: 'built',
+    name: 'Comment',
+    icon: 'MessageSquare',
+    tooltip: 'Leave a comment',
+    shortcut: 'c',
+    description: 'Leave a comment on the drawing for somebody else to read.',
+    category: 'drawing',
+    inputs: ['click position', 'typed text'],
+    outputs: ['a comment on the drawing'],
+    sideEffects: [],
+    errorStates: [],
+    undoBehavior: 'undoable',
+    voiceCommandExamples: ['leave a comment asking about the setback'],
+  },
+]
+
 export const TOOLS: Tool[] = [
+  ...toolbar,
+  ...drawing2d,
   ...selection,
   ...drawing,
   ...transform,
@@ -793,14 +1051,19 @@ export const TOOLS: Tool[] = [
 ]
 
 export function toolsByCategory(): Record<Tool['category'], Tool[]> {
-  return {
-    selection,
-    drawing,
-    transform,
-    measurement,
-    pricing,
-    export: exportTools,
+  // Derived from TOOLS rather than listing the source arrays. Listing them meant
+  // a tool could be in the catalogue and in no bucket at all, so the reference
+  // page silently dropped it.
+  const buckets: Record<Tool['category'], Tool[]> = {
+    selection: [],
+    drawing: [],
+    transform: [],
+    measurement: [],
+    pricing: [],
+    export: [],
   }
+  for (const tool of TOOLS) buckets[tool.category].push(tool)
+  return buckets
 }
 
 export function getTool(id: string): Tool | undefined {

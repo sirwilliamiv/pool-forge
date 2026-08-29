@@ -11,6 +11,10 @@ export function runValidation(ctx: ValidationContext): ValidationReport {
   const items: ValidationItem[] = []
 
   for (const rule of ALL_RULES) {
+    // A rule with nothing to say is left out entirely rather than passed. Passing
+    // it would put a line about site grading on every flat project.
+    if (rule.appliesTo && !rule.appliesTo(ctx)) continue
+
     const failure = rule.check(ctx)
     if (failure) {
       items.push(failure)

@@ -1,0 +1,55 @@
+{
+  "propertyBoundary": [
+    { "x": 0.120, "y": 0.120 },
+    { "x": 0.860, "y": 0.120 },
+    { "x": 0.860, "y": 0.840 },
+    { "x": 0.120, "y": 0.840 }
+  ],
+  "houseFootprint": [
+    { "x": 0.260, "y": 0.180 },
+    { "x": 0.700, "y": 0.180 },
+    { "x": 0.700, "y": 0.420 },
+    { "x": 0.260, "y": 0.420 }
+  ],
+  "poolPolygon": null,
+  "scaleBar": {
+    "p1": { "x": 0.700, "y": 0.930 },
+    "p2": { "x": 0.860, "y": 0.930 },
+    "labelText": "20'"
+  },
+  "printedScaleText": null,
+  "northArrow": {
+    "from": { "x": 0.920, "y": 0.220 },
+    "to": { "x": 0.920, "y": 0.120 }
+  },
+  "setbacks": [
+    {
+      "side": "front",
+      "text": "25.0'",
+      "p1": { "x": 0.480, "y": 0.120 },
+      "p2": { "x": 0.480, "y": 0.180 }
+    },
+    {
+      "side": "rear",
+      "text": "10.0'",
+      "p1": { "x": 0.480, "y": 0.780 },
+      "p2": { "x": 0.480, "y": 0.840 }
+    }
+  ],
+  "dimensions": [
+    {
+      "p1": { "x": 0.120, "y": 0.090 },
+      "p2": { "x": 0.860, "y": 0.090 },
+      "text": "80.00'",
+      "appliesTo": "other"
+    }
+  ],
+  "notes": ["lot 14 block 3", "10' drainage easement along the rear lot line"],
+  "confidence": {
+    "propertyBoundary": 0.95,
+    "houseFootprint": 0.92,
+    "scale": 0.9,
+    "setbacks": 0.88,
+    "north": 0.9
+  }
+}

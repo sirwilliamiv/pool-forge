@@ -8,6 +8,7 @@ import { register } from '@/modules/commands/registry'
 
 register({
   id: 'sun.set.time',
+  runsOn: 'client',
   label: 'Set sun time',
   description: 'Set the sun-study clock to a given time of day (minutes past midnight).',
   category: 'scene',
@@ -31,6 +32,7 @@ register({
 
 register({
   id: 'sun.run.study',
+  runsOn: 'client',
   label: 'Run sun study',
   description: 'Animate the sun across the day from sunrise to sunset.',
   category: 'scene',

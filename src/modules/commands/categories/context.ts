@@ -1,0 +1,169 @@
+import { z } from 'zod'
+
+import { register } from '@/modules/commands/registry'
+
+// Reading the screen.
+//
+// Available everywhere, like navigation, because "what does this say" is not a
+// question that belongs to one page. The alternative was a hand-written reader
+// per screen, which covers the pages somebody remembered and silently fails on
+// every page added afterwards.
+
+register({
+  id: 'page.read',
+  runsOn: 'client',
+  label: 'Read the current page',
+  description:
+    'Read what is currently on screen: headings, the text under them, table rows, labelled values, and the buttons available. Each field says whether it is editable and what kind it is (text, email, date, checkbox, select), so use this before page.fill to learn the exact labels and formats. Pass a query to narrow a long page rather than reading all of it.',
+  category: 'context',
+  inputSchema: z.object({
+    /**
+     * Words to narrow by. A filter, not a search engine: a price book with four
+     * hundred rows otherwise arrives as four hundred rows, and the answer is
+     * buried in it.
+     */
+    query: z.string().optional(),
+  }),
+  outputSchema: z.object({
+    title: z.string(),
+    url: z.string(),
+    headings: z.array(z.string()),
+    sections: z.array(z.object({ heading: z.string(), text: z.string() })),
+    fields: z.array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+        /** False for a value that is only displayed; page.fill cannot change it. */
+        editable: z.boolean(),
+        /** text, email, date, checkbox, select… so values are formatted correctly. */
+        kind: z.string(),
+        choices: z.array(z.string()).optional(),
+      }),
+    ),
+    /** Buttons on the page, so the agent knows what it can actually do here. */
+    actions: z.array(z.object({ label: z.string(), destructive: z.boolean() })),
+    tables: z.array(
+      z.object({
+        caption: z.string().nullable(),
+        headers: z.array(z.string()),
+        rows: z.array(z.array(z.string())),
+        truncatedRows: z.number(),
+      }),
+    ),
+    /** Say so out loud when true, rather than implying the reading was complete. */
+    truncated: z.boolean(),
+  }),
+  voiceExamples: [
+    'What does this page say?',
+    'What am I looking at?',
+    'Read me the quote.',
+    'What does the salt cell cost?',
+    'How many projects are on this list?',
+    'What is the customer address on here?',
+  ],
+  // CLIENT: readPage(document, input.query). Runs in the browser because the
+  // rendered page is the only place this information exists as the user sees it.
+  execute: async () => ({
+    ok: true,
+    data: {
+      title: '',
+      url: '',
+      headings: [],
+      sections: [],
+      fields: [],
+      tables: [],
+      actions: [],
+      truncated: false,
+    },
+  }),
+})
+
+register({
+  id: 'page.fill',
+  runsOn: 'client',
+  label: 'Fill in the current page',
+  description:
+    'Set form fields on the screen by their visible label. Use it after page.read so the labels are the ones actually on the page. Reports each field separately, so filling four of five is a useful result rather than a failure.',
+  category: 'context',
+  inputSchema: z.object({
+    fields: z
+      .array(
+        z.object({
+          /** The visible label, as a person would say it. */
+          label: z.string().min(1),
+          /** Checkboxes take yes or no; dropdowns take one of their choices. */
+          value: z.string(),
+        }),
+      )
+      .min(1)
+      .max(20),
+  }),
+  outputSchema: z.object({
+    results: z.array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+        filled: z.boolean(),
+        reason: z.string().nullable(),
+      }),
+    ),
+    filled: z.number(),
+    missed: z.number(),
+  }),
+  voiceExamples: [
+    'Set the project name to Whitfield residence.',
+    'Put thirty two in the pool length.',
+    'Tick the heater box.',
+    'Set the customer name to Jane Whitfield and the address to fourteen Oak Street.',
+  ],
+  // Client-side, and deliberately through the real controls rather than a store:
+  // whatever validation, formatting and save behaviour the form already has then
+  // applies unchanged, so a voice-filled field and a typed one are the same field.
+  //
+  // CLIENT: fillPage(input.fields)
+  execute: async () => ({ ok: true, data: { results: [], filled: 0, missed: 0 } }),
+})
+
+register({
+  id: 'page.click',
+  runsOn: 'client',
+  label: 'Press a button on the page',
+  description:
+    'Press a button by its visible text: Save, Create project, Add item, and so on. Use it after page.fill to commit a form — filling fields changes nothing until something saves them. page.read lists the buttons that are actually here.',
+  category: 'context',
+  inputSchema: z.object({
+    label: z.string().min(1),
+    /**
+     * Required for anything that removes something.
+     *
+     * Judged on the button's own words rather than a list of ids, because this
+     * presses whatever a page renders, including buttons added long after this
+     * was written.
+     */
+    confirm: z.boolean().default(false),
+  }),
+  outputSchema: z.object({
+    label: z.string(),
+    clicked: z.boolean(),
+    reason: z.string().nullable(),
+    available: z.array(z.string()).nullable(),
+    needsConfirmation: z.boolean(),
+  }),
+  voiceExamples: [
+    'Save it.',
+    'Press create project.',
+    'Click add item.',
+    'Submit the form.',
+  ],
+  // CLIENT: clickOnPage(input.label, input.confirm)
+  execute: async input => ({
+    ok: true,
+    data: {
+      label: input.label,
+      clicked: false,
+      reason: null,
+      available: null,
+      needsConfirmation: false,
+    },
+  }),
+})

@@ -1,5 +1,7 @@
 'use client'
 
+import { Maximize, ZoomIn, ZoomOut } from 'lucide-react'
+
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
 import { useCameraStore } from '@/modules/editor/state/cameraStore'
@@ -14,6 +16,11 @@ const FACES: { view: CameraView; label: string; className: string }[] = [
   { view: 'front', label: 'FRONT', className: 'col-start-2 row-start-3' },
 ]
 
+const ZOOMS = [
+  { command: 'canvas.zoom.in', Icon: ZoomIn, label: 'Zoom in' },
+  { command: 'canvas.zoom.out', Icon: ZoomOut, label: 'Zoom out' },
+] as const
+
 export function ViewCube() {
   const targetView = useCameraStore((s) => s.targetView)
 
@@ -22,12 +29,44 @@ export function ViewCube() {
   }
 
   return (
-    <div
-      className="pointer-events-auto h-24 w-24 rounded-pfMd border border-border bg-white p-1 shadow-pfMd"
-      role="group"
-      aria-label="View cube"
-    >
-      <div className="grid h-full w-full grid-cols-3 grid-rows-3 gap-0.5">
+    <div className="pointer-events-auto flex flex-col items-stretch gap-1">
+      {/* Fit to page. There was no control for this at all, so an object staged
+          off to the side of the drawing could only be found by panning for it. */}
+      <button
+        type="button"
+        onClick={() => void dispatch('canvas.fit', {})}
+        title="Fit everything in view"
+        aria-label="Fit everything in view"
+        className="flex h-7 items-center justify-center gap-1 rounded-pfMd border border-border bg-white text-[9px] font-semibold uppercase tracking-wide text-textMuted shadow-pfMd transition hover:bg-rowHover hover:text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent"
+      >
+        <Maximize className="h-3 w-3" aria-hidden />
+        Fit
+      </button>
+
+      {/* Zoom in / zoom out. The commands existed and the hotkeys dispatched
+          them, but there was no control anywhere on screen, so a mouse-only
+          user had nothing to press. */}
+      <div className="flex gap-1">
+        {ZOOMS.map(({ command, Icon, label }) => (
+          <button
+            key={command}
+            type="button"
+            onClick={() => void dispatch(command, {})}
+            title={label}
+            aria-label={label}
+            className="flex h-7 flex-1 items-center justify-center rounded-pfMd border border-border bg-white text-textMuted shadow-pfMd transition hover:bg-rowHover hover:text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent"
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        ))}
+      </div>
+
+      <div
+        className="h-24 w-24 rounded-pfMd border border-border bg-white p-1 shadow-pfMd"
+        role="group"
+        aria-label="View cube"
+      >
+        <div className="grid h-full w-full grid-cols-3 grid-rows-3 gap-0.5">
         {FACES.map(({ view, label, className }) => {
           const active = targetView === view
           return (
@@ -47,6 +86,7 @@ export function ViewCube() {
             </button>
           )
         })}
+        </div>
       </div>
     </div>
   )

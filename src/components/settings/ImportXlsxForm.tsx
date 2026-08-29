@@ -40,6 +40,11 @@ export function ImportXlsxForm() {
   const [mapping, setMapping] = useState<Partial<Record<keyof ImportRow, string>>>({})
   const [items, setItems] = useState<ImportRow[]>([])
   const [errors, setErrors] = useState<RowError[]>([])
+  // Rows that imported but landed somewhere nobody chose. Kept apart from the
+  // errors, because these are not skipped: the builder's price is in the book,
+  // it is just filed under Other, and that is a thing they need told rather
+  // than a thing to refuse.
+  const [warnings, setWarnings] = useState<RowError[]>([])
 
   async function handleFile(file: File) {
     try {
@@ -48,9 +53,10 @@ export function ImportXlsxForm() {
       setFileName(file.name)
       setPreview(p)
       setMapping(p.detectedMapping)
-      const { items, errors } = rowsToItems(p.rows, p.detectedMapping)
+      const { items, errors, warnings } = rowsToItems(p.rows, p.detectedMapping)
       setItems(items)
       setErrors(errors)
+      setWarnings(warnings)
     } catch (err) {
       toast.error(`Failed to parse: ${(err as Error).message}`)
     }
@@ -62,9 +68,10 @@ export function ImportXlsxForm() {
     if (header) next[field] = header
     else delete next[field]
     setMapping(next)
-    const { items, errors } = rowsToItems(preview.rows, next)
+    const { items, errors, warnings } = rowsToItems(preview.rows, next)
     setItems(items)
     setErrors(errors)
+    setWarnings(warnings)
   }
 
   function handleImport() {
@@ -75,10 +82,20 @@ export function ImportXlsxForm() {
     if (errors.length > 0 && !confirm(`${errors.length} row(s) have errors and will be skipped. Continue?`)) {
       return
     }
+    // Said plainly before it happens: this replaces the list everyone is
+    // quoting from, rather than adding to it.
+    if (!confirm(`Publish these ${items.length} items as a new version of the price book? Everyone quoting will move to it. The current version is kept.`)) {
+      return
+    }
     startTransition(async () => {
       try {
         const res = await importPriceBookItems(items)
-        toast.success(`Imported ${res.created} item${res.created === 1 ? '' : 's'}`)
+        // Say which version, because the previous one is still there. An import
+        // that turns out to be the wrong file has to look recoverable.
+        toast.success(
+          `Version ${res.version} published: ${res.created} item${res.created === 1 ? '' : 's'}. ` +
+            `Version ${res.version - 1} is kept.`,
+        )
         router.push('/settings/price-book')
         router.refresh()
       } catch (err) {
@@ -187,6 +204,22 @@ export function ImportXlsxForm() {
                     </li>
                   ))}
                   {errors.length > 20 && <li>… and {errors.length - 20} more</li>}
+                </ul>
+              </details>
+            )}
+            {warnings.length > 0 && (
+              <details className="mt-2" open>
+                <summary className="cursor-pointer text-xs font-medium text-amber-700">
+                  {warnings.length} row{warnings.length === 1 ? '' : 's'} could not be classified and
+                  will be filed under Other
+                </summary>
+                <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                  {warnings.slice(0, 20).map((w, i) => (
+                    <li key={i}>
+                      Row {w.rowIndex + 2}: {w.message}
+                    </li>
+                  ))}
+                  {warnings.length > 20 && <li>… and {warnings.length - 20} more</li>}
                 </ul>
               </details>
             )}

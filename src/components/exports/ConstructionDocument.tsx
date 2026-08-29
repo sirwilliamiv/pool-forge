@@ -1,8 +1,15 @@
 import type { MeasurementSummary } from '@/modules/measurements/engine'
 import { ShapeKind } from '@prisma/client'
 import type { QuoteSummary } from '@/modules/pricing/engine'
+import { formatUsd } from '@/lib/money'
 import type { Shape } from '@/modules/editor/state/shapes'
-import { DrawingSvg } from './DrawingSvg'
+import {
+  formatFtIn,
+  formatSignedFtIn,
+} from '@/modules/measurements/engine'
+import { siteSetbackReport, type LotEdge } from '@/modules/editor/site/model'
+import { PlanLegend } from './PlanLegend'
+import { TechnicalPlanSvg } from './TechnicalPlanSvg'
 
 interface CustomerLite {
   name: string
@@ -13,6 +20,15 @@ interface CustomerLite {
 
 interface ProjectLite {
   id: string
+  /**
+   * The per-organisation job number, printed where the cuid used to be.
+   *
+   * The header read `Project ID: cmt52jx17001fsbupe6prsr99`, which both the
+   * global and the repo conventions forbid: a database id is not something a
+   * user should ever be shown, let alone the reference on a sheet a crew
+   * carries to site.
+   */
+  jobNumber: number | null
   name: string
   salesperson: string | null
   designer: string | null
@@ -35,10 +51,14 @@ interface PoolFields {
   copingMaterial?: string
   screenOption?: string
   screenSelected?: boolean
-  saltSelected?: boolean
+  // Canonical key written by the project form — see modules/projects/pool-fields.
+  saltSystemSelected?: boolean
+  heaterSelected?: boolean
   spaSpecs?: string
   accessNotes?: string
 }
+
+export type ConstructionPageSize = 'letter' | 'tabloid'
 
 export interface ConstructionDocumentProps {
   project: ProjectLite
@@ -46,18 +66,15 @@ export interface ConstructionDocumentProps {
   shapes: Shape[]
   measurements: MeasurementSummary
   quote: QuoteSummary
+  pageSize?: ConstructionPageSize
 }
 
-const SYMBOL_LEGEND = [
-  'Equipment pad',
-  'Access arrow',
-  'Property line',
-  'Setback line',
-  'Center line',
-  'Dimension line',
-  'Approval block',
-  'Construction notes block',
-]
+const EDGE_LABEL: Record<LotEdge, string> = {
+  front: 'Front',
+  rear: 'Rear',
+  left: 'Left side',
+  right: 'Right side',
+}
 
 function formatNum(n: number, digits = 1): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })
@@ -74,12 +91,21 @@ function v(s?: string | number | null | boolean): string {
 }
 
 export function ConstructionDocument(props: ConstructionDocumentProps) {
-  const { project, customer, shapes, measurements: m, quote } = props
+  const { project, customer, shapes, measurements: m, quote, pageSize = 'tabloid' } = props
   const pf = (project.poolFields ?? {}) as PoolFields
   const hasSpa = shapes.some((s) => s.kind === ShapeKind.SPA)
+  // Tabloid (11×17 landscape) is the default — Jimmy prints 10 copies of the onion-skin
+  // for site use. Letter is opt-in for offices without a 17" printer.
+  const widthClass = pageSize === 'tabloid' ? 'max-w-[16in]' : 'max-w-[8in]'
+  // The printed size of the layout box, in inches: 11x17 landscape minus the
+  // margins, or letter minus the same. The plan scales itself to fit this, so
+  // the scale printed on the sheet is the scale it prints at.
+  const planBox = pageSize === 'tabloid' ? { widthIn: 15.4, heightIn: 8 } : { widthIn: 7.4, heightIn: 5 }
+  const report = siteSetbackReport(shapes)
+  const spa = shapes.find((s) => s.kind === ShapeKind.SPA && !s.hidden)
 
   return (
-    <div className="construction-doc mx-auto max-w-[8in] bg-white p-6 text-xs text-black">
+    <div className={`construction-doc size-${pageSize} mx-auto ${widthClass} bg-white p-6 text-xs text-black`}>
       {/* Header */}
       <header className="mb-4 flex items-start justify-between border-b-2 border-black pb-2">
         <div>
@@ -96,7 +122,8 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
             <span className="text-neutral-600">Date:</span> {formatDate(project.createdAt)}
           </div>
           <div>
-            <span className="text-neutral-600">Project ID:</span> {project.id}
+            <span className="text-neutral-600">Job #:</span>{' '}
+            {project.jobNumber === null ? '—' : project.jobNumber}
           </div>
           <div>
             <span className="text-neutral-600">Designer:</span> {v(project.designer)}
@@ -156,9 +183,26 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
         </h2>
         {hasSpa ? (
           <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 font-mono text-[11px]">
-            <Row k="Spa shape" val="Square (default)" />
-            <Row k="Spa size" val="7 × 7 ft" />
-            <Row k="Notes" val={v(pf.spaSpecs)} />
+            {/* Read off the spa in the drawing. These were printed as
+                "Square (default)" and "7 x 7 ft" whatever had been drawn, so a
+                resized spa was built to a number nobody chose. */}
+            <Row
+              k="Spa shape"
+              val={
+                spa
+                  ? spa.displayHint?.poolShape === 'ellipse'
+                    ? 'Round / oval'
+                    : Math.abs(spa.width - spa.height) < 6
+                      ? 'Square'
+                      : 'Rectangular'
+                  : 'Not specified'
+              }
+            />
+            <Row
+              k="Spa size"
+              val={spa ? `${formatNum(spa.width / 12)} × ${formatNum(spa.height / 12)} ft` : 'Not specified'}
+            />
+            <Row k="Notes" val={pf.spaSpecs?.trim() ? pf.spaSpecs : 'None'} />
           </div>
         ) : (
           <div className="text-[11px] italic text-neutral-600">N/A — no spa in this design.</div>
@@ -174,7 +218,9 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
           <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 font-mono text-[11px]">
             <Row k="Option" val={v(pf.screenOption)} />
             <Row k="Coverage" val={`${formatNum(m.deckArea)} sqft`} />
-            <Row k="Material" val="Phifer SunScreen (default)" />
+            {/* Not "Phifer SunScreen (default)". The app has never asked which
+                mesh, so printing one on a construction sheet orders it. */}
+            <Row k="Material" val="Not specified" />
           </div>
         </section>
       ) : null}
@@ -185,11 +231,11 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
           Equipment List
         </h2>
         <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 font-mono text-[11px]">
-          <Row k="Heater" val={v(pf.heaterSelection)} />
+          <Row k="Heater" val={v(pf.heaterSelection || pf.heaterSelected)} />
           <Row k="Heater fuel" val={v(pf.heaterFuel)} />
           <Row k="Pump" val={v(pf.pumpSelection)} />
           <Row k="Sanitization" val={v(pf.sanitizationPackage)} />
-          <Row k="Salt system" val={v(pf.saltSelected)} />
+          <Row k="Salt system" val={v(pf.saltSystemSelected)} />
           <Row k="Equipment pkg" val={v(pf.equipmentPackage)} />
           <Row k="Lighting" val={v(pf.lightingSelection)} />
           <Row k="Lighting qty" val={v(pf.lightingQuantity)} />
@@ -209,12 +255,67 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
         </div>
       </section>
 
-      {/* Drawing */}
+      {/* Drawing.
+          This was the customer render: a blue gradient with a highlight on the
+          water, no dimensions, no centre lines, no property line. A crew sets
+          out from centre lines and digs to setbacks, so the layout is drawn
+          from the same shapes but as a plan rather than a picture. */}
       <section className="page-break mb-3 mt-3">
         <h2 className="mb-1 border-b border-black pb-0.5 text-sm font-bold uppercase tracking-wide">
           Construction Layout
         </h2>
-        <DrawingSvg shapes={shapes} widthPx={760} heightPx={480} />
+        <div className="border border-black">
+          <TechnicalPlanSvg shapes={shapes} variant="construction" box={planBox} />
+        </div>
+      </section>
+
+      {/* Setting out: what the crew measures to before the first cut. */}
+      <section className="mb-3">
+        <h2 className="mb-1 border-b border-black pb-0.5 text-sm font-bold uppercase tracking-wide">
+          Setting Out &amp; Setbacks
+        </h2>
+        {!report.lot ? (
+          <p className="text-[11px]">
+            No property line has been drawn for this project, so no setback is dimensioned on the
+            layout above. Nothing is assumed: draw the lot in the editor (Site panel) before the
+            crew sets out.
+          </p>
+        ) : report.edges === null ? (
+          <p className="text-[11px]">A property line is drawn, but there is no pool or spa to measure to it.</p>
+        ) : (
+          <table className="w-full border-collapse font-mono text-[11px]">
+            <thead>
+              <tr className="border-b border-black">
+                <th className="px-1 py-0.5 text-left">Edge</th>
+                <th className="px-1 py-0.5 text-right">Water edge to lot line</th>
+                <th className="px-1 py-0.5 text-right">Required</th>
+                <th className="px-1 py-0.5 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.edges.map((edge) => (
+                <tr key={edge.edge} className="border-b border-neutral-300">
+                  <td className="px-1 py-0.5">{EDGE_LABEL[edge.edge]}</td>
+                  <td className="px-1 py-0.5 text-right">{formatSignedFtIn(edge.distanceIn)}</td>
+                  <td className="px-1 py-0.5 text-right">
+                    {edge.requiredIn === null ? 'Not entered' : formatFtIn(edge.requiredIn)}
+                  </td>
+                  <td className={`px-1 py-0.5 text-right ${edge.compliant === false ? 'font-bold' : ''}`}>
+                    {edge.compliant === null ? 'No limit entered' : edge.compliant ? 'Meets' : 'DOES NOT MEET'}
+                  </td>
+                </tr>
+              ))}
+              <tr>
+                <td className="px-1 py-0.5">To structure</td>
+                <td className="px-1 py-0.5 text-right" colSpan={3}>
+                  {report.toStructureIn === null
+                    ? 'No structure placed'
+                    : `${formatFtIn(report.toStructureIn)} to ${report.nearestStructureLabel ?? 'structure'}`}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        )}
       </section>
 
       {/* Access notes */}
@@ -233,7 +334,9 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
           Equipment Pad Notes
         </h2>
         <div className="text-[11px]">
-          Locate equipment pad per site survey. Verify clearances per manufacturer specs and local code.
+          {report.equipmentPads.length > 0
+            ? 'Equipment pad is located on the layout above. The dashed run to the pool is indicative only — route on site. Verify clearances per manufacturer specs and local code.'
+            : 'No equipment pad has been placed on the drawing, so none is shown on the layout. Place one in the editor, or locate it on site per survey. Verify clearances per manufacturer specs and local code.'}
         </div>
       </section>
 
@@ -247,6 +350,11 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
           <li>Plumb returns and main drain per applicable VGB requirements.</li>
           <li>Coping installation per manufacturer with mortar bed.</li>
           <li>Verify setbacks against property line and structures before excavation.</li>
+          <li>
+            Reinforcement shown in the editor&rsquo;s build view is Pool Forge&rsquo;s default
+            schedule (#3 bar at 18 in. on centre) and is NOT an engineered design. The engineer of
+            record must issue the steel schedule before the shell is tied.
+          </li>
         </ul>
       </section>
 
@@ -269,9 +377,9 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
               ['Interior finish', pf.interiorFinish, ''],
               ['Coping', pf.copingMaterial, ''],
               ['Deck material', pf.deckMaterial, ''],
-              ['Heater', pf.heaterSelection, pf.heaterFuel ?? ''],
+              ['Heater', pf.heaterSelection, pf.heaterFuel ?? (pf.heaterSelected ? 'Included' : 'Not selected')],
               ['Pump', pf.pumpSelection, ''],
-              ['Sanitization', pf.sanitizationPackage, ''],
+              ['Sanitization', pf.sanitizationPackage, pf.saltSystemSelected ? 'Salt system' : ''],
               ['Lighting', pf.lightingSelection, pf.lightingQuantity ? `${pf.lightingQuantity} fixtures` : ''],
               ['Screen', pf.screenOption, pf.screenSelected ? 'Included' : 'Not selected'],
             ].map(([cat, sel, note]) => (
@@ -285,19 +393,16 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
         </table>
       </section>
 
-      {/* Symbol legend */}
+      {/* Symbol legend.
+          Generated from the drawing rather than written out. The old list named
+          eight symbols — equipment pad, access arrow, property line, setback
+          line, centre line, dimension line, approval block, notes block — and
+          the sheet carried none of them. */}
       <section className="mb-3">
         <h2 className="mb-1 border-b border-black pb-0.5 text-sm font-bold uppercase tracking-wide">
           Symbol Legend
         </h2>
-        <div className="grid grid-cols-4 gap-2 text-[11px]">
-          {SYMBOL_LEGEND.map((label) => (
-            <div key={label} className="flex items-center gap-2">
-              <div className="h-5 w-5 border border-black bg-neutral-100" />
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
+        <PlanLegend shapes={shapes} variant="construction" />
       </section>
 
       {/* Quote summary (compact) */}
@@ -305,16 +410,38 @@ export function ConstructionDocument(props: ConstructionDocumentProps) {
         <h2 className="mb-1 border-b border-black pb-0.5 text-sm font-bold uppercase tracking-wide">
           Quote Summary
         </h2>
-        <div className="font-mono text-[11px]">
-          <div className="flex justify-between border-b border-neutral-300 py-0.5">
-            <span>Line items</span>
-            <span>{quote.lineItems.length}</span>
+        {quote.status === 'PRICED' ? (
+          <div className="font-mono text-[11px]">
+            <div className="flex justify-between border-b border-neutral-300 py-0.5">
+              <span>Line items</span>
+              <span>{quote.lineItems.length}</span>
+            </div>
+            <div className="flex justify-between border-b border-neutral-300 py-0.5">
+              <span>Subtotal</span>
+              <span>{formatUsd(quote.subtotal)}</span>
+            </div>
+            <div className="flex justify-between border-b border-neutral-300 py-0.5">
+              <span>Sales tax ({quote.taxRatePct}%)</span>
+              <span>{formatUsd(quote.taxAmount)}</span>
+            </div>
+            <div className="flex justify-between py-0.5 font-bold">
+              <span>Total</span>
+              <span>{formatUsd(quote.total)}</span>
+            </div>
           </div>
-          <div className="flex justify-between py-0.5 font-bold">
-            <span>Total</span>
-            <span>${formatNum(quote.total, 2)}</span>
-          </div>
-        </div>
+        ) : (
+          <p className="text-[11px]">
+            {quote.status === 'NO_PRICE_BOOK'
+              ? 'Not priced: this company has no active price book, so no figure can be printed here.'
+              : 'Not priced: nothing has been drawn for this project yet.'}
+          </p>
+        )}
+        {quote.unpriced.length > 0 && (
+          <p className="mt-1 text-[10px]">
+            Drawn but not priced:{' '}
+            {quote.unpriced.map((u) => `${u.label} (${u.reason.toLowerCase()})`).join('; ')}.
+          </p>
+        )}
       </section>
 
       {/* Contractor notes */}

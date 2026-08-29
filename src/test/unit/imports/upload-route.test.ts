@@ -1,0 +1,288 @@
+// Route test for the authenticated multipart upload. Hits the real DB and the
+// real local-disk BlobStore; only the session is faked.
+
+import { randomUUID } from 'node:crypto'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+
+const session = vi.hoisted(() => ({ userId: '', orgId: '' as string | null }))
+
+vi.mock('@/modules/auth/session', () => ({
+  getSession: async () =>
+    session.userId ? { user: { id: session.userId, orgId: session.orgId } } : null,
+  getOrgId: (s: { user: { orgId: string | null } }) => s.user.orgId,
+}))
+
+const { db } = await import('@/lib/db')
+const { dispatchCommand } = await import('@/modules/commands/dispatch')
+const { initCommands } = await import('@/modules/commands/init')
+const { UPLOAD_FILE_FIELD } = await import('@/modules/imports/ingest/types')
+const { MAX_IMAGE_BYTES } = await import('@/modules/imports/ingest/types')
+const { resetVariantCache } = await import('@/modules/imports/ingest/variants')
+const { resetBlobStore } = await import('@/modules/storage')
+const { POST } = await import('@/app/api/imports/upload/route')
+const { solidPng } = await import('./image-fixtures')
+
+const RUN = randomUUID().slice(0, 8)
+const BOUNDARY = `----poolforge${RUN}`
+
+let reachable = false
+try {
+  await db.$queryRaw`SELECT 1`
+  reachable = true
+} catch {
+  console.warn('upload route tests skipped: local Postgres unreachable. Run `pnpm db:up`.')
+}
+
+interface MultipartFile {
+  filename: string
+  contentType: string
+  data: Buffer
+}
+
+function multipart(fields: Record<string, string>, file: MultipartFile | null): Buffer {
+  return multipartMany(fields, file ? [file] : [])
+}
+
+/**
+ * Builds the body with `UPLOAD_FILE_FIELD` rather than a hardcoded name. The
+ * original helper hardcoded "file" while the real client posted "files", so
+ * every test passed against a route no browser could actually use.
+ */
+function multipartMany(fields: Record<string, string>, files: MultipartFile[]): Buffer {
+  const parts: Buffer[] = []
+  for (const [name, value] of Object.entries(fields)) {
+    parts.push(
+      Buffer.from(
+        `--${BOUNDARY}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+        'latin1',
+      ),
+    )
+  }
+  for (const file of files) {
+    parts.push(
+      Buffer.from(
+        `--${BOUNDARY}\r\nContent-Disposition: form-data; name="${UPLOAD_FILE_FIELD}"; filename="${file.filename}"\r\n` +
+          `Content-Type: ${file.contentType}\r\n\r\n`,
+        'latin1',
+      ),
+      file.data,
+      Buffer.from('\r\n', 'latin1'),
+    )
+  }
+  parts.push(Buffer.from(`--${BOUNDARY}--\r\n`, 'latin1'))
+  return Buffer.concat(parts)
+}
+
+function post(body: Buffer, contentType = `multipart/form-data; boundary=${BOUNDARY}`): Request {
+  return new Request('http://localhost/api/imports/upload', {
+    method: 'POST',
+    headers: { 'content-type': contentType },
+    body: new Uint8Array(body),
+  })
+}
+
+describe.skipIf(!reachable)('POST /api/imports/upload', () => {
+  let blobRoot = ''
+  let orgId = ''
+  let userId = ''
+  let projectId = ''
+  let sessionId = ''
+
+  beforeAll(async () => {
+    initCommands()
+    blobRoot = await mkdtemp(join(tmpdir(), 'poolforge-uploadroute-'))
+    process.env.BLOB_STORE_DRIVER = 'local'
+    process.env.BLOB_STORE_LOCAL_DIR = blobRoot
+    resetBlobStore()
+    resetVariantCache()
+
+    orgId = (await db.organization.create({ data: { name: `Upload ${RUN}` } })).id
+    userId = (
+      await db.user.create({
+        data: { email: `upload-${RUN}-${orgId}@example.test`, passwordHash: 'x' },
+      })
+    ).id
+    await db.organizationMember.create({ data: { userId, orgId } })
+    projectId = (await db.project.create({ data: { orgId, name: `Upload ${RUN}` } })).id
+
+    const created = await dispatchCommand<{ sessionId: string }>(
+      'import.session.create',
+      { projectId },
+      { userId, orgId },
+    )
+    if (!created.ok) throw new Error(created.error)
+    sessionId = created.data.sessionId
+
+    session.userId = userId
+    session.orgId = orgId
+  })
+
+  afterAll(async () => {
+    if (!reachable) return
+    await db.commandAuditLog.deleteMany({ where: { orgId } })
+    await db.organization.deleteMany({ where: { id: orgId } })
+    await db.user.deleteMany({ where: { id: userId } })
+    resetBlobStore()
+    resetVariantCache()
+    if (blobRoot) await rm(blobRoot, { recursive: true, force: true })
+  })
+
+  it('refuses an unauthenticated upload before reading the body', async () => {
+    session.userId = ''
+    session.orgId = null
+    const res = await POST(post(multipart({ sessionId }, null)))
+    expect(res.status).toBe(401)
+    session.userId = userId
+    session.orgId = orgId
+  })
+
+  it('refuses a non-multipart body', async () => {
+    const res = await POST(post(Buffer.from('{}', 'utf8'), 'application/json'))
+    expect(res.status).toBe(415)
+  })
+
+  it('refuses a declared Content-Length over the cap without reading it', async () => {
+    const req = new Request('http://localhost/api/imports/upload', {
+      method: 'POST',
+      headers: {
+        'content-type': `multipart/form-data; boundary=${BOUNDARY}`,
+        'content-length': String(500 * 1024 * 1024),
+      },
+      body: new Uint8Array(multipart({ sessionId }, null)),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(413)
+  })
+
+  it('aborts a streamed body that exceeds the cap rather than buffering it', async () => {
+    const chunk = new Uint8Array(1024 * 1024)
+    let produced = 0
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        // 500MB worth of chunks, if anyone were foolish enough to read them all.
+        if (produced >= 500) {
+          controller.close()
+          return
+        }
+        produced += 1
+        controller.enqueue(chunk)
+      },
+    })
+
+    const req = new Request('http://localhost/api/imports/upload', {
+      method: 'POST',
+      headers: { 'content-type': `multipart/form-data; boundary=${BOUNDARY}` },
+      body: stream,
+      // @ts-expect-error `duplex` is required by undici for a stream body and is
+      // not in the DOM lib's RequestInit.
+      duplex: 'half',
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(413)
+    // ~15MB of cap plus envelope slack, not 500MB.
+    expect(produced).toBeLessThan(Math.ceil(MAX_IMAGE_BYTES / (1024 * 1024)) + 4)
+  })
+
+  it('ingests a real image and attaches it to the session', async () => {
+    const body = multipart(
+      { sessionId, projectId },
+      { filename: 'backyard.png', contentType: 'image/png', data: await solidPng({ seed: 51 }) },
+    )
+    const res = await POST(post(body))
+    expect(res.status).toBe(201)
+
+    const payload = (await res.json()) as {
+      ok: boolean
+      data: { count: number; uploaded: { sourceImageId: string }[] }
+    }
+    expect(payload.ok).toBe(true)
+    expect(payload.data.count).toBe(1)
+
+    const sourceImageId = payload.data.uploaded[0]?.sourceImageId
+    // Narrowed rather than asserted loosely: a findFirst on `id: undefined`
+    // matches any row in the org, so a missing id would let every check below
+    // pass vacuously.
+    if (sourceImageId === undefined) throw new Error('response carried no created id')
+
+    const row = await db.sourceImage.findFirst({
+      where: { id: sourceImageId, orgId },
+    })
+    expect(row?.projectId).toBe(projectId)
+    expect(row?.kind).toBe('UNKNOWN')
+    expect(res.headers.get('cache-control')).toBe('no-store')
+  })
+
+  it('ingests every file when several are attached, since the picker is multiple', async () => {
+    const body = multipartMany({ sessionId, projectId }, [
+      { filename: 'one.png', contentType: 'image/png', data: await solidPng({ seed: 61 }) },
+      { filename: 'two.png', contentType: 'image/png', data: await solidPng({ seed: 62 }) },
+    ])
+    const res = await POST(post(body))
+    expect(res.status, await res.clone().text()).toBe(201)
+
+    const payload = (await res.json()) as {
+      ok: boolean
+      data: { count: number; uploaded: { sourceImageId: string }[] }
+    }
+    expect(payload.data.count).toBe(2)
+    expect(new Set(payload.data.uploaded.map(u => u.sourceImageId)).size).toBe(2)
+  })
+
+  it('rejects a mislabeled file with 415 and never echoes the filename', async () => {
+    const body = multipart(
+      { sessionId },
+      {
+        filename: 'totally-a-photo.png',
+        contentType: 'image/png',
+        data: Buffer.from('MZ   this is an executable', 'latin1'),
+      },
+    )
+    const res = await POST(post(body))
+    expect(res.status).toBe(415)
+
+    const text = await res.text()
+    expect(text).not.toContain('totally-a-photo')
+    expect(text).not.toMatch(/sharp|vips|pdfium/i)
+  })
+
+  it('rejects a missing file part', async () => {
+    const res = await POST(post(multipart({ sessionId }, null)))
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects a missing sessionId', async () => {
+    const body = multipart(
+      {},
+      { filename: 'x.png', contentType: 'image/png', data: await solidPng({ seed: 52 }) },
+    )
+    const res = await POST(post(body))
+    expect(res.status).toBe(400)
+  })
+
+  it('refuses a session belonging to another org', async () => {
+    const otherOrg = await db.organization.create({ data: { name: `Upload other ${RUN}` } })
+    try {
+      const created = await dispatchCommand<{ sessionId: string }>(
+        'import.session.create',
+        {},
+        { userId, orgId: otherOrg.id },
+      )
+      expect(created.ok).toBe(true)
+      if (!created.ok) return
+
+      const body = multipart(
+        { sessionId: created.data.sessionId },
+        { filename: 'x.png', contentType: 'image/png', data: await solidPng({ seed: 53 }) },
+      )
+      const res = await POST(post(body))
+      expect(res.status).toBe(400)
+    } finally {
+      await db.commandAuditLog.deleteMany({ where: { orgId: otherOrg.id } })
+      await db.organization.deleteMany({ where: { id: otherOrg.id } })
+    }
+  })
+})

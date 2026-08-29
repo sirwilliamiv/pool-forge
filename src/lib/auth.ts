@@ -1,4 +1,4 @@
-import NextAuth, { type DefaultSession } from 'next-auth'
+import NextAuth, { CredentialsSignin, type DefaultSession } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import 'next-auth/jwt'
 // TODO(Google OAuth): uncomment when ready to enable. Requires GOOGLE_CLIENT_ID
@@ -7,9 +7,17 @@ import 'next-auth/jwt'
 //   - http://localhost:3000/api/auth/callback/google
 //   - https://<production-host>/api/auth/callback/google
 // import Google from 'next-auth/providers/google'
-import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import {
+  checkPassword,
+  migrateToIdentity,
+  reconcileIdentityUid,
+} from '@/modules/auth/credentials'
+import { LOGIN_RATE_LIMITED_CODE } from '@/modules/auth/errors'
+import { identityConfigured } from '@/modules/auth/identity'
+import { authClientIpBucket } from '@/modules/auth/request-ip'
+import { clearLoginAttempts, consumeLoginAttempt } from '@/modules/auth/rate-limit'
 
 declare module 'next-auth' {
   interface Session {
@@ -25,6 +33,19 @@ declare module 'next-auth/jwt' {
     userId?: string
     orgId?: string | null
   }
+}
+
+/**
+ * Thrown by `authorize` when a ceiling refuses the attempt.
+ *
+ * Extends `CredentialsSignin`, so Auth.js treats it as an ordinary failed
+ * sign-in and surfaces `code` rather than a 500 with a stack. The sign-in form
+ * reads that code to choose its copy; nothing about the code reaches the
+ * browser's URL beyond the same `CredentialsSignin` every wrong password
+ * produces, so it does not tell an attacker anything a stopwatch would not.
+ */
+export class LoginRateLimited extends CredentialsSignin {
+  code = LOGIN_RATE_LIMITED_CODE
 }
 
 const credentialsSchema = z.object({
@@ -51,14 +72,58 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = credentialsSchema.safeParse(raw)
         if (!parsed.success) return null
         const { email, password } = parsed.data
-        const user = await db.user.findUnique({ where: { email: email.toLowerCase() } })
-        if (!user) return null
-        const ok = await bcrypt.compare(password, user.passwordHash)
-        if (!ok) return null
+        const normalizedEmail = email.toLowerCase()
+
+        // One `now` for the whole attempt. The refund on success has to land in
+        // the same fixed window the consume did, and an attempt that straddles a
+        // window boundary would otherwise refund a bucket it never charged.
+        const now = new Date()
+        const ipBucket = authClientIpBucket(request?.headers ?? new Headers())
+
+        // Spent BEFORE the user lookup, so an attempt costs the same whether the
+        // address exists or not. Ordering it after the lookup would make the
+        // limiter itself an enumeration oracle: unknown addresses would stay
+        // cheap forever while real ones started refusing.
+        const gate = await consumeLoginAttempt(ipBucket, normalizedEmail, now)
+        if (!gate.allowed) throw new LoginRateLimited()
+
+        const user = await db.user.findUnique({
+          where: { email: normalizedEmail },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            identityUid: true,
+            passwordHash: true,
+          },
+        })
+
+        // Checked through a helper that does the same work whether or not there
+        // is an account: an early return here is a timing oracle answering "does
+        // this builder have an account" without anyone having to guess a
+        // password.
+        const check = await checkPassword(user, normalizedEmail, password)
+
+        // The local row is the authority on who may use this product. An
+        // identity that Identity Platform recognises but this database has never
+        // heard of has no organisation, no role and nothing to see, so it is
+        // refused here rather than being handed a session that renders nothing.
+        if (!user || !check.ok) return null
+
+        if (check.via === 'legacy' && identityConfigured() && user.identityUid === null) {
+          await migrateToIdentity(user.id, normalizedEmail, password)
+        } else if (check.via === 'identity' && user.identityUid !== check.uid) {
+          await reconcileIdentityUid(user.id, check.uid)
+        }
+
+        // Correct password: refund the address bucket and drop this account's two
+        // buckets. A builder who fumbled four times and then got in is not left
+        // carrying four strikes.
+        await clearLoginAttempts(ipBucket, normalizedEmail, now)
         return { id: user.id, email: user.email, name: user.name ?? null }
       },
     }),

@@ -6,6 +6,7 @@ import { ProjectStatus } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { nextJobNumber } from '@/modules/projects/job-number'
 
 const StatusSchema = z.nativeEnum(ProjectStatus)
 
@@ -64,6 +65,10 @@ export async function duplicateProject(id: string): Promise<{ ok: true; id: stri
       name: `${source.name} (Copy)`,
       status: ProjectStatus.DRAFT,
       poolFields: source.poolFields as unknown as Prisma.InputJsonValue,
+      // A copy is a different job and gets its own number. Carrying the
+      // original's over would put two projects on one reference, which is the
+      // one thing a job number must never do.
+      jobNumber: await nextJobNumber(tx, orgId),
     }
     if (source.salesperson) projectData.salesperson = source.salesperson
     if (source.designer) projectData.designer = source.designer

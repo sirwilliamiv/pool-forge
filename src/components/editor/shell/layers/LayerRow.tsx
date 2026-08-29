@@ -14,6 +14,7 @@ import {
   Unlock,
 } from 'lucide-react'
 import { ShapeKind, SHAPE_DEFAULTS, type Shape } from '@/modules/editor/state/shapes'
+import { getStencil } from '@/modules/editor/stencils'
 import { dispatch } from '@/lib/commands/dispatch'
 
 type IconKind = 'pool' | 'deck' | 'spa' | 'shelf' | 'bench' | 'stencil'
@@ -41,7 +42,19 @@ const ICON: Record<IconKind, typeof Square> = {
   stencil: Droplet,
 }
 
+/**
+ * What to call a layer nobody has renamed.
+ *
+ * The catalogue name first. Without it every generic stencil read as "Stencil",
+ * so a yard with a fence, three trees and an equipment pad showed five identical
+ * rows and the panel was unusable for finding anything.
+ */
 function defaultLabel(shape: Shape): string {
+  const stencilId = 'stencilId' in shape ? shape.stencilId : undefined
+  if (stencilId) {
+    const stencil = getStencil(stencilId)
+    if (stencil) return stencil.name
+  }
   return SHAPE_DEFAULTS[shape.kind]?.label ?? shape.kind
 }
 

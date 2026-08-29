@@ -13,6 +13,15 @@ export type CommandCategory =
   | 'settings'
   | 'scene'
   | 'palette'
+  | 'navigation'
+  | 'context'
+  | 'grade'
+  | 'site'
+  | 'import'
+  | 'capture'
+  | 'comment'
+  | 'sketch'
+  | 'version'
 
 export type CommandContext = {
   userId: string
@@ -33,6 +42,48 @@ export type EditorCommand<I = unknown, O = unknown> = {
   outputSchema: z.ZodType<O>
   permission?: string
   voiceExamples?: string[]
+  /**
+   * Registered but not built yet: `execute` returns "not implemented".
+   *
+   * Declared rather than inferred so the voice layer can leave it out of the
+   * spoken surface. A model handed a tool that always fails will keep trying
+   * it, apologise, and try again, and the user hears the app claim it cannot do
+   * something it never could.
+   */
+  unimplemented?: boolean
+  /**
+   * Where the work actually happens.
+   *
+   * `'client'` means the server `execute` only validates and echoes, and the
+   * change is applied by a handler registered through `registerClientHandler`.
+   * Declared rather than inferred so a test can prove the handler exists.
+   *
+   * This is the single most common defect in this codebase: a command that is
+   * registered, offered to the voice agent, reports success, and does nothing.
+   * It has shipped at least a dozen times — zoom, pan, fit, navigation, delete,
+   * project creation — and every instance was found by a person using the app
+   * and being told something happened that had not. A missing handler is now a
+   * failing test rather than a confident lie.
+   */
+  runsOn?: 'server' | 'client'
+  /**
+   * What the audit row records instead of the raw input.
+   *
+   * `CommandAuditLog` keeps `inputJson` forever, which is exactly what makes it
+   * the answer to "what did the user actually do". It is also why a command
+   * whose input contains a secret cannot be audited raw: the credential
+   * endpoints hand over a password somebody is choosing, and a password sitting
+   * in a log table is a password that has leaked to anyone with SELECT on it.
+   *
+   * Declared per command rather than inferred, and typed on `unknown` rather
+   * than `I`, because the audit write also happens on the path where the input
+   * FAILED its schema and was never parsed. A redaction that only worked on
+   * valid input would miss the "password too short" case, which is precisely the
+   * one where a person's real password is in the payload.
+   *
+   * Commands without one are audited exactly as before.
+   */
+  redactForAudit?: (input: unknown) => unknown
   execute: (input: I, ctx: CommandContext) => Promise<CommandResult<O>>
 }
 

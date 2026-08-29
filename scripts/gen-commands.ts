@@ -21,6 +21,13 @@ const CATEGORY_ORDER: CommandCategory[] = [
   'settings',
   'scene',
   'palette',
+  'navigation',
+  'context',
+  'grade',
+  'site',
+  'import',
+  'capture',
+  'comment',
 ]
 
 const CATEGORY_LABELS: Record<CommandCategory, string> = {
@@ -36,6 +43,15 @@ const CATEGORY_LABELS: Record<CommandCategory, string> = {
   settings: 'Settings',
   scene: 'Scene',
   palette: 'Palette',
+  navigation: 'Navigation',
+  context: 'Reading the screen',
+  grade: 'Site grading',
+  site: 'Site & property line',
+  import: 'Import',
+  capture: 'Site capture',
+  comment: 'Notes on the drawing',
+  sketch: 'Drawing in plan and turning what was drawn into priced objects',
+  version: 'Many designs for one job',
 }
 
 function groupByCategory(

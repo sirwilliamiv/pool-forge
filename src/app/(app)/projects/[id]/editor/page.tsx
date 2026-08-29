@@ -4,38 +4,17 @@ import { db } from '@/lib/db'
 import { EditorLayout } from '@/components/editor/shell/EditorLayout'
 import { loadDrawing } from '@/modules/editor/persistence'
 import { computeMeasurements } from '@/modules/measurements/engine'
-import {
-  computeQuote,
-  type PriceBookItemLite,
-  type PricingSelections,
-} from '@/modules/pricing/engine'
+import { loadProjectQuote } from '@/modules/projects/snapshot'
+import { EMPTY_FINISH_CATALOG } from '@/modules/materials/catalog'
+import { validationSelectionsFrom } from '@/modules/projects/pool-fields'
 import { runValidation } from '@/modules/validation/engine'
 import type {
   ValidationContext,
   ValidationProject,
   ValidationReport,
-  ValidationSelections,
 } from '@/modules/validation/types'
 import { getSuggestions } from '@/lib/commands/suggestions'
-import {
-  loadCachedQuote,
-  loadCachedValidation,
-  writeCachedQuote,
-  writeCachedValidation,
-} from '@/lib/cache/editor'
-
-function asBool(v: unknown): boolean {
-  return v === true || v === 'true' || v === 1
-}
-
-function asNumber(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : 0
-  }
-  return 0
-}
+import { loadCachedValidation, writeCachedValidation } from '@/lib/cache/editor'
 
 export default async function ProjectEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -52,7 +31,7 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
       orgId: true,
       poolFields: true,
       proposalExpiresAt: true,
-      org: { select: { name: true } },
+      org: { select: { name: true, taxRatePct: true } },
       customer: { select: { name: true, address: true } },
     },
   })
@@ -66,9 +45,31 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
     initial = { shapes: [] }
   }
 
+  // Compute measurements + quote + validation server-side. The dock components
+  // are read-only views over these snapshots in v1.
+  const measurements = computeMeasurements(initial.shapes ?? [])
+
+  // Pricing inputs, not a pricing *result*: the dock recomputes in the browser
+  // from the live shape store, through the same `computeQuote` the proposal
+  // runs. The editor previously rendered a cached quote written at the last
+  // save, which is why widening a pool moved the surface area and not the
+  // price, and why the dock and the proposal could disagree by $1,350.
+  const priced = await loadProjectQuote(project.id, orgId)
+  // A job with no price book but a hand-entered amount on it still has a price,
+  // so the dock gets its inputs. Gating on the catalogue alone would blank the
+  // dock for a builder whose only money so far is a $9,400 retaining wall.
+  const pricing =
+    priced && (priced.items.length > 0 || priced.projectLineItems.length > 0)
+      ? { items: priced.items, selections: priced.selections, taxRatePct: priced.taxRatePct }
+      : null
+
+  // The loader's pool fields, not the raw column: they carry the finishes the
+  // drawing actually has. Reading the column here instead is how the checklist
+  // came to warn "select a pool interior finish" about a pool that had one.
+  const merged = priced?.poolFields ?? project.poolFields
   const poolFields =
-    project.poolFields && typeof project.poolFields === 'object' && !Array.isArray(project.poolFields)
-      ? (project.poolFields as Record<string, unknown>)
+    merged && typeof merged === 'object' && !Array.isArray(merged)
+      ? (merged as Record<string, unknown>)
       : {}
 
   const validationProject: ValidationProject = {
@@ -79,66 +80,10 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
     proposalExpiresAt: project.proposalExpiresAt ? project.proposalExpiresAt.toISOString() : null,
   }
 
-  // Compute measurements + quote + validation server-side. The dock components
-  // are read-only views over these snapshots in v1.
-  const measurements = computeMeasurements(initial.shapes ?? [])
-
-  const priceBook = await db.priceBook.findFirst({
-    where: { orgId, isActive: true },
-    orderBy: { version: 'desc' },
-    include: { items: true },
-  })
-  const items: PriceBookItemLite[] = priceBook
-    ? priceBook.items.map((i) => ({
-        id: i.id,
-        category: i.category,
-        name: i.name,
-        unitType: i.unitType,
-        retailPrice: Number(i.retailPrice),
-      }))
-    : []
-
-  const pricingSelections: PricingSelections = {
-    heaterSelected: asBool(poolFields.heaterSelected),
-    saltSystemSelected: asBool(poolFields.saltSystemSelected),
-    screenSelected: asBool(poolFields.screenSelected),
-    lightingQuantity: asNumber(poolFields.lightingQuantity),
-  }
-
-  // Cache-first read; fall back to compute and fire-and-forget write.
-  const cachedQuote = await loadCachedQuote(project.id)
-  const quoteSummary = cachedQuote ?? computeQuote(items, measurements, pricingSelections)
-  if (!cachedQuote && priceBook && quoteSummary.lineItems.length) {
-    void writeCachedQuote(project.id, priceBook.id, quoteSummary).catch((err) =>
-      console.error('writeCachedQuote miss-write failed', err),
-    )
-  }
-  const quoteDock = quoteSummary.lineItems.length
-    ? {
-        id: project.id,
-        subtotal: quoteSummary.subtotal,
-        total: quoteSummary.total,
-        delta: 0,
-        lineItems: quoteSummary.lineItems.map((l) => ({
-          id: l.itemId,
-          name: l.name,
-          source: l.source,
-          total: l.total,
-        })),
-      }
-    : null
-
-  const validationSelections: ValidationSelections = {
-    heaterSelected: asBool(poolFields.heaterSelected),
-    saltSelected: asBool(poolFields.saltSystemSelected),
-    screenSelected: asBool(poolFields.screenSelected),
-    lightingQuantity: asNumber(poolFields.lightingQuantity),
-  }
-
   const validationContext: ValidationContext = {
     project: validationProject,
     measurements,
-    selections: validationSelections,
+    selections: validationSelectionsFrom(poolFields),
     shapeCount: initial.shapes?.length ?? 0,
     hasDeck: measurements.hasDeck,
   }
@@ -153,25 +98,6 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
 
   const paletteSuggestions = await getSuggestions({ projectId: project.id })
 
-  const materialRows = await db.material.findMany({
-    where: { OR: [{ orgId }, { orgId: null }] },
-    select: { id: true, kind: true, name: true, fillSpec: true },
-    orderBy: [{ kind: 'asc' }, { name: 'asc' }],
-  })
-  const materials = materialRows.map((m) => ({
-    id: m.id,
-    kind: m.kind as
-      | 'POOL_WATER'
-      | 'CONCRETE_DECK'
-      | 'PAVER_DECK'
-      | 'GRASS'
-      | 'COPING'
-      | 'SCREEN'
-      | 'LANAI'
-      | 'CUSTOM',
-    name: m.name,
-    fillSpec: m.fillSpec,
-  }))
 
   return (
     <EditorLayout
@@ -186,10 +112,9 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
       }}
       initial={initial}
       validationReport={validationReport}
-      quoteDock={quoteDock}
-      inspectorQuote={quoteSummary}
+      pricing={pricing}
       paletteSuggestions={paletteSuggestions}
-      materials={materials}
+      finishCatalog={priced?.finishCatalog ?? EMPTY_FINISH_CATALOG}
     />
   )
 }

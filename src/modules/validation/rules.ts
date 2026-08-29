@@ -1,7 +1,36 @@
+import { MAX_DEPTH_FT, MAX_SIZE_FT, MIN_DEPTH_FT, MIN_SIZE_FT } from '@/lib/geometry/limits'
+
 import type { ValidationContext, ValidationItem, ValidationRule } from './types'
 
+/**
+ * What each issue is *about*, said the way a builder would say it.
+ *
+ * `ValidationItem.field` is printed straight onto the checklist row, so it has
+ * to be English. It used to be the schema path, which the dock upper-cased into
+ * `POOL · DEPTHSHALLOW` and `EXPORT · PROPOSALEXPIRESAT`: internal
+ * identifiers on a screen a customer can be sitting next to. Rules still name
+ * the key they check, because that is what makes them readable next to the
+ * check itself; `fail()` is the one place the key becomes words, and a test
+ * asserts every key a rule passes has an entry here.
+ */
+export const FIELD_LABELS = {
+  customerName: 'Customer name',
+  address: 'Job address',
+  proposalExpiresAt: 'Proposal expiry',
+  poolDepth: 'Pool depth',
+  poolSize: 'Pool size',
+  interiorFinish: 'Interior finish',
+  equipmentPackage: 'Equipment package',
+  sanitizationPackage: 'Sanitization',
+  heaterSelection: 'Heater',
+  screenOption: 'Screen enclosure',
+  deckMaterial: 'Deck material',
+} as const
+
+export type ValidationField = keyof typeof FIELD_LABELS
+
 interface FailOpts {
-  field?: string | undefined
+  field?: ValidationField | undefined
   targetId?: string | undefined
   suggestedFix?: string | undefined
 }
@@ -14,7 +43,7 @@ function fail(
   opts: FailOpts = {},
 ): ValidationItem {
   const item: ValidationItem = { id, level, category, message }
-  if (opts.field !== undefined) item.field = opts.field
+  if (opts.field !== undefined) item.field = FIELD_LABELS[opts.field]
   if (opts.targetId !== undefined) item.targetId = opts.targetId
   if (opts.suggestedFix !== undefined) item.suggestedFix = opts.suggestedFix
   return item
@@ -24,13 +53,117 @@ function pf(ctx: ValidationContext, key: string): unknown {
   return ctx.project.poolFields[key]
 }
 
+/** One decimal at most, and never `NaN` or `Infinity` on a checklist row. */
+function round(value: number): string {
+  if (!Number.isFinite(value)) return 'no measurable size'
+  return (Math.round(value * 10) / 10).toLocaleString('en-US')
+}
+
 function isBlank(v: unknown): boolean {
   if (v === null || v === undefined) return true
   if (typeof v === 'string' && v.trim() === '') return true
   return false
 }
 
+// Every rule below checks real project/measurement/selection data. Rules that
+// only ever emitted a hardcoded pass or fail (synthetic setback, depth-marker,
+// spillover, heater-BTU, and the decorative "safety ✓" code pills) were
+// removed: printing a green "GFCI ✓ / NEC 680.26 bonding ✓" on a
+// contractor-facing packet while checking nothing is a liability, and an
+// always-fail warning trains users to ignore the dock. Reinstate any of them
+// only with a real check against geometry/selections.
+/**
+ * Slope a deck can be walked on.
+ *
+ * Two percent is the usual drainage fall; above five a paved surface is
+ * uncomfortable and above eight it is a ramp with rules of its own. These are
+ * warnings rather than errors because a designer may genuinely intend a terrace.
+ */
+const WALKABLE_SLOPE_PCT = 5
+const STEEP_SLOPE_PCT = 15
+
+/** Above this, moving the dirt is a line item nobody should discover late. */
+const NOTABLE_EARTHWORK_YARDS = 50
+
+/**
+ * Whether this design says anything about the ground.
+ *
+ * A flat site is not a graded site that happens to be level: nobody entered an
+ * elevation, so there is nothing to check and nothing worth reporting.
+ */
+function isGraded(ctx: { measurements: { cutYards: number; fillYards: number; maxSlopePct: number } }): boolean {
+  const { cutYards, fillYards, maxSlopePct } = ctx.measurements
+  return cutYards > 0 || fillYards > 0 || maxSlopePct > 0
+}
+
 export const ALL_RULES: ValidationRule[] = [
+  // ────────────────── Site grading ──────────────────
+  {
+    id: 'grade.slope.walkable',
+    level: 'warn',
+    category: 'grade',
+    passMessage: 'Site slope is within a walkable fall',
+    appliesTo: isGraded,
+    check(ctx) {
+      const slope = ctx.measurements.maxSlopePct
+      if (slope <= WALKABLE_SLOPE_PCT) return null
+      const level = slope > STEEP_SLOPE_PCT ? 'error' : 'warn'
+      return fail(
+        'grade.slope.walkable',
+        level,
+        'grade',
+        `The site falls at ${slope}% at its steepest`,
+        {
+          suggestedFix:
+            slope > STEEP_SLOPE_PCT
+              ? 'This needs terracing or a retaining wall, not a single graded pad'
+              : 'Consider a step or a retaining wall rather than a continuous fall',
+        },
+      )
+    },
+  },
+  {
+    id: 'grade.earthwork.priced',
+    level: 'warn',
+    category: 'grade',
+    passMessage: 'Earthwork is accounted for',
+    appliesTo: isGraded,
+    check(ctx) {
+      const moved = ctx.measurements.cutYards + ctx.measurements.fillYards
+      if (moved < NOTABLE_EARTHWORK_YARDS) return null
+      // Not an error: the volume may well be priced under a lump sum. It is
+      // worth saying out loud because discovering it on site is expensive.
+      return fail(
+        'grade.earthwork.priced',
+        'warn',
+        'grade',
+        `${Math.round(moved)} cubic yards of earth is being moved`,
+        {
+          suggestedFix: 'Check the price book has an earthwork line, or the haulage is unbilled',
+        },
+      )
+    },
+  },
+  {
+    id: 'grade.fill.under.pool',
+    level: 'warn',
+    category: 'grade',
+    passMessage: 'Pool is not sitting on deep fill',
+    appliesTo: isGraded,
+    check(ctx) {
+      // A pool bearing on fill needs compaction or piers. Cheap to say now,
+      // very expensive to find out after the shell is in.
+      if (!ctx.measurements.hasPool) return null
+      if (ctx.measurements.fillYards < NOTABLE_EARTHWORK_YARDS) return null
+      return fail(
+        'grade.fill.under.pool',
+        'warn',
+        'grade',
+        'The design brings in a substantial amount of fill',
+        { suggestedFix: 'Confirm bearing under the shell: compacted fill or piers' },
+      )
+    },
+  },
   // ────────────────── Project-level ──────────────────
   {
     id: 'customer.name.required',
@@ -113,19 +246,99 @@ export const ALL_RULES: ValidationRule[] = [
     level: 'error',
     category: 'pool',
     passMessage: 'Pool depths set',
+    // Depth lives on the pool in the drawing and nowhere else. Reading it here
+    // from the measurements is what stops the checklist demanding depths for a
+    // pool whose own inspector already reads SH 3.0 / DP 5.0: there is one
+    // number, so there is nothing left to disagree with.
+    appliesTo: (ctx) => ctx.measurements.hasPool,
     check(ctx) {
-      const shallow = pf(ctx, 'depthShallow')
-      const deep = pf(ctx, 'depthDeep')
-      if (isBlank(shallow) || isBlank(deep)) {
+      const { poolDepthShallow, poolDepthDeep } = ctx.measurements
+      if (poolDepthShallow > 0 && poolDepthDeep > 0) return null
+      return fail(
+        'pool.depth.required',
+        'error',
+        'pool',
+        'The pool has no shallow and deep end depths',
+        {
+          field: 'poolDepth',
+          targetId: ctx.targets?.pool,
+          suggestedFix: 'Select the pool and set Sh and Dp in the Geometry section',
+        },
+      )
+    },
+  },
+  {
+    id: 'pool.size.buildable',
+    level: 'error',
+    category: 'pool',
+    passMessage: 'Pool size is buildable',
+    // The command schemas refuse an out-of-range dimension at the door, so
+    // nothing typed today can reach this. Drawings made before those bounds
+    // existed still can: a saved 99999-foot pool prices, exports and prints
+    // exactly as it always did, and this is the only thing that will say so.
+    appliesTo: (ctx) => ctx.measurements.hasPool,
+    check(ctx) {
+      const { poolLengthFt, poolWidthFt } = ctx.measurements
+      const off = [
+        ['length', poolLengthFt],
+        ['width', poolWidthFt],
+      ].filter(
+        ([, value]) =>
+          !Number.isFinite(value as number) ||
+          (value as number) < MIN_SIZE_FT ||
+          (value as number) > MAX_SIZE_FT,
+      )
+      if (off.length === 0) return null
+      return fail(
+        'pool.size.buildable',
+        'error',
+        'pool',
+        `The pool measures ${round(poolLengthFt)} ft by ${round(poolWidthFt)} ft, which is outside the ${MIN_SIZE_FT} to ${MAX_SIZE_FT} ft a pool can be built at. Every figure on the quote is derived from it.`,
+        {
+          field: 'poolSize',
+          targetId: ctx.targets?.pool,
+          suggestedFix: 'Select the pool and set L and W in the Geometry section',
+        },
+      )
+    },
+  },
+  {
+    id: 'pool.depth.ordered',
+    level: 'error',
+    category: 'pool',
+    passMessage: 'Pool depths run shallow to deep',
+    // A shallow end below the deep end is not a pool, and the floor slope
+    // derived from the pair goes negative, which is what ends up on the
+    // construction packet as a fall in the wrong direction.
+    appliesTo: (ctx) => ctx.measurements.hasPool,
+    check(ctx) {
+      const { poolDepthShallow, poolDepthDeep } = ctx.measurements
+      const outOfRange = [poolDepthShallow, poolDepthDeep].some(
+        (d) => Number.isFinite(d) && d > 0 && (d < MIN_DEPTH_FT || d > MAX_DEPTH_FT),
+      )
+      if (poolDepthShallow > poolDepthDeep) {
         return fail(
-          'pool.depth.required',
+          'pool.depth.ordered',
           'error',
           'pool',
-          'Set both shallow and deep end depths',
+          `The shallow end is set to ${round(poolDepthShallow)} ft against a deep end of ${round(poolDepthDeep)} ft, so the floor falls the wrong way.`,
           {
-            field: 'depthShallow',
+            field: 'poolDepth',
             targetId: ctx.targets?.pool,
-            suggestedFix: 'Enter shallow + deep depth in Geometry section',
+            suggestedFix: 'Select the pool and swap Sh and Dp in the Geometry section',
+          },
+        )
+      }
+      if (outOfRange) {
+        return fail(
+          'pool.depth.ordered',
+          'error',
+          'pool',
+          `A depth of ${round(poolDepthShallow)} ft to ${round(poolDepthDeep)} ft is outside the ${MIN_DEPTH_FT} to ${MAX_DEPTH_FT} ft a pool holds water at.`,
+          {
+            field: 'poolDepth',
+            targetId: ctx.targets?.pool,
+            suggestedFix: 'Select the pool and set Sh and Dp in the Geometry section',
           },
         )
       }
@@ -138,121 +351,33 @@ export const ALL_RULES: ValidationRule[] = [
     category: 'pool',
     passMessage: 'Interior finish selected',
     check(ctx) {
-      return isBlank(pf(ctx, 'interior'))
+      return isBlank(pf(ctx, 'interiorFinish'))
         ? fail(
             'pool.interior.required',
             'warn',
             'pool',
             'Select a pool interior finish',
             {
-              field: 'interior',
+              field: 'interiorFinish',
               targetId: ctx.targets?.pool,
-              suggestedFix: 'Pick an interior finish in the Materials tab',
+              suggestedFix: 'Set the interior finish in project settings',
             },
           )
         : null
     },
   },
 
-  // ────────────────── Setback (synthetic, demo-friendly) ──────────────────
-  {
-    id: 'pool.setback.rear',
-    level: 'warn',
-    category: 'pool',
-    passMessage: 'Pool clears rear setback',
-    check(ctx) {
-      // Synthetic: warn if the seeded project's pool sits within 7'6" of rear setback.
-      // Real implementation uses computed setback distance once we have property lines.
-      if (ctx.measurements.poolSurfaceArea <= 0) return null
-      return fail(
-        'pool.setback.rear',
-        'warn',
-        'pool',
-        'Pool within 5\'2" of rear property setback (req. 7\'6")',
-        {
-          targetId: ctx.targets?.pool,
-          suggestedFix: 'Move pool 2\'4" toward house',
-        },
-      )
-    },
-  },
-  {
-    id: 'pool.depth.marker.placed',
-    level: 'warn',
-    category: 'pool',
-    passMessage: 'Deep-end depth marker placed',
-    check(ctx) {
-      if (ctx.measurements.poolSurfaceArea <= 0) return null
-      // Synthetic: assume marker missing for demo. Real impl scans for depth-marker stencils.
-      return fail(
-        'pool.depth.marker.placed',
-        'warn',
-        'pool',
-        'Deep-end depth marker not placed',
-        {
-          targetId: ctx.targets?.pool,
-          suggestedFix: 'Drop a depth-marker stencil at the deep end',
-        },
-      )
-    },
-  },
-
-  // ────────────────── Spillover / spa ──────────────────
-  {
-    id: 'spillover.elevation',
-    level: 'error',
-    category: 'pool',
-    passMessage: 'Spillover elevation matches spa skirt',
-    check(ctx) {
-      // Synthetic: fires when a spa is present in the design.
-      if (!ctx.targets?.spa) return null
-      return fail(
-        'spillover.elevation',
-        'error',
-        'pool',
-        'Spillover elevation 1.25" below spa skirt',
-        {
-          targetId: ctx.targets.spillover ?? ctx.targets.spa,
-          suggestedFix: 'Raise spillover by 1.25"',
-        },
-      )
-    },
-  },
-
   // ────────────────── Equipment ──────────────────
-  {
-    id: 'equipment.heater.btu',
-    level: 'error',
-    category: 'equipment',
-    passMessage: 'Heater BTU sized for pool volume',
-    check(ctx) {
-      // Synthetic: any selected heater on a 24k+ gal pool is "undersized" for demo.
-      if (!ctx.selections.heaterSelected) return null
-      const gallons = ctx.measurements.poolGallons
-      if (gallons < 20000) return null
-      return fail(
-        'equipment.heater.btu',
-        'error',
-        'equipment',
-        `Heater BTU undersized for ${Math.round(gallons).toLocaleString()} gal at 88°F`,
-        {
-          field: 'heaterBtu',
-          targetId: ctx.targets?.heater,
-          suggestedFix: 'Upgrade to 500k BTU (+$1,250)',
-        },
-      )
-    },
-  },
   {
     id: 'equipment.pump.required',
     level: 'warn',
     category: 'equipment',
-    passMessage: 'Pump selected',
+    passMessage: 'Equipment package selected',
     check(ctx) {
-      return isBlank(pf(ctx, 'pump'))
-        ? fail('equipment.pump.required', 'warn', 'equipment', 'No pump selection', {
-            field: 'pump',
-            suggestedFix: 'Pick a variable-speed pump in Equipment',
+      return isBlank(pf(ctx, 'equipmentPackage'))
+        ? fail('equipment.pump.required', 'warn', 'equipment', 'No equipment package selected', {
+            field: 'equipmentPackage',
+            suggestedFix: 'Pick an equipment package (includes the pump)',
           })
         : null
     },
@@ -263,37 +388,37 @@ export const ALL_RULES: ValidationRule[] = [
     category: 'equipment',
     passMessage: 'Sanitation selected',
     check(ctx) {
-      return isBlank(pf(ctx, 'sanitation'))
-        ? fail(
-            'equipment.sanitation.required',
-            'warn',
-            'equipment',
-            'No sanitation selection',
-            {
-              field: 'sanitation',
-              suggestedFix: 'Pick chlorine, salt, or UV in Equipment',
-            },
-          )
-        : null
+      // Satisfied by a sanitation package or by the salt-system selection.
+      if (!isBlank(pf(ctx, 'sanitizationPackage')) || ctx.selections.saltSelected) return null
+      return fail(
+        'equipment.sanitation.required',
+        'warn',
+        'equipment',
+        'No sanitation selection',
+        {
+          field: 'sanitizationPackage',
+          suggestedFix: 'Pick chlorine, salt, or UV in project settings',
+        },
+      )
     },
   },
   {
     id: 'heater.fuel.required',
     level: 'warn',
     category: 'equipment',
-    passMessage: 'Heater fuel set',
+    passMessage: 'Heater specified',
     check(ctx) {
       if (!ctx.selections.heaterSelected) return null
-      return isBlank(pf(ctx, 'heaterFuel'))
+      return isBlank(pf(ctx, 'heaterSelection'))
         ? fail(
             'heater.fuel.required',
             'warn',
             'equipment',
-            'Heater selected but fuel type not set (gas/electric)',
+            'Heater included but model/fuel not specified',
             {
-              field: 'heaterFuel',
+              field: 'heaterSelection',
               targetId: ctx.targets?.heater,
-              suggestedFix: 'Set heater fuel type in Equipment',
+              suggestedFix: 'Set the heater model/fuel in project settings',
             },
           )
         : null
@@ -306,57 +431,18 @@ export const ALL_RULES: ValidationRule[] = [
     passMessage: 'Screen specs provided',
     check(ctx) {
       if (!ctx.selections.screenSelected) return null
-      return isBlank(pf(ctx, 'screenSpec'))
+      return isBlank(pf(ctx, 'screenOption'))
         ? fail(
             'screen.specs.required',
             'warn',
             'equipment',
             'Screen selected but no screen spec set',
             {
-              field: 'screenSpec',
-              suggestedFix: 'Set screen mesh + cage spec',
+              field: 'screenOption',
+              suggestedFix: 'Set the screen mesh + cage spec in project settings',
             },
           )
         : null
-    },
-  },
-
-  // ────────────────── Always-pass safety / code rules (demo "ok" pills) ──────────────────
-  {
-    id: 'safety.drains.placed',
-    level: 'warn',
-    category: 'pool',
-    passMessage: 'Main drains placed (anti-entrapment compliant)',
-    check(_ctx) {
-      // Stub: future impl scans for drain stencils. For demo, always passes.
-      return null
-    },
-  },
-  {
-    id: 'safety.perimeter.alarm',
-    level: 'warn',
-    category: 'pool',
-    passMessage: "Perimeter safety alarm spec'd",
-    check(_ctx) {
-      return null
-    },
-  },
-  {
-    id: 'safety.ground.bonding',
-    level: 'warn',
-    category: 'equipment',
-    passMessage: 'Equipment bonding present (NEC 680.26)',
-    check(_ctx) {
-      return null
-    },
-  },
-  {
-    id: 'safety.gfci',
-    level: 'warn',
-    category: 'equipment',
-    passMessage: 'GFCI on all pool circuits',
-    check(_ctx) {
-      return null
     },
   },
 
@@ -376,7 +462,7 @@ export const ALL_RULES: ValidationRule[] = [
             'Deck drawn but no deck material selected',
             {
               field: 'deckMaterial',
-              suggestedFix: 'Pick a deck material in the Materials tab',
+              suggestedFix: 'Pick a deck material in project settings',
             },
           )
         : null

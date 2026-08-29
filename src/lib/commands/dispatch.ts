@@ -47,16 +47,22 @@ export function _resetClientHandlersForTest(): void {
   _clientHandlers.clear()
 }
 
+import type { CommandSourceValue } from '@/modules/commands/source'
+
+/** How the action was triggered, for the audit row. */
+export type DispatchSource = CommandSourceValue
+
 export async function dispatch<I, O>(
   id: string,
   input: I,
+  source: DispatchSource = 'UI',
 ): Promise<DispatchResult<O>> {
   let res: Response
   try {
     res = await fetch('/api/commands', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, input }),
+      body: JSON.stringify({ id, input, source }),
     })
   } catch (err) {
     return {
@@ -102,6 +108,42 @@ export async function dispatch<I, O>(
   try {
     const finalData = (await handler(input, result.data)) as O
     return { ok: true, data: finalData }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'client handler failed',
+    }
+  }
+}
+
+/**
+ * Ephemeral dispatch for client-only, high-frequency actions (selection,
+ * camera). The registered client handler runs IMMEDIATELY so the UI responds
+ * without waiting on the network, and the audit POST is fired fire-and-forget —
+ * a slow or failed request never blocks or delays the interaction.
+ *
+ * Use for commands whose client handler must run synchronously: a Zustand
+ * mutation (selection, camera, sun), or a `window.open` that would be eaten by
+ * the popup blocker if it waited on the round-trip (the export commands — their
+ * server half still writes the Export row, it just doesn't gate the tab).
+ */
+export function dispatchEphemeral<I, O>(
+  id: string,
+  input: I,
+  source: DispatchSource = 'UI',
+): DispatchResult<O> {
+  void fetch('/api/commands', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id, input, source }),
+  }).catch(() => {
+    // Audit is best-effort for ephemeral actions.
+  })
+
+  const handler = _clientHandlers.get(id)
+  if (!handler) return { ok: true, data: undefined as O }
+  try {
+    return { ok: true, data: handler(input, undefined) as O }
   } catch (err) {
     return {
       ok: false,

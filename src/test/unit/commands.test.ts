@@ -23,6 +23,15 @@ const REQUIRED_COMMAND_IDS = [
   'run.validation',
   'export.customerProposal',
   'export.constructionPacket',
+  'export.sitePlan',
+  'export.screenEnclosureQuote',
+  'import.session.create',
+  'import.image.upload',
+  'import.image.analyze',
+  'import.calibrate.set',
+  'import.intent.patch',
+  'import.intent.apply',
+  'import.session.discard',
 ] as const
 
 describe('command registry', () => {

@@ -11,17 +11,26 @@ import { db } from '@/lib/db'
 import { computeMeasurements } from '@/modules/measurements/engine'
 import {
   computeQuote,
-  type PriceBookItemLite,
-  type PricingSelections,
+  toPriceBookItems,
+  toProjectLineItems,
   type QuoteSummary,
 } from '@/modules/pricing/engine'
+import {
+  buildFinishCatalog,
+  resolveFinishes,
+  type MaterialRow,
+} from '@/modules/materials/catalog'
+import {
+  poolFieldsWithFinishes,
+  pricingSelectionsFrom,
+  validationSelectionsFrom,
+} from '@/modules/projects/pool-fields'
 import { runValidation } from '@/modules/validation/engine'
 import type {
   ValidationContext,
   ValidationItem,
   ValidationProject,
   ValidationReport,
-  ValidationSelections,
 } from '@/modules/validation/types'
 import type { Shape } from '@/modules/editor/state/shapes'
 
@@ -31,42 +40,13 @@ async function requireOrg(): Promise<{ orgId: string }> {
   return { orgId: session.user.orgId }
 }
 
-function asBool(v: unknown): boolean {
-  return v === true || v === 'true' || v === 1
-}
-
-function asNumber(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : 0
-  }
-  return 0
-}
-
 // ----- READS -----
-
-export async function loadCachedQuote(projectId: string): Promise<QuoteSummary | null> {
-  const row = await db.quote.findFirst({
-    where: { projectId },
-    orderBy: { generatedAt: 'desc' },
-    include: { lineItems: true },
-  })
-  if (!row) return null
-  return {
-    subtotal: Number(row.subtotal),
-    total: Number(row.total),
-    lineItems: row.lineItems.map((l) => ({
-      itemId: l.id,
-      name: l.name,
-      category: 'POOL',
-      source: l.source,
-      quantity: Number(l.quantity),
-      unitPrice: Number(l.unitPrice),
-      total: Number(l.total),
-    })) as QuoteSummary['lineItems'],
-  }
-}
+//
+// There is deliberately no cached-quote read. The editor renders a quote it
+// computes from the drawing in front of the user; serving the last saved one
+// showed a stale price beside a live drawing (one project in this database was
+// $1,350 adrift of its own proposal). The `Quote` row is still written below as
+// the persisted record of a priced job.
 
 export async function loadCachedValidation(
   projectId: string,
@@ -143,6 +123,7 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
         name: true,
         poolFields: true,
         proposalExpiresAt: true,
+        org: { select: { taxRatePct: true } },
         customer: { select: { name: true, address: true } },
         drawing: { select: { rootJson: true } },
       },
@@ -156,11 +137,6 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
         ? ((raw as { shapes: Shape[] }).shapes ?? [])
         : []
 
-    const poolFields =
-      project.poolFields && typeof project.poolFields === 'object' && !Array.isArray(project.poolFields)
-        ? (project.poolFields as Record<string, unknown>)
-        : {}
-
     const measurements = computeMeasurements(shapes)
 
     const priceBook = await db.priceBook.findFirst({
@@ -168,22 +144,66 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
       orderBy: { version: 'desc' },
       include: { items: true },
     })
+    const items = toPriceBookItems(priceBook?.items ?? [])
+
+    // The finishes on the drawing, resolved the same way `loadProjectQuote`
+    // resolves them. This cache is written on every save and read by the
+    // project page, so computing it without the finishes would put a total on
+    // the project card several thousand dollars below the one on the dock.
+    const materialRows = await db.material.findMany({
+      where: { OR: [{ orgId }, { orgId: null }] },
+      select: { id: true, kind: true, name: true, fillSpec: true },
+      orderBy: [{ kind: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+    })
+    const finishCatalog = buildFinishCatalog(materialRows as MaterialRow[], items)
+    const finishes = resolveFinishes(shapes, finishCatalog)
+
+    // The hand-entered amounts on this job. Left out here, the cached total on
+    // the project card would sit below the one on the dock by exactly the
+    // retaining wall the builder added, which is the same class of defect as
+    // leaving the finishes out was.
+    const lineItemRows = await db.projectLineItem.findMany({
+      where: { projectId, orgId },
+      select: {
+        id: true,
+        category: true,
+        name: true,
+        unitType: true,
+        quantity: true,
+        unitPrice: true,
+        note: true,
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    const projectLineItems = toProjectLineItems(lineItemRows)
+    const poolFields = poolFieldsWithFinishes(project.poolFields, finishes) as unknown as Record<
+      string,
+      unknown
+    >
+
+    // Still gated on a price book, because the cached row is keyed to one. A
+    // job whose only money is a hand-entered line has no cached total and shows
+    // none, which is the existing "cannot be priced" answer rather than a wrong
+    // one; the dock and the documents compute it live either way.
     if (priceBook) {
-      const items: PriceBookItemLite[] = priceBook.items.map((i) => ({
-        id: i.id,
-        category: i.category,
-        name: i.name,
-        unitType: i.unitType,
-        retailPrice: Number(i.retailPrice),
-      }))
-      const pricingSelections: PricingSelections = {
-        heaterSelected: asBool(poolFields.heaterSelected),
-        saltSystemSelected: asBool(poolFields.saltSystemSelected),
-        screenSelected: asBool(poolFields.screenSelected),
-        lightingQuantity: asNumber(poolFields.lightingQuantity),
+      const summary = computeQuote(
+        items,
+        measurements,
+        {
+          ...pricingSelectionsFrom(poolFields),
+          finishes,
+          finishItemIds: finishCatalog.claimedItemIds,
+          projectLineItems,
+        },
+        { taxRatePct: project.org?.taxRatePct ?? 0 },
+      )
+      // Only a real quote is recorded. An empty drawing has no price, and a row
+      // saying "$0" is a claim rather than an absence.
+      if (summary.status === 'PRICED') {
+        await writeCachedQuote(projectId, priceBook.id, summary)
+      } else {
+        await db.quote.deleteMany({ where: { projectId } })
       }
-      const summary = computeQuote(items, measurements, pricingSelections)
-      await writeCachedQuote(projectId, priceBook.id, summary)
     }
 
     const validationProject: ValidationProject = {
@@ -195,16 +215,10 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
         ? project.proposalExpiresAt.toISOString()
         : null,
     }
-    const validationSelections: ValidationSelections = {
-      heaterSelected: asBool(poolFields.heaterSelected),
-      saltSelected: asBool(poolFields.saltSystemSelected),
-      screenSelected: asBool(poolFields.screenSelected),
-      lightingQuantity: asNumber(poolFields.lightingQuantity),
-    }
     const ctx: ValidationContext = {
       project: validationProject,
       measurements,
-      selections: validationSelections,
+      selections: validationSelectionsFrom(poolFields),
       shapeCount: shapes.length,
       hasDeck: measurements.hasDeck,
     }

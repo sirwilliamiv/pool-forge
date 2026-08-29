@@ -1,14 +1,6 @@
 import Link from 'next/link'
 import { auth, signOut } from '@/lib/auth'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { AccountMenu } from './AccountMenu'
 
 async function logoutAction() {
   'use server'
@@ -33,30 +25,22 @@ export async function TopNav() {
             <Link href="/settings/price-book" className="text-muted-foreground hover:text-foreground">
               Price book
             </Link>
+            <Link href="/settings/intake" className="text-muted-foreground hover:text-foreground">
+              Customer uploads
+            </Link>
+            <Link href="/settings/company" className="text-muted-foreground hover:text-foreground">
+              Company
+            </Link>
+            <Link href="/settings/team" className="text-muted-foreground hover:text-foreground">
+              Team
+            </Link>
             <Link href="/docs/tools" className="text-muted-foreground hover:text-foreground">
               Docs
             </Link>
           </nav>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              {userLabel}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{userLabel}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <form action={logoutAction}>
-              <DropdownMenuItem asChild>
-                <button type="submit" className="w-full text-left">
-                  Log out
-                </button>
-              </DropdownMenuItem>
-            </form>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <AccountMenu userLabel={userLabel} logout={logoutAction} />
       </div>
     </header>
   )

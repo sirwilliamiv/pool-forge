@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Archive, Copy, ExternalLink, Trash2 } from 'lucide-react'
+import { Archive, Copy, ExternalLink, FileText, Printer, ScanLine, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ProjectStatus } from '@prisma/client'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { StatusDropdown } from '@/components/dashboard/StatusDropdown'
+import {
+  ExportCommandHandlers,
+  runExportCommand,
+} from '@/components/exports/ExportCommandHandlers'
 import {
   archiveProject,
   deleteProject,
@@ -81,6 +85,12 @@ export function ProjectActions({ project }: ProjectActionsProps) {
               Open editor
             </Link>
           </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/projects/${project.id}/import`}>
+              <ScanLine className="mr-1.5 h-4 w-4" />
+              Import from image
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={onDuplicate} disabled={pending}>
             <Copy className="mr-1.5 h-4 w-4" />
             Duplicate
@@ -98,6 +108,59 @@ export function ProjectActions({ project }: ProjectActionsProps) {
           >
             <Trash2 className="mr-1.5 h-4 w-4" />
             Delete
+          </Button>
+        </div>
+      </div>
+
+      {/* Document exports — each dispatches an export command, which records the
+          Export row and opens the document in a new tab. */}
+      <ExportCommandHandlers />
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Documents
+        </span>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runExportCommand('export.customerProposal', { projectId: project.id })}
+          >
+            <FileText className="mr-1.5 h-4 w-4" />
+            Customer proposal
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              runExportCommand('export.constructionPacket', {
+                projectId: project.id,
+                pageSize: 'tabloid',
+              })
+            }
+          >
+            <Printer className="mr-1.5 h-4 w-4" />
+            Construction packet
+            <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+              11×17
+            </span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runExportCommand('export.sitePlan', { projectId: project.id })}
+          >
+            <FileText className="mr-1.5 h-4 w-4" />
+            Site plan
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              runExportCommand('export.screenEnclosureQuote', { projectId: project.id })
+            }
+          >
+            <FileText className="mr-1.5 h-4 w-4" />
+            Screen enclosure RFQ
           </Button>
         </div>
       </div>

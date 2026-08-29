@@ -14,5 +14,6 @@ register({
     'Sign me out.',
     'Log out.',
   ],
+  unimplemented: true,
   execute: async () => ({ ok: false, error: 'not implemented' }),
 })

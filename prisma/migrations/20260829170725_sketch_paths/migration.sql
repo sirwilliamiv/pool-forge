@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ShapeKind" ADD VALUE 'SKETCH_PATH';

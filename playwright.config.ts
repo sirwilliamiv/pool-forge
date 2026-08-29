@@ -8,7 +8,11 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    // A port of its own. This used to be 3000 with `reuseExistingServer`, and an
+    // unrelated app happened to be listening there: Playwright reused it and
+    // tested somebody else's server, reporting "Cannot GET /login" as a missing
+    // email field.
+    baseURL: 'http://localhost:3100',
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,9 +22,20 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    port: 3000,
+    command: 'cross-env PORT=3100 NEXT_DIST_DIR=.next-e2e next dev',
+    port: 3100,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      // Invite and password links are built from this. Without it they point at
+      // the default origin, and a test that follows one would leave the server
+      // under test entirely and report a dead link as a broken invite.
+      APP_URL: 'http://localhost:3100',
+      // Deliberately blank. Identity Platform is proved against the real service
+      // by an end-to-end run; this suite must pass on any machine, with no
+      // credential and no network, so it exercises the local-password path that
+      // an unconfigured deployment uses.
+      IDENTITY_PLATFORM_API_KEY: '',
+    },
   },
 })

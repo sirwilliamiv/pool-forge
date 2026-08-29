@@ -6,12 +6,17 @@ import { useViewStore, type LeftTab, type ViewMode } from '@/modules/editor/stat
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { LayersTree } from './layers/LayersTree'
 import { StencilGrid } from './stencils/StencilGrid'
-import { MaterialGrid, type RawMaterial } from './materials/MaterialGrid'
+import { GradePanel } from './GradePanel'
+import { SitePanel } from './SitePanel'
+import { MaterialGrid } from './materials/MaterialGrid'
+import { focusRing, useFocusFlash } from './useFocusFlash'
 
 const TABS: { id: LeftTab; label: string }[] = [
   { id: 'layers', label: 'Layers' },
   { id: 'stencils', label: 'Stencils' },
   { id: 'materials', label: 'Materials' },
+  { id: 'site', label: 'Site' },
+  { id: 'grade', label: 'Grade' },
 ]
 
 const VIEW_MODES: { id: ViewMode; label: string }[] = [
@@ -20,20 +25,21 @@ const VIEW_MODES: { id: ViewMode; label: string }[] = [
   { id: 'section', label: 'Section' },
 ]
 
-export interface LeftPanelProps {
-  materials?: RawMaterial[]
-}
-
-export function LeftPanel({ materials = [] }: LeftPanelProps) {
+export function LeftPanel() {
   const leftTab = useViewStore((s) => s.leftTab)
   const setLeftTab = useViewStore((s) => s.setLeftTab)
   const viewMode = useViewStore((s) => s.viewMode)
   const setViewMode = useViewStore((s) => s.setViewMode)
   const [search, setSearch] = useState('')
+  const flashing = useFocusFlash(leftTab)
 
   return (
-    <aside className="flex h-full min-h-0 w-[248px] flex-col overflow-hidden border-r border-borderLight bg-white">
-      <div className="flex items-center gap-3 border-b border-borderLight px-3">
+    <aside
+      className={`flex h-full min-h-0 w-[248px] flex-col overflow-hidden border-r border-borderLight bg-white transition-shadow ${focusRing(flashing)}`}
+    >
+      {/* gap-2 and a slightly smaller face: a fifth tab (Site) pushed "Grade"
+          off the 248px panel, and a clipped tab is a feature nobody finds. */}
+      <div className="flex items-center gap-2 border-b border-borderLight px-2">
         {TABS.map((tab) => {
           const active = tab.id === leftTab
           return (
@@ -42,7 +48,7 @@ export function LeftPanel({ materials = [] }: LeftPanelProps) {
               type="button"
               onClick={() => setLeftTab(tab.id)}
               className={
-                'relative h-9 text-[12px] font-medium ' +
+                'relative h-9 whitespace-nowrap text-[11.5px] font-medium ' +
                 (active ? 'text-foreground' : 'text-textMuted hover:text-foreground')
               }
             >
@@ -77,7 +83,9 @@ export function LeftPanel({ materials = [] }: LeftPanelProps) {
       <div className="flex-1 overflow-y-auto">
         {leftTab === 'layers' ? <LayersTab /> : null}
         {leftTab === 'stencils' ? <StencilGrid search={search} /> : null}
-        {leftTab === 'materials' ? <MaterialGrid materials={materials} searchQuery={search} /> : null}
+        {leftTab === 'materials' ? <MaterialGrid searchQuery={search} /> : null}
+        {leftTab === 'site' ? <SitePanel /> : null}
+        {leftTab === 'grade' ? <GradePanel /> : null}
       </div>
 
       <div className="border-t border-borderLight px-3 py-2">

@@ -11,12 +11,30 @@ interface AddShapeOptions {
   stencilId?: string
   width?: number
   height?: number
+  /**
+   * Set at birth rather than by a follow-up `renameShape` / `updateShape`.
+   *
+   * Both of those push their own history entry, so placing a named, rotated
+   * object in three calls cost three undos to take back one action. Undo is the
+   * safety net under every movement in the app and a net with three layers in
+   * it is as confusing as no net at all.
+   */
+  name?: string
+  rotation?: number
+  /** The ring or path itself, for the kinds that carry one. Same reason as `name`. */
+  points?: { x: number; y: number }[]
+  closed?: boolean
+  depthShallow?: number
+  depthDeep?: number
+  labelText?: string
 }
 
 interface ShapesState {
   shapes: Shape[]
   hydrate: (shapes: Shape[]) => void
   addShape: (kind: ShapeKind, x: number, y: number, opts?: AddShapeOptions) => string
+  /** Swap one shape for another kind in a single undo step. */
+  replaceShape: (id: string, kind: ShapeKind, opts?: AddShapeOptions) => string | null
   addStencil: (stencilId: string, x: number, y: number) => string
   updateShape: (id: string, patch: Partial<Shape>) => void
   renameShape: (id: string, name: string) => void
@@ -53,13 +71,20 @@ function defaultsFor(
 ): Shape {
   let width = opts?.width ?? SHAPE_DEFAULTS[kind].width
   let height = opts?.height ?? SHAPE_DEFAULTS[kind].height
-  if (kind === ShapeKind.STENCIL && opts?.stencilId) {
-    const s = getStencil(opts.stencilId)
-    if (s) {
-      const factor = s.defaultDimensions.unit === 'ft' ? 12 : 1
-      width = opts.width ?? s.defaultDimensions.width * factor
-      height = opts.height ?? s.defaultDimensions.height * factor
-    }
+
+  // The catalogue wins wherever a stencil was named, whatever kind it becomes.
+  //
+  // This branch used to run only for the generic STENCIL kind, so the six
+  // stencils with a mesh of their own -- both pools, the spa, the sun shelf,
+  // the bench and both decks -- took their size from SHAPE_DEFAULTS instead and
+  // ignored the card the user had just clicked. "Standard rectangle, 30' x 14'"
+  // dropped a 25' x 12' pool; the bench went the other way and dropped bigger
+  // than its label. Those six are what a drawing is made of.
+  const stencil = opts?.stencilId ? getStencil(opts.stencilId) : undefined
+  if (stencil) {
+    const factor = stencil.defaultDimensions.unit === 'ft' ? 12 : 1
+    width = opts?.width ?? stencil.defaultDimensions.width * factor
+    height = opts?.height ?? stencil.defaultDimensions.height * factor
   }
   const base = {
     id: rid(kind),
@@ -67,14 +92,36 @@ function defaultsFor(
     y,
     width,
     height,
-    rotation: 0,
+    rotation: opts?.rotation ?? 0,
+    ...(opts?.name ? { name: opts.name } : {}),
     zIndex: z,
     locked: false,
     hidden: false,
+    // Kept whatever kind this became. It used to be written only in the STENCIL
+    // branch, so every shape with a dedicated mesh — a pool, a spa, a sun shelf,
+    // a deck — arrived with no catalogue id, and the panel and the voice agent
+    // both fell back to reading the raw enum: "SUN_SHELF" rather than
+    // "Sun shelf". Exactly backwards, since those are the objects that matter.
+    ...(opts?.stencilId ? { stencilId: opts.stencilId } : {}),
   }
   switch (kind) {
     case ShapeKind.RECTANGLE_POOL:
       return { ...base, kind: ShapeKind.RECTANGLE_POOL, depthShallow: 3, depthDeep: 5 }
+    case ShapeKind.POLYGON_POOL:
+      // Seeded with the bounding-box ring. A real footprint arrives either from
+      // the image pipeline or from the freeform draw tool; both replace it.
+      return {
+        ...base,
+        kind: ShapeKind.POLYGON_POOL,
+        points: opts?.points ?? [
+          { x: 0, y: 0 },
+          { x: width, y: 0 },
+          { x: width, y: height },
+          { x: 0, y: height },
+        ],
+        depthShallow: opts?.depthShallow ?? 3,
+        depthDeep: opts?.depthDeep ?? 5,
+      }
     case ShapeKind.CONCRETE_DECK:
     case ShapeKind.PAVER_DECK:
     case ShapeKind.GRASS_AREA:
@@ -83,6 +130,18 @@ function defaultsFor(
     case ShapeKind.BENCH:
     case ShapeKind.SPA:
       return { ...base, kind }
+    case ShapeKind.SKETCH_PATH:
+      // Empty on purpose. A sketch is created by drawing it, and the tool that
+      // did the drawing writes the points immediately after. Seeding a default
+      // ring here would put a phantom rectangle on the plan every time somebody
+      // started a line and thought better of it.
+      return {
+        ...base,
+        kind: ShapeKind.SKETCH_PATH,
+        points: opts?.points ?? [],
+        closed: opts?.closed ?? false,
+        ...(opts?.labelText ? { labelText: opts.labelText } : {}),
+      }
     case ShapeKind.STENCIL:
       return { ...base, kind: ShapeKind.STENCIL, stencilId: opts?.stencilId ?? 'unknown' }
   }
@@ -92,7 +151,12 @@ export const useShapesStore = create<ShapesState>((set, get) => {
   // Snapshot the current shapes into history before a mutation.
   // No-op while a transaction is open beyond the initial push.
   function pushHistory() {
-    useHistoryStore.getState().pushPast({ shapes: get().shapes })
+    // Both, always. A snapshot holding only half the drawing means undo puts
+    // half of it back, and the other half silently belongs to a different
+    // moment in time.
+    const history = useHistoryStore.getState()
+    const grade = history._getGrade?.()
+    history.pushPast(grade ? { shapes: get().shapes, grade } : { shapes: get().shapes })
   }
 
   function endTransaction() {
@@ -132,6 +196,25 @@ export const useShapesStore = create<ShapesState>((set, get) => {
       const shape = defaultsFor(kind, x, y, z, opts)
       set({ shapes: [...get().shapes, shape] })
       return shape.id
+    },
+
+    replaceShape(id, kind, opts) {
+      // One history entry, because converting a drawing into a pool is one
+      // decision. Doing it as remove-then-add cost two undos to take back one
+      // action, and the first undo left the pool without the outline it came
+      // from, which is a state the user never created.
+      commitOpenTx()
+      pushHistory()
+      const existing = get().shapes.find((s) => s.id === id)
+      if (!existing) return null
+      const z = nextZ++
+      const replacement = defaultsFor(kind, existing.x, existing.y, z, {
+        width: existing.width,
+        height: existing.height,
+        ...opts,
+      })
+      set({ shapes: [...get().shapes.filter((s) => s.id !== id), replacement] })
+      return replacement.id
     },
 
     addStencil(stencilId, x, y) {

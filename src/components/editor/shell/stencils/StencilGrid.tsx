@@ -5,7 +5,7 @@ import { dispatch } from '@/lib/commands/dispatch'
 import { STENCILS, type Stencil } from '@/modules/editor/stencils'
 import { StencilCategory } from '@/modules/editor/stencils/types'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
-import { ShapeKind } from '@/modules/editor/state/shapes'
+import { stagedCount, stagingPlacement } from '@/modules/editor/placement'
 import { StencilCard } from './StencilCard'
 
 const CATEGORY_LABEL: Record<StencilCategory, string> = {
@@ -49,19 +49,13 @@ export function StencilGrid({ search }: Props) {
   }, [search])
 
   const onAdd = (stencil: Stencil) => {
+    // Staged in a block beside whatever is already drawn, rather than queued in
+    // a line. The old rule anchored to RECTANGLE_POOL alone, so a Grecian or a
+    // pool-and-spa stranded everything at the origin, and its fixed stagger ran
+    // thirty-six objects about ninety-six feet down the sheet.
     const shapes = useShapesStore.getState().shapes
-    const pool = shapes.find((s) => s.kind === ShapeKind.RECTANGLE_POOL)
-    // Drop offset to the side of the pool; if no pool, place near origin.
-    // Stencil-count-based stagger so successive drops don't stack.
-    const stencilCount = shapes.filter((s) => s.kind === ShapeKind.STENCIL).length
-    const baseX = pool ? pool.x + pool.width + 24 : 0
-    const baseY = pool ? pool.y : 0
-    const offset = stencilCount * 36
-    void dispatch('add.shape', {
-      stencilId: stencil.id,
-      x: baseX,
-      y: baseY + offset,
-    })
+    const { x, y } = stagingPlacement(shapes, stencil.id, stagedCount(shapes))
+    void dispatch('add.shape', { stencilId: stencil.id, x, y })
   }
 
   if (filtered.size === 0) {
@@ -85,7 +79,10 @@ export function StencilGrid({ search }: Props) {
                 <span className="ml-1 text-textFaint">{items.length}</span>
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-1 px-2">
+            {/* One column. Three columns is what forced every name into an
+                ellipsis, and the names are the only thing that tells two of
+                these shapes apart. */}
+            <div className="grid grid-cols-1 gap-0.5 px-2">
               {items.map((s) => (
                 <StencilCard key={s.id} stencil={s} onAdd={onAdd} />
               ))}

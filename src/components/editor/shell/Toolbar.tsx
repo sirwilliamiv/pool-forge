@@ -3,6 +3,9 @@
 import {
   ChevronDown,
   Hand,
+  PenLine,
+  Spline,
+  Signature,
   Lightbulb,
   MessageSquare,
   MousePointer2,
@@ -17,6 +20,7 @@ import type { LucideIcon } from 'lucide-react'
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
+import { GridControl } from './GridControl'
 import { PoolShapePicker } from './PoolShapePicker'
 
 interface ToolItem {
@@ -25,7 +29,7 @@ interface ToolItem {
   label: string
   shortcut?: string
   hasChevron?: boolean
-  group: 'create' | 'surface' | 'annotate' | 'ai'
+  group: 'create' | 'draw' | 'surface' | 'annotate' | 'ai'
 }
 
 const TOOLS: ToolItem[] = [
@@ -33,6 +37,11 @@ const TOOLS: ToolItem[] = [
   { id: 'tool.steps', icon: StretchHorizontal, label: 'Steps & shelves', shortcut: 'S', group: 'create' },
   { id: 'tool.water-feature', icon: Waves, label: 'Water feature', shortcut: 'W', group: 'create' },
   { id: 'tool.lights', icon: Lightbulb, label: 'Lights', shortcut: 'L', group: 'create' },
+  // Drawing in plan, which is where a 2D-first designer starts: house, lot
+  // line, deck edge, pool outline, before any of it is a priced object.
+  { id: 'tool.line', icon: PenLine, label: 'Line', shortcut: 'P', group: 'draw' },
+  { id: 'tool.curve', icon: Spline, label: 'Curve', shortcut: 'A', group: 'draw' },
+  { id: 'tool.freehand', icon: Signature, label: 'Freehand', shortcut: 'N', group: 'draw' },
   { id: 'tool.deck', icon: Hand, label: 'Deck', shortcut: 'D', group: 'surface' },
   { id: 'tool.material-brush', icon: PaintBucket, label: 'Material brush', shortcut: 'B', group: 'surface' },
   { id: 'tool.measure', icon: Ruler, label: 'Measure', shortcut: 'M', group: 'annotate' },
@@ -54,18 +63,28 @@ export function Toolbar() {
       <PoolShapePicker />
       {renderGroup('create').slice(1)}
       <Divider />
+      {renderGroup('draw')}
+      <GridControl />
+      <Divider />
       {renderGroup('surface')}
       <Divider />
       {renderGroup('annotate')}
       <Divider />
+      {/* Labelled, because an unlabelled sparkle is not a label. This is the
+          only place a new user is told that adding a waterfall, exporting a
+          proposal and running the checklist all live behind one button, and the
+          first person to try the product read it as decoration and missed it. */}
       <button
         type="button"
         onClick={() => void dispatch('palette.open', {})}
-        title="Open command palette"
-        aria-label="Open command palette"
-        className="ml-0.5 flex h-9 w-9 items-center justify-center rounded-pfSm bg-gradient-to-br from-fuchsia-500 to-pink-500 text-white shadow-pfSm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-pfAccent"
+        title="Commands: add features, export documents, run the checklist (⌘K)"
+        aria-label="Open the command palette"
+        aria-keyshortcuts="Meta+K Control+K"
+        className="ml-0.5 flex h-9 items-center gap-1.5 rounded-pfSm bg-gradient-to-br from-fuchsia-500 to-pink-500 pl-2 pr-2.5 text-white shadow-pfSm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-pfAccent"
       >
-        <Sparkles className="h-4 w-4" aria-hidden />
+        <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="text-[11.5px] font-medium leading-none">Commands</span>
+        <span className="font-mono text-[9px] leading-none text-white/80">⌘K</span>
       </button>
     </div>
   )

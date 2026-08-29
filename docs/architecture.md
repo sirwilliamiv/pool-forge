@@ -12,6 +12,16 @@ voice    ──┘                                              └► returns C
 
 This keeps the app voice-ready, macro-ready, and automation-ready without a rewrite. Commands live in `src/modules/commands/categories/` (one file per category: project, canvas, shape, measurement, pricing, validation, export, template, auth, settings).
 
+## Rendering
+
+One three.js / react-three-fiber canvas renders every view. The "2D plan view"
+is the same scene under an orthographic camera (`three/CameraRig.tsx`) — there
+is no Konva and no separate 2D renderer. Scene objects live one-per-file under
+`components/editor/three/objects/`; `SceneRoot` dispatches on `ShapeKind`.
+
+Units: state stores inches (1 canvas unit = 1 inch); `lib/three/units.feet()`
+converts to scene units. Geometry helpers return feet / square feet.
+
 ## Module layout
 
 ```

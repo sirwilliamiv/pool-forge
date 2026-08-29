@@ -6,22 +6,45 @@ Mirrors product brief §17. Order matters — earlier items establish foundation
 - [x] **2. Project model** — Project / Customer / Drawing schema with org scoping.
 - [x] **3. Canvas editor shell** — `EditorShell.tsx` layout (left toolbar, stencil panel, center canvas, right properties, top toolbar, bottom status, slide-in quote).
 - [x] **4. Shape library** — full stencil catalog (pool shapes, interior features, deck/house, construction symbols, water/outdoor).
-- [ ] **5. Rectangle pool drawing** — first real Konva-rendered shape with select/drag/resize/rotate handles.
-- [ ] **6. Deck drawing** — concrete + paver materials, deck attaches to pool footprint without overlap.
-- [ ] **7. Measurement engine** — area, perimeter, gallons, deck area, coping linear feet, feature counts; recalculation on every shape change.
-- [ ] **8. Resize by target area** — input target sq ft → scale shape proportionally → update all derived measurements.
-- [ ] **9. Price book schema** — done (data model is in place); build CRUD UI + formula evaluator next.
-- [ ] **10. Quote panel** — live line items grouped by section, sourced from measurements + price book formulas.
-- [ ] **11. Validation engine** — pass / warn / blocking-error states with click-to-jump.
-- [ ] **12. Proposal export** — HTML template → PDF, customer-facing.
-- [ ] **13. Construction export** — HTML template → PDF, contractor-facing with dense measurements.
-- [ ] **14. Excel price book import** — XLSX upload, column mapping, preview, version save.
-- [ ] **15. Command registry** — done as foundation in Phase 1 (stub commands registered); fill in real `execute()` bodies as features land.
-- [ ] **16. Tool documentation panel** — render `src/modules/editor/tools/index.ts` as an in-app help drawer.
+- [x] **5. Rectangle pool drawing** — rendered in the R3F scene with select/drag; resize/rotate are inspector fields, not on-canvas handles.
+- [x] **6. Deck drawing** — concrete / paver / grass decks render and measure. Overlap against the pool footprint is not enforced.
+- [x] **7. Measurement engine** — area, perimeter, gallons, deck area, coping LF, feature counts; recomputed on every shape change.
+- [ ] **8. Resize by target area** — `set.pool.targetArea` is registered but its `execute` is still a stub.
+- [x] **9. Price book schema + CRUD UI + XLSX import.** No formula evaluator yet — `PriceBookItem.formula` is still dead.
+- [x] **10. Quote panel** — live line items from measurements + price book, with org sales tax.
+- [x] **11. Validation engine** — 12 real rules, pass / warn / error, click-to-jump target ids.
+- [x] **12. Proposal export** — HTML document + browser print. No server-side PDF, no stored artifact file.
+- [x] **13. Construction export** — 11×17 (Letter opt-in), dense measurements. Plus site plan and screen-enclosure RFQ.
+- [x] **14. Excel price book import** — XLSX upload, column mapping, preview, version save.
+- [x] **15. Command registry** — foundation plus real `execute()` bodies for the export category; most other categories are still stubs whose work happens in client handlers.
+- [x] **16. Tool documentation panel** — `/docs/tools` and `/docs/commands` render the catalogs.
+
+Known gaps that no item above covers: `HOTKEYS` is never bound to a listener,
+material selection doesn't persist or render, and project / price-book / drawing
+writes still bypass the command registry.
+
+## Wave I — image ingestion (in progress, jumped the queue)
+
+Spec: `superpowers/specs/2026-08-19-image-ingestion-design.md`. Customer photos,
+AI concept renders, and dimensioned graph-paper sketches translated into measured
+projects. Supersedes the deferred "survey image overlay" item below, which was a
+strict subset of it.
+
+Per `docs/competitive-analysis.md:85`, AI is uncontested across all 21 competitors
+surveyed: "Photo→design, AI estimating, auto-camera all uncontested."
+
+- [x] **I0 contract** — ingestion models + migration, `BlobStore`, `POLYGON_POOL`
+      primitive, `import` command category, survey data-URL migration.
+- [ ] **I1 ingest** · **I2 extraction** · **I3 precision** · **I4 review wizard** ·
+      **I5 intake funnel** — parallel tracks over disjoint file sets.
+- [ ] **I6 integration** — end-to-end money path plus the golden-corpus eval harness.
+
+Note: I0 took ownership of the freeform polygon footprint that Wave 1 T2 was
+slated to author. T2 is now a consumer of it; its plan is amended accordingly.
 
 ## Deferred (post-MVP)
 
-- Survey image overlay + scale calibration
+- ~~Survey image overlay + scale calibration~~ (absorbed into Wave I above)
 - Voice agent (the command registry is voice-ready; speech recognition layer not yet)
 - Google OAuth (provider scaffolded but disabled)
 - Electron desktop packaging

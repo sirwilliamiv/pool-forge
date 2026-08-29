@@ -3,69 +3,31 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
+import { useCameraStore } from '@/modules/editor/state/cameraStore'
+import { useEditorStore } from '@/modules/editor/state/editorStore'
+import { stencilForTool } from '@/modules/editor/interactions/gestures'
+import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
 import {
-  useCameraStore,
-  type CameraView,
-} from '@/modules/editor/state/cameraStore'
-
-interface SphericalState {
-  azimuth: number
-  polar: number
-  distance: number
-}
-
-const POLAR_MIN = 0.01
-const POLAR_MAX = Math.PI / 2 - 0.01
-const TRANSITION_MS = 300
-const ROTATE_SPEED = 0.005
-const PAN_SPEED_FACTOR = 0.0015
-const ZOOM_FACTOR = 0.001
-const MIN_DISTANCE = 5
-const MAX_DISTANCE = 300
-
-const ISO_DEFAULT: SphericalState = { azimuth: -0.756, polar: 0.92, distance: 65.9 }
-
-const VIEW_POSES: Record<
-  CameraView,
-  { spherical: SphericalState; target: [number, number, number] }
-> = {
-  iso: { spherical: { ...ISO_DEFAULT }, target: [0, -1, 0] },
-  top: { spherical: { azimuth: 0, polar: 0.05, distance: 60 }, target: [0, 0, 0] },
-  front: {
-    spherical: { azimuth: 0, polar: POLAR_MAX, distance: 50 },
-    target: [0, 0, 0],
-  },
-  left: {
-    spherical: { azimuth: -Math.PI / 2, polar: POLAR_MAX, distance: 50 },
-    target: [0, 0, 0],
-  },
-  right: {
-    spherical: { azimuth: Math.PI / 2, polar: POLAR_MAX, distance: 50 },
-    target: [0, 0, 0],
-  },
-}
-
-function applyToCamera(
-  camera: THREE.Camera,
-  sph: SphericalState,
-  target: THREE.Vector3,
-) {
-  const sinPolar = Math.sin(sph.polar)
-  const cosPolar = Math.cos(sph.polar)
-  const sinAz = Math.sin(sph.azimuth)
-  const cosAz = Math.cos(sph.azimuth)
-  camera.position.set(
-    target.x + sph.distance * sinPolar * cosAz,
-    target.y + sph.distance * cosPolar,
-    target.z + sph.distance * sinPolar * sinAz,
-  )
-  camera.lookAt(target)
-  camera.updateMatrixWorld()
-}
-
-function easeInOutQuad(u: number): number {
-  return u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2
-}
+  placeCamera,
+  subscribeCameraNudges,
+  type OrbitFrame,
+} from '@/modules/editor/interactions/cameraNudge'
+import {
+  ISO_DEFAULT,
+  TRANSITION_MS,
+  VIEW_POSES,
+  WHEEL_PAN_FACTOR,
+  lerpSpherical,
+  orthoPanSpeed,
+  perspectivePanSpeed,
+  poseToSpherical,
+  resolveDragMode,
+  rotateSpherical,
+  transitionEase,
+  zoomDistance,
+  zoomOrthoLevel,
+  type SphericalState,
+} from '@/modules/editor/interactions/orbit'
 
 interface Transition {
   startTime: number
@@ -83,13 +45,21 @@ export function CustomOrbit() {
   const framePose = useCameraStore((s) => s.framePose)
   const frameTarget = useCameraStore((s) => s.frameTarget)
 
-  const sphRef = useRef<SphericalState>({ ...ISO_DEFAULT })
-  const targetRef = useRef(new THREE.Vector3(0, -1, 0))
+  // One object, held for the life of the component, because the command-driven
+  // zoom/pan subscription below is set up once and must always see the pose the
+  // pointer handlers are actually writing.
+  const frameRef = useRef<OrbitFrame>({
+    spherical: { ...ISO_DEFAULT },
+    target: new THREE.Vector3(0, -1, 0),
+  })
   const transitionRef = useRef<Transition | null>(null)
 
   // Apply initial pose once when camera mounts (or swaps).
+  // Skip for orthographic cameras — CameraRig sets their pose explicitly,
+  // and overriding it would clobber the top-down (plan) / side-on (section) view.
   useEffect(() => {
-    applyToCamera(camera, sphRef.current, targetRef.current)
+    if (camera instanceof THREE.OrthographicCamera) return
+    placeCamera(camera, frameRef.current.spherical, frameRef.current.target)
   }, [camera])
 
   // Trigger transition when the view-cube store ticks transitionToken.
@@ -99,30 +69,37 @@ export function CustomOrbit() {
       if (!pose) return
       transitionRef.current = {
         startTime: performance.now(),
-        startSph: { ...sphRef.current },
+        startSph: { ...frameRef.current.spherical },
         endSph: { ...pose.spherical },
-        startTarget: targetRef.current.clone(),
+        startTarget: frameRef.current.target.clone(),
         endTarget: new THREE.Vector3(...pose.target),
       }
       return
     }
     if (framePose && frameTarget) {
       // Convert cartesian framePose (relative to frameTarget) into spherical.
-      const dx = framePose[0] - frameTarget[0]
-      const dy = framePose[1] - frameTarget[1]
-      const dz = framePose[2] - frameTarget[2]
-      const distance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, Math.hypot(dx, dy, dz)))
-      const polar = Math.max(POLAR_MIN, Math.min(POLAR_MAX, Math.acos(dy / distance || 1)))
-      const azimuth = Math.atan2(dz, dx)
       transitionRef.current = {
         startTime: performance.now(),
-        startSph: { ...sphRef.current },
-        endSph: { azimuth, polar, distance },
-        startTarget: targetRef.current.clone(),
+        startSph: { ...frameRef.current.spherical },
+        endSph: poseToSpherical(framePose, frameTarget),
+        startTarget: frameRef.current.target.clone(),
         endTarget: new THREE.Vector3(...frameTarget),
       }
     }
   }, [transitionToken, targetView, framePose, frameTarget])
+
+  // Zoom and pan asked for by command (toolbar button, +/- hotkey, voice).
+  // The subscription lives in cameraNudge.ts so the same wiring can be pointed
+  // at a real camera in a test: these three commands previously wrote a store
+  // field that no 3D component read, so they reported success while the view
+  // stood still.
+  useEffect(() => {
+    return subscribeCameraNudges(camera, frameRef.current, () => {
+      // A view transition mid-flight would animate straight over the nudge on
+      // the next frame, exactly as a pointer drag would.
+      transitionRef.current = null
+    })
+  }, [camera])
 
   // Pointer-driven orbit + pan + zoom on the canvas DOM element.
   useEffect(() => {
@@ -131,13 +108,18 @@ export function CustomOrbit() {
     let lastY = 0
 
     const onPointerDown = (e: PointerEvent) => {
-      if (e.button === 2 || e.shiftKey) {
-        dragging = 'pan'
-      } else if (e.button === 0) {
-        dragging = 'rotate'
-      } else {
+      // A drag with a placing tool armed belongs to the tool, not the camera.
+      // It used to belong to both: the yard swung round while the gesture that
+      // was meant to size a deck was thrown away for having moved too far.
+      const tool = normalizeToolId(useEditorStore.getState().activeTool)
+      if (e.button === 0 && stencilForTool(tool, useEditorStore.getState().activeStencilId)) {
         return
       }
+
+      // Orthographic views (plan / section) never rotate: any drag is a pan.
+      const mode = resolveDragMode(e, camera instanceof THREE.OrthographicCamera)
+      if (!mode) return
+      dragging = mode
       transitionRef.current = null
       lastX = e.clientX
       lastY = e.clientY
@@ -156,23 +138,36 @@ export function CustomOrbit() {
       lastY = e.clientY
 
       if (dragging === 'rotate') {
-        sphRef.current.azimuth -= dx * ROTATE_SPEED
-        sphRef.current.polar = Math.max(
-          POLAR_MIN,
-          Math.min(POLAR_MAX, sphRef.current.polar - dy * ROTATE_SPEED),
-        )
+        frameRef.current.spherical = rotateSpherical(frameRef.current.spherical, dx, dy)
+        placeCamera(camera, frameRef.current.spherical, frameRef.current.target)
+      } else if (camera instanceof THREE.OrthographicCamera) {
+        // Plan / section: pan the camera + target together along world axes
+        // that align with the screen. Speed scales inversely with zoom so the
+        // drag tracks the cursor regardless of zoom level.
+        const speed = orthoPanSpeed(camera.zoom)
+        // Plan view looks down +Y → screen-right is +X, screen-up is +Z.
+        // Section view looks along +X → screen-right is +Z, screen-up is +Y.
+        const lookDir = new THREE.Vector3()
+        camera.getWorldDirection(lookDir)
+        const right = new THREE.Vector3().crossVectors(lookDir, camera.up).normalize()
+        const up = new THREE.Vector3().crossVectors(right, lookDir).normalize()
+        camera.position.addScaledVector(right, -dx * speed)
+        camera.position.addScaledVector(up, dy * speed)
+        frameRef.current.target.addScaledVector(right, -dx * speed)
+        frameRef.current.target.addScaledVector(up, dy * speed)
+        camera.updateMatrixWorld()
       } else {
-        // Pan along ground plane in camera-relative axes.
+        // 3D: pan target along ground plane in camera-relative axes.
         const forward = new THREE.Vector3()
         camera.getWorldDirection(forward)
         forward.y = 0
         forward.normalize()
         const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize()
-        const panSpeed = sphRef.current.distance * PAN_SPEED_FACTOR
-        targetRef.current.addScaledVector(right, -dx * panSpeed)
-        targetRef.current.addScaledVector(forward, dy * panSpeed)
+        const panSpeed = perspectivePanSpeed(frameRef.current.spherical.distance)
+        frameRef.current.target.addScaledVector(right, -dx * panSpeed)
+        frameRef.current.target.addScaledVector(forward, dy * panSpeed)
+        placeCamera(camera, frameRef.current.spherical, frameRef.current.target)
       }
-      applyToCamera(camera, sphRef.current, targetRef.current)
     }
 
     const onPointerUp = (e: PointerEvent) => {
@@ -186,12 +181,45 @@ export function CustomOrbit() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const factor = Math.exp(e.deltaY * ZOOM_FACTOR)
-      sphRef.current.distance = Math.max(
-        MIN_DISTANCE,
-        Math.min(MAX_DISTANCE, sphRef.current.distance * factor),
-      )
-      applyToCamera(camera, sphRef.current, targetRef.current)
+
+      // Modifier keys → pan instead of zoom (Visio parity).
+      // Ctrl/⌘ + wheel → vertical pan. Shift + wheel → horizontal pan.
+      if (e.ctrlKey || e.metaKey || e.shiftKey) {
+        const horizontal = e.shiftKey && !e.ctrlKey && !e.metaKey
+        if (camera instanceof THREE.OrthographicCamera) {
+          const lookDir = new THREE.Vector3()
+          camera.getWorldDirection(lookDir)
+          const right = new THREE.Vector3().crossVectors(lookDir, camera.up).normalize()
+          const up = new THREE.Vector3().crossVectors(right, lookDir).normalize()
+          const axis = horizontal ? right : up
+          const sign = horizontal ? 1 : -1
+          const delta = sign * e.deltaY * WHEEL_PAN_FACTOR * orthoPanSpeed(camera.zoom) * 20
+          camera.position.addScaledVector(axis, delta)
+          frameRef.current.target.addScaledVector(axis, delta)
+          camera.updateMatrixWorld()
+        } else {
+          const forward = new THREE.Vector3()
+          camera.getWorldDirection(forward)
+          forward.y = 0
+          forward.normalize()
+          const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize()
+          const axis = horizontal ? right : forward
+          const delta = e.deltaY * WHEEL_PAN_FACTOR * frameRef.current.spherical.distance * 0.02
+          frameRef.current.target.addScaledVector(axis, delta)
+          placeCamera(camera, frameRef.current.spherical, frameRef.current.target)
+        }
+        return
+      }
+
+      // Plain wheel → zoom.
+      if (camera instanceof THREE.OrthographicCamera) {
+        camera.zoom = zoomOrthoLevel(camera.zoom, e.deltaY)
+        camera.updateProjectionMatrix()
+      } else {
+        const sph = frameRef.current.spherical
+        sph.distance = zoomDistance(sph.distance, e.deltaY)
+        placeCamera(camera, frameRef.current.spherical, frameRef.current.target)
+      }
     }
 
     const onContextMenu = (e: Event) => e.preventDefault()
@@ -200,7 +228,20 @@ export function CustomOrbit() {
     domElement.addEventListener('pointermove', onPointerMove)
     domElement.addEventListener('pointerup', onPointerUp)
     domElement.addEventListener('pointercancel', onPointerUp)
-    domElement.addEventListener('wheel', onWheel, { passive: false })
+    // Bound to the element that contains the canvas, not the canvas itself.
+    //
+    // The overlays drawn over the scene are real HTML on top of the canvas: the
+    // floating toolbar on a selection, the measurement label, the sun study.
+    // A wheel over any of them never reached the canvas, so selecting a pool in
+    // the middle of the view and scrolling did nothing at all, which is the
+    // most natural thing in the world to try and reads as the app being frozen.
+    // The viewport region, which contains the canvas and everything drawn over
+    // it, and stops short of the side panels so scrolling a list never zooms
+    // the model. `parentElement` is not enough: the overlays are portalled out
+    // of the canvas's own wrapper.
+    const wheelTarget: HTMLElement =
+      domElement.closest('main') ?? domElement.parentElement ?? domElement
+    wheelTarget.addEventListener('wheel', onWheel, { passive: false })
     domElement.addEventListener('contextmenu', onContextMenu)
 
     return () => {
@@ -208,7 +249,7 @@ export function CustomOrbit() {
       domElement.removeEventListener('pointermove', onPointerMove)
       domElement.removeEventListener('pointerup', onPointerUp)
       domElement.removeEventListener('pointercancel', onPointerUp)
-      domElement.removeEventListener('wheel', onWheel)
+      wheelTarget.removeEventListener('wheel', onWheel)
       domElement.removeEventListener('contextmenu', onContextMenu)
     }
   }, [camera, domElement])
@@ -217,17 +258,17 @@ export function CustomOrbit() {
   useFrame(() => {
     const t = transitionRef.current
     if (!t) return
-    const now = performance.now()
-    const u = Math.min(1, (now - t.startTime) / TRANSITION_MS)
-    const ease = easeInOutQuad(u)
-    sphRef.current.azimuth =
-      t.startSph.azimuth + (t.endSph.azimuth - t.startSph.azimuth) * ease
-    sphRef.current.polar =
-      t.startSph.polar + (t.endSph.polar - t.startSph.polar) * ease
-    sphRef.current.distance =
-      t.startSph.distance + (t.endSph.distance - t.startSph.distance) * ease
-    targetRef.current.lerpVectors(t.startTarget, t.endTarget, ease)
-    applyToCamera(camera, sphRef.current, targetRef.current)
+    // Transitions are perspective-orbit only; orthographic poses are owned by CameraRig.
+    if (camera instanceof THREE.OrthographicCamera) {
+      transitionRef.current = null
+      return
+    }
+    const elapsed = performance.now() - t.startTime
+    const u = Math.min(1, elapsed / TRANSITION_MS)
+    const ease = transitionEase(elapsed)
+    frameRef.current.spherical = lerpSpherical(t.startSph, t.endSph, ease)
+    frameRef.current.target.lerpVectors(t.startTarget, t.endTarget, ease)
+    placeCamera(camera, frameRef.current.spherical, frameRef.current.target)
     if (u >= 1) transitionRef.current = null
   })
 

@@ -2,13 +2,20 @@ import type { MeasurementSummary } from '@/modules/measurements/engine'
 
 export type ValidationLevel = 'pass' | 'warn' | 'error'
 
-export type ValidationCategory = 'project' | 'pool' | 'deck' | 'equipment' | 'export'
+export type ValidationCategory = 'project' | 'pool' | 'deck' | 'equipment' | 'export' | 'grade'
 
 export interface ValidationItem {
   id: string
   level: ValidationLevel
   category: ValidationCategory
   message: string
+  /**
+   * What the issue is about, in words ("Proposal expiry", not
+   * `proposalExpiresAt`). The checklist prints this verbatim under the message
+   * and upper-cases it, so a schema path here reaches the screen as
+   * `EXPORT · PROPOSALEXPIRESAT`. `fail()` in `rules.ts` maps keys to
+   * labels; nothing should assign this by hand.
+   */
   field?: string
   // Optional: shape id the issue refers to (for click-to-select in the dock).
   // Not yet emitted by the rule engine; populated by future rules.
@@ -59,6 +66,15 @@ export interface ValidationRule {
   category: ValidationCategory
   passMessage: string
   check: (ctx: ValidationContext) => ValidationItem | null
+  /**
+   * Whether this rule has anything to say about this design.
+   *
+   * Absent means always. Without it a rule can only pass or fail, so a site
+   * nobody graded would report "site slope is within a walkable fall" — true,
+   * and noise on every flat project, which is most of them. A checklist that
+   * lists things it did not check is a checklist people stop reading.
+   */
+  appliesTo?: (ctx: ValidationContext) => boolean
 }
 
 export interface ValidationReport {

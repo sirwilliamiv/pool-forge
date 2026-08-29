@@ -44,8 +44,32 @@ next-env.d.ts
 # prisma
 prisma/migrations/dev.db*
 
+# local blob store (BlobStore local-disk driver)
+.data/
+
 # docker
 pgdata/
 
 # electron
 dist-electron/
+
+# Agent worktrees
+.claude/worktrees/
+
+# Recorded demo output. Build artifacts: `pnpm demo` regenerates them from the
+# specs in src/test/e2e/demo, which are what actually belong in the repo.
+demo-output/
+demo-videos/
+demo-small/
+electron/voice/
+services/voice-relay/dist/
+# Every scratch build directory, not just the e2e one. `NEXT_DIST_DIR` is how
+# a second dev server is run beside the first, and 125 files from one of those
+# were swept into a commit by an unrelated `git add -A`.
+.next-*/
+
+# Throwaway repro scripts written while driving the running app.
+__*.mjs
+
+# Local database and blob backups (scripts/backup-db.sh, scripts/backup-blobs.sh)
+.backups/

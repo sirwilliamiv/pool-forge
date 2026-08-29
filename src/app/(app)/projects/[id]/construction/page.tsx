@@ -1,24 +1,22 @@
+import { ExportKind } from '@prisma/client'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { loadDrawing } from '@/modules/editor/persistence'
-import { computeMeasurements } from '@/modules/measurements/engine'
-import { computeQuote, type PriceBookItemLite } from '@/modules/pricing/engine'
-import { ConstructionDocument } from '@/components/exports/ConstructionDocument'
+import { buildExportDocument } from '@/modules/exports/document/build'
+import { ensureJobNumber } from '@/modules/projects/job-number'
+import type { ConstructionPageSize } from '@/components/exports/ConstructionDocument'
 import { PrintButton } from '@/components/exports/PrintButton'
-import './construction.css'
 
-interface PoolFieldsLite {
-  heaterSelected?: boolean
-  saltSelected?: boolean
-  screenSelected?: boolean
-  lightingQuantity?: number | string
+function parsePageSize(v: string | string[] | undefined): ConstructionPageSize {
+  const raw = Array.isArray(v) ? v[0] : v
+  return raw === 'letter' ? 'letter' : 'tabloid'
 }
 
 export default async function ConstructionPacketPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams?: Promise<{ size?: string | string[] }>
 }) {
   const session = await auth()
   if (!session?.user) redirect('/login')
@@ -26,78 +24,38 @@ export default async function ConstructionPacketPage({
   if (!orgId) redirect('/login')
 
   const { id } = await params
-  const project = await db.project.findUnique({
-    where: { id },
-    include: { customer: true },
+  const pageSize = parsePageSize((await searchParams)?.size)
+
+  // Same number as the proposal. A packet and a proposal for one job that
+  // reference it two different ways is how a crew ends up digging the wrong hole.
+  await ensureJobNumber(id, orgId)
+
+  // The same assembly the stored copy is serialised from.
+  const built = await buildExportDocument({
+    kind: ExportKind.CONSTRUCTION_PACKET,
+    projectId: id,
+    orgId,
+    options: { pageSize },
   })
-  if (!project || project.orgId !== orgId) notFound()
+  if (!built) notFound()
 
-  let shapes: Awaited<ReturnType<typeof loadDrawing>>['shapes'] = []
-  try {
-    const drawing = await loadDrawing(project.id)
-    shapes = drawing.shapes
-  } catch (err) {
-    console.error('loadDrawing failed', err)
-  }
-
-  const measurements = computeMeasurements(shapes)
-
-  const priceBook = await db.priceBook.findFirst({
-    where: { orgId, isActive: true },
-    orderBy: { version: 'desc' },
-    include: { items: true },
-  })
-  const items: PriceBookItemLite[] =
-    priceBook?.items.map((i) => ({
-      id: i.id,
-      category: i.category,
-      name: i.name,
-      unitType: i.unitType,
-      retailPrice: Number(i.retailPrice),
-    })) ?? []
-
-  const pf = (project.poolFields ?? {}) as PoolFieldsLite
-  const lightingQty =
-    typeof pf.lightingQuantity === 'number'
-      ? pf.lightingQuantity
-      : Number(pf.lightingQuantity ?? 0) || 0
-
-  const quote = computeQuote(items, measurements, {
-    heaterSelected: Boolean(pf.heaterSelected),
-    saltSystemSelected: Boolean(pf.saltSelected),
-    screenSelected: Boolean(pf.screenSelected),
-    lightingQuantity: lightingQty,
-  })
+  const otherSize: ConstructionPageSize = pageSize === 'tabloid' ? 'letter' : 'tabloid'
 
   return (
     <div className="min-h-screen bg-neutral-100 py-6">
-      <div className="fixed right-4 top-4 z-50">
-        <PrintButton label="Print / Save as PDF" />
+      <style dangerouslySetInnerHTML={{ __html: built.pageCss }} />
+      <div className="no-print fixed right-4 top-4 z-50 flex items-center gap-2">
+        <a
+          href={`?size=${otherSize}`}
+          className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+        >
+          Switch to {otherSize === 'tabloid' ? '11×17' : 'Letter'}
+        </a>
+        <PrintButton
+          label={`Print / Save as PDF (${pageSize === 'tabloid' ? '11×17' : 'Letter'})`}
+        />
       </div>
-      <ConstructionDocument
-        project={{
-          id: project.id,
-          name: project.name,
-          salesperson: project.salesperson,
-          designer: project.designer,
-          internalNotes: project.internalNotes,
-          poolFields: project.poolFields,
-          createdAt: project.createdAt,
-        }}
-        customer={
-          project.customer
-            ? {
-                name: project.customer.name,
-                email: project.customer.email,
-                phone: project.customer.phone,
-                address: project.customer.address,
-              }
-            : null
-        }
-        shapes={shapes}
-        measurements={measurements}
-        quote={quote}
-      />
+      {built.element}
     </div>
   )
 }

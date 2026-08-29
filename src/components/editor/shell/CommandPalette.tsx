@@ -4,8 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Command } from 'cmdk'
 import { create } from 'zustand'
 import { Mic, Plus, Sparkles, Wrench, Zap } from 'lucide-react'
+import { toast } from 'sonner'
 import { dispatch } from '@/lib/commands/dispatch'
+import {
+  PALETTE_ROWS,
+  asExportCommandId,
+  type PaletteRow as PaletteRowDef,
+  type PaletteRowContext,
+} from '@/lib/commands/palette-rows'
 import type { Suggestion } from '@/lib/commands/suggestions'
+import { runExportCommand } from '@/components/exports/ExportCommandHandlers'
+import type { ExportRouteInput } from '@/modules/exports/routes'
+import { useShapesStore } from '@/modules/editor/state/shapesStore'
 
 interface PaletteState {
   open: boolean
@@ -23,7 +33,7 @@ export function openCommandPalette(initialQuery?: string): void {
   useCommandPaletteStore.getState().setOpen(true, initialQuery)
 }
 
-interface PaletteRow {
+interface PaletteItemModel {
   id: string
   label: string
   description?: string
@@ -34,9 +44,14 @@ interface PaletteRow {
 
 interface CommandPaletteProps {
   suggestions?: Suggestion[]
+  /** Required by the export commands — they take the project they document. */
+  projectId: string
 }
 
-export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React.ReactElement {
+export function CommandPalette({
+  suggestions = [],
+  projectId,
+}: CommandPaletteProps): React.ReactElement {
   const open = useCommandPaletteStore((s) => s.open)
   const initialQuery = useCommandPaletteStore((s) => s.initialQuery)
   const setOpen = useCommandPaletteStore((s) => s.setOpen)
@@ -66,97 +81,112 @@ export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React
   const runAndClose = useCallback(
     async (id: string, input: unknown) => {
       close()
-      await dispatch(id, input)
+      const result = await dispatch(id, input)
+      // A palette row that fails must say so — silent no-ops are how dead
+      // commands hid here in the first place.
+      if (!result.ok) toast.error(result.error)
+      return result
     },
     [close],
   )
 
-  const suggestionRows: PaletteRow[] = useMemo(
+  /**
+   * Run one declared row.
+   *
+   * The row builds its own input from the canvas, because the failure this
+   * replaces was a row that guessed at the input and sent a shape it had
+   * invented. Multi-call rows ("add 2 lights") stop at the first failure rather
+   * than reporting two toasts for one click.
+   */
+  const runRow = useCallback(
+    (row: PaletteRowDef, calls: ReturnType<PaletteRowDef['build']>) => {
+      if (row.via === 'export') {
+        // Inside the click gesture: an awaited round-trip loses the tab to the
+        // popup blocker.
+        close()
+        for (const call of calls) {
+          const exportId = asExportCommandId(call.commandId)
+          if (exportId) runExportCommand(exportId, call.input as unknown as ExportRouteInput)
+        }
+        return
+      }
+
+      void (async () => {
+        close()
+        let last: unknown = null
+        for (const call of calls) {
+          const result = await dispatch(call.commandId, call.input)
+          if (!result.ok) {
+            toast.error(result.error)
+            return
+          }
+          last = result.data
+        }
+        if (row.successMessage) {
+          toast.success(
+            typeof row.successMessage === 'function'
+              ? row.successMessage(last)
+              : row.successMessage,
+          )
+        }
+      })()
+    },
+    [close],
+  )
+
+  // Subscribed, not read once: the staging position of the next object depends
+  // on what is already drawn, and the palette can be opened at any point.
+  const shapes = useShapesStore((s) => s.shapes)
+  const ctx: PaletteRowContext = useMemo(() => ({ shapes, projectId }), [shapes, projectId])
+
+  const rows: Array<{ row: PaletteRowDef; item: PaletteItemModel }> = useMemo(
     () =>
-      suggestions.map((s) => {
-        const row: PaletteRow = {
+      PALETTE_ROWS.flatMap((row) => {
+        const calls = row.build(ctx)
+        // Nothing to do right now, so it is not offered. A row that appears is
+        // a row that runs.
+        if (calls.length === 0) return []
+        const item: PaletteItemModel = {
+          id: row.id,
+          label: row.label,
+          icon: row.group === 'add' ? Plus : Zap,
+          run: () => runRow(row, calls),
+        }
+        if (row.description) item.description = row.description
+        if (row.shortcut) item.shortcut = row.shortcut
+        return [{ row, item }]
+      }),
+    [ctx, runRow],
+  )
+
+  const suggestionRows: PaletteItemModel[] = useMemo(
+    () =>
+      suggestions.flatMap((s) => {
+        // Defence in depth: `getSuggestions` already refuses to emit a
+        // suggestion with no command behind it, and a suggestion that reached
+        // here without one would be a row that closes the palette and does
+        // nothing, which is the single worst outcome in this list.
+        if (!s.innerCommandId) return []
+        const row: PaletteItemModel = {
           id: s.id,
           label: s.label,
           icon: s.source === 'validation' ? Wrench : Sparkles,
           run: () => {
-            if (s.innerCommandId) {
-              void runAndClose('palette.run.suggestion', {
-                suggestionId: s.id,
-                innerCommandId: s.innerCommandId,
-                innerInput: s.innerInput ?? {},
-              })
-            } else {
-              close()
-            }
+            void runAndClose('palette.run.suggestion', {
+              suggestionId: s.id,
+              innerCommandId: s.innerCommandId,
+              innerInput: s.innerInput ?? {},
+            })
           },
         }
         if (s.description) row.description = s.description
-        return row
+        return [row]
       }),
-    [suggestions, runAndClose, close],
+    [suggestions, runAndClose],
   )
 
-  const addRows: PaletteRow[] = useMemo(
-    () => [
-      {
-        id: 'add.shape.tanning-ledge',
-        label: 'Add a tanning ledge',
-        icon: Plus,
-        run: () => void runAndClose('add.shape', { kind: 'tanning-ledge' }),
-      },
-      {
-        id: 'add.shape.waterfall',
-        label: 'Add a waterfall',
-        icon: Plus,
-        run: () => void runAndClose('add.shape', { kind: 'waterfall' }),
-      },
-      {
-        id: 'add.shape.led-light',
-        label: 'Add 2 LED lights',
-        icon: Plus,
-        run: () => void runAndClose('add.shape', { kind: 'led-light', quantity: 2 }),
-      },
-      {
-        id: 'add.shape.rectangle-pool',
-        label: 'Add a rectangle pool',
-        icon: Plus,
-        run: () => void runAndClose('add.shape', { kind: 'rectangle-pool' }),
-      },
-    ],
-    [runAndClose],
-  )
-
-  const actionRows: PaletteRow[] = useMemo(
-    () => [
-      {
-        id: 'action.export.proposal',
-        label: 'Export customer proposal',
-        shortcut: '⌘E',
-        icon: Zap,
-        run: () => void runAndClose('export.customerProposal', {}),
-      },
-      {
-        id: 'action.export.construction',
-        label: 'Export construction packet',
-        shortcut: '⌘⇧E',
-        icon: Zap,
-        run: () => void runAndClose('export.constructionPacket', {}),
-      },
-      {
-        id: 'action.run.validation',
-        label: 'Run validation',
-        icon: Zap,
-        run: () => void runAndClose('run.validation', {}),
-      },
-      {
-        id: 'action.camera.iso',
-        label: 'Reset camera to isometric',
-        icon: Zap,
-        run: () => void runAndClose('camera.set.view', { view: 'iso' }),
-      },
-    ],
-    [runAndClose],
-  )
+  const addRows = rows.filter((r) => r.row.group === 'add').map((r) => r.item)
+  const actionRows = rows.filter((r) => r.row.group === 'action').map((r) => r.item)
 
   if (!open) return <></>
 
@@ -187,33 +217,28 @@ export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React
             </Command.Empty>
 
             {suggestionRows.length > 0 && (
-              <Command.Group
-                heading="Suggested for this design"
-                className="text-[10px] font-medium uppercase tracking-[0.5px] text-textFaint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2"
-              >
+              <Group heading="Suggested for this design">
                 {suggestionRows.map((row) => (
                   <PaletteItem key={row.id} row={row} />
                 ))}
-              </Command.Group>
+              </Group>
             )}
 
-            <Command.Group
-              heading="Add"
-              className="text-[10px] font-medium uppercase tracking-[0.5px] text-textFaint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2"
-            >
-              {addRows.map((row) => (
-                <PaletteItem key={row.id} row={row} />
-              ))}
-            </Command.Group>
+            {addRows.length > 0 && (
+              <Group heading="Add">
+                {addRows.map((row) => (
+                  <PaletteItem key={row.id} row={row} />
+                ))}
+              </Group>
+            )}
 
-            <Command.Group
-              heading="Actions"
-              className="text-[10px] font-medium uppercase tracking-[0.5px] text-textFaint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2"
-            >
-              {actionRows.map((row) => (
-                <PaletteItem key={row.id} row={row} />
-              ))}
-            </Command.Group>
+            {actionRows.length > 0 && (
+              <Group heading="Actions">
+                {actionRows.map((row) => (
+                  <PaletteItem key={row.id} row={row} />
+                ))}
+              </Group>
+            )}
           </Command.List>
 
           <div className="flex items-center justify-between border-t border-borderLight px-4 py-2 text-[11px] text-textMuted">
@@ -238,23 +263,45 @@ export function CommandPalette({ suggestions = [] }: CommandPaletteProps): React
   )
 }
 
-function PaletteItem({ row }: { row: PaletteRow }) {
+/**
+ * The heading is the small uppercase label, not the rows underneath it.
+ *
+ * Those styles used to sit on the group itself, so every row inherited them and
+ * "Add a waterfall" was rendered in 10px uppercase letter-spaced text, which
+ * is also why the first reviewer quoted every row back in capitals.
+ */
+function Group({ heading, children }: { heading: string; children: React.ReactNode }) {
+  return (
+    <Command.Group
+      heading={heading}
+      className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.5px] [&_[cmdk-group-heading]]:text-textFaint"
+    >
+      {children}
+    </Command.Group>
+  )
+}
+
+function PaletteItem({ row }: { row: PaletteItemModel }) {
   const Icon = row.icon
   return (
     <Command.Item
       value={`${row.label} ${row.description ?? ''}`}
       onSelect={row.run}
-      className="flex h-[30px] cursor-pointer items-center gap-2 rounded-pfXs px-2 text-[12px] text-text data-[selected=true]:bg-pfAccentSoft data-[selected=true]:text-pfAccentStrong"
+      className="flex cursor-pointer items-center gap-2 rounded-pfXs px-2 py-1.5 text-[12px] text-text data-[selected=true]:bg-pfAccentSoft data-[selected=true]:text-pfAccentStrong"
     >
-      <span className="flex h-5 w-5 items-center justify-center rounded-pfXs bg-rowHover text-textMuted data-[selected=true]:bg-white">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-pfXs bg-rowHover text-textMuted data-[selected=true]:bg-white">
         <Icon className="h-3 w-3" />
       </span>
-      <span className="flex-1 truncate">{row.label}</span>
-      {row.description && (
-        <span className="truncate text-[11px] text-textFaint">{row.description}</span>
-      )}
+      {/* The label gets its own line. Sharing one with the description put
+          "Try PebbleTec Cobalt finish" on screen as the single letter "T". */}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{row.label}</span>
+        {row.description && (
+          <span className="block truncate text-[11px] text-textFaint">{row.description}</span>
+        )}
+      </span>
       {row.shortcut && (
-        <span className="ml-2 font-mono text-[10px] text-textFaint">{row.shortcut}</span>
+        <span className="ml-2 shrink-0 font-mono text-[10px] text-textFaint">{row.shortcut}</span>
       )}
     </Command.Item>
   )

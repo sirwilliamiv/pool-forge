@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Check } from 'lucide-react'
 import type { ProjectStatus } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
@@ -8,6 +9,9 @@ import { StatusFilter } from '@/components/dashboard/StatusFilter'
 import { NewProjectDialog } from '@/components/dashboard/NewProjectDialog'
 import { ProjectCardMenu } from '@/components/dashboard/ProjectCardMenu'
 import { StatusDropdown } from '@/components/dashboard/StatusDropdown'
+import { FirstRunChecklist } from '@/components/onboarding/FirstRunChecklist'
+import { loadFirstRun } from '@/modules/onboarding/first-run'
+import { seedNewOrganization } from '@/modules/onboarding/seed-organization'
 
 const VALID_STATUSES: ProjectStatus[] = [
   'DRAFT',
@@ -25,31 +29,27 @@ function parseStatus(raw: string | undefined): ProjectStatus | undefined {
 
 async function createProjectAction(input: { name: string; customerName: string }) {
   'use server'
+  // Through the registry, not around it. This used to hold its own Prisma
+  // transaction, which meant the button and the voice agent created projects by
+  // two different code paths and only one of them wrote an audit row.
   const session = await auth()
   const orgId = session?.user?.orgId
   const userId = session?.user?.id
   if (!session || !orgId || !userId) return { ok: false, error: 'Not authenticated' }
-  const trimmedName = input.name.trim()
-  if (!trimmedName) return { ok: false, error: 'Project name required' }
 
-  const project = await db.$transaction(async (tx) => {
-    let customerId: string | undefined
-    if (input.customerName.trim()) {
-      const customer = await tx.customer.create({
-        data: { orgId, name: input.customerName.trim() },
-      })
-      customerId = customer.id
-    }
-    return tx.project.create({
-      data: {
-        orgId,
-        name: trimmedName,
-        ...(customerId ? { customerId } : {}),
-      },
-    })
-  })
+  const { initCommands } = await import('@/modules/commands/init')
+  const { dispatchCommand } = await import('@/modules/commands/dispatch')
+  initCommands()
 
-  return { ok: true, id: project.id }
+  const customerName = input.customerName.trim()
+  const result = await dispatchCommand<{ projectId: string }>(
+    'create.project',
+    { name: input.name, ...(customerName ? { customerName } : {}) },
+    { userId, orgId },
+  )
+
+  if (!result.ok) return { ok: false, error: result.error }
+  return { ok: true, id: result.data.projectId }
 }
 
 export default async function DashboardPage({
@@ -62,7 +62,15 @@ export default async function DashboardPage({
   const orgId = session.user.orgId
   if (!orgId) redirect('/login')
 
-  const sp = await searchParams
+  // A backstop, not the intended call site. `seedNewOrganization` belongs in
+  // whatever creates the Organization row (registration today, invite
+  // acceptance next), inside the same transaction. It is also called here
+  // because this is where a new organisation lands, and an organisation that
+  // reached the app without a price book would otherwise be told its first
+  // drawing cannot be priced. It does nothing once a book exists.
+  await seedNewOrganization(orgId)
+
+  const [sp, firstRun] = await Promise.all([searchParams, loadFirstRun(orgId)])
   const status = parseStatus(sp.status)
 
   // Default view hides ARCHIVED unless filter explicitly selects it.
@@ -92,6 +100,8 @@ export default async function DashboardPage({
         <NewProjectDialog action={createProjectAction} />
       </div>
 
+      {firstRun.visible ? <FirstRunChecklist steps={firstRun.steps} /> : null}
+
       <StatusFilter />
 
       {projects.length === 0 ? (
@@ -115,6 +125,23 @@ export default async function DashboardPage({
                   <ProjectCardMenu projectId={p.id} projectName={p.name} />
                 </div>
                 <StatusDropdown projectId={p.id} status={p.status} />
+                {p.proposalAcceptedAt ? (
+                  // The signature has to reach the builder without being looked
+                  // for. The status moves to Approved on acceptance, but
+                  // "Approved" alone does not say who signed or when, and a
+                  // builder scanning the board should not have to open a project
+                  // to find out a customer said yes.
+                  <p className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-900">
+                    <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">
+                      Accepted by {p.proposalAcceptedName ?? 'the customer'} on{' '}
+                      {p.proposalAcceptedAt.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  </p>
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-1 text-sm text-muted-foreground">
                 <Link href={`/projects/${p.id}`} className="block hover:underline">

@@ -23,9 +23,34 @@ import {
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { createItem, updateItem, type ItemInput } from '@/app/(app)/settings/price-book/actions'
+import {
+  PRICING_OPTIONS,
+  optionLabel,
+  type PricingOptionKey,
+} from '@/modules/pricing/engine'
 
 const UNIT_TYPES: UnitType[] = [UnitType.SQFT, UnitType.LF, UnitType.EACH, UnitType.LUMP, UnitType.HOUR]
 const PRICE_CATEGORIES: PriceCategory[] = Object.values(PriceCategory) as PriceCategory[]
+
+/** The sentinel the option select uses for "no option". Radix rejects "". */
+const NO_OPTION = 'none'
+
+/**
+ * Categories nothing in a drawing measures.
+ *
+ * An item in one of these is a real price the builder keeps, and no drawing can
+ * ever say how many feet of fence a yard needs or what the county charges for a
+ * permit. They are added to a job by hand from the project page, and saying so
+ * here is the difference between "this is priced per job" and the old
+ * behaviour, which was to accept the item, list it, and never bill it.
+ */
+const PER_JOB_CATEGORIES: ReadonlySet<PriceCategory> = new Set([
+  PriceCategory.LANAI,
+  PriceCategory.FENCE,
+  PriceCategory.WALL,
+  PriceCategory.ELECTRICAL,
+  PriceCategory.MISC,
+])
 
 export interface ExistingItem {
   id: string
@@ -38,6 +63,7 @@ export interface ExistingItem {
   internalOnly: boolean
   required: boolean
   upgradeOnly: boolean
+  optionKey: PricingOptionKey | null
 }
 
 export interface PriceBookItemDialogProps {
@@ -63,6 +89,7 @@ export function PriceBookItemDialog({
   const [internalOnly, setInternalOnly] = useState(item?.internalOnly ?? false)
   const [required, setRequired] = useState(item?.required ?? false)
   const [upgradeOnly, setUpgradeOnly] = useState(item?.upgradeOnly ?? false)
+  const [optionKey, setOptionKey] = useState<PricingOptionKey | null>(item?.optionKey ?? null)
 
   function reset() {
     setCategory(PriceCategory.MISC)
@@ -74,6 +101,7 @@ export function PriceBookItemDialog({
     setInternalOnly(false)
     setRequired(false)
     setUpgradeOnly(false)
+    setOptionKey(null)
   }
 
   function handleClose(next: boolean) {
@@ -104,6 +132,7 @@ export function PriceBookItemDialog({
       internalOnly,
       required,
       upgradeOnly,
+      optionKey,
     }
     if (!payload.name) {
       toast.error('Name is required')
@@ -204,6 +233,39 @@ export function PriceBookItemDialog({
               />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label>Billed when the customer chooses</Label>
+            <Select
+              value={optionKey ?? NO_OPTION}
+              onValueChange={(v) => setOptionKey(v === NO_OPTION ? null : (v as PricingOptionKey))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_OPTION}>Anything in its category</SelectItem>
+                {PRICING_OPTIONS.map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {optionLabel(key)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {optionKey === null
+                ? 'This line bills whenever its category applies. Leave it here unless two items in the category are alternatives: a heater and a salt cell both set to this will both be charged the moment a customer asks for either.'
+                : `This line is charged only when the customer asks for a ${optionLabel(optionKey).toLowerCase()}.`}
+            </p>
+          </div>
+
+          {PER_JOB_CATEGORIES.has(category) ? (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              Nothing in a drawing measures {category === PriceCategory.MISC ? 'this' : 'these'}, so
+              this item is not billed automatically. Open a project and add it under “Added to this
+              job” to put it on that quote, with the quantity for that job.
+            </p>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-3 pt-2">
             <FlagToggle id="pb-vis" label="Customer visible" checked={customerVisible} onChange={setCustomerVisible} />

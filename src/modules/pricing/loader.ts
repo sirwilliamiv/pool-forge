@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import type { PriceBookItemLite } from './engine'
+import { toPriceBookItems, type PriceBookItemLite } from './engine'
 
 export async function loadActivePriceBookItems(): Promise<PriceBookItemLite[]> {
   const session = await auth()
@@ -16,11 +16,5 @@ export async function loadActivePriceBookItems(): Promise<PriceBookItemLite[]> {
   })
   if (!book) return []
 
-  return book.items.map((i) => ({
-    id: i.id,
-    category: i.category,
-    name: i.name,
-    unitType: i.unitType,
-    retailPrice: Number(i.retailPrice),
-  }))
+  return toPriceBookItems(book.items)
 }

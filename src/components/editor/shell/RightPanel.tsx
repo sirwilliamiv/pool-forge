@@ -2,19 +2,24 @@
 
 import type { ReactNode } from 'react'
 import { MessageSquare } from 'lucide-react'
+import { dispatchEphemeral } from '@/lib/commands/dispatch'
+import { useCommentsStore } from '@/modules/editor/state/commentsStore'
+import { unresolvedCount } from '@/modules/editor/comments/model'
 import { useViewStore, type RightTab } from '@/modules/editor/state/viewStore'
-import type { QuoteSummary } from '@/modules/pricing/engine'
+import { CommentsPanel } from './CommentsPanel'
 import { SpecsTab } from './inspector/SpecsTab'
 import { QuoteTab } from './inspector/QuoteTab'
+import { focusRing, useFocusFlash } from './useFocusFlash'
 
 export interface RightPanelProps {
   selectionCardSlot?: ReactNode
+  /** Only rendered for a drawn path: what it is, and what it can become. */
+  sketchSlot?: ReactNode
   positionSlot?: ReactNode
   geometrySlot?: ReactNode
   materialSlot?: ReactNode
   computedMetricsSlot?: ReactNode
   quoteContributionSlot?: ReactNode
-  inspectorQuote?: QuoteSummary | null | undefined
 }
 
 const TABS: { id: RightTab; label: string }[] = [
@@ -25,18 +30,22 @@ const TABS: { id: RightTab; label: string }[] = [
 
 export function RightPanel({
   selectionCardSlot,
+  sketchSlot,
   positionSlot,
   geometrySlot,
   materialSlot,
   computedMetricsSlot,
   quoteContributionSlot,
-  inspectorQuote,
 }: RightPanelProps) {
   const rightTab = useViewStore((s) => s.rightTab)
   const setRightTab = useViewStore((s) => s.setRightTab)
+  const openNotes = useCommentsStore((s) => unresolvedCount(s.comments))
+  const flashing = useFocusFlash(rightTab)
 
   return (
-    <aside className="flex h-full min-h-0 w-[296px] flex-col overflow-hidden border-l border-borderLight bg-white">
+    <aside
+      className={`flex h-full min-h-0 w-[296px] flex-col overflow-hidden border-l border-borderLight bg-white transition-shadow ${focusRing(flashing)}`}
+    >
       <div className="flex items-center gap-3 border-b border-borderLight px-3">
         {TABS.map((tab) => {
           const active = tab.id === rightTab
@@ -58,12 +67,34 @@ export function RightPanel({
           )
         })}
         <div className="flex-1" />
+        {/* A fourth tab wearing an icon, not a button that does nothing. It was
+            the second of three "coming soon" controls in the editor chrome, and
+            a walkthrough had to tell the user to ignore it. */}
         <button
           type="button"
-          aria-label="Comments"
-          className="grid h-7 w-7 place-items-center rounded-pfSm text-textMuted hover:bg-rowHover hover:text-foreground"
+          onClick={() =>
+            // Through the registry, like every other action: the tab this opens
+            // is also reachable by voice and by the palette, and all three write
+            // the same audit row. Ephemeral so the panel switches on the click
+            // rather than after a round trip.
+            dispatchEphemeral('nav.focus', { target: rightTab === 'comments' ? 'design' : 'comments' })
+          }
+          aria-label="Notes"
+          title="Notes on this drawing"
+          aria-pressed={rightTab === 'comments'}
+          className={
+            'relative grid h-7 w-7 place-items-center rounded-pfSm ' +
+            (rightTab === 'comments'
+              ? 'bg-rowHover text-foreground'
+              : 'text-textMuted hover:bg-rowHover hover:text-foreground')
+          }
         >
           <MessageSquare className="h-3.5 w-3.5" />
+          {openNotes > 0 ? (
+            <span className="absolute -right-0.5 -top-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-amber-500 px-[3px] text-[8.5px] font-semibold leading-none text-white">
+              {openNotes}
+            </span>
+          ) : null}
         </button>
       </div>
 
@@ -71,6 +102,7 @@ export function RightPanel({
         {rightTab === 'design' ? (
           <div className="flex flex-col">
             <Slot label="Selection card" node={selectionCardSlot} hero />
+            {sketchSlot}
             <Slot label="Position" node={positionSlot} />
             <Slot label="Geometry" node={geometrySlot} />
             <Slot label="Material / Finish" node={materialSlot} />
@@ -79,7 +111,8 @@ export function RightPanel({
           </div>
         ) : null}
         {rightTab === 'specs' ? <SpecsTab /> : null}
-        {rightTab === 'quote' ? <QuoteTab quote={inspectorQuote} /> : null}
+        {rightTab === 'quote' ? <QuoteTab /> : null}
+        {rightTab === 'comments' ? <CommentsPanel /> : null}
       </div>
     </aside>
   )

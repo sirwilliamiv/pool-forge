@@ -1,5 +1,16 @@
 import { z } from 'zod'
 import { register } from '@/modules/commands/registry'
+import {
+  coordinateInches,
+  depthFeet,
+  featureHeightInches,
+  rotationDegrees,
+  sizeFeet,
+  sizeInches,
+  slopeRatio,
+  withOrderedDepths,
+} from '@/lib/commands/dimensions'
+import { STENCILS } from '@/modules/editor/stencils'
 
 // Server `execute` for shape commands records intent and echoes input so the
 // CommandAuditLog row is meaningful. The actual `useShapesStore` mutation is
@@ -7,17 +18,40 @@ import { register } from '@/modules/commands/registry'
 // `registerClientHandler` in src/lib/commands/dispatch.ts. The consumer track
 // (E for inspector, D for selection, H for palette) registers the handler.
 
+/**
+ * Every stencil the catalogue actually has.
+ *
+ * Derived, not written out: a hand-kept list would drift the first time a
+ * stencil was added, and a stencil missing from here is one voice cannot place.
+ */
+const STENCIL_IDS = STENCILS.map(stencil => stencil.id) as [string, ...string[]]
+
+/** Ids paired with their names, so the model can match what a person said. */
+function stencilIdHelp(): string {
+  const named = STENCILS.map(stencil => `${stencil.id} (${stencil.name})`).join(', ')
+  return `Which stencil to place. One of: ${named}`
+}
+
 register({
   id: 'add.shape',
+  runsOn: 'client',
   label: 'Add shape',
-  description: 'Drop a stencil onto the canvas at the given coordinates.',
+  description:
+    'Drop a stencil onto the canvas at the given coordinates. Coordinates and sizes are in INCHES: multiply feet by 12.',
   category: 'shape',
   inputSchema: z.object({
-    stencilId: z.string(),
-    x: z.number(),
-    y: z.number(),
-    width: z.number().positive().optional(),
-    height: z.number().positive().optional(),
+    // An enum, not a string. An unknown id does not fail: `addShape` falls back
+    // to a generic STENCIL kind, so a hallucinated id silently drops a blank
+    // rectangle on the canvas that looks like the app is broken. Offering the
+    // real ids means a wrong guess cannot be expressed.
+    stencilId: z.enum(STENCIL_IDS).describe(stencilIdHelp()),
+    x: coordinateInches('X position').describe('Distance from the left edge, in inches.'),
+    y: coordinateInches('Y position').describe('Distance from the top edge, in inches.'),
+    // Bounded, not merely positive. Nothing used to stop a size here, and a
+    // stencil dropped at 99999 inches a side is a nineteen-mile pool that
+    // prices like one.
+    width: sizeInches('Width').optional().describe('Width in inches. 32 feet is 384.'),
+    height: sizeInches('Height').optional().describe('Height in inches. 16 feet is 192.'),
     displayHint: z.record(z.unknown()).optional(),
   }),
   outputSchema: z.object({
@@ -35,6 +69,7 @@ register({
 
 register({
   id: 'select.shape',
+  runsOn: 'client',
   label: 'Select shape',
   description: 'Select one or more shapes on the canvas.',
   category: 'shape',
@@ -56,13 +91,14 @@ register({
 
 register({
   id: 'move.shape',
+  runsOn: 'client',
   label: 'Move shape',
   description: 'Translate the given shape by an absolute or relative position.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    x: z.number(),
-    y: z.number(),
+    x: coordinateInches('X position'),
+    y: coordinateInches('Y position'),
     relative: z.boolean().optional(),
   }),
   outputSchema: z.object({
@@ -87,13 +123,14 @@ register({
 
 register({
   id: 'resize.shape',
+  runsOn: 'client',
   label: 'Resize shape',
-  description: 'Resize a shape to explicit width and height.',
+  description: 'Resize a shape to explicit width and height, in INCHES: multiply feet by 12.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    width: z.number().positive(),
-    height: z.number().positive(),
+    width: sizeInches('Width'),
+    height: sizeInches('Height'),
   }),
   outputSchema: z.object({
     id: z.string(),
@@ -113,12 +150,13 @@ register({
 
 register({
   id: 'rotate.shape',
+  runsOn: 'client',
   label: 'Rotate shape',
   description: 'Rotate a shape by a given angle in degrees.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    degrees: z.number(),
+    degrees: rotationDegrees('Rotation'),
     relative: z.boolean().optional(),
   }),
   outputSchema: z.object({
@@ -141,6 +179,7 @@ register({
 
 register({
   id: 'delete.shape',
+  runsOn: 'client',
   label: 'Delete shape',
   description: 'Remove one or more shapes from the canvas.',
   category: 'shape',
@@ -161,13 +200,14 @@ register({
 
 register({
   id: 'duplicate.shape',
+  runsOn: 'client',
   label: 'Duplicate shape',
   description: 'Duplicate a shape and place it adjacent to the original.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
-    offsetX: z.number().optional(),
-    offsetY: z.number().optional(),
+    offsetX: coordinateInches('Horizontal offset').optional(),
+    offsetY: coordinateInches('Vertical offset').optional(),
   }),
   outputSchema: z.object({
     sourceId: z.string(),
@@ -187,6 +227,7 @@ register({
 
 register({
   id: 'pool.flip',
+  runsOn: 'client',
   label: 'Flip shape',
   description: 'Mirror a shape across its X or Y axis.',
   category: 'shape',
@@ -205,7 +246,32 @@ register({
 })
 
 register({
+  id: 'pool.shape.set',
+  runsOn: 'client',
+  label: 'Set pool footprint',
+  description: 'Switch a pool between a rectangular and an elliptical footprint.',
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    poolShape: z.enum(['rectangle', 'ellipse']),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    poolShape: z.enum(['rectangle', 'ellipse']),
+  }),
+  // It had none, so the converter refused it and the agent could not reach a
+  // capability that was already built and working.
+  voiceExamples: [
+    'Make that pool an oval.',
+    'Turn it into a rectangle instead.',
+    'Round the pool off.',
+  ],
+  execute: async (input) => ({ ok: true, data: { id: input.id, poolShape: input.poolShape } }),
+})
+
+register({
   id: 'pool.lock.ratio',
+  runsOn: 'client',
   label: 'Lock aspect ratio',
   description: 'Constrain L/W proportion when resizing.',
   category: 'shape',
@@ -225,6 +291,7 @@ register({
 
 register({
   id: 'shape.rename',
+  runsOn: 'client',
   label: 'Rename shape',
   description: 'Rename a shape in-canvas (e.g., from the inspector selection card).',
   category: 'shape',
@@ -244,8 +311,10 @@ register({
 
 register({
   id: 'set.shape.material',
+  runsOn: 'client',
   label: 'Set shape material',
-  description: 'Apply a material or finish to a shape.',
+  description:
+    'Apply a finish from the material catalogue to a pool. The material decides which surface it lands on: an interior finish goes on the interior, a coping on the coping, a waterline tile on the tile band.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
@@ -256,12 +325,13 @@ register({
     materialId: z.string(),
   }),
   voiceExamples: [
-    'Change the deck to pavers.',
     'Set the pool finish to pebble.',
+    'Change the interior to white plaster.',
   ],
-  // CLIENT: useShapesStore.getState().updateShape(input.id, { materialId: input.materialId })
-  //         (Note: Shape type doesn't have materialId yet — Track E adds it via
-  //         displayHint or extends the Shape interface.)
+  // CLIENT (ClientCommandHandlers.applyFinish): the material's own slot decides
+  // where it lands, so this is `pool.material.set` without having to name the
+  // slot. A material the catalogue does not hold, or one that is a plain canvas
+  // fill rather than a pool finish, is refused rather than recorded.
   execute: async (input) => ({
     ok: true,
     data: { id: input.id, materialId: input.materialId },
@@ -270,18 +340,40 @@ register({
 
 register({
   id: 'pool.geometry.update',
+  runsOn: 'client',
   label: 'Update pool geometry',
-  description: 'Update length, width, average depth, shallow/deep depth, or slope of the selected pool.',
+  // Unlike add.shape and resize.shape, this one is in FEET: the client half
+  // multiplies by twelve. Sibling commands disagreeing about units is exactly
+  // what a model reading these schemas cold gets wrong, so every field says so.
+  description:
+    'Update the selected pool: length, width, average depth, shallow and deep depth, or floor slope. Every field is named with its unit and every one is in FEET.',
   category: 'shape',
-  inputSchema: z.object({
-    id: z.string(),
-    length: z.number().positive().optional(),
-    width: z.number().positive().optional(),
-    avgDepth: z.number().positive().optional(),
-    shallowDepth: z.number().positive().optional(),
-    deepDepth: z.number().positive().optional(),
-    slope: z.number().optional(),
-  }),
+  // The unit lives in the field name, not only in the description. Told that
+  // these are feet while add.shape next door says to multiply feet by twelve,
+  // a model sent 360 for "thirty feet" and reported back "the pool is now 30
+  // feet long". A field called lengthFt cannot be misread that way.
+  // Every field is bounded, and the bound is the same one the drag handles
+  // enforce (`src/lib/geometry/limits.ts`). Before this, `.positive()` was the
+  // whole check: a reviewer typed 99999 into the length field and the app took
+  // it, the layers panel read 99999' x 14', and the live quote read
+  // $155,928,492. `.min`/`.max` also survive into the voice tool schema as
+  // `minimum`/`maximum`, so the model is told the range rather than discovering
+  // it by being refused.
+  inputSchema: withOrderedDepths(
+    z.object({
+      id: z.string(),
+      lengthFt: sizeFeet('Pool length').optional().describe('Length in feet, not inches.'),
+      widthFt: sizeFeet('Pool width').optional().describe('Width in feet, not inches.'),
+      avgDepthFt: depthFeet('Average depth').optional().describe('Average depth in feet.'),
+      shallowDepthFt: depthFeet('Shallow end depth')
+        .optional()
+        .describe('Shallow end depth in feet.'),
+      deepDepthFt: depthFeet('Deep end depth').optional().describe('Deep end depth in feet.'),
+      slope: slopeRatio('Floor slope').optional().describe('Floor slope, rise over run.'),
+    }),
+    'shallowDepthFt',
+    'deepDepthFt',
+  ),
   outputSchema: z.object({
     id: z.string(),
   }),
@@ -301,8 +393,10 @@ register({
 
 register({
   id: 'pool.material.set',
+  runsOn: 'client',
   label: 'Set pool material slot',
-  description: 'Apply a material to a specific surface slot of the selected pool (interior, coping, or tile band).',
+  description:
+    'Apply a material to one pool surface. `interior` is billed by the square foot; `coping` and `tileBand` are billed by the linear foot, and a material belonging to one slot cannot be used in another.',
   category: 'shape',
   inputSchema: z.object({
     id: z.string(),
@@ -318,10 +412,11 @@ register({
     'Change the interior to PebbleTec Cobalt.',
     'Set the coping to travertine.',
   ],
-  // CLIENT (Track E MaterialSection):
-  //   Persist via DrawingObject.displayHint until the Shape type carries
-  //   per-slot material ids natively. The patch shape is:
-  //     { displayHint: { ...prev.displayHint, [slotKey]: input.materialId } }
+  // CLIENT (ClientCommandHandlers.applyFinish): writes `Shape.materials[slot]`,
+  // which autosaves with the drawing and is what the quote, the proposal and
+  // the construction packet all read. The material must belong to this slot:
+  // slots are billed in different units and converting between them silently is
+  // how a $15.00/lf tile band came to be offered as a per-square-foot interior.
   execute: async (input) => ({
     ok: true,
     data: { id: input.id, slot: input.slot, materialId: input.materialId },
@@ -330,6 +425,7 @@ register({
 
 register({
   id: 'shape.hide',
+  runsOn: 'client',
   label: 'Toggle layer visibility',
   description: 'Hide or show a shape on the canvas without deleting it.',
   category: 'shape',
@@ -348,6 +444,7 @@ register({
 
 register({
   id: 'shape.lock',
+  runsOn: 'client',
   label: 'Toggle layer lock',
   description: 'Lock or unlock a shape so it cannot be moved or edited from the canvas.',
   category: 'shape',
@@ -366,17 +463,27 @@ register({
 
 register({
   id: 'pool.depth.set',
+  runsOn: 'client',
   label: 'Update pool depth profile',
-  description: 'Patch the depth profile (shallow, deep, slope, sun-shelf elevation, bubbler height) of the selected pool.',
+  description:
+    'Patch the depth profile of the selected pool. Depths are in FEET; sun-shelf and bubbler heights are in INCHES, since those are spoken in inches.',
   category: 'shape',
-  inputSchema: z.object({
-    id: z.string(),
-    shallowDepth: z.number().optional(),
-    deepDepth: z.number().optional(),
-    slope: z.number().optional(),
-    sunShelfElevation: z.number().optional(),
-    bubblerHeight: z.number().optional(),
-  }),
+  inputSchema: withOrderedDepths(
+    z.object({
+      id: z.string(),
+      shallowDepth: depthFeet('Shallow end depth').optional().describe('Shallow end depth in feet.'),
+      deepDepth: depthFeet('Deep end depth').optional().describe('Deep end depth in feet.'),
+      slope: slopeRatio('Floor slope').optional().describe('Floor slope, rise over run.'),
+      sunShelfElevation: featureHeightInches('Sun shelf height')
+        .optional()
+        .describe('Sun shelf height above the floor, in inches.'),
+      bubblerHeight: featureHeightInches('Bubbler height')
+        .optional()
+        .describe('Bubbler height above the water, in inches.'),
+    }),
+    'shallowDepth',
+    'deepDepth',
+  ),
   outputSchema: z.object({
     id: z.string(),
   }),
@@ -389,4 +496,60 @@ register({
   //   slope/sunShelfElevation/bubblerHeight live on DrawingObject.depthProfile
   //   (Wave 0 added the column). Persistence layer round-trips depthProfile.
   execute: async (input) => ({ ok: true, data: { id: input.id } }),
+})
+
+register({
+  id: 'pool.trim.set',
+  runsOn: 'client',
+  label: 'Show or hide the pool trim',
+  description:
+    "Turn the pool's concrete coping border or its waterline tile band on or off. These are part of the pool itself rather than separate objects, so they cannot be deleted — this is how they come off.",
+  category: 'shape',
+  inputSchema: z.object({
+    id: z.string(),
+    coping: z.boolean().optional().describe('The concrete border around the pool edge.'),
+    tileBand: z.boolean().optional().describe('The tile band at the waterline.'),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    coping: z.boolean(),
+    tileBand: z.boolean(),
+  }),
+  voiceExamples: [
+    'Get rid of the concrete around the pool.',
+    'Remove the coping.',
+    'Put the coping back.',
+    'Take the waterline tile off.',
+  ],
+  // CLIENT: merge into the shape's displayHint; SceneRoot reads it.
+  execute: async input => ({
+    ok: true,
+    data: { id: input.id, coping: input.coping ?? true, tileBand: input.tileBand ?? true },
+  }),
+})
+
+register({
+  id: 'edit.undo',
+  runsOn: 'client',
+  label: 'Undo',
+  description:
+    'Undo the last change to the drawing. Use it as soon as something was done that the user did not want, rather than trying to reconstruct what was there.',
+  category: 'canvas',
+  inputSchema: z.object({}),
+  outputSchema: z.object({ undone: z.boolean(), shapeCount: z.number() }),
+  voiceExamples: ['Undo that.', 'Undo.', 'Put it back.', 'That was wrong, undo it.'],
+  // CLIENT: useHistoryStore.getState().undo()
+  execute: async () => ({ ok: true, data: { undone: false, shapeCount: 0 } }),
+})
+
+register({
+  id: 'edit.redo',
+  runsOn: 'client',
+  label: 'Redo',
+  description: 'Redo the change that was just undone.',
+  category: 'canvas',
+  inputSchema: z.object({}),
+  outputSchema: z.object({ redone: z.boolean(), shapeCount: z.number() }),
+  voiceExamples: ['Redo that.', 'Actually put it back.'],
+  execute: async () => ({ ok: true, data: { redone: false, shapeCount: 0 } }),
 })
