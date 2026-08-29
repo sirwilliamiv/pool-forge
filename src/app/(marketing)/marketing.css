@@ -176,11 +176,38 @@
 }
 
 .mk-block {
+  position: relative;
   padding-block: var(--block-padding);
 }
 
 .mk-block--major {
   padding-block: 7.5rem;
+}
+
+/* A section that stands on the family's tint rather than on white. Sparingly:
+   the chassis is monochrome, and a page where every block is tinted has no
+   chassis left. One per page, on the block that would otherwise be a wall of
+   grey prose. */
+.mk-block--tinted {
+  background: var(--family-tint);
+}
+
+/* The decorative layer. Same shapes as the hero's, in an ordinary section:
+   hard-edged, flat, full saturation, clipped by the section so they crop at
+   the viewport edge rather than sitting politely inside it. Behind everything,
+   and gone below the two-column breakpoint where there is no margin to crop
+   into. */
+.mk-decor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mk-block > .mk-shell {
+  position: relative;
+  z-index: 1;
 }
 
 .mk-rule {
@@ -370,6 +397,21 @@
   }
   .mk-hero__plate {
     margin-top: 0;
+  }
+
+  /* A hero whose second column is a working form rather than a plate. The pin
+     only reads as a pin when the whole composition fits one viewport, and a
+     seven-field form does not, so this one scrolls like an ordinary section. */
+  .mk-hero--static {
+    min-height: 0;
+  }
+  .mk-hero--static .mk-hero__stage {
+    position: static;
+    min-height: 0;
+    padding-block: 3rem 5rem;
+  }
+  .mk-hero--static .mk-hero__layout {
+    align-items: start;
   }
 }
 
@@ -903,6 +945,186 @@
   }
 }
 
+/* ----------------------------------------------------------- form card */
+
+/* The one card in the system whose affordance is softness rather than a
+   border, which the bible allows for exactly this shape. It is also the only
+   shadow in the hero it sits in. */
+.mk-formcard {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  box-shadow: var(--elevation-1);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.mk-form {
+  margin-top: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mk-form__pair {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 30rem) {
+  .mk-form__pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.mk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  min-width: 0;
+}
+
+.mk-field__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Mono means metadata, and a field label is metadata about the field. */
+.mk-field__label,
+.mk-field__hint {
+  font-family: var(--font-mono);
+  font-size: var(--size-formlabel);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+}
+
+.mk-field__label {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.mk-field__hint {
+  color: var(--fg-faint);
+}
+
+.mk-input {
+  width: 100%;
+  min-width: 0;
+  height: 2.75rem;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--input-bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: var(--size-bodyl);
+  letter-spacing: var(--ls-slight);
+  transition: background 0.18s ease-out, box-shadow 0.18s ease-out;
+}
+
+.mk-input::placeholder {
+  color: var(--fg-faint);
+}
+
+.mk-input:hover {
+  background: var(--btn-transparent-hover);
+}
+
+.mk-input:focus {
+  outline: none;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1.5px var(--fg);
+}
+
+.mk-input--area {
+  height: auto;
+  min-height: 5.5rem;
+  padding: 0.75rem 0.875rem;
+  line-height: var(--lh-relaxed);
+  resize: vertical;
+}
+
+/* A native select keeps its own arrow, which needs room on the right. */
+select.mk-input {
+  padding-right: 0.5rem;
+}
+
+.mk-btn--block {
+  width: 100%;
+}
+
+.mk-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mk-form__error {
+  font-size: var(--size-body);
+  line-height: var(--lh-relaxed);
+  color: var(--brand-red);
+}
+
+.mk-honeypot {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- table */
+
+.mk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--size-body);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.mk-table td {
+  padding: 0.6875rem 1rem;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: left;
+}
+
+.mk-table tfoot td {
+  border-bottom: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Money and quantities are data, so they take the mono face and line up on the
+   right where a column of figures can be read down. */
+.mk-table__num {
+  text-align: right;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--size-badge);
+  letter-spacing: var(--ls-wide);
+}
+
+.mk-table__muted,
+.mk-table__muted td {
+  color: var(--fg-muted);
+}
+
+.mk-table__total td {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.mk-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* --------------------------------------------------- announcement bar */
 
 /* The one full-bleed colour in the system. Sticky rather than fixed, so it
@@ -1006,6 +1228,17 @@
 }
 
 /* ---------------------------------------------------- drawing primitives */
+
+/* Water is blue on every page, whatever the surface's accent family is.
+ *
+ * It was `var(--accent)`, which is right for exactly one family and wrong for
+ * the rest: on Signal the pool came out green, which does not read as a pool,
+ * it reads as one that needs shocking. The drawings depict a real thing, so
+ * they are the one place the palette does not get to redecorate. Differentiation
+ * still happens where the bible puts it — the tint field and the shapes. */
+.mk {
+  --water: var(--brand-blue);
+}
 
 /* Plan-sheet ink. The plates are drawn, not screenshotted, so these are the
    only colours the drawings use. */

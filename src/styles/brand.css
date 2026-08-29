@@ -191,9 +191,13 @@
  * and it wants a charcoal ground and its own type rendering, so it does not
  * belong in a list you can switch into with one attribute.
  */
+/* Signal, like Dusk, has no pale member: green, aqua and lilac all sit
+   saturated. A tint field at full strength stops being a backdrop and starts
+   being a surface, so the field is mixed toward white while the pure hues stay
+   available for illustration. */
 [data-accent='signal'] {
   --family-accent: var(--brand-green);
-  --family-tint: var(--tint-aqua);
+  --family-tint: color-mix(in oklch, var(--tint-aqua), #fff 62%);
   --family-tint-2: var(--tint-lilac);
 }
 [data-accent='azure'] {
@@ -249,4 +253,25 @@
   --family-accent: var(--ink-slate);
   --family-tint: var(--tint-slate-mist);
   --family-tint-2: var(--ink-paper);
+}
+
+/* Re-substitute the ray fan wherever a family is selected.
+ *
+ * A custom property's value is substituted at computed-value time on the
+ * element that declares it, not at the element that uses it. `--ray-fan` is
+ * declared on `:root`, so the `var(--family-accent)` inside it resolves against
+ * `:root` — the default blue — and then that already-resolved blue inherits
+ * down. A green family gets a blue starburst and nothing anywhere errors.
+ *
+ * Redeclaring it here re-runs the substitution on the element carrying the
+ * family, where `--family-accent` is the right one. Must stay after the family
+ * blocks above; they do not set `--ray-fan`, so there is no conflict, only
+ * order. */
+[data-accent] {
+  --ray-fan: repeating-conic-gradient(
+    var(--family-accent) 0deg,
+    var(--family-accent) 18deg,
+    transparent 18deg,
+    transparent 30deg
+  );
 }

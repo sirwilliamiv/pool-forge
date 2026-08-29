@@ -3,13 +3,19 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { TEAM_SIZE_OPTIONS, USES_TODAY_OPTIONS } from '@/modules/waitlist/schema'
 
-const FIELD_CLASS =
-  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+// The form, on the brand chassis rather than on shadcn.
+//
+// It sits on a marketing page, so it takes the marketing tokens: hairline
+// borders at 16% ink, an 8px radius on the button, mono for the field labels,
+// and `elevation-1` on the card. That shadow is the exception the bible allows
+// for a card whose affordance is softness rather than a border, and it is the
+// only shadow in the hero.
+//
+// What must not change without changing `src/test/e2e/waitlist.spec.ts` with
+// it: the visible label text of every field, the accessible name of the submit
+// button, and the two test ids.
 
 /**
  * Where they came from, so a campaign can be told apart from word of mouth.
@@ -25,6 +31,30 @@ function useSourceParam(): string {
     if (value !== null) setSource(value.slice(0, 120))
   }, [])
   return source
+}
+
+function Field({
+  id,
+  label,
+  hint,
+  children,
+}: {
+  id: string
+  label: string
+  hint?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="mk-field">
+      <div className="mk-field__head">
+        <label className="mk-field__label" htmlFor={id}>
+          {label}
+        </label>
+        {hint ? <span className="mk-field__hint">{hint}</span> : null}
+      </div>
+      {children}
+    </div>
+  )
 }
 
 export function WaitlistForm() {
@@ -76,19 +106,18 @@ export function WaitlistForm() {
   // this form to find out which builders have been talking to us.
   if (done) {
     return (
-      <div
-        className="rounded-pfLg border border-borderLight bg-background p-8 shadow-pfMd"
-        data-testid="waitlist-done"
-      >
-        <h2 className="text-xl font-semibold tracking-tight">Thanks. You are on the list.</h2>
-        <p className="mt-3 text-sm leading-relaxed text-textMuted">
-          We read every one of these ourselves. If you fit the group we are onboarding now, you
-          will hear from us directly, and if the timing is wrong we will come back to you as we
-          open up.
+      <div className="mk-formcard" data-testid="waitlist-done">
+        <span className="mk-fan mk-fan--lg" aria-hidden />
+        <h2 className="mk-title3" style={{ marginTop: '1.25rem' }}>
+          Thanks. You are on the list.
+        </h2>
+        <p className="mk-body" style={{ marginTop: '0.75rem' }}>
+          We read every one of these ourselves. If you fit the group we are onboarding now, you will
+          hear from us directly, and if the timing is wrong we will come back to you as we open up.
         </p>
-        <p className="mt-6 text-sm text-textMuted">
+        <p className="mk-caption" style={{ marginTop: '1.5rem' }}>
           Already have an account?{' '}
-          <Link href="/login" className="font-medium text-pfAccentStrong underline-offset-4 hover:underline">
+          <Link href="/login" className="mk-textlink">
             Sign in
           </Link>
         </p>
@@ -97,40 +126,40 @@ export function WaitlistForm() {
   }
 
   return (
-    <div
-      id="request-access"
-      className="rounded-pfLg border border-borderLight bg-background p-6 shadow-pfMd sm:p-8"
-    >
-      <h2 className="text-xl font-semibold tracking-tight">Ask for access</h2>
-      <p className="mt-2 text-sm leading-relaxed text-textMuted">
+    <div id="request-access" className="mk-formcard">
+      <p className="mk-label mk-label--ink">Ask for access</p>
+      <p className="mk-body" style={{ marginTop: '0.75rem' }}>
         Two of these decide who we call first: how many people would be quoting with it, and what
         you estimate with today.
       </p>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate={false}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="wl-name">Your name</Label>
-            <Input id="wl-name" name="name" type="text" autoComplete="name" maxLength={120} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="wl-company">Company</Label>
-            <Input
+      <form onSubmit={onSubmit} className="mk-form" noValidate={false}>
+        <div className="mk-form__pair">
+          <Field id="wl-name" label="Your name">
+            <input
+              className="mk-input"
+              id="wl-name"
+              name="name"
+              type="text"
+              autoComplete="name"
+              maxLength={120}
+            />
+          </Field>
+          <Field id="wl-company" label="Company">
+            <input
+              className="mk-input"
               id="wl-company"
               name="company"
               type="text"
               autoComplete="organization"
               maxLength={160}
             />
-          </div>
+          </Field>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-baseline justify-between">
-            <Label htmlFor="wl-email">Email</Label>
-            <span className="text-xs text-textMuted">Required</span>
-          </div>
-          <Input
+        <Field id="wl-email" label="Email" hint="Required">
+          <input
+            className="mk-input"
             id="wl-email"
             name="email"
             type="email"
@@ -138,17 +167,22 @@ export function WaitlistForm() {
             maxLength={254}
             required
           />
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <Label htmlFor="wl-phone">Phone</Label>
-          <Input id="wl-phone" name="phone" type="tel" autoComplete="tel" maxLength={40} />
-        </div>
+        <Field id="wl-phone" label="Phone">
+          <input
+            className="mk-input"
+            id="wl-phone"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            maxLength={40}
+          />
+        </Field>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="wl-team-size">How many people would use it</Label>
-            <select id="wl-team-size" name="teamSize" className={FIELD_CLASS} defaultValue="">
+        <div className="mk-form__pair">
+          <Field id="wl-team-size" label="How many people would use it">
+            <select className="mk-input" id="wl-team-size" name="teamSize" defaultValue="">
               <option value="">Select one</option>
               {TEAM_SIZE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -156,10 +190,9 @@ export function WaitlistForm() {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="wl-uses-today">What you estimate with today</Label>
-            <select id="wl-uses-today" name="usesToday" className={FIELD_CLASS} defaultValue="">
+          </Field>
+          <Field id="wl-uses-today" label="What you estimate with today">
+            <select className="mk-input" id="wl-uses-today" name="usesToday" defaultValue="">
               <option value="">Select one</option>
               {USES_TODAY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -167,42 +200,45 @@ export function WaitlistForm() {
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="wl-note">Anything else worth knowing</Label>
+        <Field id="wl-note" label="Anything else worth knowing">
           <textarea
+            className="mk-input mk-input--area"
             id="wl-note"
             name="note"
             rows={3}
             maxLength={2000}
-            className={`${FIELD_CLASS} h-auto min-h-[80px] resize-y`}
             placeholder="How many pools a year, what you build, what makes quoting slow right now."
           />
-        </div>
+        </Field>
 
         {/* Not for people. Left in the tab order's shadow and out of the
             accessibility tree; a submission that fills it is answered exactly
             like every other one. */}
-        <div aria-hidden="true" className="hidden">
+        <div aria-hidden="true" className="mk-honeypot">
           <label htmlFor="wl-website">Website</label>
           <input id="wl-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
         </div>
 
         <div aria-live="polite">
           {error === null ? null : (
-            <p className="text-sm text-pfError" data-testid="waitlist-error">
+            <p className="mk-form__error" data-testid="waitlist-error">
               {error}
             </p>
           )}
         </div>
 
-        <Button type="submit" className="w-full" disabled={pending || !ready}>
+        <button
+          type="submit"
+          className="mk-btn mk-btn--primary mk-btn--block"
+          disabled={pending || !ready}
+        >
           {pending ? 'Sending…' : 'Request access'}
-        </Button>
+        </button>
 
-        <p className="text-xs leading-relaxed text-textMuted">
+        <p className="mk-caption" style={{ fontSize: '0.8125rem' }}>
           We use this to decide who to onboard next and to get in touch about it. Nothing else, and
           no newsletter.
         </p>
