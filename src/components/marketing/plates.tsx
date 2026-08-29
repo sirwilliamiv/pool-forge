@@ -1,5 +1,15 @@
 import type { ReactNode } from 'react'
 
+import {
+  EXAMPLE_LINES,
+  EXAMPLE_POOL,
+  EXAMPLE_TAX_CENTS,
+  EXAMPLE_TAX_LABEL,
+  EXAMPLE_TOTAL_CENTS,
+  money,
+  moneyRounded,
+} from './example'
+
 // The plates.
 //
 // Every one of these is drawn, not screenshotted. Two reasons: a PNG of the app
@@ -7,10 +17,10 @@ import type { ReactNode } from 'react'
 // patterns want the base plane flat and the inset panel carrying the only
 // shadow in the frame, which is a layout decision rather than an image.
 //
-// The numbers in them are one worked example used consistently across all three
-// pages: a 32 by 16 pool at an average depth of five feet, on a 600 sq ft paver
-// deck. Same figures as `src/app/request-access/page.tsx`, so a builder who
-// reads both does not see two different pools.
+// The numbers come from `./example`, which every marketing surface reads, so a
+// builder who sees the front door and then a product page recognises the same
+// job rather than wondering which pool is the real one. Do not type a figure
+// into this file; put it there.
 
 /* ------------------------------------------------------------- primitives */
 
@@ -221,9 +231,9 @@ export function PlanSheet() {
         width="368"
         height="140"
         rx="8"
-        fill="var(--accent)"
+        fill="var(--water)"
         fillOpacity="0.18"
-        stroke="var(--accent)"
+        stroke="var(--water)"
         strokeWidth="1.5"
       />
 
@@ -231,13 +241,13 @@ export function PlanSheet() {
       <path
         d="M180 196 h44 v124 h-44"
         fill="none"
-        stroke="var(--accent)"
+        stroke="var(--water)"
         strokeOpacity="0.55"
         strokeWidth="1.25"
       />
       <path
         d="M180 212 h30 M180 240 h30 M180 268 h30 M180 296 h30"
-        stroke="var(--accent)"
+        stroke="var(--water)"
         strokeOpacity="0.55"
         strokeWidth="1.25"
       />
@@ -247,12 +257,12 @@ export function PlanSheet() {
         cx="580"
         cy="258"
         r="46"
-        fill="var(--accent)"
+        fill="var(--water)"
         fillOpacity="0.28"
-        stroke="var(--accent)"
+        stroke="var(--water)"
         strokeWidth="1.5"
       />
-      <circle cx="580" cy="258" r="32" fill="none" stroke="var(--accent)" strokeOpacity="0.5" />
+      <circle cx="580" cy="258" r="32" fill="none" stroke="var(--water)" strokeOpacity="0.5" />
       <text x="558" y="318" className="mk-ink-label">
         SPA
       </text>
@@ -336,7 +346,7 @@ export function SectionSheet() {
       <path d="M0 100 L620 100" className="mk-ink-line" strokeWidth="1.5" fill="none" />
 
       {/* Fill, left. */}
-      <path d="M0 96 Q150 70 300 92 L300 100 L0 100 Z" fill="var(--accent)" fillOpacity="0.1" />
+      <path d="M0 96 Q150 70 300 92 L300 100 L0 100 Z" fill="var(--water)" fillOpacity="0.1" />
       <text x="70" y="88" className="mk-ink-label">
         FILL 14 CY
       </text>
@@ -350,14 +360,14 @@ export function SectionSheet() {
       {/* Shell. */}
       <path
         d="M96 100 L96 138 L150 152 L420 200 L470 200 L500 168 L500 100"
-        fill="var(--accent)"
+        fill="var(--water)"
         fillOpacity="0.16"
-        stroke="var(--accent)"
+        stroke="var(--water)"
         strokeWidth="1.75"
         strokeLinejoin="round"
       />
       {/* Waterline. */}
-      <path d="M96 112 L500 112" stroke="var(--accent)" strokeWidth="1" strokeDasharray="4 4" />
+      <path d="M96 112 L500 112" stroke="var(--water)" strokeWidth="1" strokeDasharray="4 4" />
 
       <g>
         <path d="M78 100 v38" className="mk-ink-thin" strokeWidth="1" />
@@ -392,11 +402,11 @@ export function MeasurementsPanel() {
     <Panel title="Measurements" meta="Live">
       <Rows
         rows={[
-          { label: 'Surface area', value: '512 sq ft' },
-          { label: 'Perimeter', value: '96 lf' },
-          { label: 'Volume', value: '19,150 gal' },
-          { label: 'Deck area', value: '600 sq ft' },
-          { label: 'Coping', value: '96 lf' },
+          { label: 'Surface area', value: `${EXAMPLE_POOL.surfaceArea} sq ft` },
+          { label: 'Perimeter', value: `${EXAMPLE_POOL.perimeter} lf` },
+          { label: 'Volume', value: `${EXAMPLE_POOL.gallons.toLocaleString('en-US')} gal` },
+          { label: 'Deck area', value: `${EXAMPLE_POOL.deckArea} sq ft` },
+          { label: 'Coping', value: `${EXAMPLE_POOL.perimeter} lf` },
         ]}
       />
     </Panel>
@@ -432,18 +442,16 @@ export function QuotePlate() {
             fontWeight: 500,
           }}
         >
-          $46,069.35
+          {money(EXAMPLE_TOTAL_CENTS)}
         </span>
       </div>
       <Rows
         rows={[
-          { label: 'Excavation and haul off · 512 sq ft', value: '$6,144.00' },
-          { label: 'Shotcrete shell · 512 sq ft', value: '$10,240.00' },
-          { label: 'Pebble interior finish · 512 sq ft', value: '$8,704.00' },
-          { label: 'Travertine coping · 96 lf', value: '$4,320.00' },
-          { label: 'Paver deck · 600 sq ft', value: '$9,000.00' },
-          { label: 'Heater, 400k BTU · 1 ea', value: '$4,850.00' },
-          { label: 'Sales tax · 6.5%', value: '$2,811.35' },
+          ...EXAMPLE_LINES.map((line) => ({
+            label: `${line.label} · ${line.qty}`,
+            value: money(line.cents),
+          })),
+          { label: EXAMPLE_TAX_LABEL, value: money(EXAMPLE_TAX_CENTS) },
         ]}
       />
     </Plate>
@@ -471,7 +479,7 @@ export function SentPanel() {
 /** The jobs list, with the six statuses a job actually moves through. */
 export function JobsPlate() {
   const jobs = [
-    { name: 'Ridgeline residence', who: 'D. Alvarez', status: 'Proposal sent', value: '$46,069' },
+    { name: 'Ridgeline residence', who: 'D. Alvarez', status: 'Proposal sent', value: moneyRounded(EXAMPLE_TOTAL_CENTS) },
     { name: 'Camden pool and spa', who: 'M. Okafor', status: 'Approved', value: '$81,400' },
     { name: 'Harbour Way lanai', who: 'S. Whitfield', status: 'Construction ready', value: '$122,850' },
     { name: 'Fairhaven rebuild', who: 'T. Brennan', status: 'Draft', value: '—' },
@@ -656,7 +664,7 @@ export function TeamPanel() {
 /** The version rack: many designs against one job. */
 export function VersionsPlate() {
   const versions = [
-    { name: 'Scheme A · rectangle', who: 'Dana Alvarez', total: '$46,069', active: true },
+    { name: 'Scheme A · rectangle', who: 'Dana Alvarez', total: moneyRounded(EXAMPLE_TOTAL_CENTS), active: true },
     { name: 'Scheme B · with spa', who: 'Dana Alvarez', total: '$58,410', active: false },
     { name: 'Scheme C · freeform, smaller deck', who: 'Marcus Okafor', total: '$41,880', active: false },
   ]

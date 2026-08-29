@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 // The one full-bleed colour in the system, and the only client component on
 // these pages: it can be dismissed, and a dismissal that does not stick is
@@ -13,7 +14,18 @@ import Link from 'next/link'
 
 const STORAGE_KEY = 'pf.marketing.announce.dismissed'
 
+/**
+ * Where the bar has nothing to say, because the reader is already there.
+ *
+ * Everything the bar does is send somebody to `/request-access`. Showing it on
+ * that page is a banner asking you to go where you are standing, and it puts a
+ * second "invite only while it is early" on a page that already says it in the
+ * headline.
+ */
+const SILENT_ON = ['/request-access']
+
 export function AnnouncementBar() {
+  const pathname = usePathname()
   // Rendered hidden on the server and on the first client paint, then revealed
   // once storage has been read. Otherwise a returning visitor sees the bar flash
   // in and disappear.
@@ -30,6 +42,7 @@ export function AnnouncementBar() {
   }, [])
 
   if (state !== 'show') return null
+  if (SILENT_ON.includes(pathname)) return null
 
   const dismiss = () => {
     try {
