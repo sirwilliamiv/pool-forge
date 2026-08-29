@@ -548,6 +548,28 @@
   border-radius: 999px;
 }
 
+/* Botanical accents. Same placement rules as `.mk-shape`: absolutely placed,
+   cropped by the layer they sit in, and gone below the two-column breakpoint
+   where there is no margin to crop into. Flat fill, no outline, no shadow. */
+.mk-botanical {
+  position: absolute;
+  display: block;
+  color: var(--tint-sage);
+}
+
+.mk-botanical svg,
+svg.mk-botanical {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 74.9375rem) {
+  .mk-botanical {
+    display: none;
+  }
+}
+
 /* Ray fan as a section marker: the twelve-spoke starburst, small. */
 .mk-fan {
   width: 2rem;
