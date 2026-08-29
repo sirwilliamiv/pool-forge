@@ -8,6 +8,7 @@ import { CustomOrbit } from './CustomOrbit'
 import { DragHandler } from './DragHandler'
 import { Ground } from './Ground'
 import { Lighting } from './Lighting'
+import { RevealNewShapes } from './RevealNewShapes'
 import { SceneRoot } from './SceneRoot'
 import { SelectionHalo } from './SelectionHalo'
 import { SelectionHandles } from './SelectionHandles'
@@ -29,6 +30,7 @@ export function SceneCanvas() {
       <Lighting />
       <Ground />
       <SceneRoot />
+      <RevealNewShapes />
       <DragHandler />
       <SelectionPicker />
       <SelectionHalo />
