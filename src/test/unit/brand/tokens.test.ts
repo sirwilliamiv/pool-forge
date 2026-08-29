@@ -96,6 +96,48 @@ describe('the accent families', () => {
   })
 })
 
+describe('tokens that reference a token set further down the tree', () => {
+  // The trap that has now bitten twice, in the same shape both times.
+  //
+  // A custom property resolves its `var()`s on the element that DECLARES it,
+  // not on the element that uses it. So a token declared on `:root` whose value
+  // references a token that only exists lower down — on a layout wrapper, on a
+  // `data-accent` element — substitutes the fallback at `:root` and inherits
+  // that already-wrong value everywhere.
+  //
+  // It cost a blue starburst on a green page, and then the entire marketing
+  // surface silently rendering in SF Pro instead of the face next/font had just
+  // loaded. Neither errored, and neither was visible to the build or to tsc.
+  //
+  // Each of these must be re-declared in a scope where its dependency exists.
+  const LAZY_TOKENS = [
+    { token: '--ray-fan', dependsOn: '--family-accent', reDeclaredIn: BRAND_CSS },
+    { token: '--font-sans', dependsOn: '--font-display-sans', reDeclaredIn: MARKETING_CSS },
+    { token: '--font-mono', dependsOn: '--font-display-mono', reDeclaredIn: MARKETING_CSS },
+  ]
+
+  it.each(LAZY_TOKENS)('$token is re-substituted below :root', ({ token, reDeclaredIn }) => {
+    // Once on `:root` in brand.css, and at least once more somewhere that owns
+    // the dependency. A single declaration means the bug is back.
+    const declarations = [...reDeclaredIn.matchAll(new RegExp(`${token}\\s*:`, 'g'))].length
+    const inBrand = [...BRAND_CSS.matchAll(new RegExp(`${token}\\s*:`, 'g'))].length
+    expect(inBrand + (reDeclaredIn === BRAND_CSS ? 0 : declarations)).toBeGreaterThanOrEqual(2)
+  })
+
+  it.each(LAZY_TOKENS)('$token still references $dependsOn', ({ token, dependsOn }) => {
+    const declaration = BRAND_CSS.slice(BRAND_CSS.indexOf(`${token}:`))
+    expect(declaration.slice(0, 200)).toContain(`var(${dependsOn}`)
+  })
+
+  it('the font tokens carry an in-var fallback', () => {
+    // `var(--x)` with no fallback makes the whole `font-family` declaration
+    // invalid rather than falling through, so a surface that has not loaded the
+    // faces loses its type entirely instead of rendering the system stack.
+    expect(TOKENS.get('--font-sans')).toMatch(/var\(--font-display-sans,\s*'/)
+    expect(TOKENS.get('--font-mono')).toMatch(/var\(--font-display-mono,\s*'/)
+  })
+})
+
 describe('no collision with the token systems already in the app', () => {
   // This one is a regression test with a scar. `brand.css` originally called
   // the family token `--accent`, which is also shadcn's. Tailwind flattens its

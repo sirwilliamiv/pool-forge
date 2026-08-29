@@ -270,6 +270,47 @@ comes from the overlap, not from shadow. The tint is always the surface's own
 accent family, which is what makes each area feel distinct while the chassis
 stays identical.
 
+### Botanical accents
+
+Two shapes, a **monstera leaf** and a **palm frond**, drawn to exactly the same
+rules as the abstract accents above. They exist because this product is about
+somebody's back yard, and the yard's own vocabulary is where a distinctive mark
+comes from. They are a real risk: a pool company's marketing full of palm trees
+is a cliché with a long and embarrassing history.
+
+What keeps them out of that ditch is that **they are not illustration imported
+into the system. They are the system, continued:**
+
+- A **monstera** is a squircle with bites taken out of it. The fenestrations are
+  the identical subtract operation this document already describes for the
+  abstract accents; only the count and placement change.
+- A **palm frond** is a radial array with the spokes tapered and swept — the ray
+  fan's construction run along a curve instead of around a point. It is
+  generated from a spine and a taper, not traced.
+
+That derivation is the entry requirement. A third botanical shape is allowed
+only if it can be built the same way, out of shapes already in the system. One
+that has to be drawn from a photograph does not belong beside these.
+
+**The rules, which are not negotiable:**
+
+| | |
+|---|---|
+| **One flat colour** | No outline, no gradient, no shadow, no veins, no second tone. A silhouette. |
+| **No trunk, ever** | The palm is a frond, not a tree. The trunk is precisely where this becomes a holiday brochure. |
+| **Enormous and cropped** | One leaf spanning a third of the viewport, entering from an edge. Never centred, never whole, never small and sprinkled. |
+| **Legible through the crop** | Crop hard, but not past the point where the shape still reads. A monstera cropped to nothing but its slits is an abstract gash, which is a different and worse thing. |
+| **One accent language per composition** | Botanical *or* geometric. A checkerboard in the same frame as a frond reads as clip art added to a system. |
+| **Green and the botanical tints only** | Green `#24CB71`, sage `#95B9AC`, mint `#CFF7D3`, honeydew `#F3FFE3`. Never brown. |
+
+**Where they are allowed.** The front door and anything about the finished yard.
+The product pages stay on the hard-edged geometry, because they are about the
+tool rather than about the thing the tool makes. That split is the point: it
+gives the botanicals a job instead of letting them spread until they are
+wallpaper.
+
+Implemented in `src/components/marketing/botanicals.tsx`.
+
 **Conic ray fan.** A twelve-spoke starburst in the accent hue, used as a section
 marker and behind icons. One declaration —
 `repeating-conic-gradient(<accent> 0deg, <accent> 18deg, transparent 18deg, transparent 30deg)`

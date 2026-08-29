@@ -32,6 +32,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { FeatureGrid, PointList, SectionHead, Split } from '@/components/marketing/blocks'
+import { MonsteraLeaf, PalmFrond } from '@/components/marketing/botanicals'
 import {
   EXAMPLE_LINES,
   EXAMPLE_POOL,
@@ -59,42 +60,37 @@ export default function RequestAccessPage() {
           where the working one should be would be a strange choice. */}
       <section className="mk-hero mk-hero--static">
         <div className="mk-hero__stage">
+          {/* Botanical rather than geometric, and only here. The front door is
+              about the finished yard; the product pages are about the tool, and
+              they stay on the hard-edged shapes. One accent language per
+              composition, so there is not a checkerboard in this frame. */}
           <div className="mk-shapes" aria-hidden>
             <span className="mk-hero__tint" />
-            <span
-              className="mk-shape mk-shape--bite mk-anim-shape"
+            <MonsteraLeaf
+              id="hero-a"
+              className="mk-botanical mk-anim-shape"
               style={{
-                background: 'var(--brand-green)',
-                width: '19rem',
-                height: '19rem',
-                right: '-7rem',
-                top: '-7rem',
+                width: '26rem',
+                height: '29rem',
+                right: '-5rem',
+                top: '-5.5rem',
+                transform: 'rotate(16deg)',
+                color: 'var(--brand-green)',
                 ['--fly-x' as string]: '9rem',
                 ['--fly-y' as string]: '-7rem',
               }}
             />
-            <span
-              className="mk-shape mk-shape--petal mk-anim-shape"
+            <PalmFrond
+              className="mk-botanical mk-anim-shape"
               style={{
-                background: 'var(--tint-aqua)',
-                width: '13rem',
-                height: '13rem',
-                left: '-6rem',
-                bottom: '-4rem',
+                width: '25rem',
+                height: '26rem',
+                left: '-9rem',
+                bottom: '-13rem',
+                transform: 'rotate(-26deg)',
+                color: 'var(--tint-sage)',
                 animationDelay: '0.08s',
                 ['--fly-x' as string]: '-8rem',
-              }}
-            />
-            <span
-              className="mk-shape mk-shape--check mk-anim-shape"
-              style={{
-                ['--shape-color' as string]: 'var(--tint-lilac)',
-                width: '15rem',
-                height: '9rem',
-                right: '-3rem',
-                bottom: '-3rem',
-                animationDelay: '0.16s',
-                ['--fly-y' as string]: '7rem',
               }}
             />
           </div>
