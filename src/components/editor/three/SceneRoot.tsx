@@ -164,28 +164,46 @@ const LIGHT_IDS = new Set(['feature.light'])
 const SUN_SHELF_IDS = new Set(['feature.sun-shelf', 'feature.tanning-ledge'])
 const SPA_IDS = new Set(['pool.spa'])
 
+/**
+ * Components that already place themselves from `shape.x` and `shape.y`.
+ *
+ * The rest draw at the scene origin and are placed by the wrapper below. Getting
+ * this wrong is not a small error and does not look like a positioning bug: a
+ * self-placing component inside a placed wrapper lands at roughly twice its
+ * offset, so a tanning ledge asked for on a pool appears somewhere else
+ * entirely, while its selection outline stays correctly on the pool. The object
+ * looks missing and the outline looks like it is pointing at nothing.
+ *
+ * Listed explicitly, and checked by a test that reads the components, so a new
+ * one cannot join the dispatch without declaring which kind it is.
+ */
+export const SELF_POSITIONED_STENCILS = new Set([
+  ...STEPS_IDS,
+  ...LIGHT_IDS,
+  ...SUN_SHELF_IDS,
+  ...SPA_IDS,
+  ...BUBBLER_IDS,
+  'site.house-wall',
+  'site.tree',
+  'site.lounger',
+])
+
 function renderStencilShape(shape: Shape) {
   if (shape.kind !== ShapeKind.STENCIL) return null
   const id = shape.stencilId
-  // Position dispatched components via a positioned wrapper, since the existing
-  // object components draw at scene origin. GenericStencil positions itself.
-  const cx = feet(shape.x + shape.width / 2)
-  const cz = feet(shape.y + shape.height / 2)
-  const pos: [number, number, number] = [cx, 0, cz]
 
   // Site context, placed by the user rather than baked into the scene.
   if (id === 'site.tree') {
-    return (
-      <group position={pos}>
-        <Trees trees={[{ x: 0, z: 0, scale: shape.width / 96 }]} />
-      </group>
-    )
+    // The shape goes in for the same reason as the wall: without it the group
+    // carries no id and a tree somebody placed cannot be selected or moved.
+    return <Trees shape={shape} trees={[{ x: 0, z: 0, scale: shape.width / 96 }]} />
   }
   if (id === 'site.lounger') {
     return (
-      <group position={pos}>
-        <Loungers loungers={[{ x: 0, z: 0, rotation: ((shape.rotation ?? 0) * Math.PI) / 180 }]} />
-      </group>
+      <Loungers
+        shape={shape}
+        loungers={[{ x: 0, z: 0, rotation: ((shape.rotation ?? 0) * Math.PI) / 180 }]}
+      />
     )
   }
   // The lot line is a boundary, not an object: drawn on the ground, and never
@@ -195,45 +213,31 @@ function renderStencilShape(shape: Shape) {
     return <PropertyLine shape={shape} />
   }
   if (id === 'site.house-wall') {
-    // The wall reads its length from the shape, so a user can size it to the
-    // house they are actually building against.
-    return <HouseWall position={[cx, 7, cz]} size={[feet(shape.width), 14, feet(shape.height)]} />
+    // The shape goes in, which is what gives the wall an id. Without it the
+    // group carries no `userData.id`, the picker walks past it, and the wall
+    // cannot be selected, moved or resized: it is scenery rather than an object.
+    return <HouseWall shape={shape} />
   }
 
   if (STEPS_IDS.has(id)) {
-    return (
-      <group position={pos}>
-        <Steps shape={shape} />
-      </group>
-    )
+    // Bare: this one places itself from the shape.
+    return <Steps shape={shape} />
   }
   if (BUBBLER_IDS.has(id)) {
-    return (
-      <group position={pos}>
-        <Bubblers shape={shape} />
-      </group>
-    )
+    // Bare: this one places itself too.
+    return <Bubblers shape={shape} />
   }
   if (LIGHT_IDS.has(id)) {
-    return (
-      <group position={pos}>
-        <LedLights shape={shape} />
-      </group>
-    )
+    // Bare: this one places itself from the shape.
+    return <LedLights shape={shape} />
   }
   if (SUN_SHELF_IDS.has(id)) {
-    return (
-      <group position={pos}>
-        <SunShelf shape={shape} />
-      </group>
-    )
+    // Bare: this one places itself from the shape.
+    return <SunShelf shape={shape} />
   }
   if (SPA_IDS.has(id)) {
-    return (
-      <group position={pos}>
-        <Spa shape={shape} />
-      </group>
-    )
+    // Bare: this one places itself from the shape.
+    return <Spa shape={shape} />
   }
   return <GenericStencil shape={shape} />
 }
