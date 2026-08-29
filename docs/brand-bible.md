@@ -385,10 +385,30 @@ parts worth keeping as-is.
 
 ### Where it is implemented
 
-`src/app/(marketing)/marketing.css` is the live translation of this document.
-The marketing pages under `src/app/(marketing)/product/` are the first surfaces
-built to it; the authenticated app still runs on the older `--pf-*` tokens in
-`src/app/globals.css` and has not been converted.
+| File | What it holds |
+|---|---|
+| `src/styles/brand.css` | **The single definition of every value in this document.** Imported by `globals.css`, so the tokens are on `:root` for every page in the app, not just the marketing surface. |
+| `tailwind.config.ts` | The same tokens as utilities: `bg-brand-orange`, `text-theme-muted`, `bg-tint-sand`, `bg-family-accent`, `shadow-elevation2`, `rounded-brand`, `text-title1`, `bg-rayFan`. Every entry points at a variable rather than repeating a hex. |
+| `src/lib/brand.ts` | The palette as TypeScript, for the places that cannot read a CSS variable: three.js materials, export documents rendered standalone, anything handing a hex to a canvas or a PDF. |
+| `src/app/(marketing)/marketing.css` | The marketing components and compositions only. It aliases the tokens; it defines none of them. |
+| `src/test/unit/brand/tokens.test.ts` | Holds the three copies in sync, and fails if a value drifts, a family is added to one and not the other, or a token collides with a name shadcn already owns. |
+
+Two naming notes, both learned by breaking something:
+
+- The family tokens are `--family-accent` / `--family-tint` / `--family-tint-2`,
+  not the bare `--accent` / `--tint` this document uses. `--accent` is already
+  shadcn's, and Tailwind flattens its `@layer base` into plain rules, so
+  `globals.css` silently won at `:root` and `var(--accent)` resolved to an HSL
+  triplet instead of a colour. Inside `.mk` the short names are aliased back.
+- Set the family with `data-accent="<name>"` on any wrapper, anywhere in the
+  app. Everything inside it follows.
+
+### What is not converted
+
+The authenticated app still runs on the shadcn `--background` / `--foreground`
+triplets and the `--pf-*` spec tokens in `src/app/globals.css`. Both systems
+coexist on purpose, so screens can move over one at a time; the `--pf-*` set
+goes away when the last screen stops using it.
 
 | Surface | Accent family |
 |---|---|

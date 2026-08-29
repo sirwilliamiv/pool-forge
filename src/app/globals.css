@@ -1,3 +1,10 @@
+/* The brand bible's tokens, on `:root`, for every page in the app. Deliberately
+   imported before Tailwind's layers and outside `@layer base`, so the values
+   are plain declarations that anything can read and nothing has to out-specify.
+   See `src/styles/brand.css` for why it sits alongside the `--pf-*` set below
+   rather than replacing it. */
+@import '../styles/brand.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
