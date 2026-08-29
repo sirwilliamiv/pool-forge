@@ -42,8 +42,10 @@ const displayMono = JetBrains_Mono({
  */
 const SHAPES = [
   // Top left: a square with a quarter circle bitten out, cropping two edges.
+  // In FRONT of the type, so it eats the corner of the P.
   {
     key: 'bite-orange',
+    layer: 'front',
     className:
       'absolute -left-16 -top-16 h-52 w-52 lg:-left-24 lg:-top-24 lg:h-[26rem] lg:w-[26rem]',
     style: {
@@ -52,23 +54,28 @@ const SHAPES = [
       maskImage: 'radial-gradient(circle at 100% 100%, transparent 0 52%, #000 52%)',
     },
   },
-  // Bottom left: opposing petals.
+  // Bottom left: opposing petals, behind.
   {
     key: 'petal-purple',
+    layer: 'back',
     className:
       'absolute -bottom-20 -left-14 h-52 w-52 rounded-[100%_0_100%_0] lg:-bottom-28 lg:-left-16 lg:h-[22rem] lg:w-[22rem]',
     style: { background: 'var(--brand-purple)' },
   },
-  // Right: a bar running off the edge.
+  // The bar runs straight across the letters in FRONT of them. This is the one
+  // that sells the sandwich: a hard edge crossing a glyph and cutting it in two
+  // is the strongest depth cue available without perspective.
   {
     key: 'bar-blue',
+    layer: 'front',
     className:
       'absolute -right-24 top-[9%] h-9 w-72 rounded-full lg:-right-32 lg:top-[18%] lg:h-16 lg:w-[34rem]',
     style: { background: 'var(--brand-blue)' },
   },
-  // Bottom right: the twelve-spoke fan, cropped.
+  // Bottom right: the twelve-spoke fan, cropped, in FRONT of the E.
   {
     key: 'fan-green',
+    layer: 'front',
     className:
       'absolute -bottom-24 -right-20 h-72 w-72 rounded-full lg:-bottom-40 lg:-right-32 lg:h-[30rem] lg:w-[30rem]',
     style: {
@@ -76,10 +83,11 @@ const SHAPES = [
         'repeating-conic-gradient(var(--brand-green) 0deg, var(--brand-green) 18deg, transparent 18deg, transparent 30deg)',
     },
   },
-  // Top right: a checkerboard, the quietest of the five. It is the one that
-  // crowds a narrow screen, so it only appears once there is room for it.
+  // Top right: a checkerboard, the quietest of the five, behind. It is the one
+  // that crowds a narrow screen, so it only appears once there is room for it.
   {
     key: 'check-red',
+    layer: 'back',
     className: 'absolute -top-10 right-[12%] hidden h-40 w-[18rem] lg:block',
     style: {
       backgroundImage:
@@ -90,22 +98,24 @@ const SHAPES = [
 ] as const
 
 /**
- * The wordmark, letter by letter, so the round ones can carry colour.
+ * The wordmark as a stacked lockup: two words, one block.
  *
- * Only the `o`s are filled, and they take three of the five core hues in the
- * order the spectrum runs. Colouring more than the round letters turns a
- * logotype into a ransom note; colouring fewer loses the point.
+ * Each line is justified to the same width, so POOL and FORGE end flush on both
+ * edges and the pair reads as a single rectangular mass rather than as two
+ * centred lines that happen to sit near each other. That is what makes it a
+ * logotype instead of a heading.
+ *
+ * All ink, no colour. Filling individual letters was tried and read as
+ * childish — the spectrum belongs in the shapes behind, where the bible puts
+ * it, and the type stays black.
  */
-const WORDMARK: ReadonlyArray<ReadonlyArray<{ c: string; color?: string }>> = [
-  [{ c: 'P' }, { c: 'o', color: 'var(--brand-orange)' }, { c: 'o', color: 'var(--brand-blue)' }, { c: 'l' }],
-  [{ c: 'F' }, { c: 'o', color: 'var(--brand-green)' }, { c: 'r' }, { c: 'g' }, { c: 'e' }],
-]
+const WORDMARK = ['POOL', 'FORGE'] as const
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <main
       data-accent="signal"
-      className={`${displaySans.variable} ${displayMono.variable} relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-theme-bg px-6 py-16 font-display text-theme-fg`}
+      className={`${displaySans.variable} ${displayMono.variable} relative isolate flex min-h-screen flex-col items-center justify-center overflow-hidden bg-theme-bg px-6 py-16 font-display text-theme-fg`}
       style={
         {
           // `--font-sans` / `--font-mono` live on `:root` and substitute
@@ -119,49 +129,68 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         } as React.CSSProperties
       }
     >
-      {/* The festival. Behind everything and clipped by the page. It shrinks on
-          a phone rather than disappearing: hiding it there would mean the one
-          surface that is meant to be loud is monochrome for anyone signing in
-          from a truck, which is most of them. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        {SHAPES.map((shape) => (
+      {/* ── Layer 1: shapes behind the type ───────────────────────────── */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+        {SHAPES.filter((s) => s.layer === 'back').map((shape) => (
           <span key={shape.key} className={shape.className} style={shape.style} />
         ))}
       </div>
 
-      <div className="relative flex w-full max-w-sm flex-col items-center">
-        {/* The wordmark, at a size it reaches nowhere else in the product, and
-            the only place the spectrum gets inside the type rather than sitting
-            behind it.
-         *
-            Two words locked into one block: leading under 1 so the lines close
-            up into a mass rather than reading as two lines of a sentence, and
-            the tracking pulled in hard the way the scale tightens as it grows.
-         *
-            The colour lands on the round letters, which is the one substitution
-            that survives being read: an `o` in a geometric grotesque is already
-            a disc, so filling it reads as a deliberate pop rather than as a
-            typo. Everything else stays ink. */}
+      {/* ── Layer 2: the wordmark ─────────────────────────────────────── */}
+      {/* Sized off the viewport rather than off the card, so it runs wider than
+          the card can cover and the word continues out either side.
+       *
+          Set solid and centred rather than justified across the full width.
+          Justifying was tried and it spread POOL and FORGE into loose columns
+          of letters: with the card then covering the middle, nothing was left
+          to read. Occlusion only works if the eye can complete the word, so the
+          letters stay tight and the card takes a bite out of the middle.
+       *
+          Leading under 1 closes the two lines into one mass. All ink: the
+          spectrum lives in the shapes, not in the letters. */}
+      <div className="relative flex w-full flex-col items-center">
         <Link
           href="/"
           aria-label="Pool Forge, home"
-          className="mb-10 block text-center font-medium leading-[0.78] tracking-[-0.06em] text-theme-fg"
+          className="relative z-10 block text-center font-medium leading-[0.78] tracking-[-0.045em] text-theme-fg"
         >
-          {WORDMARK.map((line, i) => (
-            <span key={i} className="block text-[clamp(3.75rem,13vw,9rem)]">
-              {line.map((glyph, j) => (
-                <span
-                  key={j}
-                  {...(glyph.color ? { style: { color: glyph.color } } : {})}
-                >
-                  {glyph.c}
-                </span>
-              ))}
+          {WORDMARK.map((word) => (
+            {/* The lower bound is set off the viewport, not off taste: on a
+                phone the card is nearly full width, so if the wordmark is
+                narrower than the card the bottom line vanishes entirely and
+                there is no occlusion left, just a hidden word. It has to stay
+                wider than the card at every size. */}
+            <span key={word} aria-hidden className="block text-[clamp(5.5rem,32vw,12rem)]">
+              {word}
             </span>
           ))}
         </Link>
 
-        <div className="w-full">{children}</div>
+      {/* ── Layer 3: shapes in FRONT of the type ──────────────────────── */}
+      {/* This is the layer that does the work. Occlusion is the strongest depth
+          cue there is short of real perspective, and a hard-edged shape cutting
+          straight across a letterform reads as depth instantly — the same trick
+          as a subject cut out over a headline, without needing a photograph
+          this product does not have. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-20">
+        {SHAPES.filter((s) => s.layer === 'front').map((shape) => (
+          <span key={shape.key} className={shape.className} style={shape.style} />
+        ))}
+      </div>
+
+        {/* ── Layer 4: the card, in front of everything ───────────────── */}
+        {/* The card is the front plane, pulled up so it takes a bite out of the
+            bottom word rather than sitting under the block. A negative margin
+            rather than absolute placement, so the overlap stays the same
+            fraction of the wordmark at every size instead of drifting as the
+            viewport changes.
+         *
+            POOL stays clear above it and FORGE runs behind it and out both
+            sides, which is the read: one line whole, one line occluded. Cover
+            both and there is nothing left to complete. */}
+        <div className="relative z-30 -mt-10 w-full max-w-sm sm:-mt-14 lg:-mt-20">
+          {children}
+        </div>
       </div>
     </main>
   )
