@@ -10,18 +10,26 @@ const STATUS_LABEL: Record<ProjectStatus, string> = {
   ARCHIVED: 'Archived',
 }
 
+// Tint, not structure, is what tells statuses apart (docs/brand-bible.md) —
+// every pill is the same shape, and only its tint family changes. These read
+// as data rather than prose, so the badge takes the mono metadata scale.
 const STATUS_TONE: Record<ProjectStatus, string> = {
-  DRAFT: 'bg-muted text-muted-foreground',
-  READY_FOR_REVIEW: 'bg-amber-100 text-amber-900',
-  PROPOSAL_SENT: 'bg-blue-100 text-blue-900',
-  APPROVED: 'bg-emerald-100 text-emerald-900',
-  CONSTRUCTION_READY: 'bg-violet-100 text-violet-900',
-  ARCHIVED: 'bg-zinc-200 text-zinc-700',
+  DRAFT: 'bg-theme-card text-theme-muted',
+  READY_FOR_REVIEW: 'bg-tint-sand text-ink-black',
+  PROPOSAL_SENT: 'bg-tint-paleBlue text-ink-black',
+  APPROVED: 'bg-tint-mint text-ink-black',
+  CONSTRUCTION_READY: 'bg-tint-lilac text-ink-black',
+  ARCHIVED: 'bg-theme-card text-theme-faint',
 }
 
 export function StatusBadge({ status }: { status: ProjectStatus }) {
   return (
-    <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_TONE[status])}>
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2.5 py-0.5 font-brandMono text-badge uppercase',
+        STATUS_TONE[status],
+      )}
+    >
       {STATUS_LABEL[status]}
     </span>
   )

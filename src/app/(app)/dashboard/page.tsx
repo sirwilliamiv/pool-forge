@@ -89,11 +89,11 @@ export default async function DashboardPage({
   })
 
   return (
-    <div className="container py-8 space-y-6">
+    <div className="container space-y-6 py-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-title1 font-semibold text-theme-fg">Projects</h1>
+          <p className="text-bodyL text-theme-muted">
             Draw the pool. Price the job. Export the proposal.
           </p>
         </div>
@@ -105,7 +105,7 @@ export default async function DashboardPage({
       <StatusFilter />
 
       {projects.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-sm text-muted-foreground">
+        <div className="rounded-brand16 border border-dashed border-theme-line p-12 text-center text-bodyS text-theme-muted">
           {status
             ? 'No projects match this filter.'
             : "No projects yet — click 'New project' to start."}
@@ -113,14 +113,17 @@ export default async function DashboardPage({
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (
-            <Card key={p.id} className="h-full transition-shadow hover:shadow-md">
+            <Card
+              key={p.id}
+              className="h-full transition-shadow duration-brand ease-brand hover:shadow-elevation1"
+            >
               <CardHeader className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <Link
                     href={`/projects/${p.id}`}
                     className="flex-1 truncate hover:underline"
                   >
-                    <CardTitle className="text-base truncate">{p.name}</CardTitle>
+                    <CardTitle className="truncate text-title4">{p.name}</CardTitle>
                   </Link>
                   <ProjectCardMenu projectId={p.id} projectName={p.name} />
                 </div>
@@ -130,9 +133,11 @@ export default async function DashboardPage({
                   // for. The status moves to Approved on acceptance, but
                   // "Approved" alone does not say who signed or when, and a
                   // builder scanning the board should not have to open a project
-                  // to find out a customer said yes.
-                  <p className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-900">
-                    <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  // to find out a customer said yes. The green core hue is
+                  // reserved for illustration, so it lives on the icon only —
+                  // the surface stays the honeydew tint, and the text stays ink.
+                  <p className="flex items-center gap-1.5 rounded-brand border border-theme-line bg-tint-honeydew px-2 py-1 text-bodyS text-ink-black">
+                    <Check className="h-3.5 w-3.5 shrink-0 text-brand-green" aria-hidden />
                     <span className="truncate">
                       Accepted by {p.proposalAcceptedName ?? 'the customer'} on{' '}
                       {p.proposalAcceptedAt.toLocaleDateString('en-US', {
@@ -143,10 +148,12 @@ export default async function DashboardPage({
                   </p>
                 ) : null}
               </CardHeader>
-              <CardContent className="space-y-1 text-sm text-muted-foreground">
+              <CardContent className="space-y-1 text-bodyS text-theme-muted">
                 <Link href={`/projects/${p.id}`} className="block hover:underline">
                   {p.customer ? <div>{p.customer.name}</div> : <div className="italic">No customer</div>}
-                  <div>Updated {p.updatedAt.toLocaleDateString()}</div>
+                  <div className="font-brandMono text-badge uppercase text-theme-faint">
+                    Updated {p.updatedAt.toLocaleDateString()}
+                  </div>
                 </Link>
               </CardContent>
             </Card>

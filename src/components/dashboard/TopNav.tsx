@@ -11,30 +11,32 @@ export async function TopNav() {
   const session = await auth()
   const userLabel = session?.user?.email ?? 'Account'
 
+  const navLink = 'text-bodyL text-theme-muted transition-colors duration-brand ease-brand hover:text-theme-fg'
+
   return (
-    <header className="border-b bg-background">
+    <header className="border-b border-theme-line bg-theme-bg">
       <div className="container flex h-14 items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="font-semibold tracking-tight">
+          <Link href="/dashboard" className="text-bodyL font-semibold text-theme-fg">
             Pool Forge
           </Link>
-          <nav className="flex items-center gap-4 text-sm">
-            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
+          <nav className="flex items-center gap-4">
+            <Link href="/dashboard" className={navLink}>
               Dashboard
             </Link>
-            <Link href="/settings/price-book" className="text-muted-foreground hover:text-foreground">
+            <Link href="/settings/price-book" className={navLink}>
               Price book
             </Link>
-            <Link href="/settings/intake" className="text-muted-foreground hover:text-foreground">
+            <Link href="/settings/intake" className={navLink}>
               Customer uploads
             </Link>
-            <Link href="/settings/company" className="text-muted-foreground hover:text-foreground">
+            <Link href="/settings/company" className={navLink}>
               Company
             </Link>
-            <Link href="/settings/team" className="text-muted-foreground hover:text-foreground">
+            <Link href="/settings/team" className={navLink}>
               Team
             </Link>
-            <Link href="/docs/tools" className="text-muted-foreground hover:text-foreground">
+            <Link href="/docs/tools" className={navLink}>
               Docs
             </Link>
           </nav>

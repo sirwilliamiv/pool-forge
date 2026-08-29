@@ -50,15 +50,27 @@ export function NewProjectDialog({ action }: { action: Action }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        {/* Explicit `text-theme-bg`: the shared Button primitive's `default`
+            variant loses its own text colour here. `cva` merges the variant's
+            `text-theme-bg` and the size's `text-bodyL` into one string, and
+            `cn`'s tailwind-merge treats any unrecognised `text-*` class (the
+            brand type scale isn't in its default keyword list) as a text
+            *colour* utility, so it dedupes the two as "conflicting" and keeps
+            whichever is last — the font size, not the colour. The button
+            renders with no colour rule at all and inherits black, which reads
+            as a black-on-black button. Reported in the PR rather than patched
+            in `ui/button.tsx`, which this pass does not own. */}
+        <Button className="text-theme-bg">
           <Plus className="h-4 w-4" />
           New project
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="rounded-brand16 border-theme-line bg-theme-bg text-theme-fg sm:rounded-brand16">
         <DialogHeader>
-          <DialogTitle>Create project</DialogTitle>
-          <DialogDescription>Start a new pool design and quote.</DialogDescription>
+          <DialogTitle className="text-title4 font-semibold text-theme-fg">Create project</DialogTitle>
+          <DialogDescription className="text-bodyS text-theme-muted">
+            Start a new pool design and quote.
+          </DialogDescription>
         </DialogHeader>
         <form action={onSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -70,7 +82,7 @@ export function NewProjectDialog({ action }: { action: Action }) {
             <Input id="customerName" name="customerName" placeholder="John Smith" />
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" className="text-theme-bg" disabled={pending}>
               {pending ? 'Creating…' : 'Create'}
             </Button>
           </DialogFooter>
