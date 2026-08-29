@@ -42,6 +42,32 @@ surveyed: "Photo→design, AI estimating, auto-camera all uncontested."
 Note: I0 took ownership of the freeform polygon footprint that Wave 1 T2 was
 slated to author. T2 is now a consumer of it; its plan is amended accordingly.
 
+## Marketing: Dream Pool Studio (net-new, not from the brief)
+
+Spec: `superpowers/specs/2026-08-29-dream-pool-studio-design.md`. A public,
+no-login pool configurator for **homeowners** at `/dream`, running on the real
+measurement and pricing engines against a reference rate list of its own. Its
+job is reach and one completed lead, not retention: a homeowner buys a pool
+once.
+
+This is the first item here that is not from product brief §17. It was added
+deliberately rather than pulled forward, and it is the only user-facing surface
+that shows money to somebody who is not a customer, which is why
+`REFERENCE_PRICE_NOTICE` and the honest range in `modules/dream/spread.ts` are
+load-bearing rather than decorative.
+
+- [x] **M1 studio** — parametric config, measurement bridge, reference pricing,
+      ballpark spread, nudges, share codec, the plan drawing, the lead endpoint
+      and `DreamDesign`.
+- [ ] **M2 delivery** — actually emailing the design to the address collected.
+      There is no mail provider yet (`docs/beta-operations.md`), so the endpoint
+      records the lead and the page promises an email nobody sends. Wire this
+      before the page is linked from anywhere public.
+- [ ] **M3 routing** — handing a lead to a builder, and the `routedAt` column
+      that is already on the model waiting for it.
+- [ ] **M4 embed** — the same engine as a widget on a builder's own site, priced
+      from their price book. The paid version of this feature.
+
 ## Deferred (post-MVP)
 
 - ~~Survey image overlay + scale calibration~~ (absorbed into Wave I above)

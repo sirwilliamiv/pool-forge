@@ -1,0 +1,120 @@
+/*
+ * The studio's own surface.
+ *
+ * The rest of Pool Forge is a working tool and uses the app's shadcn tokens.
+ * This page is a drawing sheet, so it carries its own small palette, kept
+ * behind `.dream` so it cannot leak into any screen a builder uses.
+ *
+ * The palette is the vocabulary of the subject, not a theme: paper and
+ * graphite are the sheet and the pen, water is the only saturated colour on
+ * the page and is reserved for water, and redline is red because a redline on
+ * a drawing is what a red pen means. Nothing else is allowed to be red.
+ */
+
+.dream {
+  --paper: #f7f5f0;
+  --paper-sunk: #efece4;
+  --graphite: #1c2024;
+  --pencil: #6b7280;
+  --pencil-light: #a8a49b;
+  --water: #12a5d8;
+  --water-deep: #0b6e92;
+  --redline: #d6453a;
+  --rule: #d8d4cb;
+
+  background: var(--paper);
+  color: var(--graphite);
+  font-family: var(--dream-display), ui-sans-serif, system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* Every number, label and dimension on the sheet. The drawing's own voice. */
+.dream-annotation,
+.dream-plan-label {
+  font-family: var(--dream-annotation), ui-monospace, SFMono-Regular, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dream-plan-label {
+  font-size: 2px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* Ruled edges, the way a sheet is bordered. Not decoration: they separate the
+   drawing from the title block, which is a real distinction on a real sheet. */
+.dream-rule {
+  border-color: var(--rule);
+}
+
+/*
+ * A choice, drawn as a swatch on a colour card.
+ *
+ * Square-ish and hard-edged because everything else on the page is drawn with
+ * a straight edge, and a pill button would be the one shape on the sheet that
+ * came from somewhere else.
+ */
+.dream-choice {
+  border: 1px solid var(--rule);
+  background: #fff;
+  text-align: left;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.dream-choice:hover:not([aria-pressed='true']) {
+  border-color: var(--pencil);
+}
+
+.dream-choice[aria-pressed='true'] {
+  border-color: var(--graphite);
+  box-shadow: inset 0 0 0 1px var(--graphite);
+}
+
+.dream-choice:focus-visible {
+  outline: 2px solid var(--water-deep);
+  outline-offset: 2px;
+}
+
+/*
+ * The money, rolling.
+ *
+ * The one animated thing on the page, and it is animated because the change in
+ * the number IS the feedback: a figure that simply swaps has not told anybody
+ * that their last click cost eleven thousand dollars.
+ */
+.dream-money {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.dream-budget-track {
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+}
+
+.dream-budget-fill {
+  background: var(--water);
+  transition: width 320ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease;
+}
+
+.dream-budget-fill[data-state='over'] {
+  background: var(--redline);
+}
+
+.dream-budget-fill[data-state='tight'] {
+  background: var(--water-deep);
+}
+
+/* The water in the plan settles into its new colour rather than snapping. */
+.dream-water {
+  transition: fill 260ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dream-budget-fill,
+  .dream-water,
+  .dream-choice {
+    transition: none;
+  }
+}

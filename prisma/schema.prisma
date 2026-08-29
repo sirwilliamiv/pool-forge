@@ -180,6 +180,44 @@ model WaitlistSignup {
   @@index([createdAt])
 }
 
+/// A homeowner who built a backyard in the public studio and asked for it.
+///
+/// No `orgId`, for the same reason `WaitlistSignup` has none: this person has
+/// no builder yet, which is the entire point of the row. It belongs to Pool
+/// Forge until it is routed to one.
+///
+/// Not unique on email. One person may save several designs and each is a
+/// different thing they told us; collapsing them onto the address would throw
+/// the interesting one away. It also means there is no conflict path, and so no
+/// way for a stranger to learn whether an address has been here before.
+model DreamDesign {
+  id        String   @id @default(cuid())
+  email     String
+  name      String?
+  /// Roughly where the yard is. A postcode and not an address: enough to route
+  /// the lead to a builder who covers the area, and not enough to be worth
+  /// stealing.
+  postcode  String?
+  /// When they are thinking of building. A closed list; see `lead/schema.ts`.
+  timeframe String?
+  /// The share code of the backyard they built. Decodes to the whole design,
+  /// so the design needs no columns of its own.
+  design    String
+  /// The ballpark they were actually shown, in whole dollars. Stored rather
+  /// than recomputed: reference rates move, and what matters on a first phone
+  /// call is the number already in this person's head.
+  ballparkLow  Int
+  ballparkHigh Int
+  /// Where they came from, so a campaign can be told apart from word of mouth.
+  source    String?
+  /// Set when a builder has picked this lead up.
+  routedAt  DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([email])
+}
+
 // ============================================================
 // Customers & projects
 // ============================================================
