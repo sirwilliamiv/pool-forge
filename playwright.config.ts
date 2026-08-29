@@ -31,6 +31,13 @@ export default defineConfig({
       // the default origin, and a test that follows one would leave the server
       // under test entirely and report a dead link as a broken invite.
       APP_URL: 'http://localhost:3100',
+      // The port the suite runs on, said twice, because next-auth redirects to
+      // AUTH_URL after a successful sign-in and inherits it from `.env.local`
+      // otherwise. That points at whatever port the developer's own dev server
+      // uses, so every signing-in test fails with a connection refused the
+      // moment that server is not running: a suite that passes or fails
+      // depending on an unrelated process.
+      AUTH_URL: 'http://localhost:3100',
       // Deliberately blank. Identity Platform is proved against the real service
       // by an end-to-end run; this suite must pass on any machine, with no
       // credential and no network, so it exercises the local-password path that
