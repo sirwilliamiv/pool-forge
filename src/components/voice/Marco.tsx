@@ -57,7 +57,7 @@ interface Props {
   amplitude?: number
 }
 
-export function Marco({ state, size = 92, amplitude = 0 }: Props) {
+export function Marco({ state, size = 132, amplitude = 0 }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
   const characterRef = useRef<CharacterInstance | null>(null)
   // The state asked for before he finished loading, so nothing is dropped.
