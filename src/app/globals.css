@@ -83,3 +83,112 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Dropdowns ──────────────────────────────────────────────────────────────
+ *
+ * A native select's option list is drawn by the operating system, so no
+ * ordinary CSS reaches it: a black-and-white page in Instrument Sans opens a
+ * grey system menu in the system font. `appearance: base-select` opts out of
+ * that and into a list the page can style.
+ *
+ * Applied to every select in the app rather than scoped to one surface,
+ * because the alternative is each page conversion discovering the same problem
+ * and solving it differently. It was written for the marketing pages first and
+ * left there, which is exactly the mistake this rule undoes.
+ *
+ * Deliberately progressive rather than a custom listbox: the element stays a
+ * `<select>`, so keyboard behaviour, the accessibility tree and the form value
+ * stay the browser's, a phone still gets its native picker, and Playwright's
+ * `selectOption` keeps working. Browsers without support render what they
+ * render today.
+ *
+ * Unlayered on purpose so it beats Tailwind's `base` layer, and every property
+ * here is a brand token rather than a literal.
+ */
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+
+  select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  select::picker-icon {
+    color: var(--theme-fg-faint);
+    transition: transform 0.18s ease-out;
+  }
+
+  select:open::picker-icon {
+    transform: rotate(180deg);
+  }
+
+  /* The list: a raised surface, so it takes the soft shadow rather than a
+     heavy border, and sits clear of the field it belongs to. */
+  select::picker(select) {
+    border: 1px solid var(--theme-border);
+    border-radius: var(--radius-12);
+    background: var(--theme-bg);
+    box-shadow: var(--elevation-1);
+    padding: 0.375rem;
+    margin-block-start: 0.375rem;
+    /* The picker is a popover, so it starts in the top layer and fades in.
+       `allow-discrete` is what lets `display` join the transition. */
+    opacity: 0;
+    transition:
+      opacity 0.18s ease-out,
+      display 0.18s allow-discrete,
+      overlay 0.18s allow-discrete;
+  }
+
+  select:open::picker(select) {
+    opacity: 1;
+  }
+
+  @starting-style {
+    select:open::picker(select) {
+      opacity: 0;
+    }
+  }
+
+  select option {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-8);
+    background: transparent;
+    color: var(--theme-fg);
+    font-family: inherit;
+    font-size: var(--size-bodyl);
+    transition: background 0.18s ease-out;
+  }
+
+  select option:hover,
+  select option:focus {
+    background: var(--theme-btn-transparent-bg);
+    outline: none;
+  }
+
+  /* Selected reads as ink on a quiet fill, not as a system blue bar. */
+  select option:checked {
+    background: var(--theme-btn-transparent-hover);
+  }
+
+  select option::checkmark {
+    order: 1;
+    margin-left: auto;
+    color: var(--family-accent);
+  }
+
+  /* The empty first option is a placeholder, not a choice. */
+  select option[value=''] {
+    color: var(--theme-fg-faint);
+  }
+}
