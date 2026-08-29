@@ -83,18 +83,18 @@ export function InviteForm({ token, email, orgName, role, hasAccount }: InviteFo
               required
             />
             {hasAccount ? null : (
-              <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+              <p className="text-bodyS text-theme-muted">At least 8 characters.</p>
             )}
           </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? <p className="text-bodyS text-brand-red">{error}</p> : null}
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? 'Joining…' : `Join ${orgName}`}
           </Button>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-bodyS text-theme-muted">
             Already signed up?{' '}
-            <Link href="/login" className="underline underline-offset-4">
+            <Link href="/login" className="underline underline-offset-4 hover:text-theme-fg">
               Sign in
             </Link>
           </p>
