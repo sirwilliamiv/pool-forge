@@ -113,3 +113,66 @@ export function isNoOpMove(
 ): boolean {
   return start.x === end.x && start.y === end.y
 }
+
+
+// ---------------------------------------------------------------- fitting
+
+import { fitBoxInPolygon, pointInPolygon, type Box, type FitResult } from '@/lib/geometry/fitting'
+import { ShapeKind, type Shape } from '@/modules/editor/state/shapes'
+
+/** Clear space left between a dropped object and the outline it lands in. */
+export const FIT_MARGIN_INCHES = 6
+
+/**
+ * The drawn space a drop landed in, if any.
+ *
+ * Only closed sketches count, and only the smallest one containing the drop
+ * point, so a spa dropped into a lanai that sits inside a lot boundary lands in
+ * the lanai rather than the lot. Nesting is normal on a pool plan and picking
+ * the outermost ring would make the feature useless on every real drawing.
+ */
+export function spaceUnder(
+  point: { x: number; y: number },
+  shapes: readonly Shape[],
+  excludeId?: string,
+): Shape | null {
+  let best: Shape | null = null
+  let bestArea = Infinity
+  for (const shape of shapes) {
+    if (shape.id === excludeId) continue
+    if (shape.kind !== ShapeKind.SKETCH_PATH) continue
+    if (!shape.closed || shape.points.length < 3) continue
+    if (shape.hidden) continue
+    const ring = shape.points.map((p) => ({ x: shape.x + p.x, y: shape.y + p.y }))
+    if (!pointInPolygon(point, ring)) continue
+    const area = shape.width * shape.height
+    if (area < bestArea) {
+      best = shape
+      bestArea = area
+    }
+  }
+  return best
+}
+
+/** What the drawer called the space, for a message that names it. */
+export function spaceName(shape: Shape): string {
+  if (shape.kind !== ShapeKind.SKETCH_PATH) return 'the outline'
+  return shape.labelText?.trim() || 'the outline'
+}
+
+/** The ring of a closed sketch, in absolute inches. */
+export function ringOf(shape: Shape): { x: number; y: number }[] {
+  if (shape.kind !== ShapeKind.SKETCH_PATH) return []
+  return shape.points.map((p) => ({ x: shape.x + p.x, y: shape.y + p.y }))
+}
+
+/**
+ * Where a dropped object should end up, given the space it was dropped into.
+ *
+ * Pure, so the rule is testable without a pointer: drop inside a drawn outline
+ * and the object is placed within it, moved if that is enough and shrunk only
+ * when it is not.
+ */
+export function fitIntoSpace(box: Box, space: Shape): FitResult {
+  return fitBoxInPolygon(box, ringOf(space), { margin: FIT_MARGIN_INCHES })
+}

@@ -3,14 +3,18 @@
 import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { toast } from 'sonner'
 import { dispatch } from '@/lib/commands/dispatch'
 import { pickShapeId } from '@/lib/three/pick'
 import { clientToNdc } from '@/modules/editor/interactions/pointer'
 import {
   canDragShape,
   dragTranslation,
+  fitIntoSpace,
   isNoOpMove,
   passesDragThreshold,
+  spaceName,
+  spaceUnder,
 } from '@/modules/editor/interactions/drag'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
@@ -157,6 +161,49 @@ export function DragHandler() {
         )
       ) {
         return
+      }
+
+      // Dropped into a space somebody drew? Put it in the space.
+      //
+      // Decided on release rather than during the drag, so the object follows
+      // the pointer honestly and only settles when it is let go. Snapping it
+      // mid-drag would make it jump between spaces as the cursor crossed an
+      // edge, which reads as the object fighting the hand holding it.
+      const shapes = useShapesStore.getState().shapes
+      const dragged = shapes.find((s) => s.id === finished.id)
+      if (dragged) {
+        const centre = {
+          x: finished.lastX + dragged.width / 2,
+          y: finished.lastY + dragged.height / 2,
+        }
+        const space = spaceUnder(centre, shapes, finished.id)
+        if (space) {
+          const fit = fitIntoSpace(
+            { x: finished.lastX, y: finished.lastY, width: dragged.width, height: dragged.height },
+            space,
+          )
+          if (fit.outcome === 'moved' || fit.outcome === 'resized') {
+            void dispatch('move.shape', { id: finished.id, x: fit.box.x, y: fit.box.y })
+            if (fit.outcome === 'resized') {
+              void dispatch('resize.shape', {
+                id: finished.id,
+                width: fit.box.width,
+                height: fit.box.height,
+              })
+              toast.info(
+                `Scaled to fit ${spaceName(space)}.`,
+              )
+            }
+            return
+          }
+          // Too small to hold it. Left where it was dropped and said so, rather
+          // than silently placing it somewhere the user did not point at.
+          if (fit.outcome === 'impossible') {
+            toast.warning(
+              `That will not fit inside ${spaceName(space)}.`,
+            )
+          }
+        }
       }
 
       // SelectionPicker's own pointerup uses the same 4px slop, so a real drag
