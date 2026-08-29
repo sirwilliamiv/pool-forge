@@ -11,6 +11,7 @@ import { readPage } from '@/modules/editor/page-read'
 import { screenForPath } from '@/modules/voice/scope'
 import { useVoiceSession } from '@/modules/voice/client/useVoiceSession'
 import { VoiceTranscript } from './VoiceTranscript'
+import { Marco, type MarcoState } from './Marco'
 
 interface ClickReport {
   label: string
@@ -137,6 +138,27 @@ export function VoiceDock() {
   const live = status === 'live'
   const busy = status === 'starting'
 
+  // Marco has more to say than the button did. Speaking is inferred from the
+  // last line being his, because the session reports one live status and the
+  // difference between listening and answering is the whole point of having a
+  // character rather than a dot.
+  const lastLine = transcript[transcript.length - 1]
+  const marcoState: MarcoState = status === 'error'
+    ? 'confused'
+    : busy
+      ? 'wake'
+      : live
+        ? (lastLine?.role === 'model' ? 'speaking' : 'listening')
+        : 'idle'
+
+  const marcoLabel = status === 'error'
+    ? 'Something went wrong. Click to try again.'
+    : busy
+      ? 'Connecting'
+      : live
+        ? 'Listening. Click to stop.'
+        : 'Talk to Marco'
+
   return (
     <>
       <DestructiveConfirm request={pendingConfirm} onDecide={decide} />
@@ -156,24 +178,20 @@ export function VoiceDock() {
         onClick={() => void (live ? stop() : start())}
         disabled={busy}
         aria-pressed={live}
-        aria-label={live ? 'Stop talking to Pool Forge' : 'Talk to Pool Forge'}
+        aria-label={marcoLabel}
+        title={marcoLabel}
+        // No pill, no label, no shadow: he stands on the drawing rather than on
+        // a button drawn over it. The hit area is his own bounding box and
+        // nothing more, which is the smallest thing this can cost the canvas.
         className={[
-          'pointer-events-auto flex h-12 items-center gap-2 rounded-full px-5 text-sm font-medium shadow-lg transition',
+          'pointer-events-auto flex items-end justify-center rounded-md p-1 transition-colors',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600',
-          live
-            ? 'bg-rose-600 text-white hover:bg-rose-700'
-            : 'bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60',
+          'disabled:opacity-60',
+          live ? 'opacity-100' : 'opacity-90 hover:opacity-100',
         ].join(' ')}
       >
-        <span
-          aria-hidden
-          className={[
-            'h-2.5 w-2.5 rounded-full',
-            live ? 'animate-pulse bg-white' : 'bg-emerald-400',
-          ].join(' ')}
-        />
-        {busy ? 'Starting…' : live ? 'Listening' : 'Talk'}
-        </button>
+        <Marco state={marcoState} />
+      </button>
       </div>
     </>
   )

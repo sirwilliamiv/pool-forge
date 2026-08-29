@@ -6,8 +6,8 @@ import type { TranscriptLine } from '@/modules/voice/client/useVoiceSession'
 
 function lines(count: number): TranscriptLine[] {
   return Array.from({ length: count }, (_, i) => ({
-    id: `line-${i}`,
-    role: i % 2 === 0 ? ('user' as const) : ('assistant' as const),
+    id: i,
+    role: i % 2 === 0 ? ('user' as const) : ('model' as const),
     text: `Line ${i}`,
   }))
 }
