@@ -110,8 +110,11 @@ export function VersionRack({ projectId, versions, onOpened }: Props) {
         tabIndex={0}
         role="listbox"
         aria-label="Saved designs"
-        className="relative h-[300px] overflow-hidden rounded-pfMd bg-rowHover focus:outline-none focus:ring-2 focus:ring-pfAccent"
-        style={{ perspective: '1600px' }}
+        className="relative h-[340px] overflow-hidden rounded-pfMd bg-gradient-to-b from-rowHover to-white focus:outline-none focus:ring-2 focus:ring-pfAccent"
+        // A near viewpoint is what makes the turn read as a turn. At 1600px the
+        // cards were rotated and looked merely small: the perspective was so
+        // shallow that a 50 degree turn foreshortened by almost nothing.
+        style={{ perspective: '900px', perspectiveOrigin: '50% 45%' }}
       >
         {versions.map((version, i) => {
           const offset = i - index
@@ -127,24 +130,33 @@ export function VersionRack({ projectId, versions, onOpened }: Props) {
               onClick={() => (centred ? void open(version.id) : setIndex(i))}
               disabled={busy}
               title={centred ? `Open ${version.name}` : version.name}
-              className="absolute left-1/2 top-1/2 h-[240px] w-[300px] rounded-pfSm border border-border bg-white shadow-pfLg transition-all duration-300 ease-out"
+              className="absolute left-1/2 top-1/2 h-[268px] w-[336px] origin-center rounded-pfSm border border-border bg-white shadow-pfLg transition-all duration-300 ease-out"
               style={{
-                // Turned away as cards get further from the centre, and
-                // overlapped rather than spaced, so twenty designs occupy the
-                // same rail as three.
-                transform: `translate(-50%, -50%) translateX(${offset * 92}px) rotateY(${
-                  centred ? 0 : offset > 0 ? -52 : 52
-                }deg) scale(${centred ? 1 : 0.88})`,
+                // Turned hard, and pushed back as well as sideways: without
+                // the Z the far cards sit in the same plane as the near ones and
+                // the rack reads as overlapping rectangles rather than depth.
+                transform: [
+                  'translate(-50%, -50%)',
+                  `translateX(${offset * 118 + Math.sign(offset) * 96}px)`,
+                  `translateZ(${centred ? 0 : -90 - distance * 40}px)`,
+                  `rotateY(${centred ? 0 : offset > 0 ? -64 : 64}deg)`,
+                ].join(' '),
                 zIndex: 100 - distance,
-                opacity: centred ? 1 : Math.max(0.35, 1 - distance * 0.22),
+                // Depth by shading rather than by opacity. A translucent card
+                // lets the cards behind it show through its own drawing, so a
+                // rack of four designs read as one muddy overlay of all of
+                // them. Dimming keeps every card opaque and still says which
+                // one is nearest.
+                filter: centred ? 'none' : `brightness(${1 - distance * 0.06})`,
+                backfaceVisibility: 'hidden',
               }}
             >
               <div className="pointer-events-none flex h-full flex-col">
                 <div className="flex-1 overflow-hidden rounded-t-pfSm bg-white">
                   <DrawingSvg
                     shapes={version.shapes}
-                    widthPx={300}
-                    heightPx={190}
+                    widthPx={336}
+                    heightPx={212}
                     showLabels={false}
                   />
                 </div>
