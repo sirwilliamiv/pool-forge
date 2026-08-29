@@ -42,6 +42,20 @@
   --tint: var(--family-tint);
   --tint-2: var(--family-tint-2);
 
+  /* Re-substituted here, not merely inherited. `brand.css` declares these on
+     `:root`, and a custom property resolves its `var()`s on the element that
+     declares it — where `--font-display-sans` does not exist, because next/font
+     puts it on this wrapper. So `:root` baked in the fallback stack and
+     inherited that down, and every marketing page quietly rendered in SF Pro
+     rather than in the face the layout had just loaded. Nothing errored; the
+     type was simply the wrong type.
+   *
+     Same trap as `--ray-fan`, which is fixed the same way in `brand.css`. If
+     you add a token that references another token set further down the tree,
+     it needs a line here too. */
+  --font-sans: var(--font-display-sans, 'SF Pro Display'), system-ui, helvetica, sans-serif;
+  --font-mono: var(--font-display-mono, 'SF Mono'), menlo, monospace;
+
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
@@ -1050,6 +1064,116 @@
 /* A native select keeps its own arrow, which needs room on the right. */
 select.mk-input {
   padding-right: 0.5rem;
+}
+
+/* ── The dropdown ────────────────────────────────────────────────────────
+ *
+ * A native select's option list is drawn by the operating system, so no
+ * ordinary CSS reaches it: on macOS you get a grey system menu in the system
+ * font in the middle of a black-and-white page. `appearance: base-select` opts
+ * the select out of that and into a list the page can style, which is the only
+ * way to put this control in brand without replacing it.
+ *
+ * Deliberately progressive rather than a custom listbox. The element stays a
+ * `<select>`, so the keyboard behaviour, the accessibility tree and the form
+ * value are the browser's rather than ours; the phone still gets its native
+ * picker, which beats anything hand-built on a touch screen; and
+ * `src/test/e2e/waitlist.spec.ts` keeps working, because Playwright's
+ * `selectOption` needs a real select. Browsers without support fall back to the
+ * system menu, which is exactly what they render today.
+ *
+ * Both the select and its picker have to opt in, or the picker stays native.
+ */
+@supports (appearance: base-select) {
+  select.mk-input,
+  select.mk-input::picker(select) {
+    appearance: base-select;
+  }
+
+  select.mk-input {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-right: 0.75rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  select.mk-input::picker-icon {
+    color: var(--fg-faint);
+    transition: transform 0.18s ease-out;
+  }
+
+  select.mk-input:open::picker-icon {
+    transform: rotate(180deg);
+  }
+
+  /* The list itself: a raised surface, so it takes the soft shadow rather than
+     a heavy border, and sits clear of the field it belongs to. */
+  select.mk-input::picker(select) {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-12);
+    background: var(--bg);
+    box-shadow: var(--elevation-1);
+    padding: 0.375rem;
+    margin-block-start: 0.375rem;
+    /* The picker is a popover, so it starts in the top layer and fades in.
+       `allow-discrete` is what lets `display` participate in the transition. */
+    opacity: 0;
+    transition:
+      opacity 0.18s ease-out,
+      display 0.18s allow-discrete,
+      overlay 0.18s allow-discrete;
+  }
+
+  select.mk-input:open::picker(select) {
+    opacity: 1;
+  }
+
+  @starting-style {
+    select.mk-input:open::picker(select) {
+      opacity: 0;
+    }
+  }
+
+  select.mk-input option {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-8);
+    background: transparent;
+    color: var(--fg);
+    font-family: inherit;
+    font-size: var(--size-bodyl);
+    letter-spacing: var(--ls-slight);
+    transition: background 0.18s ease-out;
+  }
+
+  select.mk-input option:hover,
+  select.mk-input option:focus {
+    background: var(--btn-transparent-bg);
+    outline: none;
+  }
+
+  /* Selected reads as ink on a quiet fill rather than as a system blue bar. */
+  select.mk-input option:checked {
+    background: var(--btn-transparent-hover);
+  }
+
+  /* The tick the browser puts against the selected option. Reserve its width on
+     every row so the labels line up whichever one is chosen. */
+  select.mk-input option::checkmark {
+    order: 1;
+    margin-left: auto;
+    color: var(--family-accent);
+  }
+
+  /* The first option is the empty placeholder, not a choice. */
+  select.mk-input option[value=''] {
+    color: var(--fg-faint);
+  }
 }
 
 .mk-btn--block {
