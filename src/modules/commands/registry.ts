@@ -21,6 +21,7 @@ export type CommandCategory =
   | 'capture'
   | 'comment'
   | 'sketch'
+  | 'version'
 
 export type CommandContext = {
   userId: string

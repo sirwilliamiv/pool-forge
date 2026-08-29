@@ -7,6 +7,8 @@ import { db } from '@/lib/db'
 import { ProjectForm } from '@/components/project/ProjectForm'
 import { ProjectActions } from '@/components/project/ProjectActions'
 import { ShareProposalCard } from '@/components/project/ShareProposalCard'
+import { VersionsCard } from '@/components/versions/VersionsCard'
+import { listVersions } from '@/modules/versions'
 import {
   ProjectLineItems,
   type PriceBookChoice,
@@ -132,6 +134,26 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
   const pool = readPoolFields(project.poolFields)
 
+  // The designs tried on this job. Shapes come out of each version's own
+  // payload so a card draws the design it names, rather than a thumbnail that
+  // was accurate the day it was rendered.
+  const versionRows = await listVersions(orgId, project.id)
+  const versionPayloads = await db.designVersion.findMany({
+    where: { projectId: project.id, orgId },
+    select: { id: true, rootJson: true },
+  })
+  const shapesByVersion = new Map(
+    versionPayloads.map(row => [
+      row.id,
+      ((row.rootJson as { shapes?: unknown } | null)?.shapes ?? []) as Shape[],
+    ]),
+  )
+  const versions = versionRows.map(row => ({
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+    shapes: shapesByVersion.get(row.id) ?? [],
+  }))
+
   // Amounts put on this job by hand, and the builder's own rates to start from.
   // Both are org-scoped: the project id already implies the organisation, and
   // asking for both means nothing here can read another org's numbers.
@@ -245,6 +267,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             : null
         }
       />
+      <VersionsCard projectId={project.id} versions={versions} />
       <ProjectLineItems
         projectId={project.id}
         items={lineItems}

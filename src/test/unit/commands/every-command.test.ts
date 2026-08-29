@@ -667,6 +667,34 @@ const EXERCISES: Record<string, Exercise> = {
     notUndoable: CHROME_NOT_DRAWING,
   },
 
+  // ---------- version ----------
+  //
+  // Server-run against Prisma, org-scoped, and covered by the versions module
+  // tests against the real database rather than by driving client stores.
+  'version.save': {
+    kind: 'server',
+    why:
+      'Writes a DesignVersion row from the project\'s working drawing, org-scoped. Covered by ' +
+      'versions/design-versions.test.ts against the real DB.',
+  },
+  'version.open': {
+    kind: 'server',
+    why:
+      'Copies a version payload into the working Drawing and stamps activeVersionId, in one ' +
+      'transaction. Covered by versions/design-versions.test.ts, including the autosave of ' +
+      'unsaved work.',
+  },
+  'version.rename': {
+    kind: 'server',
+    why: 'Renames a row, org-scoped. Covered by versions/design-versions.test.ts.',
+  },
+  'version.delete': {
+    kind: 'server',
+    why:
+      'Deletes a row and refuses the open one, org-scoped. Covered by ' +
+      'versions/design-versions.test.ts.',
+  },
+
   // ---------- context ----------
   'page.read': {
     kind: 'server',

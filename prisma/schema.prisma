@@ -47,6 +47,7 @@ model User {
   voiceSessions  VoiceSession[]
   sourceImages   SourceImage[]        @relation("SourceImageUploadedBy")
   sceneTemplates SceneTemplate[]
+  designVersions DesignVersion[]      @relation("DesignVersionAuthor")
 }
 
 model Organization {
@@ -235,6 +236,11 @@ model Project {
   org               Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   customer          Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
   drawing           Drawing?
+  versions          DesignVersion[]    @relation("ProjectVersions")
+  /// Which saved version the working drawing currently holds, so the rack can
+  /// show what is open without guessing.
+  activeVersionId   String?            @unique
+  activeVersion     DesignVersion?     @relation("ProjectActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
   quotes            Quote[]
   exports           Export[]
   validations       ValidationResult[]
@@ -264,6 +270,59 @@ model Drawing {
 
   project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   objects DrawingObject[]
+}
+
+/// Who drew a version.
+///
+/// Kept as an enum rather than inferred from whether `createdById` is set,
+/// because a builder drawing on a customer's behalf is still a builder version,
+/// and a customer who happens to have an account is still a customer one.
+enum DesignVersionSource {
+  BUILDER
+  CUSTOMER
+}
+
+/// One saved design for a project. A job has as many as it needs.
+///
+/// Builders draw several before anyone agrees on one, and customers will draw
+/// their own through a share link. Both are the same thing: a named alternative
+/// with its own drawing, browsable side by side.
+///
+/// Versions sit beside the working `Drawing` rather than replacing it. Every
+/// existing query that asks a project for its one drawing keeps working, and
+/// activating a version copies its payload into that drawing, which is the
+/// operation the editor, the quote and every export already understand.
+model DesignVersion {
+  id        String              @id @default(cuid())
+  projectId String
+  /// Denormalised so a version can be scoped without joining through project,
+  /// which every query in this app has to do.
+  orgId     String
+  name      String
+  note      String?
+  source    DesignVersionSource @default(BUILDER)
+
+  /// Null for a customer working through a share link, who has no account.
+  createdById   String?
+  /// What to show when there is no user behind it.
+  createdByName String?
+
+  /// The drawing itself, the same shape as `Drawing.rootJson`.
+  rootJson Json @default("{}")
+
+  /// The quote total when this version was saved, so a rack of versions can
+  /// show what each one costs without recomputing every one of them.
+  totalCents Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("DesignVersionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  activeFor Project? @relation("ProjectActiveVersion")
+
+  @@index([projectId, createdAt])
+  @@index([orgId])
 }
 
 model DrawingObject {
