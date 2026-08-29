@@ -20,6 +20,7 @@ PROJECT_ID="${PROJECT_ID:-pool-forge-prod}"
 REGION="${REGION:-us-central1}"
 SERVICE="${SERVICE:-pool-forge}"
 RUNTIME_SA="pool-forge-run@${PROJECT_ID}.iam.gserviceaccount.com"
+BUILD_SA="pool-forge-build@${PROJECT_ID}.iam.gserviceaccount.com"
 REPO="pool-forge"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/web"
 BUCKET="${BUCKET:-${PROJECT_ID}-blobs}"
@@ -67,6 +68,23 @@ run gcloud services enable \
   identitytoolkit.googleapis.com \
   --project "$PROJECT_ID"
 
+# Enabling an API returns before it is usable. Without this wait the very next
+# command fails with SERVICE_DISABLED for a service that was just switched on,
+# which reads like a permissions problem and is not one.
+if [ "$DRY" = "0" ]; then
+  say "Waiting for the APIs to become usable"
+  for api in artifactregistry.googleapis.com run.googleapis.com secretmanager.googleapis.com storage.googleapis.com; do
+    for attempt in $(seq 1 30); do
+      if gcloud services list --enabled --project "$PROJECT_ID" --filter "config.name=$api" --format 'value(config.name)' 2>/dev/null | grep -q .; then
+        break
+      fi
+      [ "$attempt" = "30" ] && { echo "  $api never became available" >&2; exit 1; }
+      sleep 5
+    done
+    echo "  $api ready"
+  done
+fi
+
 if ! exists gcloud artifacts repositories describe "$REPO" --location "$REGION" --project "$PROJECT_ID"; then
   say "Creating the image repository"
   run gcloud artifacts repositories create "$REPO" \
@@ -81,6 +99,22 @@ if ! exists gcloud iam service-accounts describe "$RUNTIME_SA" --project "$PROJE
   run gcloud iam service-accounts create pool-forge-run \
     --display-name "Pool Forge runtime" --project "$PROJECT_ID"
 fi
+
+# Cloud Build no longer grants its default identity anything in a new project,
+# so a build submitted without an explicit service account fails reading its own
+# source tarball with a 403 that names the Compute Engine default account. This
+# is a dedicated identity instead: read the source, write the image, write logs.
+if ! exists gcloud iam service-accounts describe "$BUILD_SA" --project "$PROJECT_ID"; then
+  say "Creating the build service account"
+  run gcloud iam service-accounts create pool-forge-build \
+    --display-name "Pool Forge builds" --project "$PROJECT_ID"
+fi
+
+say "Granting the builder what it needs"
+for role in roles/logging.logWriter roles/artifactregistry.writer roles/storage.objectViewer; do
+  run gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member "serviceAccount:${BUILD_SA}" --role "$role" --condition=None --quiet
+done
 
 say "Granting the runtime what it needs, and nothing else"
 for role in roles/secretmanager.secretAccessor roles/aiplatform.user roles/storage.objectAdmin roles/cloudsql.client; do
@@ -152,19 +186,34 @@ for pair in "${OPTIONAL_SECRETS[@]}"; do
 done
 
 # ---------------------------------------------------------------- build
+# The public URL is compiled into the client bundle, so it has to be known
+# before the first build, when the service does not exist to be asked. Cloud Run
+# derives it from the service name and the project number, so it is knowable:
+# guessing it wrong once meant a first deploy whose sign-in callbacks pointed at
+# a hostname nobody serves, and a second full rebuild to correct it.
 if [ "$DRY" = "1" ]; then SERVICE_URL=""; else
 SERVICE_URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" \
   --format 'value(status.url)' 2>/dev/null || true)"
+if [ -z "$SERVICE_URL" ]; then
+  PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format 'value(projectNumber)' 2>/dev/null || true)"
+  [ -n "$PROJECT_NUMBER" ] && SERVICE_URL="https://${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
+fi
 fi
 PUBLIC_URL="${APP_URL:-${SERVICE_URL:-https://${SERVICE}-${REGION}.run.app}}"
 
 if [ "$BUILD" = "1" ]; then
   say "Building the image"
   # Anything the browser reads is compiled in here, not mounted later.
+  # The tag is the commit, so a deployed revision names the source it came from.
+  TAG="$(git rev-parse --short HEAD 2>/dev/null || echo manual)"
+  # Logs and source go to a bucket this project owns. A build running as its own
+  # service account cannot write to Cloud Build's legacy shared bucket.
   run gcloud builds submit \
     --project "$PROJECT_ID" \
     --config cloudbuild.yaml \
-    --substitutions "_IMAGE=${IMAGE},_PUBLIC_URL=${PUBLIC_URL}" \
+    --service-account "projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA}" \
+    --default-buckets-behavior=REGIONAL_USER_OWNED_BUCKET \
+    --substitutions "_IMAGE=${IMAGE},_PUBLIC_URL=${PUBLIC_URL},_TAG=${TAG}" \
     .
 else
   say "Skipping the build, redeploying the current image"
