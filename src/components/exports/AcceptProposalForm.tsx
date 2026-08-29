@@ -20,7 +20,7 @@ export function AcceptProposalForm({
 
   if (accepted) {
     return (
-      <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+      <div className="rounded-brand16 border border-theme-line bg-tint-mint px-4 py-3 text-bodyS text-ink-black">
         Accepted by {accepted.name} on {accepted.at}. Thank you.
       </div>
     )
@@ -42,12 +42,12 @@ export function AcceptProposalForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
       <div className="flex-1">
-        <label className="mb-1 block text-sm font-medium">
+        <label className="mb-1.5 block text-bodyS font-medium text-theme-fg">
           Type your full name to accept this proposal
         </label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" required />
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={pending}>
         {pending ? 'Submitting…' : 'Accept proposal'}
       </Button>
     </form>

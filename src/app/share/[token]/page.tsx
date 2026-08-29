@@ -84,27 +84,31 @@ export default async function SharedProposalPage({
   if (parts === null && !live) notFound()
 
   return (
-    <div className="min-h-screen bg-slate-100 py-6">
+    <div className="min-h-screen bg-theme-card py-6">
       {/* The stored file's own stylesheet, or the page rules for a live render.
           The stored CSS is stock Tailwind compiled from the stored markup, so
           it defines exactly the utilities that markup uses and nothing else. */}
       <style dangerouslySetInnerHTML={{ __html: parts?.css ?? PAGE_CSS[ExportKind.CUSTOMER_PROPOSAL] }} />
       <div className="mx-auto mb-4 w-full max-w-[8.5in] px-4">
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <div className="rounded-brand16 border border-theme-line bg-theme-bg p-4 shadow-elevation1">
           <AcceptProposalForm token={token} accepted={accepted} />
         </div>
       </div>
       {stored && parts ? (
-        <div className="no-print mx-auto mb-4 w-full max-w-[8.5in] px-4 text-xs text-slate-500">
+        <div className="no-print mx-auto mb-4 w-full max-w-[8.5in] px-4 text-bodyS text-theme-muted">
           Issued {fmtDateTime(stored.generatedAt)}.{' '}
           {accepted ? 'This is the copy you accepted.' : 'This is the copy that was sent to you.'}{' '}
-          <a href={`/share/${token}/document`} className="underline">
+          <a href={`/share/${token}/document`} className="text-theme-fg underline">
             Download it
           </a>
           .
         </div>
       ) : null}
-      <div className="mx-auto w-full max-w-[8.5in] bg-white p-[0.6in] shadow-sm">
+      {/* The document itself is a stored artefact rendered to look like paper,
+          on its own inlined CSS (src/modules/exports/document/print-css.ts).
+          It stays literal white regardless of theme: it is what the customer
+          agreed to, not a themed surface. */}
+      <div className="mx-auto w-full max-w-[8.5in] bg-ink-white p-[0.6in] shadow-elevation1">
         {parts ? (
           <div className={parts.rootClassName} dangerouslySetInnerHTML={{ __html: parts.markup }} />
         ) : (
