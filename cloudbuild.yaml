@@ -1,0 +1,52 @@
+# Build the image and push it. Deploying is deploy.sh's job, so a build can be
+# repeated without touching what is serving.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: build
+    args:
+      - build
+      - --build-arg
+      - NEXT_PUBLIC_APP_URL=${_PUBLIC_URL}
+      - --tag
+      - ${_IMAGE}:${SHORT_SHA}
+      - --tag
+      - ${_IMAGE}:latest
+      - --cache-from
+      - ${_IMAGE}:latest
+      - --target
+      - runtime
+      - .
+
+  # A second image for the migration job. Same source, same lockfile, but it
+  # keeps the toolchain the Prisma CLI needs.
+  - name: gcr.io/cloud-builders/docker
+    id: migrate-image
+    args:
+      - build
+      - --tag
+      - ${_IMAGE}-migrate:${SHORT_SHA}
+      - --tag
+      - ${_IMAGE}-migrate:latest
+      - --cache-from
+      - ${_IMAGE}-migrate:latest
+      - --target
+      - migrate
+      - .
+
+images:
+  - ${_IMAGE}:${SHORT_SHA}
+  - ${_IMAGE}:latest
+  - ${_IMAGE}-migrate:${SHORT_SHA}
+  - ${_IMAGE}-migrate:latest
+
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/pool-forge-prod/pool-forge/web
+  # Baked into the client bundle, so it has to be known at build time rather
+  # than mounted at run time like everything else.
+  _PUBLIC_URL: ''
+
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1800s

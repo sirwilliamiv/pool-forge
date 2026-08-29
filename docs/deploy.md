@@ -1,4 +1,83 @@
-# Deploying Pool Forge (web) to the cloud
+# Deploying Pool Forge
+
+Scripted. Two commands, in this order:
+
+```sh
+./scripts/bootstrap-secrets.sh   # once, to put secrets in Secret Manager
+./deploy.sh                      # every time
+```
+
+`./deploy.sh --dry-run` prints everything it would do and touches nothing, which
+is the fastest way to see what a deploy involves. `--no-build` redeploys the
+current image with changed settings, which is what you want after adding a
+secret.
+
+## How secrets work
+
+They live in Secret Manager and are mounted as environment variables by Cloud
+Run at deploy time. Nothing secret is in this repository, in the image, or in a
+build argument. A build argument would be readable in the image history forever.
+
+Every secret is named `pool-forge-*` so one project can hold several apps
+without two of them meaning different things by `session-secret`.
+
+Two are required and the deploy refuses without them, naming what is missing:
+the database URL and the session signing key. Starting a service that cannot
+read its database means the first request is what tells you.
+
+The rest are optional and mounted only when they exist, so a deploy does not
+fail because a feature has not been switched on yet. Absent, the app runs
+without that feature: no Identity Platform key means sign-in falls back to the
+stored password hash, no email key means an invite hands back a link to copy
+instead of claiming it sent one.
+
+## What runs it
+
+A dedicated service account, `pool-forge-run`, rather than the default compute
+identity, which is an editor on the whole project. It gets four roles: read
+secrets, call Vertex, read and write the blob bucket, and connect to Cloud SQL.
+A mistake in the application is bounded by that list.
+
+That identity is also what makes Vertex and Identity Platform work in
+production without anybody's personal credentials.
+
+## Files
+
+Documents and uploads go to a bucket, not to disk. Cloud Run's filesystem is
+empty on every cold start and unshared between instances, so the local driver
+there is not storage: it is a cache that behaves like storage until the first
+restart takes a signed proposal with it. `BLOB_STORE_DRIVER=gcs` and a named
+bucket, never one guessed from the project id.
+
+## Migrations
+
+A Cloud Run job, run once per deploy, from its own image.
+
+Not at container start: every instance would race the others, and a failed
+migration should fail visibly in the deploy rather than crash-loop a service
+that was serving a minute ago. The job uses a separate image because the Prisma
+CLI needs its whole dependency tree and the serving image is deliberately slim.
+
+## Health
+
+`/readyz`, not `/healthz`. Cloud Run's front end intercepts `/healthz` with its
+own 404 before the request reaches the container, so a check there reports a
+dead app that is perfectly alive.
+
+It is deliberately shallow and does not touch the database. A check that queries
+the database turns a slow database into an instance the platform kills and
+replaces, which is how a blip becomes an outage.
+
+## Things that bake at build time
+
+Anything named `NEXT_PUBLIC_*` is compiled into the browser bundle, so it cannot
+be mounted at runtime like a secret. Each one needs a Dockerfile argument, a
+Cloud Build substitution and a deploy flag. Miss one leg and it silently bakes
+its default.
+
+---
+
+## The longer manual reference
 
 Current state: local-first — Postgres in Docker (`pnpm db:up`) and `next dev`.
 This runbook takes the **web app** to a Node host (Vercel is assumed; any Node
