@@ -1,9 +1,15 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
+// Brand bible: a card is a hairline at 16% ink on the theme ground, 16px
+// radius, and no shadow. `elevation-1` belongs to a card whose affordance is
+// softness rather than a border, and `elevation-2` to the single overlapping
+// element in a composition — neither is a default. Pass `shadow-elevation1`
+// explicitly where a card has earned it.
+
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)} {...props} />
+    <div ref={ref} className={cn('rounded-brand16 border border-theme-line bg-theme-bg text-theme-fg', className)} {...props} />
   ),
 )
 Card.displayName = 'Card'
@@ -17,14 +23,14 @@ CardHeader.displayName = 'CardHeader'
 
 const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('text-2xl font-semibold leading-none tracking-tight', className)} {...props} />
+    <div ref={ref} className={cn('text-title3 font-medium', className)} {...props} />
   ),
 )
 CardTitle.displayName = 'CardTitle'
 
 const CardDescription = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
+    <div ref={ref} className={cn('text-bodyS text-theme-muted', className)} {...props} />
   ),
 )
 CardDescription.displayName = 'CardDescription'
