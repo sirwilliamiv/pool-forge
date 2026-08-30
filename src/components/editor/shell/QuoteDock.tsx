@@ -9,7 +9,10 @@ import { groupTotals } from './quote-groups'
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pointer-events-auto w-60 rounded-pfMd border border-border bg-white p-3 shadow-pfMd">
+    <div
+      className="pointer-events-auto w-60 rounded-pfMd border border-border bg-white p-3 shadow-pfMd"
+      data-guide-scope="quote-dock"
+    >
       <div className="text-[10px] font-semibold uppercase tracking-wide text-textMuted">
         Live quote
       </div>
@@ -80,12 +83,14 @@ export function QuoteDock() {
         'pointer-events-auto rounded-pfMd border border-border bg-white shadow-pfMd transition-all',
         expanded ? 'w-80' : 'w-60',
       )}
+      data-guide-scope="quote-dock"
     >
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 rounded-pfMd p-3 text-left hover:bg-rowHover focus:outline-none focus:ring-2 focus:ring-pfAccent"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
+        aria-label="Quote"
       >
         <div className="min-w-0">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-textMuted">

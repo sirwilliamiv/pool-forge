@@ -108,7 +108,7 @@ export function ProjectLineItems({ projectId, items, priceBookChoices }: Project
   }
 
   return (
-    <Card>
+    <Card data-guide-scope="line-items">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div>

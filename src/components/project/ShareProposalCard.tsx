@@ -62,7 +62,7 @@ export function ShareProposalCard({
   }
 
   return (
-    <Card>
+    <Card data-guide-scope="share-proposal">
       <CardHeader>
         <CardTitle>Share proposal</CardTitle>
       </CardHeader>

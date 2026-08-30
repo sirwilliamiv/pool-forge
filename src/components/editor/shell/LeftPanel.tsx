@@ -36,6 +36,7 @@ export function LeftPanel() {
   return (
     <aside
       className={`flex h-full min-h-0 w-[248px] flex-col overflow-hidden border-r border-borderLight bg-white transition-shadow ${focusRing(flashing)}`}
+      data-guide-scope="left-panel"
     >
       {/* gap-2 and a slightly smaller face: a fifth tab (Site) pushed "Grade"
           off the 248px panel, and a clipped tab is a feature nobody finds. */}

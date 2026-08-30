@@ -107,7 +107,7 @@ export function IntakeLinksPanel({ links }: { links: IntakeLinkView[] }) {
   }, [])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-guide-scope="intake-links">
       <div className="rounded-brand16 border border-theme-line bg-theme-bg p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1.5">

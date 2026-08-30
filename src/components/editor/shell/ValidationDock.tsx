@@ -66,6 +66,7 @@ export function ValidationDock({ validationResult }: ValidationDockProps) {
         expanded ? 'w-[280px]' : 'w-auto',
         focusRing(flashing),
       )}
+      data-guide-scope="validation-dock"
     >
       <button
         type="button"

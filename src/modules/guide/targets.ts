@@ -16,7 +16,14 @@
 // cannot quietly rot: a button that loses its label breaks accessibility long
 // before it breaks the guide.
 
-export type GuideScreen = 'editor' | 'dashboard' | 'project' | 'priceBook' | 'settings'
+export type GuideScreen =
+  | 'editor'
+  | 'dashboard'
+  | 'project'
+  | 'priceBook'
+  | 'settings'
+  | 'import'
+  | 'document'
 
 export interface GuideTarget {
   /** What the agent asks for. */
@@ -216,6 +223,314 @@ export const GUIDE_TARGETS: readonly GuideTarget[] = [
     screen: 'dashboard',
     aliases: ['business details', 'licence', 'logo'],
     explain: 'The details that print on every proposal and permit sheet.',
+  },
+
+  // ---- editor: additions -----------------------------------------------
+  {
+    id: 'view.section',
+    name: 'Section',
+    screen: 'editor',
+    aliases: ['cut view', 'depth view'],
+    explain: 'A vertical slice through the pool, for depths.',
+  },
+  {
+    id: 'tool.deck',
+    name: 'Deck',
+    screen: 'editor',
+    aliases: ['patio', 'concrete'],
+    explain: 'Draw decking around the pool.',
+  },
+  {
+    id: 'tool.steps',
+    name: 'Steps & shelves',
+    screen: 'editor',
+    aliases: ['steps', 'tanning ledge', 'baja shelf'],
+    explain: 'Steps, benches and tanning ledges.',
+  },
+  {
+    id: 'tool.water',
+    name: 'Water feature',
+    screen: 'editor',
+    aliases: ['waterfall', 'bubbler', 'fountain'],
+    explain: 'Waterfalls, bubblers and scuppers.',
+  },
+  {
+    id: 'tool.lights',
+    name: 'Lights',
+    screen: 'editor',
+    aliases: ['led', 'lighting'],
+    explain: 'Place pool and landscape lights.',
+  },
+  {
+    id: 'tool.annotation',
+    name: 'Annotation',
+    screen: 'editor',
+    aliases: ['text', 'label the drawing'],
+    explain: 'Put text on the drawing itself.',
+  },
+  {
+    id: 'panel.site',
+    name: 'Site',
+    screen: 'editor',
+    within: '[data-guide-scope="left-panel"]',
+    aliases: ['property line', 'setbacks', 'lot'],
+    explain: 'Property line, structures and setback limits.',
+  },
+  {
+    id: 'quote.dock',
+    name: 'Quote',
+    screen: 'editor',
+    within: '[data-guide-scope="quote-dock"]',
+    aliases: ['price', 'total', 'how much'],
+    explain: 'The live price of what is drawn, with the breakdown.',
+  },
+  {
+    // The collapsed button's aria-label carries live error/warning/pass
+    // counts ("Checklist: 2 errors, 1 warning, 4 passed"), which breaks the
+    // prefix match against a plain "Checklist" name. The selector reaches
+    // the button by the stable part of that label instead of relying on an
+    // exact accessible-name match.
+    id: 'validation.dock',
+    name: 'Checklist',
+    screen: 'editor',
+    selector: '[data-guide-scope="validation-dock"] [aria-label^="Checklist"]',
+    aliases: ['errors', 'warnings', 'rules'],
+    explain: 'Everything the rules found, and a click jumps to the shape.',
+  },
+  {
+    id: 'editor.notes',
+    name: 'Notes',
+    screen: 'editor',
+    aliases: ['comments', 'drawing notes'],
+    explain: 'Notes left on this drawing, open and resolved.',
+  },
+  {
+    id: 'editor.templates',
+    name: 'Scene templates',
+    screen: 'editor',
+    aliases: ['templates', 'start from a template'],
+    explain: 'Save this scene as a template, or apply one.',
+  },
+  {
+    id: 'edit.redo',
+    name: 'Redo',
+    screen: 'editor',
+    aliases: ['put it back'],
+    explain: 'Puts back what undo took.',
+  },
+  {
+    id: 'scene.sun',
+    name: 'Time of day',
+    screen: 'editor',
+    selector: '[aria-label="Time of day"]',
+    aliases: ['sun', 'shadows', 'sun study'],
+    explain: 'Drag between sunrise and sunset to see shadows move.',
+  },
+
+  // ---- project overview -------------------------------------------------
+  {
+    id: 'project.openEditor',
+    name: 'Open editor',
+    screen: 'project',
+    aliases: ['open the drawing', 'design'],
+    explain: 'Opens the drawing for this job.',
+  },
+  {
+    id: 'project.import',
+    name: 'Import from image',
+    screen: 'project',
+    aliases: ['photo', 'scan a plan'],
+    explain: 'Turns a photo or an old plan into a measured design.',
+  },
+  {
+    id: 'project.duplicate',
+    name: 'Duplicate',
+    screen: 'project',
+    explain: 'Copies this job, drawing and all.',
+  },
+  {
+    id: 'project.archive',
+    name: 'Archive',
+    screen: 'project',
+    explain: 'Puts this job away without deleting it.',
+  },
+  {
+    id: 'doc.proposal',
+    name: 'Customer proposal',
+    screen: 'project',
+    aliases: ['proposal', 'quote document'],
+    explain: 'The document you send the customer.',
+  },
+  {
+    id: 'doc.construction',
+    name: 'Construction packet',
+    screen: 'project',
+    aliases: ['build docs', '11x17'],
+    explain: 'The dimensioned set the crew builds from.',
+  },
+  {
+    id: 'doc.sitePlan',
+    name: 'Site plan',
+    screen: 'project',
+    aliases: ['permit drawing'],
+    explain: 'The plan a county wants for permitting.',
+  },
+  {
+    id: 'doc.screenQuote',
+    name: 'Screen enclosure RFQ',
+    screen: 'project',
+    aliases: ['screen quote', 'enclosure'],
+    explain: 'The request you send a screen subcontractor.',
+  },
+  {
+    id: 'share.create',
+    name: 'Create link',
+    screen: 'project',
+    within: '[data-guide-scope="share-proposal"]',
+    aliases: ['share', 'send to the customer'],
+    explain: 'Makes a link the customer can open and accept.',
+  },
+  {
+    id: 'version.saveCurrent',
+    name: 'Save current drawing',
+    screen: 'project',
+    within: '[data-guide-scope="versions"]',
+    aliases: ['save a version', 'design options'],
+    explain: 'Keeps this design as an option you can come back to.',
+  },
+  {
+    id: 'lineItem.add',
+    name: 'Add',
+    screen: 'project',
+    within: '[data-guide-scope="line-items"]',
+    aliases: ['add a line item', 'add a charge'],
+    explain: 'Adds a charge to this job that is not drawn.',
+  },
+
+  // ---- import -------------------------------------------------------------
+  {
+    // The brief's page inventory called this "Upload images". The component
+    // (ImportEmptyState.tsx) renders "Choose images" on the button; the text
+    // "Upload" only appears in body copy and the icon.
+    id: 'import.upload',
+    name: 'Choose images',
+    screen: 'import',
+    aliases: ['add photos', 'upload', 'upload images'],
+    explain: 'Add the photos or drawings to work from.',
+  },
+  {
+    // The brief called this "Start calibration". CalibrationPanel.tsx renders
+    // "Calibrate" when no scale exists yet, and "Recalibrate" once one does;
+    // "Calibrate" is the one that matches the initial, two-point flow this
+    // target explains.
+    id: 'import.calibrate',
+    name: 'Calibrate',
+    screen: 'import',
+    aliases: ['set the scale', 'scale', 'start calibration', 'recalibrate'],
+    explain: 'Click two points and give the real distance, so pixels become feet.',
+  },
+  {
+    // ApplyBar.tsx renders "Apply to project", not "Apply to the project".
+    id: 'import.apply',
+    name: 'Apply to project',
+    screen: 'import',
+    aliases: ['use this', 'finish the import'],
+    explain: 'Turns the reviewed extraction into the actual design.',
+  },
+  {
+    id: 'import.discard',
+    name: 'Discard import',
+    screen: 'import',
+    aliases: ['throw it away', 'start over'],
+    explain: 'Drops this import session without touching the project.',
+  },
+
+  // ---- documents ----------------------------------------------------------
+  {
+    id: 'doc.print',
+    name: 'Print / Save as PDF',
+    screen: 'document',
+    aliases: ['print', 'pdf', 'save as pdf'],
+    explain: 'Prints, or saves a PDF, from the browser.',
+  },
+  {
+    // The proposal document renders this link as "← Back to project" (a
+    // leading arrow character), which fails the prefix match against a plain
+    // "Back to project" name. The selector finds it by the stable part of its
+    // href instead.
+    id: 'doc.back',
+    name: 'Back to project',
+    screen: 'document',
+    selector: 'a[href^="/projects/"]',
+    aliases: ['go back'],
+    explain: 'Back to the job this document belongs to.',
+  },
+
+  // ---- price book ---------------------------------------------------------
+  {
+    id: 'pricebook.add',
+    name: 'Add item',
+    screen: 'priceBook',
+    aliases: ['new price', 'add a price'],
+    explain: 'A new line in your price book.',
+  },
+  {
+    id: 'pricebook.import',
+    name: 'Import XLSX',
+    screen: 'priceBook',
+    aliases: ['spreadsheet', 'excel', 'upload prices'],
+    explain: 'Bring prices in from a spreadsheet.',
+  },
+
+  // ---- settings -----------------------------------------------------------
+  {
+    // The brief called this "Invite somebody", which is only the CardTitle
+    // heading above the form (a div, never a guide candidate). The submit
+    // button that actually mints the invite reads "Send invite".
+    id: 'team.invite',
+    name: 'Send invite',
+    screen: 'settings',
+    aliases: ['add a user', 'invite', 'invite somebody'],
+    explain: 'Mints an invite link you hand to a teammate.',
+  },
+  {
+    id: 'intake.create',
+    name: 'Create link',
+    screen: 'settings',
+    within: '[data-guide-scope="intake-links"]',
+    aliases: ['upload link', 'customer uploads'],
+    explain: 'A link homeowners use to send you photos.',
+  },
+  {
+    id: 'company.save',
+    name: 'Save',
+    screen: 'settings',
+    aliases: ['save company settings'],
+    explain: 'Saves the details that print on every proposal.',
+  },
+  {
+    id: 'voice.confirmToggle',
+    name: 'Ask before voice removes anything',
+    screen: 'settings',
+    selector: 'input[type="checkbox"]',
+    aliases: ['confirmation', 'voice safety'],
+    explain: 'When on, I always ask before I remove anything.',
+  },
+
+  // ---- dashboard: additions ----------------------------------------------
+  {
+    id: 'nav.uploads',
+    name: 'Customer uploads',
+    screen: 'dashboard',
+    aliases: ['intake', 'homeowner photos'],
+    explain: 'Links homeowners use to send you photos, and what came in.',
+  },
+  {
+    id: 'nav.docs',
+    name: 'Docs',
+    screen: 'dashboard',
+    aliases: ['help', 'reference'],
+    explain: 'The tool and command reference.',
   },
 ]
 

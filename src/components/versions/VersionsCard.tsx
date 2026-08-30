@@ -49,7 +49,7 @@ export function VersionsCard({ projectId, versions }: Props) {
   }
 
   return (
-    <section className="rounded-lg border bg-card p-5">
+    <section className="rounded-lg border bg-card p-5" data-guide-scope="versions">
       <header className="mb-4 flex items-center justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">

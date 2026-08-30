@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { GUIDE_TARGETS, matchTargets, targetById, targetsFor } from '@/modules/guide/targets'
+import type { GuideScreen } from '@/modules/guide/targets'
 import { isInsideCanvas, isVisible, resolveAll, resolveTarget } from '@/modules/guide/resolve'
 
 describe('the pointable inventory', () => {
@@ -47,6 +48,18 @@ describe('the pointable inventory', () => {
   it('looks a target up by id', () => {
     expect(targetById('view.fit')?.name).toBe('Fit everything in view')
     expect(targetById('nonsense')).toBeNull()
+  })
+
+  it('every screen with a voice scope has at least one target', () => {
+    const screens: GuideScreen[] = ['editor', 'dashboard', 'project', 'priceBook', 'settings', 'import', 'document']
+    for (const screen of screens) {
+      expect(targetsFor(screen).length, screen).toBeGreaterThan(0)
+    }
+  })
+
+  it('target ids are unique', () => {
+    const ids = GUIDE_TARGETS.map(target => target.id)
+    expect(new Set(ids).size).toBe(ids.length)
   })
 })
 
