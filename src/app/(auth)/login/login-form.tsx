@@ -85,7 +85,7 @@ export function LoginForm() {
               locked-out builder actually needs is the next line. */}
           <p className="text-bodyS text-theme-muted">
             <Link href="/forgot-password" className="underline underline-offset-4 hover:text-theme-fg">
-              Forgotten your password?
+              Forgot your password?
             </Link>
           </p>
         </CardFooter>

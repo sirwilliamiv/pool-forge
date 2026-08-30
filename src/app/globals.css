@@ -225,11 +225,17 @@
   }
 
   /* Slow. A parasol turns because there is a breeze, not because it is a
-     spinner, and at spinner speed it stops reading as furniture. */
+     spinner, and at spinner speed it stops reading as furniture. The pair turn
+     against each other: same direction reads as one mechanism with two heads. */
   .pf-pool-parasol {
     animation: pf-pool-parasol 9s linear infinite;
     transform-box: fill-box;
     transform-origin: center;
+  }
+
+  .pf-pool-parasol--reverse {
+    animation-direction: reverse;
+    animation-duration: 11s;
   }
 }
 

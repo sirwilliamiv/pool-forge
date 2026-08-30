@@ -34,7 +34,7 @@ export function ForgotPasswordForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Forgotten password</CardTitle>
+        <CardTitle>Forgot password</CardTitle>
         <CardDescription>
           Enter the address you sign in with and we will send a link to set a new password.
         </CardDescription>
