@@ -44,12 +44,16 @@ export function AccountMenu({ userLabel, logout }: Props) {
           {userLabel}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{userLabel}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent
+        align="end"
+        className="border-theme-line bg-theme-bg text-theme-fg shadow-elevation1"
+      >
+        <DropdownMenuLabel className="text-theme-muted">{userLabel}</DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-theme-line" />
         <form ref={formRef} action={logout}>
           <DropdownMenuItem
             asChild
+            className="focus:bg-theme-card focus:text-theme-fg"
             onSelect={event => {
               // Hold the menu open. Radix would otherwise close it here, and the
               // submit below would fire into a form that is no longer mounted.

@@ -27,7 +27,7 @@ function featurePatch(features: FeatureIntent[]): DesignIntentPatch {
 export function FeatureList({ intent, disabled, pending, onCommit }: FeatureListProps) {
   if (intent.features.length === 0) {
     return (
-      <p className="px-4 py-3 text-[11.5px] text-textMuted">
+      <p className="px-4 py-3 text-bodyS text-theme-muted">
         No features were read from the image. Anything the model missed can be added in the editor
         after applying.
       </p>
@@ -45,12 +45,12 @@ export function FeatureList({ intent, disabled, pending, onCommit }: FeatureList
   }
 
   return (
-    <ul className="divide-y divide-borderLight">
+    <ul className="divide-y divide-theme-lineSoft">
       {intent.features.map((feature, index) => {
         const score =
           confidenceFor(intent, `features.${index}`) ?? confidenceFor(intent, 'features')
         return (
-          <li key={`${feature.label}-${index}`} className="px-4 py-2.5 hover:bg-rowHover">
+          <li key={`${feature.label}-${index}`} className="px-4 py-2.5 hover:bg-theme-card">
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <FeatureText
@@ -59,7 +59,7 @@ export function FeatureList({ intent, disabled, pending, onCommit }: FeatureList
                   disabled={disabled}
                   onCommit={(text) => replace(index, { ...feature, label: text })}
                 />
-                <p className="mt-0.5 text-[10.5px] leading-tight text-textMuted">
+                <p className="mt-0.5 text-formLabel leading-tight text-theme-muted">
                   {feature.stencilId === null
                     ? 'No catalog match yet, so it applies as a generic feature'
                     : 'Matched to a catalog stencil'}
@@ -71,7 +71,7 @@ export function FeatureList({ intent, disabled, pending, onCommit }: FeatureList
                 disabled={disabled}
                 onClick={() => remove(index)}
                 aria-label={`Remove ${feature.label}`}
-                className="mt-0.5 rounded-pfXs p-1 text-textFaint transition-colors hover:bg-errorSoft hover:text-red-700 disabled:opacity-50"
+                className="mt-0.5 rounded-brand4 p-1 text-theme-faint transition-colors duration-brand ease-brand hover:bg-tint-blush hover:text-brand-red disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -111,7 +111,7 @@ export function FeatureList({ intent, disabled, pending, onCommit }: FeatureList
         )
       })}
       {pending ? (
-        <li className="px-4 py-1.5 text-[10.5px] text-textFaint">Saving correction…</li>
+        <li className="px-4 py-1.5 text-formLabel text-theme-faint">Saving correction…</li>
       ) : null}
     </ul>
   )
@@ -151,7 +151,7 @@ function FeatureText({
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
       }}
-      className="w-full rounded-pfXs bg-transparent px-1 py-0.5 text-[12px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-pfAccent disabled:opacity-50"
+      className="w-full rounded-brand4 bg-transparent px-1 py-0.5 text-bodyS font-medium outline-none focus:bg-theme-bg focus:ring-2 focus:ring-family-accent disabled:opacity-50"
     />
   )
 }
@@ -198,11 +198,13 @@ function FeatureNumber({
   return (
     <label
       className={cn(
-        'flex items-center gap-1 rounded-pfXs bg-rowHover px-1.5',
-        'focus-within:bg-white focus-within:ring-2 focus-within:ring-pfAccent',
+        'flex items-center gap-1 rounded-brand4 bg-theme-card px-1.5',
+        'focus-within:bg-theme-bg focus-within:ring-2 focus-within:ring-family-accent',
       )}
     >
-      <span className="text-[9.5px] uppercase tracking-wider text-textFaint">{label}</span>
+      <span className="font-brandMono text-formLabel uppercase tracking-wider text-theme-faint">
+        {label}
+      </span>
       <input
         type="number"
         step={step}
@@ -215,9 +217,9 @@ function FeatureNumber({
         onKeyDown={(e) => {
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
         }}
-        className="w-full bg-transparent py-1 text-right text-[11.5px] tabular-nums outline-none disabled:opacity-50"
+        className="w-full bg-transparent py-1 text-right text-bodyS tabular-nums outline-none disabled:opacity-50"
       />
-      {unit ? <span className="text-[9.5px] text-textMuted">{unit}</span> : null}
+      {unit ? <span className="font-brandMono text-formLabel text-theme-muted">{unit}</span> : null}
     </label>
   )
 }

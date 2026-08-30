@@ -35,8 +35,8 @@ export default async function ResetPasswordPage({
           <CardDescription>{RESET_REFUSAL[preview.refusal]}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            <Link href="/forgot-password" className="underline underline-offset-4">
+          <p className="text-bodyS text-theme-muted">
+            <Link href="/forgot-password" className="underline underline-offset-4 hover:text-theme-fg">
               Ask for a new link
             </Link>
           </p>

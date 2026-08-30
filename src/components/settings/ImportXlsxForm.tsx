@@ -107,7 +107,9 @@ export function ImportXlsxForm() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="xlsx-file">XLSX file</Label>
+        <Label htmlFor="xlsx-file" className="text-formLabel">
+          XLSX file
+        </Label>
         <input
           id="xlsx-file"
           type="file"
@@ -116,13 +118,15 @@ export function ImportXlsxForm() {
             const f = e.target.files?.[0]
             if (f) handleFile(f)
           }}
-          className="block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+          className="block w-full text-bodyS text-theme-fg file:mr-4 file:rounded-brand file:border-0 file:bg-theme-fg file:px-4 file:py-2 file:text-bodyS file:font-medium file:text-theme-bg file:transition-[background] file:duration-brand file:ease-brand hover:file:bg-[color-mix(in_oklch,var(--theme-fg),transparent_20%)]"
         />
         {fileName && (
-          <p className="text-xs text-muted-foreground">
-            Loaded: <span className="font-mono">{fileName}</span> · {preview?.rows.length ?? 0} rows ·
-            {' '}
-            {preview?.headers.length ?? 0} columns
+          <p className="text-bodyS text-theme-muted">
+            Loaded:{' '}
+            <span className="font-brandMono tracking-[0.5px] text-theme-fg">{fileName}</span> ·{' '}
+            <span className="font-brandMono tracking-[0.5px]">{preview?.rows.length ?? 0}</span> rows
+            · <span className="font-brandMono tracking-[0.5px]">{preview?.headers.length ?? 0}</span>{' '}
+            columns
           </p>
         )}
       </div>
@@ -130,22 +134,22 @@ export function ImportXlsxForm() {
       {preview && (
         <>
           <div className="space-y-3">
-            <h3 className="text-sm font-medium">Column mapping</h3>
+            <h3 className="text-bodyS font-medium text-theme-fg">Column mapping</h3>
             <div className="grid grid-cols-2 gap-3">
               {FIELDS.map((f) => (
                 <div key={f.key} className="space-y-1.5">
-                  <Label className="text-xs">
+                  <Label className="text-formLabel">
                     {f.label}
-                    {f.required && <span className="text-destructive"> *</span>}
+                    {f.required && <span className="text-brand-red"> *</span>}
                   </Label>
                   <Select
                     value={mapping[f.key] ?? NONE_VALUE}
                     onValueChange={(v) => updateMapping(f.key, v === NONE_VALUE ? undefined : v)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="border-theme-line bg-theme-field text-theme-fg">
                       <SelectValue placeholder="(unmapped)" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="border-theme-line bg-theme-bg text-theme-fg">
                       <SelectItem value={NONE_VALUE}>(unmapped)</SelectItem>
                       {preview.headers.map((h) => (
                         <SelectItem key={h} value={h}>
@@ -160,10 +164,10 @@ export function ImportXlsxForm() {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">Preview (first 5 rows)</h3>
-            <div className="overflow-x-auto rounded-md border">
-              <table className="w-full text-xs">
-                <thead className="border-b bg-muted/50 text-left">
+            <h3 className="text-bodyS font-medium text-theme-fg">Preview (first 5 rows)</h3>
+            <div className="overflow-x-auto rounded-brand border border-theme-line">
+              <table className="w-full text-bodyS">
+                <thead className="border-b border-theme-line bg-theme-card text-left font-brandMono text-formLabel uppercase tracking-[0.6px] text-theme-muted">
                   <tr>
                     {preview.headers.map((h) => (
                       <th key={h} className="px-2 py-1.5 font-medium">
@@ -174,9 +178,12 @@ export function ImportXlsxForm() {
                 </thead>
                 <tbody>
                   {preview.rows.slice(0, 5).map((row, i) => (
-                    <tr key={i} className="border-b last:border-0">
+                    <tr key={i} className="border-b border-theme-line last:border-0">
                       {preview.headers.map((h) => (
-                        <td key={h} className="px-2 py-1 font-mono text-[11px]">
+                        <td
+                          key={h}
+                          className="px-2 py-1 font-brandMono text-formLabel tracking-[0.5px] text-theme-fg"
+                        >
                           {String(row[h] ?? '')}
                         </td>
                       ))}
@@ -187,17 +194,21 @@ export function ImportXlsxForm() {
             </div>
           </div>
 
-          <div className="rounded-md border p-3 text-sm">
+          <div className="rounded-brand border border-theme-line p-3 text-bodyS text-theme-fg">
             <div>
-              <span className="font-medium text-emerald-700">{items.length}</span> rows ready ·{' '}
-              <span className="font-medium text-amber-700">{errors.length}</span> rows with errors
+              <span className="font-brandMono tracking-[0.5px] text-theme-fg">{items.length}</span>{' '}
+              rows ready ·{' '}
+              <span className="font-brandMono tracking-[0.5px] text-brand-orange">
+                {errors.length}
+              </span>{' '}
+              rows with errors
             </div>
             {errors.length > 0 && (
               <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-muted-foreground">
+                <summary className="cursor-pointer text-bodyS text-theme-muted">
                   Show errors
                 </summary>
-                <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                <ul className="mt-2 space-y-0.5 text-bodyS text-theme-muted">
                   {errors.slice(0, 20).map((e, i) => (
                     <li key={i}>
                       Row {e.rowIndex + 2}: {e.message}
@@ -209,11 +220,11 @@ export function ImportXlsxForm() {
             )}
             {warnings.length > 0 && (
               <details className="mt-2" open>
-                <summary className="cursor-pointer text-xs font-medium text-amber-700">
+                <summary className="cursor-pointer text-bodyS font-medium text-brand-orange">
                   {warnings.length} row{warnings.length === 1 ? '' : 's'} could not be classified and
                   will be filed under Other
                 </summary>
-                <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                <ul className="mt-2 space-y-0.5 text-bodyS text-theme-muted">
                   {warnings.slice(0, 20).map((w, i) => (
                     <li key={i}>
                       Row {w.rowIndex + 2}: {w.message}

@@ -157,22 +157,24 @@ export function PriceBookItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="border-theme-line bg-theme-bg text-theme-fg sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit item' : 'Add price book item'}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-title4 font-display font-medium tracking-normal">
+            {isEdit ? 'Edit item' : 'Add price book item'}
+          </DialogTitle>
+          <DialogDescription className="text-bodyS text-theme-muted">
             {isEdit ? 'Update this line item.' : 'Create a new line item for the active price book.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label className="text-formLabel">Category</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as PriceCategory)}>
-                <SelectTrigger>
+                <SelectTrigger className="border-theme-line bg-theme-field text-theme-fg">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-theme-line bg-theme-bg text-theme-fg">
                   {PRICE_CATEGORIES.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
@@ -182,7 +184,9 @@ export function PriceBookItemDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pb-name">Name</Label>
+              <Label htmlFor="pb-name" className="text-formLabel">
+                Name
+              </Label>
               <Input
                 id="pb-name"
                 value={name}
@@ -194,12 +198,12 @@ export function PriceBookItemDialog({
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label>Unit type</Label>
+              <Label className="text-formLabel">Unit type</Label>
               <Select value={unitType} onValueChange={(v) => setUnitType(v as UnitType)}>
-                <SelectTrigger>
+                <SelectTrigger className="border-theme-line bg-theme-field text-theme-fg">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-theme-line bg-theme-bg text-theme-fg">
                   {UNIT_TYPES.map((u) => (
                     <SelectItem key={u} value={u}>
                       {u}
@@ -209,7 +213,9 @@ export function PriceBookItemDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pb-retail">Retail $</Label>
+              <Label htmlFor="pb-retail" className="text-formLabel">
+                Retail $
+              </Label>
               <Input
                 id="pb-retail"
                 type="number"
@@ -218,10 +224,13 @@ export function PriceBookItemDialog({
                 value={retailPrice}
                 onChange={(e) => setRetailPrice(e.target.value)}
                 required
+                className="font-brandMono tabular-nums tracking-[0.5px]"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pb-cost">Cost $</Label>
+              <Label htmlFor="pb-cost" className="text-formLabel">
+                Cost $
+              </Label>
               <Input
                 id="pb-cost"
                 type="number"
@@ -230,20 +239,21 @@ export function PriceBookItemDialog({
                 value={unitCost}
                 onChange={(e) => setUnitCost(e.target.value)}
                 placeholder="optional"
+                className="font-brandMono tabular-nums tracking-[0.5px]"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Billed when the customer chooses</Label>
+            <Label className="text-formLabel">Billed when the customer chooses</Label>
             <Select
               value={optionKey ?? NO_OPTION}
               onValueChange={(v) => setOptionKey(v === NO_OPTION ? null : (v as PricingOptionKey))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="border-theme-line bg-theme-field text-theme-fg">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="border-theme-line bg-theme-bg text-theme-fg">
                 <SelectItem value={NO_OPTION}>Anything in its category</SelectItem>
                 {PRICING_OPTIONS.map((key) => (
                   <SelectItem key={key} value={key}>
@@ -252,7 +262,7 @@ export function PriceBookItemDialog({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-bodyS text-theme-muted">
               {optionKey === null
                 ? 'This line bills whenever its category applies. Leave it here unless two items in the category are alternatives: a heater and a salt cell both set to this will both be charged the moment a customer asks for either.'
                 : `This line is charged only when the customer asks for a ${optionLabel(optionKey).toLowerCase()}.`}
@@ -260,7 +270,7 @@ export function PriceBookItemDialog({
           </div>
 
           {PER_JOB_CATEGORIES.has(category) ? (
-            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            <p className="rounded-brand border border-theme-line bg-theme-card px-3 py-2 text-bodyS text-theme-fg">
               Nothing in a drawing measures {category === PriceCategory.MISC ? 'this' : 'these'}, so
               this item is not billed automatically. Open a project and add it under “Added to this
               job” to put it on that quote, with the quantity for that job.
@@ -300,11 +310,12 @@ function FlagToggle({
   onChange: (v: boolean) => void
 }) {
   return (
-    <label htmlFor={id} className="flex items-center gap-2 text-sm">
+    <label htmlFor={id} className="flex items-center gap-2 text-bodyS text-theme-fg">
       <Checkbox
         id={id}
         checked={checked}
         onCheckedChange={(v) => onChange(v === true)}
+        className="border-theme-line data-[state=checked]:border-theme-fg data-[state=checked]:bg-theme-fg data-[state=checked]:text-theme-bg"
       />
       {label}
     </label>

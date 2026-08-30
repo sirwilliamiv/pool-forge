@@ -30,11 +30,9 @@ export function CommandList({ commands }: CommandListProps) {
     <div className="space-y-8">
       {CATEGORY_ORDER.filter((cat) => grouped.has(cat)).map((cat) => (
         <section key={cat}>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="font-brandMono text-formLabel uppercase text-theme-muted">
             {cat}{' '}
-            <span className="ml-1 font-normal text-muted-foreground/70">
-              ({grouped.get(cat)?.length ?? 0})
-            </span>
+            <span className="ml-1 text-theme-faint">({grouped.get(cat)?.length ?? 0})</span>
           </h2>
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             {(grouped.get(cat) ?? []).map((c) => (
@@ -52,21 +50,21 @@ function CommandCard({ command }: { command: EditorCommand<unknown, unknown> }) 
     <Card>
       <CardHeader className="space-y-1 pb-3">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base">{command.label}</CardTitle>
-          <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <CardTitle className="text-bodyL">{command.label}</CardTitle>
+          <span className="rounded-full border border-theme-line px-2 py-0.5 font-brandMono text-formLabel uppercase text-theme-muted">
             {command.category}
           </span>
         </div>
-        <code className="block font-mono text-xs text-muted-foreground">{command.id}</code>
+        <code className="block font-brandMono text-bodyS text-theme-muted">{command.id}</code>
       </CardHeader>
-      <CardContent className="space-y-3 pt-0 text-xs">
-        <p className="text-foreground/80">{command.description}</p>
+      <CardContent className="space-y-3 pt-0 text-bodyS">
+        <p className="text-theme-fg">{command.description}</p>
         {command.voiceExamples && command.voiceExamples.length > 0 ? (
           <div>
-            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1 font-brandMono text-formLabel uppercase text-theme-muted">
               Voice
             </div>
-            <ul className="space-y-0.5 italic text-muted-foreground">
+            <ul className="space-y-0.5 italic text-theme-muted">
               {command.voiceExamples.map((ex, i) => (
                 <li key={i}>“{ex}”</li>
               ))}

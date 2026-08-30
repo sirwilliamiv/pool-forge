@@ -22,13 +22,15 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
   ARCHIVED: 'Archived',
 }
 
+// Same hairline everywhere; only the tint carries the meaning
+// (docs/brand-bible.md — "differentiate with tint, not with structure").
 const STATUS_TONE: Record<ProjectStatus, string> = {
-  DRAFT: 'border-muted text-muted-foreground',
-  READY_FOR_REVIEW: 'border-amber-300 text-amber-900 bg-amber-50',
-  PROPOSAL_SENT: 'border-blue-300 text-blue-900 bg-blue-50',
-  APPROVED: 'border-emerald-300 text-emerald-900 bg-emerald-50',
-  CONSTRUCTION_READY: 'border-violet-300 text-violet-900 bg-violet-50',
-  ARCHIVED: 'border-zinc-300 text-zinc-700 bg-zinc-100',
+  DRAFT: 'border-theme-line text-theme-muted bg-theme-bg',
+  READY_FOR_REVIEW: 'border-theme-line text-ink-black bg-tint-sand',
+  PROPOSAL_SENT: 'border-theme-line text-ink-black bg-tint-paleBlue',
+  APPROVED: 'border-theme-line text-ink-black bg-tint-mint',
+  CONSTRUCTION_READY: 'border-theme-line text-ink-black bg-tint-lilac',
+  ARCHIVED: 'border-theme-line text-theme-faint bg-theme-card',
 }
 
 const ALL_STATUSES: ProjectStatus[] = [
@@ -66,17 +68,17 @@ export function StatusDropdown({ projectId, status, size = 'sm' }: StatusDropdow
     <Select value={status} onValueChange={onChange} disabled={pending}>
       <SelectTrigger
         className={cn(
-          'h-8 w-auto gap-1 px-2 text-xs',
-          size === 'md' && 'h-9 text-sm',
+          'h-8 w-auto gap-1 rounded-brand px-2 text-bodyS ring-offset-theme-bg focus:ring-theme-fg',
+          size === 'md' && 'h-9 text-bodyL',
           STATUS_TONE[status],
         )}
         onClick={(e) => e.stopPropagation()}
       >
         <SelectValue />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="border-theme-line bg-theme-bg text-theme-fg shadow-elevation1">
         {ALL_STATUSES.map((s) => (
-          <SelectItem key={s} value={s}>
+          <SelectItem key={s} value={s} className="focus:bg-theme-card focus:text-theme-fg">
             {STATUS_LABELS[s]}
           </SelectItem>
         ))}

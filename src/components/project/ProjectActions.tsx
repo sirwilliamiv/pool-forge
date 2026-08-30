@@ -7,6 +7,7 @@ import { Archive, Copy, ExternalLink, FileText, Printer, ScanLine, Trash2 } from
 import { toast } from 'sonner'
 import type { ProjectStatus } from '@prisma/client'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -76,102 +77,104 @@ export function ProjectActions({ project }: ProjectActionsProps) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
-        <StatusDropdown projectId={project.id} status={project.status} size="md" />
-        <div className="ml-auto flex flex-wrap gap-2">
-          <Button asChild size="sm">
-            <Link href={`/projects/${project.id}/editor`}>
-              <ExternalLink className="mr-1.5 h-4 w-4" />
-              Open editor
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/projects/${project.id}/import`}>
-              <ScanLine className="mr-1.5 h-4 w-4" />
-              Import from image
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" onClick={onDuplicate} disabled={pending}>
-            <Copy className="mr-1.5 h-4 w-4" />
-            Duplicate
-          </Button>
-          <Button variant="outline" size="sm" onClick={onArchive} disabled={pending}>
-            <Archive className="mr-1.5 h-4 w-4" />
-            Archive
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setConfirmOpen(true)}
-            disabled={pending}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="mr-1.5 h-4 w-4" />
-            Delete
-          </Button>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-2 p-4">
+          <StatusDropdown projectId={project.id} status={project.status} size="md" />
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <Link href={`/projects/${project.id}/editor`}>
+                <ExternalLink className="mr-1.5 h-4 w-4" />
+                Open editor
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/projects/${project.id}/import`}>
+                <ScanLine className="mr-1.5 h-4 w-4" />
+                Import from image
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={onDuplicate} disabled={pending}>
+              <Copy className="mr-1.5 h-4 w-4" />
+              Duplicate
+            </Button>
+            <Button variant="outline" size="sm" onClick={onArchive} disabled={pending}>
+              <Archive className="mr-1.5 h-4 w-4" />
+              Archive
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmOpen(true)}
+              disabled={pending}
+              className="text-brand-red hover:text-brand-red"
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Document exports — each dispatches an export command, which records the
           Export row and opens the document in a new tab. */}
       <ExportCommandHandlers />
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Documents
-        </span>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => runExportCommand('export.customerProposal', { projectId: project.id })}
-          >
-            <FileText className="mr-1.5 h-4 w-4" />
-            Customer proposal
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              runExportCommand('export.constructionPacket', {
-                projectId: project.id,
-                pageSize: 'tabloid',
-              })
-            }
-          >
-            <Printer className="mr-1.5 h-4 w-4" />
-            Construction packet
-            <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-              11×17
-            </span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => runExportCommand('export.sitePlan', { projectId: project.id })}
-          >
-            <FileText className="mr-1.5 h-4 w-4" />
-            Site plan
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              runExportCommand('export.screenEnclosureQuote', { projectId: project.id })
-            }
-          >
-            <FileText className="mr-1.5 h-4 w-4" />
-            Screen enclosure RFQ
-          </Button>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-2 p-4">
+          <span className="font-brandMono text-badge uppercase text-theme-muted">Documents</span>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => runExportCommand('export.customerProposal', { projectId: project.id })}
+            >
+              <FileText className="mr-1.5 h-4 w-4" />
+              Customer proposal
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                runExportCommand('export.constructionPacket', {
+                  projectId: project.id,
+                  pageSize: 'tabloid',
+                })
+              }
+            >
+              <Printer className="mr-1.5 h-4 w-4" />
+              Construction packet
+              <span className="ml-1 font-brandMono text-badge uppercase text-theme-faint">
+                11×17
+              </span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => runExportCommand('export.sitePlan', { projectId: project.id })}
+            >
+              <FileText className="mr-1.5 h-4 w-4" />
+              Site plan
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                runExportCommand('export.screenEnclosureQuote', { projectId: project.id })
+              }
+            >
+              <FileText className="mr-1.5 h-4 w-4" />
+              Screen enclosure RFQ
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
+        <DialogContent className="bg-theme-bg border-theme-line">
           <DialogHeader>
-            <DialogTitle>Delete project</DialogTitle>
-            <DialogDescription>
-              Permanently delete <strong>{project.name}</strong>? This will remove the drawing,
-              quotes, exports, and validation runs. This cannot be undone.
+            <DialogTitle className="text-title3 font-medium">Delete project</DialogTitle>
+            <DialogDescription className="text-bodyL text-theme-muted">
+              Permanently delete <strong className="text-theme-fg">{project.name}</strong>? This
+              will remove the drawing, quotes, exports, and validation runs. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

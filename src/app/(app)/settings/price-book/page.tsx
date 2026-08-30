@@ -82,12 +82,14 @@ export default async function PriceBookSettingsPage() {
   const placeholderCount = unchangedStarterLines(items).length
 
   return (
-    <div className="container py-8 space-y-6 max-w-5xl">
+    <div className="container max-w-5xl space-y-6 py-8 text-theme-fg">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Price book</h1>
-          <p className="text-sm text-muted-foreground">
-            Active: <span className="font-medium">{bookLabel}</span> · {items.length} items
+          <h1 className="text-title3 font-display">Price book</h1>
+          <p className="text-bodyS text-theme-muted">
+            Active:{' '}
+            <span className="font-brandMono tracking-[0.5px] text-theme-fg">{bookLabel}</span> ·{' '}
+            <span className="font-brandMono tracking-[0.5px]">{items.length}</span> items
           </p>
         </div>
         <div className="flex gap-2">
@@ -109,7 +111,7 @@ export default async function PriceBookSettingsPage() {
 
       {items.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
+          <CardContent className="py-10 text-center text-theme-muted">
             <p className="mb-4">No items yet.</p>
             <AddItemButton />
           </CardContent>
@@ -122,11 +124,15 @@ export default async function PriceBookSettingsPage() {
               <Card key={cat}>
                 <CardHeader className="pb-3">
                   <div className="flex items-baseline justify-between">
-                    <CardTitle className="text-base">{cat}</CardTitle>
-                    <span className="text-xs text-muted-foreground">{list.length} items</span>
+                    <CardTitle className="font-brandMono text-bodyS uppercase tracking-[0.6px] text-theme-fg">
+                      {cat}
+                    </CardTitle>
+                    <span className="font-brandMono text-formLabel tracking-[0.5px] text-theme-muted">
+                      {list.length} items
+                    </span>
                   </div>
                   {PER_JOB_CATEGORIES.has(cat) ? (
-                    <p className="pt-1 text-xs text-amber-700 dark:text-amber-400">
+                    <p className="pt-1 text-bodyS text-brand-orange">
                       Nothing in a drawing measures{' '}
                       {categoryLabel(cat as PriceCategory).toLowerCase()}, so these are not billed
                       automatically. Open a project and add one under “Added to this job” to put it
@@ -136,15 +142,15 @@ export default async function PriceBookSettingsPage() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <table className="w-full text-bodyS">
+                      <thead className="border-b border-theme-line text-left font-brandMono text-formLabel uppercase tracking-[0.6px] text-theme-muted">
                         <tr>
                           <th className="px-3 py-2 font-medium">Name</th>
                           <th className="px-3 py-2 font-medium">Unit</th>
-                          <th className="px-3 py-2 font-medium text-right">Cost</th>
-                          <th className="px-3 py-2 font-medium text-right">Retail</th>
+                          <th className="px-3 py-2 text-right font-medium">Cost</th>
+                          <th className="px-3 py-2 text-right font-medium">Retail</th>
                           <th className="px-3 py-2 font-medium">Flags</th>
-                          <th className="px-3 py-2 font-medium text-right">Actions</th>
+                          <th className="px-3 py-2 text-right font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -161,8 +167,10 @@ export default async function PriceBookSettingsPage() {
         </div>
       )}
 
-      <Separator />
-      <p className="text-xs text-muted-foreground">Total items: {items.length}</p>
+      <Separator className="bg-theme-line" />
+      <p className="text-bodyS text-theme-muted">
+        Total items: <span className="font-brandMono tracking-[0.5px]">{items.length}</span>
+      </p>
     </div>
   )
 }

@@ -10,11 +10,11 @@ export default async function PriceBookImportPage() {
   if (!session?.user) redirect('/login')
 
   return (
-    <div className="container py-8 space-y-6 max-w-3xl">
-      <div className="text-sm">
+    <div className="container max-w-3xl space-y-6 py-8 text-theme-fg">
+      <div className="text-bodyS">
         <Link
           href="/settings/price-book"
-          className="inline-flex items-center text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center text-theme-muted transition-[color] duration-brand ease-brand hover:text-theme-fg"
         >
           <ChevronLeft className="mr-1 h-4 w-4" />
           Back to price book
@@ -22,15 +22,15 @@ export default async function PriceBookImportPage() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Import price book from Excel</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-title3 font-display">Import price book from Excel</h1>
+        <p className="text-bodyS text-theme-muted">
           Upload an .xlsx file. The first sheet is read; map columns to fields then import.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Upload &amp; map</CardTitle>
+          <CardTitle className="text-bodyL font-medium">Upload &amp; map</CardTitle>
         </CardHeader>
         <CardContent>
           <ImportXlsxForm />
