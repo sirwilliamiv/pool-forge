@@ -29,6 +29,34 @@ const TURN_MS = 9_000
 const FRAME_MS = 125
 const SIZE = 64
 
+/**
+ * The O's in the tab title, in colour.
+ *
+ * A tab title is plain text, but browsers render emoji in it, and the five
+ * circle emoji land close enough to the five core hues to be the spectrum:
+ * blue, green, orange, red, purple. So "Pool Forge" in the title becomes
+ * P<circle><circle>l F<circle>rge, with each circle one hue step apart on the
+ * same clock as everything else. It is the only way a tab title can carry
+ * changing colour, and it is deliberately playful rather than typographic.
+ */
+const CIRCLES = ['\u{1F535}', '\u{1F7E2}', '\u{1F7E0}', '\u{1F534}', '\u{1F7E3}'] as const
+
+const circle = (step: number) => CIRCLES[step % CIRCLES.length] as string
+
+function poolForgeTitle(base: string, step: number): string {
+  return base.replace(
+    /Pool Forge/,
+    `P${circle(step + 1)}${circle(step + 2)}l F${circle(step + 3)}rge`,
+  )
+}
+
+/** A title with our circles in it, back to the words. */
+function plainTitle(title: string): string {
+  return title
+    .replace(/P[\u{1F535}\u{1F7E2}\u{1F7E0}\u{1F534}\u{1F7E3}]{2}l/u, 'Pool')
+    .replace(/F[\u{1F535}\u{1F7E2}\u{1F7E0}\u{1F534}\u{1F7E3}]rge/u, 'Forge')
+}
+
 /** The darker cut of a hue, same 22% toward black as the CSS parasols. */
 function shade(hex: string): string {
   const n = parseInt(hex.slice(1), 16)
@@ -95,6 +123,18 @@ export function WordmarkFavicon() {
       document.head.appendChild(link)
     }
 
+    // The title the app actually set, kept plain. Route changes rewrite the
+    // title underneath us; the observer catches those and re-applies the
+    // circles, and comparing against what we last wrote stops the loop.
+    let baseTitle = plainTitle(document.title)
+    let lastWritten = document.title
+    let lastStep = -1
+    const observer = new MutationObserver(() => {
+      if (document.title !== lastWritten) baseTitle = plainTitle(document.title)
+    })
+    const titleEl = document.querySelector('title')
+    if (titleEl) observer.observe(titleEl, { childList: true })
+
     const paint = (now: number) => {
       const step = Math.floor(now / HUE_STEP_MS)
       const parasolHue = HUES[step % HUES.length] ?? SPECTRUM.blue
@@ -108,6 +148,14 @@ export function WordmarkFavicon() {
         // A canvas that cannot serialise (odd embedder policies) just leaves
         // whatever icon was there; the favicon is decoration, never a failure.
       }
+      if (step !== lastStep) {
+        lastStep = step
+        const next = poolForgeTitle(baseTitle, step)
+        if (next !== document.title) {
+          lastWritten = next
+          document.title = next
+        }
+      }
     }
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -120,7 +168,11 @@ export function WordmarkFavicon() {
 
     paint(0)
     const timer = window.setInterval(() => paint(Date.now()), FRAME_MS)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearInterval(timer)
+      observer.disconnect()
+      document.title = baseTitle
+    }
   }, [])
 
   return null
