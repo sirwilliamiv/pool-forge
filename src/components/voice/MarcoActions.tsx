@@ -30,20 +30,24 @@ const TOUR_SIZE = 5
 interface Props {
   visible: boolean
   onTalk: () => void
+  /** When false the mic pill is hidden and only the tour is offered. */
+  voiceAvailable?: boolean
 }
 
-export function MarcoActions({ visible, onTalk }: Props) {
+export function MarcoActions({ visible, onTalk, voiceAvailable = true }: Props) {
   const clear = useGuideStore(state => state.clear)
-  const [touring, setTouring] = useState(false)
+  // A timestamp rather than a boolean, so clicking the tour again restarts
+  // the clock instead of inheriting the first click's timer.
+  const [tourStamp, setTourStamp] = useState(0)
 
   useEffect(() => {
-    if (!touring) return
+    if (tourStamp === 0) return
     const timer = window.setTimeout(() => {
       clear()
-      setTouring(false)
+      setTourStamp(0)
     }, TOUR_MS)
     return () => window.clearTimeout(timer)
-  }, [touring, clear])
+  }, [tourStamp, clear])
 
   function tour() {
     // Only what is actually here. Ringing a control that lives on another
@@ -58,7 +62,7 @@ export function MarcoActions({ visible, onTalk }: Props) {
     // covering the pill proved nothing about the agent. One path, one thing to
     // get right, one thing to test.
     void dispatch('guide.point', { targets: here.slice(0, TOUR_SIZE).map(target => target.id) })
-    setTouring(true)
+    setTourStamp(Date.now())
   }
 
   return (
@@ -72,9 +76,11 @@ export function MarcoActions({ visible, onTalk }: Props) {
       <Pill onClick={tour} icon={<Compass className="h-3.5 w-3.5" aria-hidden />}>
         Explain this page
       </Pill>
-      <Pill onClick={onTalk} icon={<Mic className="h-3.5 w-3.5" aria-hidden />}>
-        Ask me a question
-      </Pill>
+      {voiceAvailable ? (
+        <Pill onClick={onTalk} icon={<Mic className="h-3.5 w-3.5" aria-hidden />}>
+          Ask me a question
+        </Pill>
+      ) : null}
     </div>
   )
 }

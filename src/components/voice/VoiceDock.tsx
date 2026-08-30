@@ -212,9 +212,27 @@ export function VoiceDock() {
   // during the previous render".
   const [hovered, setHovered] = useState(false)
 
-  // The dialog renders even when the dock is hidden, because a destructive
-  // request outliving the button that started it is still a request.
-  if (status === 'unavailable') return <DestructiveConfirm request={pendingConfirm} onDecide={decide} />
+  // Voice needs a relay or the Electron bridge; the tour needs neither. The
+  // guide renders regardless, so "Explain this page" works with the mic off
+  // and in local dev, where no relay URL is configured.
+  if (status === 'unavailable') {
+    return (
+      <>
+        <DestructiveConfirm request={pendingConfirm} onDecide={decide} />
+        <GuideHighlight />
+        <div
+          className="pointer-events-none fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          <MarcoActions visible={hovered} onTalk={() => {}} voiceAvailable={false} />
+          <div className="pointer-events-auto p-1 opacity-90">
+            <Marco state="idle" />
+          </div>
+        </div>
+      </>
+    )
+  }
 
   const live = status === 'live'
   const busy = status === 'starting'

@@ -54,7 +54,25 @@ export function GuideHighlight() {
         if (!element || !isVisible(element)) continue
         next.push({ id, rect: element.getBoundingClientRect(), label: target.name })
       }
-      setBoxes(next)
+      setBoxes(prev => {
+        if (
+          prev.length === next.length &&
+          prev.every((box, index) => {
+            const candidate = next[index]
+            return (
+              candidate !== undefined &&
+              box.id === candidate.id &&
+              box.rect.left === candidate.rect.left &&
+              box.rect.top === candidate.rect.top &&
+              box.rect.width === candidate.rect.width &&
+              box.rect.height === candidate.rect.height
+            )
+          })
+        ) {
+          return prev
+        }
+        return next
+      })
     }
 
     function onPointerDown(event: PointerEvent) {
