@@ -147,13 +147,22 @@ export function VoiceDock() {
       input => {
         const pointed: string[] = []
         const missing: string[] = []
+        let first: Element | null = null
         for (const id of input.targets) {
           const target = targetById(id)
-          // Resolved rather than trusted, so the agent is told which of the
-          // things it asked for are not on this screen instead of describing a
-          // control nobody can see.
-          if (target && resolveTarget(document, target)) pointed.push(id)
-          else missing.push(id)
+          const element = target ? resolveTarget(document, target) : null
+          if (element) {
+            pointed.push(id)
+            if (!first) first = element
+          } else {
+            missing.push(id)
+          }
+        }
+        // Bring the first ring on screen. One scroll, not one per target:
+        // pointing at three toolbar buttons must not fight itself.
+        if (first) {
+          const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          first.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' })
         }
         useGuideStore.getState().point(pointed)
         return { pointed, missing }
