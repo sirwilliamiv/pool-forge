@@ -243,6 +243,11 @@ async function handleConnection(
           resolveScope: scopeResolver(start.surfaces),
           ...(ticket.projectId ? { projectId: ticket.projectId } : {}),
           ...(ticket.projectName ? { projectName: ticket.projectName } : {}),
+          // Page content, not identity: trusted from the authenticated ticket
+          // above is right for who the user is, but the page itself is only
+          // ever the browser's to say, and it is already framed as untrusted
+          // content in the prompt.
+          ...(start.pageSummary ? { pageSummary: start.pageSummary } : {}),
         },
       )
       send(VOICE_CHANNELS.start, { ok: true })

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { dispatch } from '@/lib/commands/dispatch'
+import { readPage } from '@/modules/editor/page-read'
 import { useGuideStore } from '@/modules/guide/store'
 
 import {
@@ -69,6 +70,26 @@ const IDLE_LIMIT_MS = 120_000
 
 /** How long before that the user is warned, so it is never a silent cut. */
 const IDLE_WARNING_MS = 30_000
+
+/**
+ * A short read of what is currently rendered, for the model to open with.
+ *
+ * The same `readPage` behind the `page.read` tool, so this is exactly what the
+ * model could ask for itself; the difference is only that it arrives at
+ * connect and at every screen change instead of waiting to be asked.
+ * Never throws: a page that cannot be read yet (mid-navigation, no document)
+ * is a session that opens with one sentence less context, not a broken start.
+ */
+function pageSnapshot(): string {
+  try {
+    const page = readPage()
+    const headings = page.headings.slice(0, 6).join('; ')
+    const actions = page.actions.slice(0, 12).map(action => action.label).join(', ')
+    return `${page.title}. Sections: ${headings}. Actions: ${actions}.`.slice(0, 800)
+  } catch {
+    return ''
+  }
+}
 
 export function useVoiceSession(
   screen: VoiceScreen,
@@ -328,6 +349,8 @@ export function useVoiceSession(
     const request: VoiceStartRequest = { screen, surfaces }
     if (projectId !== undefined) request.projectId = projectId
     if (projectName !== undefined) request.projectName = projectName
+    const summary = pageSnapshot()
+    if (summary) request.pageSummary = summary
     const result = await current.start(request)
 
     if (!result.ok) {
@@ -350,10 +373,18 @@ export function useVoiceSession(
   // projects swaps what it is talking about. Both without ending the call.
   useEffect(() => {
     if (status !== 'live') return
-    const context: { projectId?: string; projectName?: string } = {}
-    if (projectId !== undefined) context.projectId = projectId
-    if (projectName !== undefined) context.projectName = projectName
-    bridge.current?.setScreen(screen, context)
+    // Deferred a frame: this effect fires the moment the screen or project
+    // prop changes, which can be before the new route has actually painted.
+    // A snapshot taken then reads the page that is on its way out.
+    const frame = requestAnimationFrame(() => {
+      const context: { projectId?: string; projectName?: string; pageSummary?: string } = {}
+      if (projectId !== undefined) context.projectId = projectId
+      if (projectName !== undefined) context.projectName = projectName
+      const summary = pageSnapshot()
+      if (summary) context.pageSummary = summary
+      bridge.current?.setScreen(screen, context)
+    })
+    return () => cancelAnimationFrame(frame)
   }, [projectId, projectName, screen, status])
 
   // Mirrored to the shared store so surfaces the dock never touches (the

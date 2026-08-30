@@ -26,6 +26,28 @@ export const VOICE_SCREENS = [
 export type VoiceScreen = (typeof VOICE_SCREENS)[number]
 
 /**
+ * One paragraph per screen, appended to the system prompt. What the page is
+ * for and what the assistant can actually do there, so he opens the session
+ * sounding aware instead of asking the page what it is.
+ */
+export const SCREEN_BRIEFS: Record<VoiceScreen, string> = {
+  dashboard:
+    'The dashboard lists every project as a card with a status. You can create projects, change a status, duplicate, archive or delete one, filter by status, and open any project by name.',
+  project:
+    'The project page is the job record: customer details, status, hand-added line items, saved design versions, a share link the customer can accept, and buttons for the four documents. You can read all of it back, add or remove line items, save or open design versions, share or revoke the proposal link, and export documents.',
+  editor:
+    'The editor is the drawing: place pools, steps, water features, lights and decking, draw with line, curve and freehand, set materials, grade the site, place the property line, and watch the live quote and the validation checklist. You can point at any control, run any tool, and read back measurements, the quote, grading and validation.',
+  import:
+    'The import wizard turns uploaded photos or plans into a measured design: run extraction, calibrate the scale from two points, correct extracted fields, then apply to the project or discard.',
+  priceBook:
+    'The price book is what every quote is built from. You can add, change or remove items, report coverage gaps, and read prices back.',
+  settings:
+    'Settings covers the company details that print on proposals, the team and its roles, customer upload links, and voice preferences. You can read these back, update company settings, and manage upload links; team changes are pointed at, not performed.',
+  document:
+    'A printable document rendered from the drawing. You can print or save as PDF via the button, switch back to the project, and re-export any of the four documents.',
+}
+
+/**
  * Available everywhere.
  *
  * Navigation, because being on the wrong screen is the one thing a user should

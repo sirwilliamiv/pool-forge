@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { all } from '@/modules/commands/registry'
 import { initCommands } from '@/modules/commands/init'
-import { scopeFor, screenForPath, VOICE_SCREENS } from '@/modules/voice/scope'
+import { SCREEN_BRIEFS, scopeFor, screenForPath, VOICE_SCREENS } from '@/modules/voice/scope'
 
 initCommands()
 
@@ -81,6 +81,14 @@ describe('scopeFor', () => {
     for (const screen of VOICE_SCREENS) {
       const scope = scopeFor(screen)
       expect(scope.surface.tools.length, `${screen} has no tools`).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('SCREEN_BRIEFS', () => {
+  it('every screen has a brief', () => {
+    for (const screen of VOICE_SCREENS) {
+      expect(SCREEN_BRIEFS[screen].length).toBeGreaterThan(40)
     }
   })
 })

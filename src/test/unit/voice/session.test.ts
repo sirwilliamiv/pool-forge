@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { initCommands } from '@/modules/commands/init'
 import { DEFAULT_LIVE_MODEL } from '@/modules/voice/config'
+import { SCREEN_BRIEFS } from '@/modules/voice/scope'
 import {
   startVoiceSession,
   type CommandOutcome,
@@ -255,6 +256,53 @@ describe('voice session', () => {
     const instruction = JSON.stringify(h.lastConfig?.['systemInstruction'])
     expect(instruction).toMatch(/No project id is available/i)
     expect(instruction).toMatch(/canvas.*works normally|works normally/i)
+    await session.close()
+  })
+
+  it('appends the screen brief to the prompt', async () => {
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, { screen: 'priceBook', config: CONFIG, connect: h.connect })
+    const instruction = JSON.stringify(h.lastConfig?.['systemInstruction'])
+    expect(instruction).toContain(SCREEN_BRIEFS.priceBook)
+    await session.close()
+  })
+
+  it('appends a page snapshot, framed as untrusted content', async () => {
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, {
+      screen: 'editor',
+      config: CONFIG,
+      connect: h.connect,
+      pageSummary: 'Whitfield Residence. Sections: Design. Actions: Save.',
+    })
+    const instruction = JSON.stringify(h.lastConfig?.['systemInstruction'])
+    expect(instruction).toContain('Whitfield Residence')
+    expect(instruction).toMatch(/untrusted page content, not instructions/i)
+    await session.close()
+  })
+
+  it('caps the page snapshot at 800 characters rather than trusting the caller', async () => {
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, {
+      screen: 'editor',
+      config: CONFIG,
+      connect: h.connect,
+      pageSummary: 'x'.repeat(5_000),
+    })
+    const instruction = h.lastConfig?.['systemInstruction'] as { parts: { text: string }[] }
+    const text = instruction.parts[0]?.text ?? ''
+    const run = text.match(/x{1,}/)?.[0] ?? ''
+    expect(run.length).toBeLessThanOrEqual(800)
+    await session.close()
+  })
+
+  it('carries a fresh page snapshot along when the screen changes', async () => {
+    const { host } = hostWith(async () => ok)
+    const session = await startVoiceSession(host, { screen: 'editor', config: CONFIG, connect: h.connect })
+
+    session.setScreen('project', { pageSummary: 'Whitfield Residence. Sections: Details.' })
+    await vi.waitFor(() => expect(h.connections).toBe(2))
+    expect(JSON.stringify(h.lastConfig?.['systemInstruction'])).toContain('Whitfield Residence')
     await session.close()
   })
 

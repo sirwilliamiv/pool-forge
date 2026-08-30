@@ -150,6 +150,7 @@ export function installVoiceHost(deps: HostDeps): { dispose: () => Promise<void>
       }
       if (request.projectId !== undefined) options.projectId = request.projectId
       if (request.projectName !== undefined) options.projectName = request.projectName
+      if (request.pageSummary !== undefined) options.pageSummary = request.pageSummary
 
       session = await start(
         {

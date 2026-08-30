@@ -34,6 +34,13 @@ export interface VoiceStartRequest {
   projectId?: string
   projectName?: string
   /**
+   * A snapshot of what is rendered on screen, so the session opens already
+   * aware of the page instead of asking. Untrusted page content: framed as
+   * such in the prompt, capped again on the way in rather than trusted from
+   * the wire.
+   */
+  pageSummary?: string
+  /**
    * Every screen's tool surface, computed by the renderer.
    *
    * The main process does not register commands: doing so would pull Prisma and
@@ -78,6 +85,8 @@ export interface VoiceScreenMessage {
 export interface VoiceContextMessage {
   projectId?: string
   projectName?: string
+  /** A fresh snapshot of the new page, computed after the screen has changed. */
+  pageSummary?: string
 }
 
 export interface VoiceTranscriptEvent {
