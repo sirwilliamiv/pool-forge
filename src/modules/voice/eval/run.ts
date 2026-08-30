@@ -1,9 +1,28 @@
 import { getStencil } from '@/modules/editor/stencils'
+import { targetsFor, type GuideScreen } from '@/modules/guide/targets'
 
 import { loadVoiceConfig, type VoiceConfig } from '../config'
 import { scopeFor, type VoiceScreen } from '../scope'
 import { startVoiceSession, type CommandOutcome } from '../session'
 import type { EvalCase, Expectation, ToolCall } from './cases'
+
+/**
+ * VoiceScreen and GuideScreen share all seven member names, but they are
+ * declared independently: one is the voice tool surface, the other is what
+ * the guide is allowed to point at. This map is the identity in practice, and
+ * it is written out rather than cast so that if either union ever grows a
+ * screen the other does not have, the missing key fails to compile instead of
+ * pointing at the wrong screen's targets at runtime.
+ */
+const GUIDE_SCREEN_OF: Record<VoiceScreen, GuideScreen> = {
+  dashboard: 'dashboard',
+  project: 'project',
+  editor: 'editor',
+  import: 'import',
+  priceBook: 'priceBook',
+  settings: 'settings',
+  document: 'document',
+}
 
 // Running one case against the real model.
 //
@@ -270,6 +289,52 @@ function check(expectation: Expectation, calls: ToolCall[], spoken = ''): string
       return values.includes(expectation.equals)
         ? null
         : `${expectation.commandId}.${expectation.path} was ${JSON.stringify(values)}, expected ${expectation.equals}`
+    }
+
+    // Guide calls carry their target list as an array argument, which none of
+    // the scalar-comparison kinds above can look inside. These four exist for
+    // that shape and nothing else.
+    case 'argIncludes': {
+      if (matching.length === 0) return `${expectation.commandId} was never called`
+      const hit = matching.some(call => {
+        const value = call.args[expectation.path]
+        return Array.isArray(value) && value.includes(expectation.value)
+      })
+      return hit
+        ? null
+        : `${expectation.commandId}.${expectation.path} never included ${JSON.stringify(expectation.value)}`
+    }
+
+    case 'argExcludes': {
+      const hit = matching.some(call => {
+        const value = call.args[expectation.path]
+        return Array.isArray(value) && value.includes(expectation.value)
+      })
+      return hit
+        ? `${expectation.commandId}.${expectation.path} included ${JSON.stringify(expectation.value)}, expected it absent`
+        : null
+    }
+
+    case 'argIncludesAtLeast': {
+      if (matching.length === 0) return `${expectation.commandId} was never called`
+      const hit = matching.some(call => {
+        const value = call.args[expectation.path]
+        if (!Array.isArray(value)) return false
+        const count = expectation.anyOf.filter(candidate => value.includes(candidate)).length
+        return count >= expectation.min
+      })
+      return hit
+        ? null
+        : `${expectation.commandId}.${expectation.path} did not include at least ${expectation.min} of ${JSON.stringify(expectation.anyOf)}`
+    }
+
+    // One passing alternative is enough: two tool ids can equally correctly
+    // answer the same request, and pinning one would fail the other.
+    case 'anyOf': {
+      const results = expectation.expectations.map(inner => check(inner, calls, spoken))
+      return results.some(result => result === null)
+        ? null
+        : `none of the alternatives held: ${results.filter((result): result is string => result !== null).join(' | ')}`
     }
   }
 }
@@ -768,6 +833,31 @@ function apply(commandId: string, args: Record<string, unknown>, world: World): 
 
   if (commandId === 'pool.trim.set') {
     return { id: args['id'] ?? null, coping: flag('coping') ?? true, tileBand: flag('tileBand') ?? true }
+  }
+
+  // ---- guide -------------------------------------------------------------
+  //
+  // Placed before the shape-target lookup below: none of these three carry a
+  // shape id, and falling into that lookup would answer "no shape with id
+  // undefined" instead of pointing at anything.
+
+  if (commandId === 'guide.point') {
+    const wanted = Array.isArray(args['targets']) ? (args['targets'] as unknown[]).map(String) : []
+    const known = new Set(targetsFor(GUIDE_SCREEN_OF[world.screen]).map(target => target.id))
+    return {
+      pointed: wanted.filter(target => known.has(target)),
+      missing: wanted.filter(target => !known.has(target)),
+    }
+  }
+  if (commandId === 'guide.clear') return { cleared: true }
+  if (commandId === 'guide.list') {
+    return {
+      targets: targetsFor(GUIDE_SCREEN_OF[world.screen]).map(target => ({
+        id: target.id,
+        name: target.name,
+        explain: target.explain,
+      })),
+    }
   }
 
   const target = scene.find(shape => shape.id === args['id'])

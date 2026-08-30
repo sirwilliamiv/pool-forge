@@ -48,6 +48,19 @@ export type Expectation =
    * backwards is silent, and the audit log shows a successful call either way.
    */
   | { kind: 'argFlag'; commandId: string; path: string; equals: boolean }
+  /** An array-valued argument, on some call to this command, includes this value. */
+  | { kind: 'argIncludes'; commandId: string; path: string; value: string }
+  /** No call to this command has an array-valued argument that includes this value. */
+  | { kind: 'argExcludes'; commandId: string; path: string; value: string }
+  /**
+   * An array-valued argument, on some call to this command, includes at least
+   * `min` of the given candidates. For "point at the drawing tools", where any
+   * two of three tool ids is a correct answer and pinning a specific pair
+   * would fail an equally right one.
+   */
+  | { kind: 'argIncludesAtLeast'; commandId: string; path: string; anyOf: string[]; min: number }
+  /** At least one of these alternatives must hold, for a request two different tools can equally answer. */
+  | { kind: 'anyOf'; expectations: Expectation[] }
   /** No tool at all was called: the right answer is sometimes a sentence. */
   | { kind: 'callsNothing' }
   /**
@@ -1058,5 +1071,75 @@ export const EVAL_CASES: EvalCase[] = [
     utterance: 'Start me a new job.',
     screen: 'dashboard',
     expect: [{ kind: 'doesNotCall', commandId: 'create.project' }],
+  },
+
+  // ---- guide -------------------------------------------------------------
+  {
+    id: 'points-at-the-freehand-tool',
+    utterance: 'Where is the freehand tool?',
+    screen: 'editor',
+    project: OPEN_PROJECT,
+    expect: [
+      { kind: 'calls', commandId: 'guide.point' },
+      { kind: 'argIncludes', commandId: 'guide.point', path: 'targets', value: 'tool.freehand' },
+      // Pointing rings the control. It must not also switch the drawing tool.
+      { kind: 'doesNotCall', commandId: 'tool.activate' },
+    ],
+  },
+  {
+    id: 'points-at-several-drawing-tools',
+    utterance: 'Where are the drawing tools?',
+    screen: 'editor',
+    project: OPEN_PROJECT,
+    expect: [
+      // One call carrying every target, not a round trip per tool.
+      { kind: 'callCount', commandId: 'guide.point', count: 1 },
+      {
+        kind: 'argIncludesAtLeast',
+        commandId: 'guide.point',
+        path: 'targets',
+        anyOf: ['tool.line', 'tool.curve', 'tool.freehand'],
+        min: 2,
+      },
+    ],
+  },
+  {
+    id: 'explains-the-project-page',
+    utterance: 'What can I do here?',
+    screen: 'project',
+    project: OPEN_PROJECT,
+    expect: [
+      { kind: 'calls', commandId: 'guide.list' },
+      // A tour of the page, not an edit to it.
+      { kind: 'doesNotCall', commandId: 'page.fill' },
+      { kind: 'doesNotCall', commandId: 'page.click' },
+      { kind: 'doesNotCall', commandId: 'project.delete' },
+    ],
+  },
+  {
+    id: 'points-at-the-share-link',
+    utterance: 'How do I send this to the customer?',
+    screen: 'project',
+    project: OPEN_PROJECT,
+    expect: [
+      // Pointing at the share button and actually minting the link both answer
+      // the question. Either is right, and pinning one fails the other.
+      {
+        kind: 'anyOf',
+        expectations: [
+          { kind: 'argIncludes', commandId: 'guide.point', path: 'targets', value: 'share.create' },
+          { kind: 'calls', commandId: 'project.share.create' },
+        ],
+      },
+    ],
+  },
+  {
+    // Freehand belongs to the editor's drawing tools. The price book has no
+    // such control, and a ring pointed at nothing on this screen would be a
+    // hallucinated target id, not a passing answer.
+    id: 'does-not-point-at-another-screen',
+    utterance: 'Where is the freehand tool?',
+    screen: 'priceBook',
+    expect: [{ kind: 'argExcludes', commandId: 'guide.point', path: 'targets', value: 'tool.freehand' }],
   },
 ]
