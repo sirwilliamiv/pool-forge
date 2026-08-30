@@ -207,6 +207,19 @@ const NOISY_AUDIT_COMMAND_IDS = [
 const NAME_ISH_KEYS = ['name', 'projectId', 'label'] as const
 
 /**
+ * Prisma's `cuid()` ids look like `cmf0j3k2x0001abcdefgh`: a lowercase `c`
+ * followed by twenty-plus lowercase letters and digits. `projectId` is in
+ * NAME_ISH_KEYS because commands that only carry an id (delete, archive,
+ * duplicate, status.set) still deserve a recap, but a command that never got
+ * to attach a human name renders as "Delete project (cmf0j3k2x0001...)" if
+ * the raw id is not screened out first - Marco reads that aloud, and
+ * CLAUDE.md forbids putting a cuid in front of a person. A real name or
+ * label never matches this shape, so filtering it out costs nothing when
+ * one is present.
+ */
+const CUID_LIKE = /^c[a-z0-9]{20,}$/i
+
+/**
  * Turns one audit row into a sentence a person would say out loud.
  *
  * Pure and synchronous: it only reads the registry (already populated by the
@@ -221,7 +234,7 @@ export function describeAuditRow(commandId: string, source: string, inputJson: u
     const input = inputJson as Record<string, unknown>
     for (const key of NAME_ISH_KEYS) {
       const value = input[key]
-      if (typeof value === 'string' && value.trim().length > 0) {
+      if (typeof value === 'string' && value.trim().length > 0 && !CUID_LIKE.test(value.trim())) {
         nameish = value
         break
       }

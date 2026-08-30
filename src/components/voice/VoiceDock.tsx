@@ -68,20 +68,34 @@ function projectIdFrom(pathname: string): string | undefined {
   return /^\/projects\/([^/]+)/.exec(pathname)?.[1]
 }
 
-export function VoiceDock() {
+interface VoiceDockProps {
+  /** Signed-in user's id, from the server-rendered session in the app shell. */
+  userId: string
+  /** The user's org, or null if they have none. Also from the server session. */
+  orgId: string | null
+}
+
+export function VoiceDock({ userId, orgId }: VoiceDockProps) {
   const pathname = usePathname() ?? '/'
   const router = useRouter()
   const screen = useMemo(() => screenForPath(pathname), [pathname])
   const projectId = useMemo(() => projectIdFrom(pathname), [pathname])
 
+  // Keys the voice journal to this identity (see journal.ts) so it never
+  // carries across sign-out/sign-in on a shared machine. Comes from the shell's
+  // own server-side `auth()` call, already paid for by the time this renders,
+  // so keying it costs no extra request.
+  const identity = `${orgId ?? 'no-org'}:${userId}`
+
   // The project name comes from the page itself. The dock sits in the shell and
-  // has no props, and the agent saying "the Phone Demo project" rather than a
-  // cuid is the difference between it sounding aware and sounding lost.
+  // has no other props, and the agent saying "the Phone Demo project" rather
+  // than a cuid is the difference between it sounding aware and sounding lost.
   const projectName = useProjectName(projectId)
   const { status, error, transcript, start, stop, pendingConfirm, decide } = useVoiceSession(
     screen,
     projectId,
     projectName,
+    identity,
   )
 
   // The navigation commands resolve a path and let the client route. Registering

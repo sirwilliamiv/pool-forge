@@ -1,20 +1,40 @@
 // A rolling memory of what the assistant did and heard, so a reload or a new
 // session starts with "you were pricing the Jones project" instead of
 // amnesia. sessionStorage on purpose: it dies with the tab, which is the
-// right lifetime for a conversation, and it never crosses users on a shared
-// machine the way localStorage would.
+// right lifetime for a conversation.
+//
+// sessionStorage on its own does NOT keep this from crossing users on a
+// shared machine: it survives a same-tab sign-out/sign-in, which a fixed key
+// would happily carry across. The key is folded together with the signed-in
+// identity (`${orgId}:${userId}`, set via `setJournalIdentity`) so a journal
+// written under one identity lives at a different slot than any other
+// identity's journal and is never read back for someone else. Call
+// `setJournalIdentity` as soon as the identity is known (the app shell does
+// this); until then everything reads and writes an `anon` slot that no
+// authenticated session ever resolves to.
 
-const KEY = 'pf.voice.journal'
+const KEY_PREFIX = 'pf.voice.journal'
 const MAX_ENTRIES = 15
+
+let currentIdentity = 'anon'
 
 interface Journal {
   summary: string
   commands: { id: string; result: string; at: number }[]
 }
 
+/** Call with `${orgId}:${userId}` (or any stable per-identity string) as soon as it is known. */
+export function setJournalIdentity(identity: string): void {
+  currentIdentity = identity || 'anon'
+}
+
+function storageKey(): string {
+  return `${KEY_PREFIX}:${currentIdentity}`
+}
+
 function load(): Journal {
   try {
-    const raw = sessionStorage.getItem(KEY)
+    const raw = sessionStorage.getItem(storageKey())
     if (raw) return JSON.parse(raw) as Journal
   } catch {
     // Storage can be unavailable (private windows, test environments).
@@ -24,7 +44,7 @@ function load(): Journal {
 
 function save(journal: Journal): void {
   try {
-    sessionStorage.setItem(KEY, JSON.stringify(journal))
+    sessionStorage.setItem(storageKey(), JSON.stringify(journal))
   } catch {
     // Best effort. A journal that cannot persist is still a journal for this page.
   }
@@ -58,7 +78,7 @@ export function readJournal(): string {
 
 export function clearJournal(): void {
   try {
-    sessionStorage.removeItem(KEY)
+    sessionStorage.removeItem(storageKey())
   } catch {
     // Nothing to clear if storage is unavailable.
   }

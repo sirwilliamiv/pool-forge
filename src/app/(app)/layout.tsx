@@ -30,7 +30,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           It also lives in the shell so a session survives navigation: "take me
           to the price book" would otherwise end the call it was issued from. */}
-      {session?.user ? <VoiceDock /> : null}
+      {session?.user ? (
+        <VoiceDock userId={session.user.id} orgId={session.user.orgId} />
+      ) : null}
     </div>
   )
 }

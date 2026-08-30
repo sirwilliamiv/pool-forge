@@ -70,6 +70,22 @@ describe.skipIf(!reachable)('context.recent', () => {
     expect(actions.some(action => action.what.toLowerCase().includes('read the current page'))).toBe(false)
   })
 
+  it('never speaks a raw project id for a command that only carries an id', async () => {
+    const { orgId, userId, projectId } = await bootstrap()
+    const ctx = { userId, orgId, projectId }
+    await dispatchCommand('project.archive', { projectId }, ctx, 'UI')
+
+    const result = await dispatchCommand('context.recent', {}, ctx, 'API')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const actions = (result.data as { actions: { what: string }[] }).actions
+    const archived = actions.find(action => action.what.toLowerCase().includes('archive'))
+    expect(archived?.what).toBeDefined()
+    expect(archived?.what).not.toContain(projectId)
+    // A bare label, not "Archive project (cuid)".
+    expect(archived?.what).toBe('Archive project')
+  })
+
   it('prefixes the source when the action did not come from the UI', async () => {
     const { orgId, userId } = await bootstrap()
     const ctx = { userId, orgId }

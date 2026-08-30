@@ -17,7 +17,7 @@ import type { VoiceScreen } from '../scope'
 import type { DestructiveRequest } from '@/components/voice/DestructiveConfirm'
 import { isDestructive } from '../tools'
 import { startCapture, VoicePlayback, type CaptureHandle } from './audio'
-import { clearJournal, readJournal, recordCommand, recordSummary } from './journal'
+import { clearJournal, readJournal, recordCommand, recordSummary, setJournalIdentity } from './journal'
 import { useVoiceLiveStore } from './liveStore'
 import { createWebSocketBridge, relayUrl } from './wsBridge'
 
@@ -96,6 +96,15 @@ export function useVoiceSession(
   screen: VoiceScreen,
   projectId?: string,
   projectName?: string,
+  /**
+   * `${orgId}:${userId}` of whoever is signed in, so the journal is keyed to
+   * them rather than to the tab. Omitted in tests and in any caller that has
+   * not threaded identity through yet, which is safe: an unkeyed journal
+   * still works, it just is not isolated from the next identity to use this
+   * tab, which is exactly the case this parameter exists to close in the app
+   * shell (see VoiceDock).
+   */
+  identity?: string,
 ): UseVoiceSession {
   const bridge = useRef<VoiceBridge | null>(null)
   const capture = useRef<CaptureHandle | null>(null)
@@ -151,6 +160,15 @@ export function useVoiceSession(
     }
     setStatus(relayUrl() ? 'idle' : 'unavailable')
   }, [])
+
+  // Keyed to whoever is signed in, so a journal written by one identity is
+  // stored at a different sessionStorage slot than any other identity's and
+  // is never read back as "context from earlier in this session" for
+  // somebody else on a shared machine. Set on every render rather than in an
+  // effect: it must be current before the very first `readJournal()` call in
+  // `start()`, and setting a module-level string is not a side effect React
+  // needs to sequence.
+  if (identity !== undefined) setJournalIdentity(identity)
 
   /**
    * The journal belongs to one project, not to the tab.

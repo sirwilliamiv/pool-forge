@@ -96,6 +96,29 @@ describe.skipIf(!reachable)('price book commands', () => {
     expect(await db.priceBookItem.findUnique({ where: { id: itemId } })).toBeNull()
   })
 
+  it('refuses an update with no fields to change', async () => {
+    const { orgId, userId } = await bootstrapOrg()
+    const ctx: CommandContext = { userId, orgId }
+
+    const added = await dispatchCommand(
+      'pricebook.item.add',
+      { category: 'EARTHWORK', name: `Dig ${orgId}`, unitType: 'CUYD', retailPrice: 4500 },
+      ctx,
+      'API',
+    )
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+    const itemId = (added.data as { itemId: string }).itemId
+
+    const updated = await dispatchCommand('pricebook.item.update', { itemId }, ctx, 'API')
+    expect(updated.ok).toBe(false)
+    // Refused before it ever reaches the database, so nothing changed and no
+    // "updated" audit row gets written for a no-op.
+    expect(Number((await db.priceBookItem.findUniqueOrThrow({ where: { id: itemId } })).retailPrice)).toBe(
+      4500,
+    )
+  })
+
   it("refuses another org's price book item", async () => {
     const a = await bootstrapOrg()
     const b = await bootstrapOrg()

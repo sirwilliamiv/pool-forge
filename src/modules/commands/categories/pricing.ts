@@ -239,6 +239,13 @@ register({
     // check is against undefined rather than a truthiness test.
     if (input.optionKey !== undefined) patch.optionKey = input.optionKey
 
+    // itemId with nothing else is not an update: it would write an empty
+    // patch, log a success audit row, and have Marco report a change that
+    // never happened. Caught here rather than left to Prisma's happy no-op.
+    if (Object.keys(patch).length === 0) {
+      return { ok: false, error: 'Nothing to update: say which field to change.' }
+    }
+
     await db.priceBookItem.updateMany({
       where: { id: existing.id, priceBook: { orgId } },
       data: patch,

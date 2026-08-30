@@ -173,10 +173,14 @@ Principles carried through every page:
   jurisdiction/parcel, proposal expiry.
 - **Do**: exports, `project.proposal.accept`, `add/update/remove.projectLineItem`
   (move `pricing` into project scope); NEW `project.share.create`,
-  `project.share.revoke` (destructive), `project.update` (the form fields, one
-  flat command replacing nothing but giving voice a path),
-  `project.status.set`, `project.duplicate`, `project.archive`,
-  `project.delete`; `version.save/open/rename/delete` (add `version` to scope).
+  `project.share.revoke` (destructive), `project.status.set`,
+  `project.duplicate`, `project.archive`, `project.delete`;
+  `version.save/open/rename/delete` (add `version` to scope).
+  **Deferred**: `project.update` (the form fields, one flat command
+  replacing nothing but giving voice a path). It did not land in this plan;
+  the 28-field autosave form (`saveProjectAction`) stays UI-only for now, and
+  a follow-up ticket picks this up alongside the form-migration cleanup in
+  section 5.
 
 ### 4.3 `/projects/[id]/editor`
 
@@ -188,10 +192,15 @@ Already the deepest surface (~66 tools). Additions:
   right-panel tabs (Design / Specs / Quote). Fix View cube. NEW `guide.reveal`
   opens a panel tab before pointing inside it.
 - **Answer**: `scene.describe`, `grade.describe`, `site.describe`,
-  `calculate.measurements`, `generate.quote`, `run.validation` (all today);
-  NEW `validation.describe` (spoken list of failures with suggested fixes,
-  jump-to-shape), NEW `quote.explain` (why is the total X: per-group
-  contributions and the drawn-but-not-priced list).
+  `calculate.measurements`, `generate.quote`, `run.validation` (all today).
+  **Deferred**: `validation.describe` (spoken list of failures with
+  suggested fixes, jump-to-shape) and `quote.explain` (why is the total X:
+  per-group contributions and the drawn-but-not-priced list). Neither shipped
+  as its own command; `run.validation` already speaks the failure list and
+  `generate.quote` already speaks the line-item breakdown, which covers most
+  of what each was for. A dedicated jump-to-shape and a per-group cost
+  explainer are real gaps but small ones, left for a follow-up rather than
+  blocking this plan.
 - **Do**: everything today, plus unlock `sketch` (draw/label/convert,
   `grid.set`, `grid.snap.toggle`), NEW `sketch.fill.set` (fill a closed drawn
   outline with a flat spectrum colour, by click or voice), `version`, `comment` (NEW voiceExamples:
@@ -204,17 +213,21 @@ Already the deepest surface (~66 tools). Additions:
 - **Explain** (NEW targets, NEW `import` GuideScreen member): Start an import,
   Upload images, Start calibration, Set scale, overlay toggles, Review queue,
   Apply to the project, Discard import.
-- **Answer** (today via `page.read`; NEW `import.session.describe`): per-field
-  confidence, which fields need review, scale state, apply-gate reasons.
-- **Do** (today): full import command set. NEW: none needed beyond describe.
+- **Answer** (today via `page.read`): per-field confidence, which fields need
+  review, scale state, apply-gate reasons. **Deferred**:
+  `import.session.describe`, a dedicated command for the same information.
+  `page.read` already answers most of it today; a purpose-built version is a
+  follow-up, not something this plan implements.
+- **Do** (today): full import command set.
 
 ### 4.5 Document pages (proposal, construction, site-plan, screen RFQ)
 
 - **Explain** (NEW targets, NEW `document` GuideScreen member): Print / Save as
   PDF, Back to project, page-size toggle (construction), pricing toggles
   (RFQ), sent-copy download.
-- **Answer** (NEW `export.history.describe`): what was sent, when, hash, and
-  whether the live render differs from the stored copy.
+- **Answer**: **Deferred**: `export.history.describe` (what was sent, when,
+  hash, and whether the live render differs from the stored copy). It did not
+  land in this plan; a follow-up ticket picks it up.
 - **Do** (today): the four export commands, `project.proposal.accept`.
 
 ### 4.6 `/settings/price-book` and import wizard
@@ -226,9 +239,14 @@ Already the deepest surface (~66 tools). Additions:
   count, cost vs retail on a named item.
 - **Do** (NEW commands replacing the server-action bypasses):
   `pricebook.item.add`, `pricebook.item.update`, `pricebook.item.remove`
-  (destructive), `pricebook.version.create`. The XLSX import stays UI-only
-  (file picking is not a voice job) but moves onto the registry for the audit
-  row.
+  (destructive). The XLSX import stays UI-only (file picking is not a voice
+  job) but moves onto the registry for the audit row. **Deferred**:
+  `pricebook.version.create`. No UI path calls the un-audited
+  `createBookVersion` server action directly (only tests and seed do; the
+  XLSX flow itself now runs through the audited `pricebook.import.replace`),
+  so there is no live registry bypass left open by deferring this. A
+  follow-up ticket picks up a voiced path for cutting a new book version on
+  its own.
 
 ### 4.7 `/settings/company`
 
