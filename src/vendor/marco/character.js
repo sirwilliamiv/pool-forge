@@ -7,11 +7,29 @@
 (function (global) {
   'use strict';
 
-  const NAVY = '#1e2a4a';
-  const PAPER = '#FAFAF7';
-  const BLUE = '#2563eb';
-  // jewel tones: richer than pastel, calmer than neon
-  const PALETTE = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6'];
+  /* ---------- palette ----------
+     These are the character's own colours, and they are the ones it wore in
+     the product it came from: a navy body and a set of jewel tones. Nothing
+     reads them directly any more. They are the fallback for an embedder that
+     passes no palette, so this file keeps running standalone.
+
+     Pool Forge passes the brand spectrum in (see `components/voice/Marco.tsx`),
+     which is why none of the bold colour below appears in the product. Do not
+     add a Pool Forge hex here: one definition of a brand colour, in
+     `lib/brand.ts`, is the whole point. */
+  const DEFAULTS = {
+    // the puck itself, lit into a four-stop sphere at build time
+    body: '#2b313c',
+    ink: '#1e2a4a',
+    paper: '#FAFAF7',
+    accent: '#2563eb',
+    // dispersion streaks creeping round the rim, warm side and cool side
+    fringeWarm: '#ff9040',
+    fringeHot: '#ff4d5e',
+    fringeCool: '#57a8ff',
+    // jewel tones: richer than pastel, calmer than neon
+    spectrum: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6'],
+  };
   const N = 64;            // points per body outline
   const R = 46;            // base body radius in svg units (viewBox 200)
   const TAU = Math.PI * 2;
@@ -34,6 +52,17 @@
   function rgbOf(hex) {
     if (!_rgbCache[hex]) _rgbCache[hex] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
     return _rgbCache[hex];
+  }
+  // the same hex at an alpha, for gradient stops that have to fade out
+  function rgba(hex, a) {
+    const [r, g, b] = rgbOf(hex);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  // mixed and faded in one go, for a gradient stop that is both
+  function mixa(hex, k, a) {
+    const [r, g, b] = rgbOf(hex);
+    const to = k > 0 ? 255 : 0, f = Math.abs(k);
+    return `rgba(${Math.round(lerp(r, to, f))},${Math.round(lerp(g, to, f))},${Math.round(lerp(b, to, f))},${a})`;
   }
   // k > 0 tints toward white, k < 0 shades toward black
   function mixc(hex, k) {
@@ -134,6 +163,10 @@
     constructor(stage, opts = {}) {
       this.stage = stage;
       this.size = opts.size || 150;                    // css px of the svg box
+      // Merged per key, so an embedder can pass only the colours it cares
+      // about. `spectrum` drives every earned-colour moment: ribbons, orbits,
+      // the comet, confetti.
+      this.pal = { ...DEFAULTS, ...(opts.palette || {}) };
       this.state = 'idle';
       this.energy = 1;
       this.amp = 0;                                    // live voice amplitude 0..1
@@ -218,6 +251,7 @@
       const wrap = document.createElement('div');
       Object.assign(wrap.style, { position: 'absolute', left: 0, top: 0, width: this.size + 'px', height: this.size + 'px', pointerEvents: 'none', zIndex: 55, willChange: 'transform' });
       const U = 'addy' + (Addy._uid = (Addy._uid || 0) + 1);   // per-instance defs ids
+      const P = this.pal;
       const ns = 'http://www.w3.org/2000/svg';
       const svg = document.createElementNS(ns, 'svg');
       svg.setAttribute('viewBox', '-100 -100 200 200');
@@ -230,11 +264,14 @@
             <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" result="g"/>
             <feComposite in="SourceGraphic" in2="g" operator="atop"/>
           </filter>
+          <!-- The body: a lit sphere, four stops from the highlight side down
+               to the terminator. Derived from one colour so the embedder picks
+               the material and the modelling survives whatever it picks. -->
           <radialGradient id="${U}-sheen" cx="0.42" cy="0.36" r="0.85">
-            <stop offset="0" stop-color="#454e5c"/>
-            <stop offset="0.5" stop-color="#2b313c"/>
-            <stop offset="0.78" stop-color="#1d222c"/>
-            <stop offset="1" stop-color="#14181f"/>
+            <stop offset="0" stop-color="${mixc(P.body, 0.5)}"/>
+            <stop offset="0.5" stop-color="${mixc(P.body, 0.16)}"/>
+            <stop offset="0.78" stop-color="${mixc(P.body, -0.04)}"/>
+            <stop offset="1" stop-color="${mixc(P.body, -0.26)}"/>
           </radialGradient>
           <radialGradient id="${U}-vig" cx="0.5" cy="0.5" r="0.5">
             <stop offset="0" stop-color="rgba(0,0,0,0)"/>
@@ -243,27 +280,33 @@
             <stop offset="1" stop-color="rgba(0,0,0,0.5)"/>
           </radialGradient>
           <radialGradient id="${U}-badge" cx="0.35" cy="0.3" r="0.9">
-            <stop offset="0" stop-color="#6b96f8"/>
-            <stop offset="0.6" stop-color="${BLUE}"/>
-            <stop offset="1" stop-color="#1d4ed8"/>
+            <stop offset="0" stop-color="${mixc(P.accent, 0.4)}"/>
+            <stop offset="0.6" stop-color="${P.accent}"/>
+            <stop offset="1" stop-color="${mixc(P.accent, -0.35)}"/>
           </radialGradient>
           <clipPath id="${U}-clip"><path class="clipP"/></clipPath>
+          <!-- Smoke drifting inside the glass. Four blobs, each a colour that
+               belongs to the palette rather than a fixed haze: a deep shade of
+               the body for depth, then the cool and warm dispersion hues, then
+               a pale one to catch the light. Tinting these to the body is what
+               keeps a coloured puck reading as its own colour instead of as a
+               grey one with a wash over it. -->
           <radialGradient id="${U}-smokeA" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stop-color="rgba(6,8,12,0.6)"/><stop offset="0.55" stop-color="rgba(6,8,12,0.35)"/><stop offset="1" stop-color="rgba(6,8,12,0)"/>
+            <stop offset="0" stop-color="${mixa(P.body, -0.72, 0.5)}"/><stop offset="0.55" stop-color="${mixa(P.body, -0.72, 0.28)}"/><stop offset="1" stop-color="${mixa(P.body, -0.72, 0)}"/>
           </radialGradient>
           <radialGradient id="${U}-smokeB" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stop-color="rgba(29,48,80,0.5)"/><stop offset="1" stop-color="rgba(29,48,80,0)"/>
+            <stop offset="0" stop-color="${rgba(P.fringeCool, 0.32)}"/><stop offset="1" stop-color="${rgba(P.fringeCool, 0)}"/>
           </radialGradient>
           <radialGradient id="${U}-smokeC" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stop-color="rgba(74,52,22,0.42)"/><stop offset="1" stop-color="rgba(74,52,22,0)"/>
+            <stop offset="0" stop-color="${rgba(P.fringeWarm, 0.28)}"/><stop offset="1" stop-color="${rgba(P.fringeWarm, 0)}"/>
           </radialGradient>
           <radialGradient id="${U}-smokeD" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stop-color="rgba(150,162,180,0.2)"/><stop offset="1" stop-color="rgba(150,162,180,0)"/>
+            <stop offset="0" stop-color="${mixa(P.body, 0.66, 0.26)}"/><stop offset="1" stop-color="${mixa(P.body, 0.66, 0)}"/>
           </radialGradient>
           <linearGradient id="${U}-eyeRim" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="rgba(140,190,255,0.6)"/>
+            <stop offset="0" stop-color="${rgba(P.fringeCool, 0.6)}"/>
             <stop offset="0.5" stop-color="rgba(255,255,255,0.2)"/>
-            <stop offset="1" stop-color="rgba(255,160,110,0.5)"/>
+            <stop offset="1" stop-color="${rgba(P.fringeWarm, 0.5)}"/>
           </linearGradient>
           <radialGradient id="${U}-shadow" cx="0.5" cy="0.5" r="0.5">
             <stop offset="0" stop-color="rgba(0,0,0,0.26)"/><stop offset="0.6" stop-color="rgba(0,0,0,0.12)"/><stop offset="1" stop-color="rgba(0,0,0,0)"/>
@@ -289,22 +332,22 @@
             <path class="vig" fill="url(#${U}-vig)"/>
           </g>
           <g class="rim" stroke-linecap="round" fill="none">
-            <path class="fringeWarmS" stroke="#ff9040" stroke-width="7" opacity="0.22" pathLength="100" stroke-dasharray="26 74"/>
-            <path class="fringeWarm" stroke="#ff9040" stroke-width="2.8" opacity="0.7" pathLength="100" stroke-dasharray="26 74"/>
-            <path class="fringeRed" stroke="#ff4d5e" stroke-width="2" opacity="0.5" pathLength="100" stroke-dasharray="20 80"/>
-            <path class="fringeCoolS" stroke="#57a8ff" stroke-width="6.8" opacity="0.2" pathLength="100" stroke-dasharray="24 76"/>
-            <path class="fringeCool" stroke="#57a8ff" stroke-width="2.5" opacity="0.65" pathLength="100" stroke-dasharray="24 76"/>
+            <path class="fringeWarmS" stroke="${P.fringeWarm}" stroke-width="7" opacity="0.22" pathLength="100" stroke-dasharray="26 74"/>
+            <path class="fringeWarm" stroke="${P.fringeWarm}" stroke-width="2.8" opacity="0.7" pathLength="100" stroke-dasharray="26 74"/>
+            <path class="fringeRed" stroke="${P.fringeHot}" stroke-width="2" opacity="0.5" pathLength="100" stroke-dasharray="20 80"/>
+            <path class="fringeCoolS" stroke="${P.fringeCool}" stroke-width="6.8" opacity="0.2" pathLength="100" stroke-dasharray="24 76"/>
+            <path class="fringeCool" stroke="${P.fringeCool}" stroke-width="2.5" opacity="0.65" pathLength="100" stroke-dasharray="24 76"/>
             <path class="rimBand" stroke="rgba(255,255,255,0.16)" stroke-width="9" pathLength="100"/>
             <path class="rimBase" stroke="rgba(255,255,255,0.5)" stroke-width="4.2" pathLength="100"/>
             <path class="rimBright" stroke="#ffffff" stroke-width="2.8" opacity="0.95" pathLength="100" stroke-dasharray="24 26 18 32"/>
           </g>
           <g class="face" filter="url(#${U}-eyeShadow)">
-            <g class="eyeL"><path class="arc" fill="${PAPER}" stroke="url(#${U}-eyeRim)" stroke-width="1.1"/>
-              <ellipse class="oval" fill="${PAPER}" stroke="url(#${U}-eyeRim)" stroke-width="1.1"/><circle class="ring" r="8.5" stroke="${PAPER}" stroke-width="5" fill="none" opacity="0"/></g>
-            <g class="eyeR"><path class="arc" fill="${PAPER}" stroke="url(#${U}-eyeRim)" stroke-width="1.1"/>
-              <ellipse class="oval" fill="${PAPER}" stroke="url(#${U}-eyeRim)" stroke-width="1.1"/><circle class="ring" r="8.5" stroke="${PAPER}" stroke-width="5" fill="none" opacity="0"/></g>
+            <g class="eyeL"><path class="arc" fill="${P.paper}" stroke="url(#${U}-eyeRim)" stroke-width="1.1"/>
+              <ellipse class="oval" fill="${P.paper}" stroke="url(#${U}-eyeRim)" stroke-width="1.1"/><circle class="ring" r="8.5" stroke="${P.paper}" stroke-width="5" fill="none" opacity="0"/></g>
+            <g class="eyeR"><path class="arc" fill="${P.paper}" stroke="url(#${U}-eyeRim)" stroke-width="1.1"/>
+              <ellipse class="oval" fill="${P.paper}" stroke="url(#${U}-eyeRim)" stroke-width="1.1"/><circle class="ring" r="8.5" stroke="${P.paper}" stroke-width="5" fill="none" opacity="0"/></g>
           </g>
-          <g class="badgeG" opacity="0"><circle r="11" cx="34" cy="-36" fill="url(#${U}-badge)" stroke="${PAPER}" stroke-width="4"/></g>
+          <g class="badgeG" opacity="0"><circle r="11" cx="34" cy="-36" fill="url(#${U}-badge)" stroke="${P.paper}" stroke-width="4"/></g>
         </g>`;
       wrap.appendChild(svg);
       this.stage.appendChild(wrap);
@@ -430,7 +473,7 @@
     ribbonFade(to) {
       const tok = ++this._ribbonGen;
       if (to > 0 && this.ribbons.length === 0) {
-        const cols = [...PALETTE].sort(() => Math.random() - 0.5);
+        const cols = [...this.pal.spectrum].sort(() => Math.random() - 0.5);
         for (let j = 0; j < 5; j++) {
           this.ribbons.push({
             tilt: Math.random() * Math.PI, speed: (2.2 + Math.random() * 1.6) * (j % 2 ? 1 : -1),
@@ -850,7 +893,7 @@
     _recallSwarm() { this.particles.forEach(p => { p.mode = 'return'; }); }
 
     /* ---------- small fx ---------- */
-    _ping(x, y, color = BLUE) { this.ringsFx.push({ x, y, r: 6, a: 0.55, color }); }
+    _ping(x, y, color = this.pal.accent) { this.ringsFx.push({ x, y, r: 6, a: 0.55, color }); }
     _burstTicks() {
       // little flat-color dashes that hang around the body and fizzle, like the source
       for (let i = 0; i < 16; i++) {
@@ -859,7 +902,7 @@
           x: this.pos.x + Math.cos(a) * d, y: this.pos.y + Math.sin(a) * d,
           vx: Math.cos(a) * 60, vy: Math.sin(a) * 60 - 30,
           ang: Math.random() * TAU, len: 8 + Math.random() * 9,
-          color: PALETTE[i % PALETTE.length], life: 1,
+          color: this.pal.spectrum[i % this.pal.spectrum.length], life: 1,
         });
       }
     }
@@ -1014,9 +1057,9 @@
         for (let b = 0; b < 3; b++) {
           // metallic: dark tail rising to a bright head where the dot is
           const g = ctxB.createLinearGradient(t0.x, t0.y, t1.x, t1.y);
-          g.addColorStop(0, mixc(PALETTE[b * 2], -0.35));
-          g.addColorStop(0.65, PALETTE[b * 2]);
-          g.addColorStop(1, mixc(PALETTE[b * 2], 0.5));
+          g.addColorStop(0, mixc(this.pal.spectrum[b * 2], -0.35));
+          g.addColorStop(0.65, this.pal.spectrum[b * 2]);
+          g.addColorStop(1, mixc(this.pal.spectrum[b * 2], 0.5));
           ctxB.strokeStyle = g;
           ctxB.beginPath();
           for (let i = 0; i < this.trail.length; i++) {
@@ -1074,7 +1117,7 @@
       // listening rings (behind the body)
       if (this.listenFx && this.t - this._lastRing > 0.8 / (0.4 + this.amp)) {
         this._lastRing = this.t;
-        this._ping(cx, cy, BLUE);
+        this._ping(cx, cy, this.pal.accent);
       }
       for (let i = this.ringsFx.length - 1; i >= 0; i--) {
         const r = this.ringsFx[i];
@@ -1103,7 +1146,7 @@
         }
         const wob = p.arrived ? Math.sin(this.t * 6 + p.phase) * 2 : 0;
         const px2 = p.x, py2 = p.y + wob;
-        ctxF.fillStyle = NAVY;
+        ctxF.fillStyle = this.pal.ink;
         ctxF.beginPath(); ctxF.arc(px2, py2, 5.5, 0, TAU); ctxF.fill();
         const aa = Math.atan2((p.ty + 16) - py2, p.tx - px2);
         ctxF.beginPath();
@@ -1112,7 +1155,7 @@
         ctxF.lineTo(px2 + Math.cos(aa - 1.35) * 5, py2 + Math.sin(aa - 1.35) * 5);
         ctxF.closePath(); ctxF.fill();
         // paper eyes on each pin so every piece stays "him"
-        ctxF.fillStyle = PAPER;
+        ctxF.fillStyle = this.pal.paper;
         ctxF.beginPath(); ctxF.arc(px2 + Math.cos(aa - 0.6) * 2.4, py2 + Math.sin(aa - 0.6) * 2.4, 1.1, 0, TAU); ctxF.fill();
         ctxF.beginPath(); ctxF.arc(px2 + Math.cos(aa + 0.6) * 2.4, py2 + Math.sin(aa + 0.6) * 2.4, 1.1, 0, TAU); ctxF.fill();
         // metallic glint
@@ -1164,10 +1207,10 @@
         ctxF.globalAlpha = h.on * 0.85; ctxF.lineWidth = 1.8; box(); ctxF.stroke();
         // his dispersion, creeping around the border
         ctxF.globalAlpha = h.on * 0.8;
-        ctxF.strokeStyle = '#ff9040'; ctxF.lineWidth = 2.4;
+        ctxF.strokeStyle = this.pal.fringeWarm; ctxF.lineWidth = 2.4;
         ctxF.setLineDash([per * 0.16, per * 0.84]); ctxF.lineDashOffset = -this.hlPhase;
         box(); ctxF.stroke();
-        ctxF.strokeStyle = '#57a8ff'; ctxF.lineWidth = 2.2;
+        ctxF.strokeStyle = this.pal.fringeCool; ctxF.lineWidth = 2.2;
         ctxF.setLineDash([per * 0.13, per * 0.87]); ctxF.lineDashOffset = this.hlPhase * 0.8 + per * 0.5;
         box(); ctxF.stroke();
         ctxF.setLineDash([]);

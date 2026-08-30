@@ -19,7 +19,9 @@ Design lineage: the Grok bot icon motion study (Benji Taylor) for the motion gra
 1. **One character, always.** It can split into 50 pieces, but every piece belongs to it and everything slurps back into one face. No cuts, no teleports: every state change is a morph.
 2. **Squash and stretch before every morph.** Wind-up squash, morph, overshoot, settle. This is what makes it feel alive instead of a sprite swap.
 3. **Eyes carry the emotion.** No mouth, ever. Arc eyes: upturned arc is happy, oval is alert, downturned arc is suspicious, low flat line is sleepy. Eye poses are the vocabulary.
-4. **Color is earned.** The body is always navy `#1e2a4a`, eyes are paper `#FAFAF7`, the badge is brand blue `#2563eb`. Rainbow appears only in high-energy states: working orbits, celebration ribbons, zoomies comet. Everything else is monochrome.
+4. **Color is earned.** The body is always dark, the eyes are always paper, and the badge is always the host's one accent. Rainbow appears only in high-energy states: working orbits, celebration ribbons, zoomies comet. Everything else is monochrome.
+
+   The actual hexes are the host's, not this file's. `character.js` ships a fallback palette so it runs standalone, and an embedder passes `opts.palette` to replace it. In Pool Forge that happens in `src/components/voice/Marco.tsx`, which reads `src/lib/brand.ts`, so the character wears the brand spectrum and no brand colour is ever written down twice. The rule that survives is the shape of the palette, not its values: dark body, paper eyes, one accent for pointing, five or six hues for the earned moments.
 5. **Energy is real.** Work costs stamina. Low stamina bleeds into every state: slower morphs, droopier lids, heavier breathing. Success gives a little back, rest gives a lot back. The user should be able to tell it has had a long day.
 6. **It respects the page.** pointer-events: none on the overlay. It points at things, it never blocks them.
 
