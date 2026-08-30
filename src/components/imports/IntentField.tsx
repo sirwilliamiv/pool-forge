@@ -66,7 +66,7 @@ export function IntentFieldRow({
   }, [committed])
 
   const band = score === null ? null : confidenceBand(score)
-  const rail = band === null ? 'bg-border' : BAND_RAIL_CLASSES[band]
+  const rail = band === null ? 'bg-theme-line' : BAND_RAIL_CLASSES[band]
 
   function commitRaw(raw: string | boolean) {
     const patch = descriptor.write(raw)
@@ -91,9 +91,9 @@ export function IntentFieldRow({
       data-blocking={blocking ? 'true' : 'false'}
       tabIndex={-1}
       className={cn(
-        'group relative flex scroll-mt-24 items-start gap-3 py-2 pl-4 pr-3 outline-none transition-colors',
-        'focus-visible:bg-pfAccentSoft',
-        blocking ? 'bg-errorSoft/50' : 'hover:bg-rowHover',
+        'group relative flex scroll-mt-24 items-start gap-3 py-2 pl-4 pr-3 outline-none transition-colors duration-brand ease-brand',
+        'focus-visible:bg-family-tint',
+        blocking ? 'bg-tint-blush/50' : 'hover:bg-theme-card',
       )}
     >
       <span
@@ -104,18 +104,18 @@ export function IntentFieldRow({
       <div className="min-w-0 flex-1 pt-0.5">
         <label
           htmlFor={descriptor.control.kind === 'boolean' ? undefined : controlId}
-          className="block text-[12px] font-medium leading-tight text-foreground"
+          className="block text-bodyS font-medium leading-tight text-theme-fg"
         >
           {descriptor.label}
         </label>
-        <p className="mt-0.5 text-[10.5px] leading-tight text-textMuted">{descriptor.hint}</p>
+        <p className="mt-0.5 text-formLabel leading-tight text-theme-muted">{descriptor.hint}</p>
         {blocking ? (
-          <p className="mt-1 text-[10.5px] font-medium leading-tight text-red-700">
+          <p className="mt-1 text-formLabel font-medium leading-tight text-brand-red">
             Correct or confirm this before applying.
           </p>
         ) : null}
         {rejected ? (
-          <p className="mt-1 text-[10.5px] leading-tight text-red-700">
+          <p className="mt-1 text-formLabel leading-tight text-brand-red">
             That value is not usable here, so nothing was saved.
           </p>
         ) : null}
@@ -125,8 +125,10 @@ export function IntentFieldRow({
         {descriptor.control.kind === 'number' ? (
           <div
             className={cn(
-              'flex w-full items-center gap-1 rounded-pfXs border px-2 focus-within:ring-2 focus-within:ring-pfAccent',
-              blocking ? 'border-pfError/50 bg-white' : 'border-transparent bg-rowHover focus-within:bg-white',
+              'flex w-full items-center gap-1 rounded-brand4 border px-2 focus-within:ring-2 focus-within:ring-family-accent',
+              blocking
+                ? 'border-brand-red/50 bg-theme-bg'
+                : 'border-transparent bg-theme-card focus-within:bg-theme-bg',
             )}
           >
             <input
@@ -142,9 +144,9 @@ export function IntentFieldRow({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               }}
-              className="w-full bg-transparent py-1.5 text-right text-[12px] tabular-nums outline-none disabled:opacity-50"
+              className="w-full bg-transparent py-1.5 text-right text-bodyS tabular-nums outline-none disabled:opacity-50"
             />
-            <span className="text-[10px] uppercase tracking-wider text-textMuted">
+            <span className="font-brandMono text-formLabel uppercase tracking-wider text-theme-muted">
               {descriptor.control.unit}
             </span>
           </div>
@@ -163,8 +165,10 @@ export function IntentFieldRow({
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
             }}
             className={cn(
-              'w-full rounded-pfXs border px-2 py-1.5 text-right text-[12px] outline-none focus:ring-2 focus:ring-pfAccent disabled:opacity-50',
-              blocking ? 'border-pfError/50 bg-white' : 'border-transparent bg-rowHover focus:bg-white',
+              'w-full rounded-brand4 border px-2 py-1.5 text-right text-bodyS outline-none focus:ring-2 focus:ring-family-accent disabled:opacity-50',
+              blocking
+                ? 'border-brand-red/50 bg-theme-bg'
+                : 'border-transparent bg-theme-card focus:bg-theme-bg',
             )}
           />
         ) : null}
@@ -176,8 +180,10 @@ export function IntentFieldRow({
             disabled={disabled}
             onChange={(e) => commitRaw(e.target.value)}
             className={cn(
-              'w-full rounded-pfXs border px-2 py-1.5 text-right text-[12px] outline-none focus:ring-2 focus:ring-pfAccent disabled:opacity-50',
-              blocking ? 'border-pfError/50 bg-white' : 'border-transparent bg-rowHover focus:bg-white',
+              'w-full rounded-brand4 border px-2 py-1.5 text-right text-bodyS outline-none focus:ring-2 focus:ring-family-accent disabled:opacity-50',
+              blocking
+                ? 'border-brand-red/50 bg-theme-bg'
+                : 'border-transparent bg-theme-card focus:bg-theme-bg',
             )}
           >
             {descriptor.control.options.map((option) => (
@@ -192,7 +198,7 @@ export function IntentFieldRow({
           <div
             role="group"
             aria-label={descriptor.label}
-            className="inline-flex overflow-hidden rounded-pfXs border border-border"
+            className="inline-flex overflow-hidden rounded-brand4 border border-theme-line"
           >
             {[true, false].map((option) => (
               <button
@@ -202,10 +208,10 @@ export function IntentFieldRow({
                 aria-pressed={committed === option}
                 onClick={() => commitRaw(option)}
                 className={cn(
-                  'px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50',
+                  'px-2.5 py-1 text-formLabel font-medium transition-colors duration-brand ease-brand disabled:opacity-50',
                   committed === option
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-white text-textMuted hover:bg-rowHover',
+                    ? 'bg-theme-fg text-theme-bg'
+                    : 'bg-theme-bg text-theme-muted hover:bg-theme-card',
                 )}
               >
                 {option ? 'Yes' : 'No'}
@@ -217,7 +223,7 @@ export function IntentFieldRow({
         <div className="flex items-center gap-1.5">
           {pending ? (
             <Loader2
-              className="h-3 w-3 animate-spin text-textFaint"
+              className="h-3 w-3 animate-spin text-theme-faint"
               aria-label="Saving correction"
             />
           ) : null}

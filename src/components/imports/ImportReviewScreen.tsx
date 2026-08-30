@@ -219,19 +219,24 @@ export function ImportReviewScreen({ project, session }: ImportReviewScreenProps
   )
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] min-w-[1024px] flex-col bg-canvas">
-      <header className="flex items-center gap-3 border-b border-border bg-white px-4 py-2">
+    <div
+      data-accent="azure"
+      className="flex h-[calc(100vh-3.5rem)] min-w-[1024px] flex-col bg-theme-card"
+    >
+      <header className="flex items-center gap-3 border-b border-theme-line bg-theme-bg px-4 py-2">
         <Link
           href={`/projects/${project.id}`}
-          className="flex items-center gap-1 text-[11.5px] text-textMuted transition-colors hover:text-foreground"
+          className="flex items-center gap-1 text-bodyS text-theme-muted transition-colors duration-brand ease-brand hover:text-theme-fg"
         >
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
           {project.name}
         </Link>
-        <span className="text-textFaint" aria-hidden>
+        <span className="text-theme-faint" aria-hidden>
           /
         </span>
-        <h1 className="text-[12.5px] font-semibold tracking-tight">Review imported design</h1>
+        <h1 className="text-bodyS font-semibold tracking-tight text-theme-fg">
+          Review imported design
+        </h1>
         <StatusPill status={status} appliedAtLabel={session.appliedAtLabel} />
 
         <div className="ml-auto flex items-center gap-2">
@@ -240,7 +245,7 @@ export function ImportReviewScreen({ project, session }: ImportReviewScreenProps
             size="sm"
             onClick={discardSession}
             disabled={discarding || readOnly}
-            className="text-textMuted hover:text-destructive"
+            className="text-theme-muted hover:text-brand-red"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
             Discard import
@@ -251,7 +256,7 @@ export function ImportReviewScreen({ project, session }: ImportReviewScreenProps
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_420px]">
         <section
           aria-label="Source image and detected geometry"
-          className="flex min-h-0 flex-col border-r border-border"
+          className="flex min-h-0 flex-col border-r border-theme-line"
         >
           <SourceImageTabs
             images={session.images}
@@ -317,7 +322,7 @@ export function ImportReviewScreen({ project, session }: ImportReviewScreenProps
               )}
             </ImageViewport>
           ) : (
-            <div className="flex flex-1 items-center justify-center bg-canvas text-sm text-textMuted">
+            <div className="flex flex-1 items-center justify-center bg-theme-card text-bodyS text-theme-muted">
               No source image is attached to this import.
             </div>
           )}
@@ -360,10 +365,10 @@ function StatusPill({
 }) {
   const tone =
     status === 'APPLIED'
-      ? 'border-emerald-600/25 bg-emerald-50 text-emerald-800'
+      ? 'border-brand-green/25 bg-tint-mint text-theme-fg'
       : status === 'DISCARDED'
-        ? 'border-border bg-rowHover text-textMuted'
-        : 'border-pfAccent/30 bg-pfAccentSoft text-sky-900'
+        ? 'border-theme-line bg-theme-card text-theme-muted'
+        : 'border-family-accent/30 bg-family-tint text-theme-fg'
 
   const label =
     status === 'APPLIED'
@@ -379,7 +384,7 @@ function StatusPill({
   return (
     <span
       className={cn(
-        'rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+        'rounded-full border px-2 py-0.5 font-brandMono text-formLabel uppercase tracking-wide',
         tone,
       )}
     >
@@ -397,9 +402,9 @@ function OverlayToggleBar({
 }) {
   const keys = Object.keys(OVERLAY_TOGGLE_LABELS) as (keyof OverlayToggleState)[]
   return (
-    <div className="flex items-center gap-1.5 border-b border-borderLight bg-white px-4 py-1.5">
-      <Layers className="h-3 w-3 shrink-0 text-textFaint" aria-hidden />
-      <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-textMuted">
+    <div className="flex items-center gap-1.5 border-b border-theme-lineSoft bg-theme-bg px-4 py-1.5">
+      <Layers className="h-3 w-3 shrink-0 text-theme-faint" aria-hidden />
+      <span className="mr-1 font-brandMono text-formLabel uppercase text-theme-muted">
         Overlays
       </span>
       {keys.map((key) => (
@@ -409,10 +414,10 @@ function OverlayToggleBar({
           aria-pressed={toggles[key]}
           onClick={() => onChange({ ...toggles, [key]: !toggles[key] })}
           className={cn(
-            'rounded-full border px-2 py-0.5 text-[10.5px] transition-colors',
+            'rounded-full border px-2 py-0.5 text-formLabel transition-colors duration-brand ease-brand',
             toggles[key]
-              ? 'border-pfAccent/40 bg-pfAccentSoft text-sky-900'
-              : 'border-border bg-white text-textFaint hover:bg-rowHover',
+              ? 'border-family-accent/40 bg-family-tint text-theme-fg'
+              : 'border-theme-line bg-theme-bg text-theme-faint hover:bg-theme-card',
           )}
         >
           {OVERLAY_TOGGLE_LABELS[key]}

@@ -18,23 +18,23 @@ export const BAND_LABELS: Record<ConfidenceBand, string> = {
 }
 
 const BAND_CLASSES: Record<ConfidenceBand, string> = {
-  high: 'border-emerald-600/30 bg-emerald-50 text-emerald-700',
-  medium: 'border-amber-500/40 bg-warnSoft text-amber-800',
+  high: 'border-brand-green/30 bg-tint-mint text-theme-fg',
+  medium: 'border-brand-orange/40 bg-tint-sand text-theme-fg',
   // Low is the one state that must be unmistakable across a dense pane, so it
   // is the only filled badge on the screen.
-  low: 'border-transparent bg-pfError text-white',
+  low: 'border-transparent bg-brand-red text-ink-black',
 }
 
 const DOT_CLASSES: Record<ConfidenceBand, string> = {
-  high: 'bg-emerald-600',
-  medium: 'bg-pfWarn',
-  low: 'bg-white',
+  high: 'bg-brand-green',
+  medium: 'bg-brand-orange',
+  low: 'bg-ink-black',
 }
 
 export const BAND_RAIL_CLASSES: Record<ConfidenceBand, string> = {
-  high: 'bg-emerald-500/60',
-  medium: 'bg-pfWarn',
-  low: 'bg-pfError',
+  high: 'bg-brand-green/60',
+  medium: 'bg-brand-orange',
+  low: 'bg-brand-red',
 }
 
 export function bandExplanation(band: ConfidenceBand): string {
@@ -64,7 +64,7 @@ export function ConfidenceBadge({ score, className }: ConfidenceBadgeProps) {
         data-band="unscored"
         title="The extractor did not score this field."
         className={cn(
-          'inline-flex shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-1.5 py-0.5 text-[10px] font-medium leading-none text-textFaint',
+          'inline-flex shrink-0 items-center gap-1 rounded-full border border-dashed border-theme-line px-1.5 py-0.5 font-brandMono text-formLabel leading-none text-theme-faint',
           className,
         )}
       >
@@ -83,7 +83,7 @@ export function ConfidenceBadge({ score, className }: ConfidenceBadgeProps) {
       title={bandExplanation(band)}
       aria-label={`Confidence ${percent} percent, ${BAND_LABELS[band].toLowerCase()}`}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none',
+        'inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-brandMono text-formLabel leading-none',
         BAND_CLASSES[band],
         className,
       )}

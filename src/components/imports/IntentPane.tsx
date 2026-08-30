@@ -1,7 +1,6 @@
 'use client'
 
 import { Info } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import type { DesignIntent } from '@/modules/imports/intent'
 import type { DesignIntentPatch } from '@/modules/imports/patch'
 import { FeatureList } from './FeatureList'
@@ -40,20 +39,20 @@ export function IntentPane({
   const blocking = new Set(unreviewed)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white">
-      <div className="border-b border-borderLight px-4 py-3">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-theme-bg">
+      <div className="border-b border-theme-lineSoft px-4 py-3">
         <ReviewQueue intent={intent} unreviewed={unreviewed} onJump={onJump} />
       </div>
 
       {intent.warnings.length > 0 ? (
-        <div className="border-b border-borderLight bg-warnSoft/60 px-4 py-2.5">
-          <h3 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-900">
+        <div className="border-b border-theme-lineSoft bg-tint-sand/60 px-4 py-2.5">
+          <h3 className="flex items-center gap-1.5 font-brandMono text-formLabel uppercase text-theme-fg">
             <Info className="h-3 w-3" aria-hidden />
             Extractor notes
           </h3>
           <ul className="mt-1 space-y-0.5">
             {intent.warnings.map((warning, index) => (
-              <li key={`${warning}-${index}`} className="text-[11px] leading-snug text-amber-900">
+              <li key={`${warning}-${index}`} className="text-formLabel leading-snug text-theme-fg">
                 {warning}
               </li>
             ))}
@@ -98,18 +97,12 @@ function IntentGroupSection({
     (group === 'features' && blocking.has('features') ? 1 : 0)
 
   return (
-    <section id={`intent-group-${group}`} className="border-b border-borderLight last:border-b-0">
-      <header className="sticky top-0 z-10 flex items-baseline gap-2 border-b border-borderLight bg-white/95 px-4 py-2 backdrop-blur">
-        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
-          {meta.label}
-        </h2>
-        <p className="min-w-0 flex-1 truncate text-[10.5px] text-textFaint">{meta.blurb}</p>
+    <section id={`intent-group-${group}`} className="border-b border-theme-lineSoft last:border-b-0">
+      <header className="sticky top-0 z-10 flex items-baseline gap-2 border-b border-theme-lineSoft bg-theme-bg/95 px-4 py-2 backdrop-blur">
+        <h2 className="font-brandMono text-formLabel uppercase text-theme-fg">{meta.label}</h2>
+        <p className="min-w-0 flex-1 truncate text-formLabel text-theme-faint">{meta.blurb}</p>
         {blockingCount > 0 ? (
-          <span
-            className={cn(
-              'shrink-0 rounded-full bg-pfError px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-white',
-            )}
-          >
+          <span className="shrink-0 rounded-full bg-brand-red px-1.5 py-0.5 font-brandMono text-formLabel uppercase tracking-wide text-ink-black">
             {blockingCount} to review
           </span>
         ) : null}
@@ -123,7 +116,7 @@ function IntentGroupSection({
           onCommit={onCommit}
         />
       ) : (
-        <div className="divide-y divide-borderLight">
+        <div className="divide-y divide-theme-lineSoft">
           {fields.map((descriptor) => (
             <IntentFieldRow
               key={descriptor.path}
@@ -156,10 +149,10 @@ function SiteExtras({ intent }: { intent: DesignIntent }) {
   if (!hasSetbacks && intent.site.notes.length === 0) return null
 
   return (
-    <div className="space-y-2 border-t border-borderLight px-4 py-2.5">
+    <div className="space-y-2 border-t border-theme-lineSoft px-4 py-2.5">
       {hasSetbacks && setbacks !== null ? (
         <div>
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-textMuted">
+          <h3 className="font-brandMono text-formLabel uppercase text-theme-muted">
             Setbacks read from the plan
           </h3>
           <dl className="mt-1 grid grid-cols-4 gap-1.5">
@@ -171,9 +164,11 @@ function SiteExtras({ intent }: { intent: DesignIntent }) {
                 ['Right', setbacks.right],
               ] as const
             ).map(([label, value]) => (
-              <div key={label} className="rounded-pfXs bg-rowHover px-2 py-1">
-                <dt className="text-[9.5px] uppercase tracking-wider text-textFaint">{label}</dt>
-                <dd className="text-[11.5px] tabular-nums">
+              <div key={label} className="rounded-brand4 bg-theme-card px-2 py-1">
+                <dt className="font-brandMono text-formLabel uppercase tracking-wider text-theme-faint">
+                  {label}
+                </dt>
+                <dd className="text-bodyS tabular-nums text-theme-fg">
                   {value === null ? 'Not read' : `${value} ft`}
                 </dd>
               </div>
@@ -184,12 +179,10 @@ function SiteExtras({ intent }: { intent: DesignIntent }) {
 
       {intent.site.notes.length > 0 ? (
         <div>
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-textMuted">
-            Notes
-          </h3>
+          <h3 className="font-brandMono text-formLabel uppercase text-theme-muted">Notes</h3>
           <ul className="mt-1 space-y-0.5">
             {intent.site.notes.map((note, index) => (
-              <li key={`${note}-${index}`} className="text-[11px] leading-snug text-textMuted">
+              <li key={`${note}-${index}`} className="text-formLabel leading-snug text-theme-muted">
                 {note}
               </li>
             ))}

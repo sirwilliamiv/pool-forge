@@ -152,12 +152,12 @@ export function ImageViewport({
           zoomAbout(event.clientX, event.clientY, event.deltaY < 0 ? 1.12 : 1 / 1.12)
         }}
         className={cn(
-          'relative min-h-0 flex-1 overflow-hidden bg-canvas',
+          'relative min-h-0 flex-1 overflow-hidden bg-theme-card',
           picking ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing',
         )}
         style={{
           backgroundImage:
-            'radial-gradient(circle at 1px 1px, rgba(15,23,42,0.07) 1px, transparent 0)',
+            'radial-gradient(circle at 1px 1px, color-mix(in oklch, var(--theme-fg), transparent 93%) 1px, transparent 0)',
           backgroundSize: '16px 16px',
         }}
       >
@@ -168,13 +168,13 @@ export function ImageViewport({
           <div
             ref={frameRef}
             onClick={handleFrameClick}
-            className="relative bg-white shadow-pfLg"
+            className="relative bg-theme-bg shadow-elevation1"
             style={{ width: widthPx, height: heightPx }}
           >
             {loadFailed ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 border border-dashed border-border bg-white text-center">
-                <ImageOff className="h-8 w-8 text-textFaint" aria-hidden />
-                <p className="max-w-[70%] text-sm text-textMuted">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 border border-dashed border-theme-line bg-theme-bg text-center">
+                <ImageOff className="h-8 w-8 text-theme-faint" aria-hidden />
+                <p className="max-w-[70%] text-bodyS text-theme-muted">
                   {imageLabel} could not be loaded.
                 </p>
               </div>
@@ -196,11 +196,11 @@ export function ImageViewport({
       </div>
 
       <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1">
-        <div className="pointer-events-auto flex items-center gap-0.5 rounded-pfMd border border-border bg-white p-0.5 shadow-pfSm">
+        <div className="pointer-events-auto flex items-center gap-0.5 rounded-brand12 border border-theme-line bg-theme-bg p-0.5 shadow-elevation1">
           <ViewportButton label="Zoom out" onClick={() => zoomAtCentre(1 / 1.25)}>
             <Minus className="h-3.5 w-3.5" />
           </ViewportButton>
-          <span className="w-12 text-center text-[11px] tabular-nums text-textMuted">
+          <span className="w-12 text-center text-bodyS tabular-nums text-theme-muted">
             {Math.round(zoom * 100)}%
           </span>
           <ViewportButton label="Zoom in" onClick={() => zoomAtCentre(1.25)}>
@@ -210,7 +210,7 @@ export function ImageViewport({
             <Maximize2 className="h-3.5 w-3.5" />
           </ViewportButton>
         </div>
-        <span className="pointer-events-none rounded-pfSm bg-white/80 px-2 py-1 text-[10px] text-textFaint">
+        <span className="pointer-events-none rounded-brand4 bg-theme-bg/80 px-2 py-1 font-brandMono text-formLabel text-theme-faint">
           Drag to pan, hold ctrl and scroll to zoom
         </span>
       </div>
@@ -233,7 +233,7 @@ function ViewportButton({
       title={label}
       aria-label={label}
       onClick={onClick}
-      className="rounded-pfXs p-1.5 text-textMuted transition-colors hover:bg-rowHover hover:text-foreground focus:outline-none focus:ring-2 focus:ring-pfAccent"
+      className="rounded-brand4 p-1.5 text-theme-muted transition-colors duration-brand ease-brand hover:bg-theme-card hover:text-theme-fg focus:outline-none focus:ring-2 focus:ring-family-accent"
     >
       {children}
     </button>

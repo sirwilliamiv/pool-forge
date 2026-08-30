@@ -27,11 +27,9 @@ export function ToolList({ tools }: ToolListProps) {
     <div className="space-y-8">
       {CATEGORY_ORDER.filter((cat) => grouped.has(cat)).map((cat) => (
         <section key={cat}>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="font-brandMono text-formLabel uppercase text-theme-muted">
             {cat}{' '}
-            <span className="ml-1 font-normal text-muted-foreground/70">
-              ({grouped.get(cat)?.length ?? 0})
-            </span>
+            <span className="ml-1 text-theme-faint">({grouped.get(cat)?.length ?? 0})</span>
           </h2>
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             {(grouped.get(cat) ?? []).map((t) => (
@@ -49,17 +47,17 @@ function ToolCard({ tool }: { tool: Tool }) {
     <Card>
       <CardHeader className="space-y-1 pb-3">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base">{tool.name}</CardTitle>
+          <CardTitle className="text-bodyL">{tool.name}</CardTitle>
           {tool.shortcut ? (
-            <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[11px] uppercase text-muted-foreground">
+            <kbd className="rounded-brand4 border border-theme-line bg-theme-card px-1.5 py-0.5 font-brandMono text-badge uppercase text-theme-muted">
               {tool.shortcut}
             </kbd>
           ) : null}
         </div>
-        <div className="text-xs text-muted-foreground">{tool.tooltip}</div>
+        <div className="text-bodyS text-theme-muted">{tool.tooltip}</div>
       </CardHeader>
-      <CardContent className="space-y-3 pt-0 text-xs">
-        <p className="text-foreground/80">{tool.description}</p>
+      <CardContent className="space-y-3 pt-0 text-bodyS">
+        <p className="text-theme-fg">{tool.description}</p>
         <Separator />
         <FieldGrid
           rows={[
@@ -75,10 +73,10 @@ function ToolCard({ tool }: { tool: Tool }) {
           <>
             <Separator />
             <div>
-              <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="mb-1 font-brandMono text-formLabel uppercase text-theme-muted">
                 Voice
               </div>
-              <ul className="space-y-0.5 text-xs italic text-muted-foreground">
+              <ul className="space-y-0.5 text-bodyS italic text-theme-muted">
                 {tool.voiceCommandExamples.map((ex, i) => (
                   <li key={i}>“{ex}”</li>
                 ))}
@@ -100,10 +98,8 @@ function FieldGrid({ rows }: { rows: [string, string][] }) {
     <dl className="grid grid-cols-[80px_1fr] gap-x-2 gap-y-1">
       {rows.map(([k, v]) => (
         <div key={k} className="contents">
-          <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {k}
-          </dt>
-          <dd className="break-words text-foreground/80">{v}</dd>
+          <dt className="font-brandMono text-formLabel uppercase text-theme-muted">{k}</dt>
+          <dd className="break-words text-theme-fg">{v}</dd>
         </div>
       ))}
     </dl>

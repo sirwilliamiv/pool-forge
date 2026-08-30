@@ -66,14 +66,14 @@ export function CalibrationPanel({
   if (!calibrating) {
     if (ppi === null) {
       return (
-        <div className="border-b border-pfError/25 bg-errorSoft px-4 py-3">
+        <div className="border-b border-brand-red/25 bg-tint-blush px-4 py-3">
           <div className="flex items-start gap-2.5">
-            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-700" aria-hidden />
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-brand-red" aria-hidden />
             <div className="min-w-0 flex-1">
-              <h3 className="text-[12px] font-semibold text-red-900">
+              <h3 className="text-bodyS font-semibold text-theme-fg">
                 This image has no scale, so no geometry can be applied.
               </h3>
-              <p className="mt-0.5 text-[11px] leading-snug text-red-800">
+              <p className="mt-0.5 text-formLabel leading-snug text-theme-fg">
                 No grid pitch, labeled dimension, or scale bar was resolved. Until a scale exists,
                 every footprint and every dimension derived from one stays out of the project.
                 Mark two points you know the real distance between and the rest follows.
@@ -89,30 +89,30 @@ export function CalibrationPanel({
     }
 
     return (
-      <div className="flex items-center gap-3 border-b border-borderLight bg-white px-4 py-2">
-        <Ruler className="h-3.5 w-3.5 shrink-0 text-pfAccentStrong" aria-hidden />
+      <div className="flex items-center gap-3 border-b border-theme-lineSoft bg-theme-bg px-4 py-2">
+        <Ruler className="h-3.5 w-3.5 shrink-0 text-family-accent" aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="text-[11.5px] text-foreground">
+          <p className="text-bodyS text-theme-fg">
             <span className="font-semibold tabular-nums">{ppi.toFixed(2)} px</span> per inch
-            <span className="text-textMuted">
+            <span className="text-theme-muted">
               {intent.scale.method === null
                 ? ''
                 : `, from ${METHOD_LABELS[intent.scale.method]}`}
             </span>
           </p>
-          <p className="text-[10.5px] text-textMuted">
+          <p className="text-formLabel text-theme-muted">
             One foot on the image measures {(ppi * 12).toFixed(1)} pixels. Turn on the derived grid
             to check it against the paper.
           </p>
         </div>
-        <span className="text-[10px] uppercase tracking-wide text-textFaint tabular-nums">
+        <span className="font-brandMono text-formLabel uppercase tracking-wide text-theme-faint tabular-nums">
           {Math.round(intent.scale.confidence * 100)}% confidence
         </span>
         <button
           type="button"
           onClick={onStart}
           disabled={disabled}
-          className="text-[11px] font-medium text-pfAccentStrong underline underline-offset-2 hover:text-sky-800 disabled:opacity-50"
+          className="text-formLabel font-medium text-family-accent underline underline-offset-2 hover:opacity-80 disabled:opacity-50"
         >
           Recalibrate
         </button>
@@ -123,14 +123,14 @@ export function CalibrationPanel({
   const step = points.length === 0 ? 1 : points.length === 1 ? 2 : 3
 
   return (
-    <div className="border-b border-pfAccent/30 bg-pfAccentSoft px-4 py-3">
+    <div className="border-b border-family-accent/30 bg-family-tint px-4 py-3">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="flex items-center gap-1.5 text-[12px] font-semibold text-sky-950">
+          <h3 className="flex items-center gap-1.5 text-bodyS font-semibold text-theme-fg">
             <Ruler className="h-3.5 w-3.5" aria-hidden />
             Two-point calibration
           </h3>
-          <ol className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+          <ol className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-formLabel">
             <CalibrationStep index={1} active={step === 1} done={step > 1}>
               Click the first point on the image
             </CalibrationStep>
@@ -143,22 +143,24 @@ export function CalibrationPanel({
           </ol>
 
           {pxDistance !== null ? (
-            <p className="mt-2 text-[11px] text-sky-900">
+            <p className="mt-2 text-formLabel text-theme-fg">
               Marked span measures{' '}
               <span className="font-semibold tabular-nums">{Math.round(pxDistance)} px</span>.
             </p>
           ) : null}
 
           {error !== null ? (
-            <p role="alert" className="mt-2 text-[11px] font-medium text-red-700">
+            <p role="alert" className="mt-2 text-formLabel font-medium text-brand-red">
               {error}
             </p>
           ) : null}
         </div>
 
         <div className="flex w-[300px] shrink-0 flex-col gap-1.5">
-          <label className="flex items-center gap-2 rounded-pfXs border border-sky-300 bg-white px-2 focus-within:ring-2 focus-within:ring-pfAccent">
-            <span className="text-[10px] uppercase tracking-wider text-textFaint">Real</span>
+          <label className="flex items-center gap-2 rounded-brand4 border border-family-accent/40 bg-theme-bg px-2 focus-within:ring-2 focus-within:ring-family-accent">
+            <span className="font-brandMono text-formLabel uppercase tracking-wider text-theme-faint">
+              Real
+            </span>
             <input
               type="text"
               inputMode="decimal"
@@ -170,11 +172,11 @@ export function CalibrationPanel({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && candidate !== null) onSubmit(candidate)
               }}
-              className="w-full bg-transparent py-1.5 text-right text-[12px] tabular-nums outline-none disabled:opacity-50"
+              className="w-full bg-transparent py-1.5 text-right text-bodyS tabular-nums outline-none disabled:opacity-50"
             />
           </label>
 
-          <p className="text-right text-[10.5px] text-sky-900">
+          <p className="text-right text-formLabel text-theme-fg">
             {candidate === null ? (
               step < 3 ? (
                 'Mark both points to continue.'
@@ -241,15 +243,15 @@ function CalibrationStep({
         className={cn(
           'flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold',
           done
-            ? 'bg-emerald-600 text-white'
+            ? 'bg-brand-green text-ink-white'
             : active
-              ? 'bg-pfAccentStrong text-white'
-              : 'bg-white text-textFaint',
+              ? 'bg-family-accent text-ink-white'
+              : 'bg-theme-bg text-theme-faint',
         )}
       >
         {done ? <Check className="h-2.5 w-2.5" aria-hidden /> : index}
       </span>
-      <span className={cn(active ? 'font-medium text-sky-950' : 'text-sky-900/70')}>
+      <span className={cn(active ? 'font-medium text-theme-fg' : 'text-theme-fg/70')}>
         {children}
       </span>
     </li>

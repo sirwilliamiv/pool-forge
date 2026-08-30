@@ -24,11 +24,11 @@ export interface ExtractionProgressProps {
 }
 
 const STATE_STYLES: Record<StageState, string> = {
-  PENDING: 'border-border bg-white text-textFaint',
-  RUNNING: 'border-pfAccent/40 bg-pfAccentSoft text-sky-900',
-  OK: 'border-emerald-600/25 bg-emerald-50 text-emerald-800',
-  FAILED: 'border-pfError/30 bg-errorSoft text-red-800',
-  BLOCKED: 'border-amber-500/30 bg-amber-50 text-amber-900',
+  PENDING: 'border-theme-line bg-theme-bg text-theme-faint',
+  RUNNING: 'border-family-accent/40 bg-family-tint text-theme-fg',
+  OK: 'border-brand-green/25 bg-tint-mint text-theme-fg',
+  FAILED: 'border-brand-red/30 bg-tint-blush text-theme-fg',
+  BLOCKED: 'border-brand-orange/30 bg-tint-sand text-theme-fg',
 }
 
 const STATE_WORDS: Record<StageState, string> = {
@@ -92,17 +92,15 @@ export function ExtractionProgress({
   return (
     <section
       aria-label={`Extraction progress for ${image.label}`}
-      className="border-b border-borderLight bg-white px-4 py-2.5"
+      className="border-b border-theme-lineSoft bg-theme-bg px-4 py-2.5"
     >
       <div className="flex items-center gap-3">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-textMuted">
-            Extraction
-          </h3>
-          <span className="text-[10.5px] tabular-nums text-textFaint">
+          <h3 className="font-brandMono text-formLabel uppercase text-theme-muted">Extraction</h3>
+          <span className="text-formLabel tabular-nums text-theme-faint">
             {done} of {total} stages
             {skipped > 0 ? (
-              <span className="text-amber-800">
+              <span className="text-theme-fg">
                 {' · stopped after '}
                 {STAGE_LABELS[image.blocked?.afterStage ?? 'CLASSIFY']}
               </span>
@@ -125,7 +123,7 @@ export function ExtractionProgress({
                 <div
                   title={STAGE_DESCRIPTIONS[stage]}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-pfXs border px-2 py-1',
+                    'flex items-center gap-1.5 rounded-brand4 border px-2 py-1',
                     STATE_STYLES[status],
                   )}
                 >
@@ -140,8 +138,8 @@ export function ExtractionProgress({
                   ) : (
                     <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden />
                   )}
-                  <span className="truncate text-[11px] font-medium">{STAGE_LABELS[stage]}</span>
-                  <span className="ml-auto text-[9.5px] uppercase tracking-wide opacity-80">
+                  <span className="truncate text-bodyS font-medium">{STAGE_LABELS[stage]}</span>
+                  <span className="ml-auto font-brandMono text-formLabel uppercase tracking-wide opacity-80">
                     {STATE_WORDS[status]}
                   </span>
                 </div>
@@ -168,7 +166,7 @@ export function ExtractionProgress({
       {image.blocked !== null ? (
         <div
           role="status"
-          className="mt-2 rounded-pfXs border border-amber-500/30 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900"
+          className="mt-2 rounded-brand4 border border-brand-orange/30 bg-tint-sand px-2.5 py-2 text-bodyS text-theme-fg"
         >
           <p className="flex gap-1.5">
             <Info className="mt-px h-3 w-3 shrink-0" aria-hidden />
@@ -183,7 +181,7 @@ export function ExtractionProgress({
       {failedStage !== null || error !== null ? (
         <div
           role="alert"
-          className="mt-2 rounded-pfXs border border-pfError/25 bg-errorSoft px-2.5 py-2 text-[11px] text-red-800"
+          className="mt-2 rounded-brand4 border border-brand-red/25 bg-tint-blush px-2.5 py-2 text-bodyS text-theme-fg"
         >
           {failedStage !== null ? (
             <p>
@@ -192,7 +190,7 @@ export function ExtractionProgress({
               extractor version. If it fails again, the image is likely too low resolution or too
               oblique to read.
               {image.stages[failedStage].errorRef === null ? null : (
-                <span className="ml-1 text-red-700">
+                <span className="ml-1 text-brand-red">
                   Support reference {image.stages[failedStage].errorRef}.
                 </span>
               )}
@@ -217,7 +215,7 @@ export function SourceImageTabs({ images, activeId, onSelect }: SourceImageTabsP
     <div
       role="tablist"
       aria-label="Source images"
-      className="flex items-center gap-1 border-b border-borderLight bg-white px-4 py-1.5"
+      className="flex items-center gap-1 border-b border-theme-lineSoft bg-theme-bg px-4 py-1.5"
     >
       {images.map((image) => {
         const { done, total, failedStage } = stageCompletion(image)
@@ -231,23 +229,23 @@ export function SourceImageTabs({ images, activeId, onSelect }: SourceImageTabsP
             aria-selected={active}
             onClick={() => onSelect(image.id)}
             className={cn(
-              'flex items-center gap-1.5 rounded-pfXs px-2.5 py-1 text-[11.5px] transition-colors',
+              'flex items-center gap-1.5 rounded-brand4 px-2.5 py-1 text-bodyS transition-colors duration-brand ease-brand',
               active
-                ? 'bg-rowActive font-medium text-sky-950'
-                : 'text-textMuted hover:bg-rowHover hover:text-foreground',
+                ? 'bg-family-tint font-medium text-theme-fg'
+                : 'text-theme-muted hover:bg-theme-card hover:text-theme-fg',
             )}
           >
             <span>{image.label}</span>
             <span
               className={cn(
-                'rounded-full px-1.5 py-px text-[9.5px] tabular-nums',
+                'rounded-full px-1.5 py-px text-formLabel tabular-nums',
                 failedStage !== null
-                  ? 'bg-errorSoft text-red-700'
+                  ? 'bg-tint-blush text-theme-fg'
                   : stoppedEarly
-                    ? 'bg-amber-50 text-amber-800'
+                    ? 'bg-tint-sand text-theme-fg'
                     : done === total
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-rowHover text-textFaint',
+                      ? 'bg-tint-mint text-theme-fg'
+                      : 'bg-theme-card text-theme-faint',
               )}
             >
               {done}/{total}
