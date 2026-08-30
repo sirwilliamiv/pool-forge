@@ -5,17 +5,29 @@ interface CommandListProps {
   commands: EditorCommand<unknown, unknown>[]
 }
 
-const CATEGORY_ORDER: CommandCategory[] = [
+export const CATEGORY_ORDER: CommandCategory[] = [
   'project',
+  'navigation',
   'canvas',
   'shape',
+  'sketch',
   'measurement',
+  'grade',
+  'site',
+  'scene',
+  'template',
+  'version',
+  'comment',
   'pricing',
   'validation',
   'export',
-  'template',
-  'auth',
+  'import',
+  'capture',
   'settings',
+  'auth',
+  'palette',
+  'context',
+  'guide',
 ]
 
 export function CommandList({ commands }: CommandListProps) {

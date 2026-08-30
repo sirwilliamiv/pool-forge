@@ -1,28 +1,31 @@
 import type { z } from 'zod'
 
-export type CommandCategory =
-  | 'project'
-  | 'canvas'
-  | 'shape'
-  | 'measurement'
-  | 'pricing'
-  | 'validation'
-  | 'export'
-  | 'template'
-  | 'auth'
-  | 'settings'
-  | 'scene'
-  | 'palette'
-  | 'navigation'
-  | 'context'
-  | 'grade'
-  | 'site'
-  | 'import'
-  | 'capture'
-  | 'comment'
-  | 'sketch'
-  | 'version'
-  | 'guide'
+export const COMMAND_CATEGORIES = [
+  'project',
+  'canvas',
+  'shape',
+  'measurement',
+  'pricing',
+  'validation',
+  'export',
+  'template',
+  'auth',
+  'settings',
+  'scene',
+  'palette',
+  'navigation',
+  'context',
+  'grade',
+  'site',
+  'import',
+  'capture',
+  'comment',
+  'sketch',
+  'version',
+  'guide',
+] as const
+
+export type CommandCategory = (typeof COMMAND_CATEGORIES)[number]
 
 export type CommandContext = {
   userId: string
