@@ -49,18 +49,18 @@ export function ForgotPasswordForm() {
               rendered differently for a known address would leak exactly what
               the wording is careful not to. */}
           {message ? (
-            <p data-testid="reset-result" className="text-sm text-muted-foreground">
+            <p data-testid="reset-result" className="text-bodyS text-theme-muted">
               {message}
             </p>
           ) : null}
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? <p className="text-bodyS text-brand-red">{error}</p> : null}
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? 'Sending…' : 'Send the link'}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            <Link href="/login" className="underline underline-offset-4">
+          <p className="text-bodyS text-theme-muted">
+            <Link href="/login" className="underline underline-offset-4 hover:text-theme-fg">
               Back to sign in
             </Link>
           </p>

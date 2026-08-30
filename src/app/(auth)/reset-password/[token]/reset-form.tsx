@@ -47,16 +47,16 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
               minLength={8}
               required
             />
-            <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+            <p className="text-bodyS text-theme-muted">At least 8 characters.</p>
           </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? <p className="text-bodyS text-brand-red">{error}</p> : null}
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? 'Saving…' : 'Save and sign in'}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            <Link href="/login" className="underline underline-offset-4">
+          <p className="text-bodyS text-theme-muted">
+            <Link href="/login" className="underline underline-offset-4 hover:text-theme-fg">
               Back to sign in
             </Link>
           </p>

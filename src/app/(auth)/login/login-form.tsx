@@ -70,11 +70,11 @@ export function LoginForm() {
             />
           </div>
           {DEV_LOGIN ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-bodyS text-theme-muted">
               Development build: the seeded demo account is filled in for you.
             </p>
           ) : null}
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? <p className="text-bodyS text-brand-red">{error}</p> : null}
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={pending}>
@@ -83,8 +83,8 @@ export function LoginForm() {
           {/* No "create one" link any more: Pool Forge is invite only, and a
               sign-up link that leads to a refusal is worse than no link. What a
               locked-out builder actually needs is the next line. */}
-          <p className="text-sm text-muted-foreground">
-            <Link href="/forgot-password" className="underline underline-offset-4">
+          <p className="text-bodyS text-theme-muted">
+            <Link href="/forgot-password" className="underline underline-offset-4 hover:text-theme-fg">
               Forgotten your password?
             </Link>
           </p>

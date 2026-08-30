@@ -36,8 +36,8 @@ export default async function InvitePage({
           <CardDescription>{preview.error}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            <Link href="/login" className="underline underline-offset-4">
+          <p className="text-bodyS text-theme-muted">
+            <Link href="/login" className="underline underline-offset-4 hover:text-theme-fg">
               Go to sign in
             </Link>
           </p>
