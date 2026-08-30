@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { ProjectStatus } from '@prisma/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -355,10 +355,10 @@ export function ProjectForm({
       <Card>
         <CardHeader>
           <CardTitle>Pool</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <CardDescription>
             Size, shape and depth come from the drawing. What you set here is the finish
             schedule that prints on the proposal and the construction packet.
-          </p>
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Read-only, and sourced from the one place depth lives. There used
@@ -366,8 +366,8 @@ export function ProjectForm({
               proposal printed the canvas depths, the checklist demanded these,
               and a single pool could report three different numbers. */}
           <div className="space-y-2 md:col-span-2">
-            <p className="text-sm font-medium leading-none">Depth</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="font-brandMono text-formLabel uppercase text-theme-fg">Depth</p>
+            <p className="text-bodyS text-theme-muted">
               {depth ? (
                 <>
                   {formatFeet(depth.shallowFt)} shallow / {formatFeet(depth.deepFt)} deep, from the
@@ -376,7 +376,10 @@ export function ProjectForm({
               ) : (
                 <>No pool drawn yet, so there is no depth to report. </>
               )}
-              <Link href={`/projects/${projectId}/editor`} className="text-primary hover:underline">
+              <Link
+                href={`/projects/${projectId}/editor`}
+                className="text-theme-fg underline-offset-4 hover:underline"
+              >
                 Set it in the editor
               </Link>
               .
@@ -412,10 +415,10 @@ export function ProjectForm({
       <Card>
         <CardHeader>
           <CardTitle>Equipment and options</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <CardDescription>
             These drive the quote, the checklist and the customer proposal. The model or spec
             under each one is printed on the documents; it never changes a price on its own.
-          </p>
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -444,7 +447,7 @@ export function ProjectForm({
                   ))}
                 </SelectContent>
               </Select>
-              <p id="equipment-sanitization-hint" className="text-xs text-muted-foreground">
+              <p id="equipment-sanitization-hint" className="text-bodyS text-theme-muted">
                 {form.saltSystemSelected
                   ? 'A salt system is on the quote and prints on the proposal.'
                   : 'Choosing a salt system adds it to the quote.'}
@@ -503,12 +506,12 @@ export function ProjectForm({
         </CardContent>
       </Card>
 
-      <Separator />
+      <Separator className="bg-theme-line" />
 
       <div className="flex items-center justify-end gap-3">
         {/* Said out loud, because an autosaving form that shows nothing leaves
             the user unsure whether their typing went anywhere. */}
-        <span aria-live="polite" className="text-sm text-muted-foreground">
+        <span aria-live="polite" className="font-brandMono text-badge text-theme-muted">
           {saveState === 'saving' && 'Saving…'}
           {saveState === 'saved' && 'Saved'}
           {saveState === 'error' && 'Not saved'}
@@ -613,7 +616,7 @@ function Option({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Checkbox id={id} name={id} checked={checked} onCheckedChange={(v) => onChange(v === true)} />
-        <Label htmlFor={id} className="text-sm">
+        <Label htmlFor={id} className="font-display normal-case tracking-normal text-bodyL text-theme-fg">
           {label}
         </Label>
       </div>
@@ -650,8 +653,8 @@ function Detail({
 }) {
   const hintId = `${id}-hint`
   return (
-    <div className="ml-6 max-w-md space-y-1.5 border-l border-border pl-4">
-      <Label htmlFor={id} className="text-xs font-normal text-muted-foreground">
+    <div className="ml-6 max-w-md space-y-1.5 border-l border-theme-line pl-4">
+      <Label htmlFor={id} className="text-theme-faint">
         {label}
       </Label>
       <Input
@@ -664,7 +667,7 @@ function Detail({
         aria-describedby={hintId}
         onChange={(e) => onChange(e.target.value)}
       />
-      <p id={hintId} className="text-xs text-muted-foreground">
+      <p id={hintId} className="text-bodyS text-theme-muted">
         {disabled ? disabledHint : 'Printed on the spec sheet. It does not change the price.'}
       </p>
     </div>

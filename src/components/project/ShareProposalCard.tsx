@@ -68,7 +68,7 @@ export function ShareProposalCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {accepted ? (
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          <div className="rounded-brand border border-theme-line bg-tint-mint px-3.5 py-2.5 text-bodyS text-ink-black">
             Accepted by {accepted.name} on {accepted.at}.
           </div>
         ) : null}
@@ -91,12 +91,12 @@ export function ShareProposalCard({
                 Copy
               </Button>
             </div>
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4 text-bodyS">
               <a
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary hover:underline"
+                className="text-theme-fg underline-offset-4 hover:underline"
               >
                 Open link
               </a>
@@ -104,7 +104,7 @@ export function ShareProposalCard({
                 type="button"
                 onClick={revoke}
                 disabled={pending}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-theme-muted transition-colors duration-brand ease-brand hover:text-theme-fg"
               >
                 Revoke
               </button>
@@ -112,7 +112,7 @@ export function ShareProposalCard({
           </>
         ) : (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-bodyS text-theme-muted">
               Create a private link the customer can open to view and accept this proposal. No
               sign-in required.
             </p>
