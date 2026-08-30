@@ -34,19 +34,19 @@ export function VoiceSettingsForm({ initial }: { initial: VoiceSettings }) {
   }
 
   return (
-    <label className="flex items-start gap-3 rounded-pfMd border border-border p-4">
+    <label className="flex items-start gap-3 rounded-brand16 border border-theme-line bg-theme-bg p-4">
       <input
         type="checkbox"
         checked={confirmDestructive}
         disabled={pending}
         onChange={event => change(event.target.checked)}
-        className="mt-0.5"
+        className="mt-0.5 accent-[color:var(--theme-fg)]"
       />
       <span>
-        <span className="text-sm font-medium text-foreground">
+        <span className="text-bodyL font-medium text-theme-fg">
           Ask before voice removes anything
         </span>
-        <span className="mt-1 block text-[12.5px] leading-relaxed text-textMuted">
+        <span className="mt-1 block text-bodyS leading-relaxed text-theme-muted">
           A dialog naming exactly what will be lost, which you have to accept. On by default,
           because a spoken confirmation is the assistant deciding you agreed from audio it may have
           misheard. With this off, voice deletes on a spoken yes alone.

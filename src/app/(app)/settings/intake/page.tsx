@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { IntakeLinksPanel, type IntakeLinkView } from '@/components/settings/IntakeLinksPanel'
+import { SettingsHeader } from '@/components/settings/SettingsHeader'
 import { listIntakeLinks, listIntakeSubmissions } from '@/modules/imports/intake/links'
 
 export const dynamic = 'force-dynamic'
@@ -53,52 +54,52 @@ export default async function IntakeSettingsPage() {
   const totalSubmissions = links.reduce((sum, link) => sum + link.submissionCount, 0)
 
   return (
-    <div className="container max-w-4xl space-y-8 py-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Customer uploads</h1>
-        <p className="text-sm text-muted-foreground">
-          Send a customer a link and they can drop in inspiration pictures, a sketch, or their
-          survey. Each submission arrives as a draft project with the images attached.
-          {' · '}
-          {totalSubmissions} submission{totalSubmissions === 1 ? '' : 's'} so far
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Link href="/dashboard" className="hover:underline">
-            ← Back to projects
-          </Link>
-        </p>
-      </div>
+    <div className="container max-w-4xl space-y-8 bg-theme-bg py-10 text-theme-fg">
+      <SettingsHeader
+        title="Customer uploads"
+        description={
+          <>
+            Send a customer a link and they can drop in inspiration pictures, a sketch, or their
+            survey. Each submission arrives as a draft project with the images attached.{' '}
+            <span className="font-brandMono text-formLabel uppercase text-theme-faint">
+              {totalSubmissions} submission{totalSubmissions === 1 ? '' : 's'} so far
+            </span>
+          </>
+        }
+      />
 
       <IntakeLinksPanel links={views} />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent submissions</CardTitle>
+          <CardTitle>Recent submissions</CardTitle>
         </CardHeader>
         <CardContent>
           {submissions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-bodyS text-theme-muted">
               Nothing yet. Submissions show up here and on your dashboard as draft projects.
             </p>
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-theme-line">
               {submissions.map((s) => (
                 <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
+                    <div className="truncate text-bodyS font-medium text-theme-fg">
                       {s.customerName ?? s.email ?? s.phone ?? 'Anonymous'}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="font-brandMono text-formLabel text-theme-muted">
                       via {s.linkLabel} · {fmtDate(s.createdAt)} · {s.imageCount} image
                       {s.imageCount === 1 ? '' : 's'}
                     </div>
                   </div>
                   {s.projectId === null ? (
-                    <span className="text-xs text-muted-foreground">No project</span>
+                    <span className="font-brandMono text-formLabel uppercase text-theme-faint">
+                      No project
+                    </span>
                   ) : (
                     <Link
                       href={`/projects/${s.projectId}`}
-                      className="text-sm font-medium hover:underline"
+                      className="text-bodyS font-medium text-theme-fg underline-offset-4 hover:underline"
                     >
                       {s.projectName ?? 'Open draft'}
                     </Link>

@@ -26,7 +26,7 @@ import {
 export type { CompanySettingsInput }
 
 const INPUT_CLASS =
-  'flex min-h-[7rem] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+  'flex min-h-[7rem] w-full rounded-brand border-0 bg-theme-field px-3.5 py-2 text-bodyL text-theme-fg transition-[background,box-shadow] duration-brand ease-brand placeholder:text-theme-faint hover:bg-[color-mix(in_oklch,var(--theme-fg),transparent_84%)] focus-visible:bg-theme-bg focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_1.5px_var(--theme-fg)] disabled:cursor-not-allowed disabled:opacity-45'
 
 export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput }) {
   const [pending, startTransition] = React.useTransition()
@@ -85,7 +85,7 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
       <Card>
         <CardHeader>
           <CardTitle>Branding</CardTitle>
-          <p className="text-sm text-muted-foreground">Shown on customer proposals.</p>
+          <p className="text-bodyS text-theme-muted">Shown on customer proposals.</p>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field id="company-name" label="Company name">
@@ -112,7 +112,7 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
                 type="color"
                 value={colorSwatch}
                 onChange={(e) => update('brandColor', e.target.value)}
-                className="h-9 w-12 rounded border"
+                className="h-9 w-12 rounded-brand border-0 bg-theme-field"
                 aria-label="Brand color picker"
               />
               <Input
@@ -130,7 +130,7 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
       <Card>
         <CardHeader>
           <CardTitle>Business details</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-bodyS text-theme-muted">
             Printed in the header of every proposal and permit document. Florida requires the
             contractor licence number on a pool contract.
           </p>
@@ -178,7 +178,7 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
       <Card>
         <CardHeader>
           <CardTitle>Pricing</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-bodyS text-theme-muted">
             Default sales tax applied to every quote subtotal, and how long a proposal stands.
           </p>
         </CardHeader>
@@ -213,7 +213,7 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
                 )
               }
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="font-brandMono text-formLabel text-theme-muted">
               Used to work out the expiration date a proposal prints when nobody sets one by hand.
             </p>
           </Field>
@@ -223,19 +223,19 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
       <Card>
         <CardHeader>
           <CardTitle>Payment schedule</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-bodyS text-theme-muted">
             Deposit and draws, printed on every proposal as dollar amounts against that job&apos;s
             total. Leave it empty and the proposal prints no schedule.
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {form.paymentSchedule.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No stages yet.</p>
+            <p className="text-bodyS text-theme-muted">No stages yet.</p>
           ) : null}
           {form.paymentSchedule.map((stage, index) => (
             <div key={index} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_7rem_1fr_auto]">
               <div className="space-y-1">
-                <Label htmlFor={`stage-label-${index}`} className="text-xs text-muted-foreground">
+                <Label htmlFor={`stage-label-${index}`}>
                   Stage
                 </Label>
                 <Input
@@ -247,7 +247,7 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor={`stage-percent-${index}`} className="text-xs text-muted-foreground">
+                <Label htmlFor={`stage-percent-${index}`}>
                   Percent
                 </Label>
                 <Input
@@ -266,7 +266,7 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor={`stage-due-${index}`} className="text-xs text-muted-foreground">
+                <Label htmlFor={`stage-due-${index}`}>
                   Due
                 </Label>
                 <Input
@@ -300,13 +300,19 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
             >
               Use a standard schedule
             </Button>
-            <span
-              className={
-                scheduleOff ? 'text-sm font-medium text-destructive' : 'text-sm text-muted-foreground'
-              }
-            >
-              Total: {scheduleTotal.toFixed(2)}%
-              {scheduleOff ? '. A schedule has to add up to 100% before it can be saved.' : ''}
+            <span className="flex flex-wrap items-center gap-2 text-bodyS">
+              <span
+                className={
+                  scheduleOff
+                    ? 'font-brandMono text-formLabel uppercase text-brand-red'
+                    : 'font-brandMono text-formLabel uppercase text-theme-muted'
+                }
+              >
+                Total: {scheduleTotal.toFixed(2)}%
+              </span>
+              {scheduleOff ? (
+                <span className="text-brand-red">A schedule has to add up to 100% before it can be saved.</span>
+              ) : null}
             </span>
           </div>
         </CardContent>
@@ -315,7 +321,7 @@ export function CompanySettingsForm({ initial }: { initial: CompanySettingsInput
       <Card>
         <CardHeader>
           <CardTitle>Proposal terms</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-bodyS text-theme-muted">
             The paragraph printed under Terms on every proposal. Leave it empty to print the
             default wording.
           </p>

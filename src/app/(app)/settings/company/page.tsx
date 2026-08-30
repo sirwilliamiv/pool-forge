@@ -1,8 +1,8 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { CompanySettingsForm } from '@/components/settings/CompanySettingsForm'
+import { SettingsHeader } from '@/components/settings/SettingsHeader'
 import {
   parsePaymentSchedule,
   type CompanySettingsInput,
@@ -52,15 +52,8 @@ export default async function CompanySettingsPage() {
   }
 
   return (
-    <div className="container space-y-6 py-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Company settings</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/dashboard" className="hover:underline">
-            ← Back to projects
-          </Link>
-        </p>
-      </div>
+    <div className="container space-y-8 bg-theme-bg py-10 text-theme-fg">
+      <SettingsHeader title="Company settings" />
       <CompanySettingsForm initial={initial} />
     </div>
   )

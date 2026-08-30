@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { auth } from '@/lib/auth'
@@ -9,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { SettingsHeader } from '@/components/settings/SettingsHeader'
 import { listPendingInvites } from '@/modules/invites/invites'
 import { NOT_A_TEAM_KEEPER, canManageTeam } from '@/modules/invites/permissions'
 import { listMembers } from '@/modules/invites/team'
@@ -46,7 +46,7 @@ export default async function TeamPage() {
 
   if (!canManageTeam(membership.role)) {
     return (
-      <div className="container space-y-6 py-8">
+      <div className="container space-y-8 bg-theme-bg py-10 text-theme-fg">
         <Header orgName={org.name} />
         <Card>
           <CardHeader>
@@ -78,7 +78,7 @@ export default async function TeamPage() {
   }))
 
   return (
-    <div className="container space-y-6 py-8">
+    <div className="container space-y-8 bg-theme-bg py-10 text-theme-fg">
       <Header orgName={org.name} />
       <TeamScreen
         members={memberRows}
@@ -92,14 +92,11 @@ export default async function TeamPage() {
 
 function Header({ orgName }: { orgName: string }) {
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
-      <p className="text-sm text-muted-foreground">
-        {orgName} ·{' '}
-        <Link href="/dashboard" className="hover:underline">
-          Back to projects
-        </Link>
-      </p>
-    </div>
+    <SettingsHeader
+      title="Team"
+      description={
+        <span className="font-brandMono text-formLabel uppercase text-theme-faint">{orgName}</span>
+      }
+    />
   )
 }

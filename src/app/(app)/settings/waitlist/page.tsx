@@ -15,6 +15,7 @@ import { notFound, redirect } from 'next/navigation'
 
 import { auth } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { SettingsHeader } from '@/components/settings/SettingsHeader'
 import {
   listWaitlistSignups,
   parseSignupSort,
@@ -54,19 +55,17 @@ export default async function WaitlistSettingsPage({
   const waiting = rows.length - invited
 
   return (
-    <div className="container space-y-6 py-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Waitlist</h1>
-        <p className="text-sm text-muted-foreground">
-          {rows.length} signup{rows.length === 1 ? '' : 's'} · {waiting} waiting · {invited} invited
-          {rows.length === SIGNUP_PAGE_LIMIT ? ` · showing the first ${SIGNUP_PAGE_LIMIT}` : ''}
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Link href="/dashboard" className="hover:underline">
-            ← Back to projects
-          </Link>
-        </p>
-      </div>
+    <div className="container space-y-8 bg-theme-bg py-10 text-theme-fg">
+      <SettingsHeader
+        title="Waitlist"
+        description={
+          <span className="font-brandMono text-formLabel uppercase text-theme-faint">
+            {rows.length} signup{rows.length === 1 ? '' : 's'} · {waiting} waiting · {invited}{' '}
+            invited
+            {rows.length === SIGNUP_PAGE_LIMIT ? ` · showing the first ${SIGNUP_PAGE_LIMIT}` : ''}
+          </span>
+        }
+      />
 
       <nav className="flex flex-wrap gap-2" aria-label="Sort signups">
         {SORT_TABS.map((tab) => (
@@ -76,8 +75,8 @@ export default async function WaitlistSettingsPage({
             aria-current={tab.value === sort ? 'true' : undefined}
             className={
               tab.value === sort
-                ? 'rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground'
-                : 'rounded-md border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground'
+                ? 'rounded-brand bg-theme-fg px-3 py-1.5 text-bodyS text-theme-bg'
+                : 'rounded-brand px-3 py-1.5 text-bodyS text-theme-muted shadow-[inset_0_0_0_1px_var(--theme-border)] hover:text-theme-fg'
             }
           >
             {tab.label}
@@ -87,11 +86,11 @@ export default async function WaitlistSettingsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Signups</CardTitle>
+          <CardTitle>Signups</CardTitle>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-bodyS text-theme-muted">
               Nobody has asked yet. The form is at{' '}
               <Link href="/request-access" className="underline underline-offset-4">
                 /request-access
@@ -100,9 +99,9 @@ export default async function WaitlistSettingsPage({
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-sm">
+              <table className="w-full min-w-[900px] text-bodyS">
                 <thead>
-                  <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-theme-line text-left font-brandMono text-formLabel uppercase text-theme-muted">
                     <th scope="col" className="py-2 pr-4 font-medium">
                       Arrived
                     </th>
@@ -128,13 +127,17 @@ export default async function WaitlistSettingsPage({
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.id} className="border-b align-top last:border-0" data-testid="waitlist-row">
-                      <td className="whitespace-nowrap py-3 pr-4 text-muted-foreground">
+                    <tr
+                      key={row.id}
+                      className="border-b border-theme-line align-top last:border-0"
+                      data-testid="waitlist-row"
+                    >
+                      <td className="whitespace-nowrap py-3 pr-4 font-brandMono text-formLabel text-theme-muted">
                         {fmtDate(row.createdAt)}
                       </td>
                       <td className="py-3 pr-4">
-                        <div className="font-medium">{row.name ?? ''}</div>
-                        <div className="text-muted-foreground">{row.company ?? ''}</div>
+                        <div className="font-medium text-theme-fg">{row.name ?? ''}</div>
+                        <div className="text-theme-muted">{row.company ?? ''}</div>
                       </td>
                       <td className="py-3 pr-4">
                         <a
@@ -144,14 +147,18 @@ export default async function WaitlistSettingsPage({
                         >
                           {row.email}
                         </a>
-                        <div className="text-muted-foreground">{row.phone ?? ''}</div>
+                        <div className="font-brandMono text-formLabel text-theme-muted">
+                          {row.phone ?? ''}
+                        </div>
                       </td>
                       <td className="py-3 pr-4">{labelFor(TEAM_SIZE_OPTIONS, row.teamSize)}</td>
                       <td className="py-3 pr-4">{labelFor(USES_TODAY_OPTIONS, row.usesToday)}</td>
-                      <td className="max-w-[24rem] py-3 pr-4 text-muted-foreground">
+                      <td className="max-w-[24rem] py-3 pr-4 text-theme-muted">
                         {row.note ?? ''}
                         {row.source === null ? null : (
-                          <div className="mt-1 text-xs text-muted-foreground">via {row.source}</div>
+                          <div className="mt-1 font-brandMono text-formLabel text-theme-faint">
+                            via {row.source}
+                          </div>
                         )}
                       </td>
                       <td className="whitespace-nowrap py-3">
@@ -165,18 +172,18 @@ export default async function WaitlistSettingsPage({
                           {row.invitedAt === null ? (
                             <button
                               type="submit"
-                              className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent"
+                              className="rounded-brand px-2.5 py-1 font-brandMono text-formLabel uppercase text-theme-fg shadow-[inset_0_0_0_1px_var(--theme-border)] transition-[background] duration-brand ease-brand hover:bg-theme-card"
                             >
                               Mark invited
                             </button>
                           ) : (
                             <>
-                              <span className="rounded-full bg-pfAccentSoft px-2.5 py-1 text-xs text-pfAccentStrong">
+                              <span className="rounded-full bg-tint-honeydew px-2.5 py-1 font-brandMono text-formLabel uppercase text-brand-green">
                                 Invited {fmtDate(row.invitedAt)}
                               </span>
                               <button
                                 type="submit"
-                                className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                                className="font-brandMono text-formLabel uppercase text-theme-muted underline underline-offset-4 hover:text-theme-fg"
                               >
                                 Undo
                               </button>
