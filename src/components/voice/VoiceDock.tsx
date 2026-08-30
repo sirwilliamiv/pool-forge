@@ -191,6 +191,12 @@ export function VoiceDock() {
     })
   }, [router])
 
+  // A highlight is an answer to a question about this page. Navigating away
+  // makes it a ring around nothing, so it does not survive the move.
+  useEffect(() => {
+    useGuideStore.getState().clear()
+  }, [pathname])
+
   // Above the early return, or the hook count changes between renders and
   // React tears the component down mid-session with "rendered more hooks than
   // during the previous render".

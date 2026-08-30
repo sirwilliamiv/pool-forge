@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { dispatch } from '@/lib/commands/dispatch'
+import { useGuideStore } from '@/modules/guide/store'
 
 import {
   getVoiceBridge,
@@ -305,7 +306,11 @@ export function useVoiceSession(
       current.onTurnComplete(() => {
         startNewLine.current = true
       }),
-      current.onTranscript(event => addLine(event.role, event.text)),
+      current.onTranscript(event => {
+        // A new question about the page makes the last answer's rings stale.
+        if (event.role === 'user') useGuideStore.getState().clear()
+        addLine(event.role, event.text)
+      }),
       current.onClosed(reason => {
         void teardown()
         void releaseBudget()

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 
 import { Marco } from '@/components/voice/Marco'
+import { useGuideStore } from '@/modules/guide/store'
 
 describe('Marco', () => {
   // The one rule. He stands over the drawing, and on this product the drawing
@@ -29,5 +30,13 @@ describe('Marco', () => {
   it('survives being unmounted while still loading', () => {
     const { unmount } = render(<Marco state="idle" />)
     expect(() => unmount()).not.toThrow()
+  })
+})
+
+describe('guide store', () => {
+  it('clearing empties the highlight list', () => {
+    useGuideStore.getState().point(['tool.line', 'tool.curve'])
+    useGuideStore.getState().clear()
+    expect(useGuideStore.getState().highlighted).toEqual([])
   })
 })

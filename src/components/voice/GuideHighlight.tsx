@@ -57,16 +57,26 @@ export function GuideHighlight() {
       setBoxes(next)
     }
 
+    function onPointerDown(event: PointerEvent) {
+      // Clicking anywhere means the user found what they were looking for,
+      // except the dock itself: "Explain this page" must not clear its own tour.
+      const target = event.target as Element | null
+      if (target?.closest('[data-marco-actions]')) return
+      useGuideStore.getState().clear()
+    }
+
     measure()
     // Passive, and on the window with capture: panels scroll, the inspector
     // scrolls, and the ring has to follow all of it without owning a listener
     // per container.
     window.addEventListener('scroll', measure, { passive: true, capture: true })
     window.addEventListener('resize', measure, { passive: true })
+    window.addEventListener('pointerdown', onPointerDown, { capture: true })
     const timer = window.setInterval(measure, 400)
     return () => {
       window.removeEventListener('scroll', measure, { capture: true })
       window.removeEventListener('resize', measure)
+      window.removeEventListener('pointerdown', onPointerDown, { capture: true })
       window.clearInterval(timer)
     }
   }, [ids])
