@@ -59,7 +59,34 @@ test.describe('Marco', () => {
     await marco.hover()
     await page.getByRole('button', { name: /Explain this page/i }).click()
 
-    await expect(page.locator('[data-guide-ring]').first()).toBeVisible({ timeout: 10_000 })
+    // A bare "some ring exists" used to pass here because the TopNav links
+    // (Price book, Team, Company) leak through as resolvable dashboard
+    // targets on every page. The real claim is that intake.create itself
+    // rings, which is the control this page is actually about.
+    await expect(page.locator('[data-guide-ring="intake.create"]')).toBeVisible({
+      timeout: 10_000,
+    })
+  })
+
+  // The occlusion rule (resolve.ts's elementFromPoint hit test) is what makes
+  // the assertion above meaningful: without it, a covered TopNav link would
+  // still count as found. This proves the refusal side of that same rule.
+  test('refuses a target the editor covers', async ({ page }) => {
+    await signInAsDemo(page)
+    await page.goto('/projects/seed-project-demo/editor')
+    const drawing = page.locator('main canvas').first()
+    await expect(drawing).toBeVisible({ timeout: 60_000 })
+
+    const unresolved: string[] = await page.evaluate(
+      () =>
+        (window as unknown as { __pfGuide: { resolve(s: string): string[] } }).__pfGuide.resolve(
+          'dashboard',
+        ),
+    )
+    // nav.priceBook is a dashboard target for the TopNav "Price book" link.
+    // The editor's own chrome sits over the TopNav here, so the link exists
+    // in the DOM but the hit test at its centre lands on something else.
+    expect(unresolved).toContain('nav.priceBook')
   })
 
   test('explaining the page rings real controls, and never the drawing', async ({ page }) => {

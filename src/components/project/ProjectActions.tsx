@@ -133,6 +133,12 @@ export function ProjectActions({ project }: ProjectActionsProps) {
             <Button
               variant="outline"
               size="sm"
+              // The visible text is "Construction packet" plus a separate
+              // "11×17" badge with no whitespace between them in the DOM, so
+              // textContent reads as "Construction packet11×17" with nothing
+              // to anchor a prefix match on. An explicit aria-label gives the
+              // guide (and screen readers) the name people would actually say.
+              aria-label="Construction packet"
               onClick={() =>
                 runExportCommand('export.constructionPacket', {
                   projectId: project.id,

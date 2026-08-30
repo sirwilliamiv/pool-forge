@@ -16,7 +16,7 @@ import { MarcoActions } from './MarcoActions'
 import { GuideHighlight } from './GuideHighlight'
 import { useGuideStore } from '@/modules/guide/store'
 import { resolveTarget } from '@/modules/guide/resolve'
-import { GUIDE_TARGETS, targetById } from '@/modules/guide/targets'
+import { GUIDE_TARGETS, targetById, targetsFor, type GuideScreen } from '@/modules/guide/targets'
 
 interface ClickReport {
   label: string
@@ -199,6 +199,17 @@ export function VoiceDock() {
         })),
       }
     })
+
+    if (process.env.NODE_ENV !== 'production') {
+      // Playwright resolves every declared target against the live page. A
+      // renamed button fails the spec, not a user asking where something is.
+      ;(window as unknown as Record<string, unknown>).__pfGuide = {
+        resolve: (screen: string) =>
+          targetsFor(screen as GuideScreen)
+            .filter(target => resolveTarget(document, target) === null)
+            .map(target => target.id),
+      }
+    }
   }, [router])
 
   // A highlight is an answer to a question about this page. Navigating away
