@@ -223,6 +223,20 @@
     transform-box: fill-box;
     transform-origin: center;
   }
+
+  /* Slow. A parasol turns because there is a breeze, not because it is a
+     spinner, and at spinner speed it stops reading as furniture. */
+  .pf-pool-parasol {
+    animation: pf-pool-parasol 9s linear infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+}
+
+@keyframes pf-pool-parasol {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pf-pool-hue {
