@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 
 import { LOADING_MIN_MS, holdRemaining } from '@/lib/loading-rhythm'
-import { LoadingScreen } from '@/components/dashboard/LoadingScreen'
+import { PageLoading } from '@/components/monitoring/PageLoading'
 
 describe('the loading rhythm', () => {
   it('owes nothing when the screen never appeared', () => {
@@ -22,7 +22,7 @@ describe('the loading rhythm', () => {
   })
 })
 
-describe('the loading screen overlay', () => {
+describe('the loading pool holdover', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -31,53 +31,48 @@ describe('the loading screen overlay', () => {
     cleanup()
     vi.runAllTimers()
     vi.useRealTimers()
-    document.getElementById('pf-route-loading')?.remove()
+    document.querySelector('[data-loading-hold]')?.remove()
   })
 
-  const overlay = () => document.getElementById('pf-route-loading')
+  const holdover = () => document.querySelector('[data-loading-hold]')
 
-  it('appears when the fallback mounts', () => {
-    render(<LoadingScreen />)
-    expect(overlay()).not.toBeNull()
-    expect(overlay()?.getAttribute('role')).toBe('status')
-  })
-
-  // The rule the component exists for: a page that arrives instantly must not
-  // blink the screen away, it stays for the minimum and then fades.
+  // The rule the hold exists for: a page that arrives instantly must not blink
+  // the pool away. The fallback unmounts, the clone stays for the minimum.
   it('outlives a fast page and holds for the minimum', () => {
-    const { unmount } = render(<LoadingScreen />)
+    const { unmount } = render(<PageLoading what="this project" />)
     vi.advanceTimersByTime(50)
     unmount()
-    expect(overlay()?.getAttribute('data-loading-screen')).toBe('shown')
+    expect(holdover()?.getAttribute('data-loading-hold')).toBe('shown')
     vi.advanceTimersByTime(LOADING_MIN_MS - 60)
-    expect(overlay()?.getAttribute('data-loading-screen')).toBe('shown')
+    expect(holdover()?.getAttribute('data-loading-hold')).toBe('shown')
     vi.advanceTimersByTime(60)
-    expect(overlay()?.getAttribute('data-loading-screen')).toBe('leaving')
+    expect(holdover()?.getAttribute('data-loading-hold')).toBe('leaving')
     vi.advanceTimersByTime(300)
-    expect(overlay()).toBeNull()
+    expect(holdover()).toBeNull()
   })
 
-  it('leaves promptly when the page took longer than the minimum', () => {
-    const { unmount } = render(<LoadingScreen />)
+  it('holds a clone of the pool, not a different screen', () => {
+    const { unmount } = render(<PageLoading what="the price book" />)
+    vi.advanceTimersByTime(50)
+    unmount()
+    expect(holdover()?.textContent).toContain('Loading the price book')
+    expect(holdover()?.querySelector('svg')).not.toBeNull()
+  })
+
+  it('owes nothing when the page took longer than the minimum', () => {
+    const { unmount } = render(<PageLoading />)
     vi.advanceTimersByTime(LOADING_MIN_MS + 500)
     unmount()
-    vi.advanceTimersByTime(1)
-    expect(overlay()?.getAttribute('data-loading-screen')).toBe('leaving')
-    vi.advanceTimersByTime(300)
-    expect(overlay()).toBeNull()
+    expect(holdover()).toBeNull()
   })
 
-  it('reuses the overlay across back-to-back navigations instead of blinking', () => {
-    const first = render(<LoadingScreen />)
+  it('clears the holdover when the next fallback mounts', () => {
+    const first = render(<PageLoading />)
     vi.advanceTimersByTime(50)
     first.unmount()
-    const held = overlay()
-    expect(held).not.toBeNull()
-    render(<LoadingScreen />)
-    vi.advanceTimersByTime(LOADING_MIN_MS * 3)
-    // The second mount cancelled the first exit and the overlay is the same
-    // node, still up, waiting on the second navigation.
-    expect(overlay()).toBe(held)
-    expect(overlay()?.getAttribute('data-loading-screen')).toBe('shown')
+    expect(holdover()).not.toBeNull()
+    render(<PageLoading />)
+    // The live fallback is on screen; the clone's job is done.
+    expect(holdover()).toBeNull()
   })
 })

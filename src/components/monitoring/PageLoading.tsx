@@ -1,3 +1,9 @@
+'use client'
+
+import { useEffect, useRef } from 'react'
+
+import { holdLoadingFrom, markLoadingMounted } from '@/lib/loading-hold'
+
 // The full-page loading state.
 //
 // Designed once here so every route can drop a `loading.tsx` that renders it,
@@ -30,6 +36,12 @@
 // Reduced motion holds the water on brand blue and stops both the ripple and
 // the parasols. It still reads as a pool; nothing meaningful is carried by
 // movement alone.
+//
+// **And it keeps a minimum.** A pool that flashes for eighty milliseconds on
+// one navigation and sits for two seconds on the next feels like two different
+// apps, so once shown it stays up at least `LOADING_MIN_MS` and then fades.
+// React tears a Suspense fallback down the instant the page is ready, so the
+// hold happens outside React: see `src/lib/loading-hold.ts`.
 
 /**
  * A parasol from above: a disc with spokes.
@@ -61,8 +73,17 @@ export function PageLoading({
   /** The thing being loaded, lower case, as it would appear mid-sentence. */
   what?: string
 }) {
+  const stageRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    markLoadingMounted()
+    const stage = stageRef.current
+    return () => holdLoadingFrom(stage)
+  }, [])
+
   return (
     <div
+      ref={stageRef}
       role="status"
       aria-live="polite"
       className="flex min-h-[70vh] flex-col items-center justify-center gap-8 px-6 py-16"

@@ -1,6 +1,7 @@
-import { LoadingScreen } from '@/components/dashboard/LoadingScreen'
+import { PageLoading } from '@/components/monitoring/PageLoading'
 
-// The Suspense fallback for every navigation inside the app shell.
+// The safety net for any route in the app shell without its own loading.tsx:
+// route-level ones name what is loading and win when present.
 export default function Loading() {
-  return <LoadingScreen />
+  return <PageLoading />
 }
