@@ -6,11 +6,9 @@ import {
   serializeDrawingPayload,
 } from '@/modules/editor/drawing-payload'
 import { snapToGrid } from '@/modules/editor/interactions/drag'
-import {
-  PROPERTY_LINE_STENCIL,
-  STRUCTURE_STENCIL,
-} from '@/modules/editor/site/model'
+import { STRUCTURE_STENCIL } from '@/modules/editor/site/model'
 import { ShapeKind, type Shape, type StencilShape } from '@/modules/editor/state/shapes'
+import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
 import {
   buildingInsights,
   mapsEnabled,
@@ -23,20 +21,24 @@ import {
   type LatLng,
   type PointInches,
 } from '@/modules/site/geo/mercator'
-import { parcelAtPoint, regridEnabled } from '@/modules/site/geo/regrid'
 import {
   DEFAULT_SATELLITE,
   SITE_GEO_COMMANDS,
   satelliteImportPayloadSchema,
+  surveyOpacityPayloadSchema,
+  type SurveyOpacityPayload,
 } from '@/modules/site/geo/types'
 
 // Address to editor: the geographic commands.
 //
-// `site.address.set` pins the project to a point on Earth; the three imports
-// turn that point into a scaled backdrop, a lot boundary, and a house. The
-// backdrop is client state (survey store), so that command runs on the client
-// exactly like `import.intent.apply`'s echo pattern; the two shape imports
-// append to `Drawing.rootJson.shapes` in one transaction, never replacing.
+// `site.address.set` pins the project to a point on Earth; the two imports
+// turn that point into a scaled backdrop and a house. The backdrop is client
+// state (survey store), so that command runs on the client exactly like
+// `import.intent.apply`'s echo pattern; the building import writes to
+// `Drawing.rootJson.shapes` in one transaction, replacing only its own
+// previous import (tracked in `survey.importedBuildingShapeId`) and never any
+// other shape. Property lines are hand-drawn via the property-line stencil;
+// there is no parcel data provider.
 //
 // `db` is imported lazily so the registry stays loadable in the jsdom unit
 // tests that import every category to assert the catalog.
@@ -52,8 +54,6 @@ interface LocatedProject {
   id: string
   latitude: number | null
   longitude: number | null
-  parcelId: string | null
-  jurisdiction: string | null
 }
 
 /** Loads an org-scoped project with its site location, or an error result. */
@@ -68,8 +68,6 @@ async function loadProject(
       id: true,
       latitude: true,
       longitude: true,
-      parcelId: true,
-      jurisdiction: true,
     },
   })
   if (!project) return { ok: false, error: 'Project not found' }
@@ -117,52 +115,56 @@ function nextZIndex(shapes: Shape[]): number {
 }
 
 /**
- * Appends one shape to the project's drawing in a single transaction,
- * optionally filling parcel fields on the project where they are still null.
- * Appended, never replacing: an import adds to what is drawn.
+ * Puts the imported building onto the project's drawing in a single
+ * transaction. Other shapes are appended to, never replaced; the imported
+ * building is the one exception, because a second import is a refresh of the
+ * same house, not a second house. The previously imported shape (recorded in
+ * `rootJson.survey.importedBuildingShapeId`) is removed in the same
+ * transaction that appends the new one, and the new id is written back so the
+ * next import can do the same.
  */
-async function appendShape(args: {
+async function replaceImportedBuilding(args: {
   projectId: string
   drawingId: string | undefined
-  ctx: CommandContext
   makeShape: (existing: Shape[]) => StencilShape
-  parcelFill?: { parcelId: string | null; jurisdiction: string | null }
-  current?: { parcelId: string | null; jurisdiction: string | null }
 }): Promise<{ ok: true; shapeId: string } | { ok: false; error: string }> {
   const { db } = await import('@/lib/db')
 
-  // Resolved the same way `import.intent.apply` does: a project has one
-  // drawing, keyed by projectId. An explicit drawingId is accepted but must be
-  // that drawing; anything else is a caller pointing at the wrong project.
-  const drawing = await db.drawing.findUnique({
-    where: { projectId: args.projectId },
-    select: { id: true, rootJson: true },
-  })
-  if (args.drawingId && drawing && drawing.id !== args.drawingId) {
-    return { ok: false, error: 'That drawing does not belong to this project' }
-  }
-  if (args.drawingId && !drawing) {
-    return { ok: false, error: 'Drawing not found' }
-  }
-
-  const payload = parseDrawingPayload(drawing?.rootJson ?? { shapes: [], survey: null })
-  const shape = args.makeShape(payload.shapes)
-  const merged = { ...payload, shapes: [...payload.shapes, shape] }
-
-  // Only fields that are currently null are filled: parcel data must never
-  // overwrite what a builder entered by hand for the permit set.
-  const projectData: { parcelId?: string; jurisdiction?: string } = {}
-  if (args.parcelFill && args.current) {
-    if (args.current.parcelId === null && args.parcelFill.parcelId !== null) {
-      projectData.parcelId = args.parcelFill.parcelId
+  return db.$transaction(async tx => {
+    // Resolved the same way `import.intent.apply` does: a project has one
+    // drawing, keyed by projectId. An explicit drawingId is accepted but must
+    // be that drawing; anything else is a caller pointing at the wrong project.
+    const drawing = await tx.drawing.findUnique({
+      where: { projectId: args.projectId },
+      select: { id: true, rootJson: true },
+    })
+    if (args.drawingId && drawing && drawing.id !== args.drawingId) {
+      return { ok: false as const, error: 'That drawing does not belong to this project' }
     }
-    if (args.current.jurisdiction === null && args.parcelFill.jurisdiction !== null) {
-      projectData.jurisdiction = args.parcelFill.jurisdiction
+    if (args.drawingId && !drawing) {
+      return { ok: false as const, error: 'Drawing not found' }
     }
-  }
 
-  const writes = [
-    db.drawing.upsert({
+    const payload = parseDrawingPayload(drawing?.rootJson ?? { shapes: [], survey: null })
+    const priorBuildingId = payload.survey?.importedBuildingShapeId
+    const kept =
+      priorBuildingId === undefined
+        ? payload.shapes
+        : payload.shapes.filter(shape => shape.id !== priorBuildingId)
+
+    const shape = args.makeShape(kept)
+
+    // The id is recorded on the survey. A drawing with no underlay yet still
+    // needs it remembered, so a minimal survey carrying only the id is
+    // written; `parseSurvey` keeps it and the renderer ignores it (no image,
+    // no geo, nothing to show).
+    const survey: SurveyConfig = payload.survey
+      ? { ...payload.survey, importedBuildingShapeId: shape.id }
+      : ({ sourceImageId: '', importedBuildingShapeId: shape.id } as SurveyConfig)
+
+    const merged = { ...payload, shapes: [...kept, shape], survey }
+
+    await tx.drawing.upsert({
       where: { projectId: args.projectId },
       create: {
         projectId: args.projectId,
@@ -170,14 +172,10 @@ async function appendShape(args: {
         rootJson: serializeDrawingPayload(merged) as unknown as object,
       },
       update: { rootJson: serializeDrawingPayload(merged) as unknown as object },
-    }),
-    ...(Object.keys(projectData).length > 0
-      ? [db.project.update({ where: { id: args.projectId }, data: projectData })]
-      : []),
-  ]
-  await db.$transaction(writes)
+    })
 
-  return { ok: true, shapeId: shape.id }
+    return { ok: true as const, shapeId: shape.id }
+  })
 }
 
 /* ------------------------------------------------------ site.address.set */
@@ -202,8 +200,6 @@ const addressSetOutput = z.object({
   lat: z.number(),
   lng: z.number(),
   formattedAddress: z.string(),
-  parcelId: z.string().nullable(),
-  jurisdiction: z.string().nullable(),
 })
 
 type AddressSetOutput = z.infer<typeof addressSetOutput>
@@ -212,7 +208,7 @@ register({
   id: SITE_GEO_COMMANDS.addressSet,
   label: 'Set the site address',
   description:
-    'Pin the project to its street address. Stores the geocoded location that the satellite backdrop, parcel, and building imports all work from, and autofills the parcel number and jurisdiction when parcel data is configured and those fields are still empty.',
+    'Pin the project to its street address. Stores the geocoded location that the satellite backdrop and building imports both work from.',
   category: 'site',
   inputSchema: addressSetInput,
   outputSchema: addressSetOutput,
@@ -245,32 +241,64 @@ register({
       }
     }
 
-    // Parcel data is best-effort enrichment: a Regrid outage must not stop the
-    // address from being set.
-    const parcel = regridEnabled() ? await parcelAtPoint(resolved.lat, resolved.lng) : null
-
-    const data: {
-      siteAddress: string
-      sitePlaceId: string | null
-      latitude: number
-      longitude: number
-      parcelId?: string
-      jurisdiction?: string
-    } = {
+    // Only the location fields: parcel number and jurisdiction are permit
+    // fields the builder enters by hand, and this command never touches them.
+    const data = {
       siteAddress: resolved.formattedAddress,
       sitePlaceId: input.placeId ?? null,
       latitude: resolved.lat,
       longitude: resolved.lng,
     }
-    // Only where currently null: hand-entered permit fields are never overwritten.
-    if (parcel?.parcelId && project.parcelId === null) data.parcelId = parcel.parcelId
-    if (parcel?.jurisdiction && project.jurisdiction === null) {
-      data.jurisdiction = parcel.jurisdiction
-    }
 
     const { db } = await import('@/lib/db')
-    // updateMany keeps the org filter on the write, not just the read.
-    await db.project.updateMany({ where: { id: project.id, orgId: ctx.orgId }, data })
+    // One transaction: the project's new location, and the drawing catching up
+    // with it. A drawing whose survey has `geo` is showing the old address's
+    // satellite backdrop, so the geo is repointed at the new lat/lng with its
+    // dimensions recomputed (ground resolution varies with latitude; zoom and
+    // map pixels are kept), and the imported building shape is deleted: a
+    // house from the old address is meaningless at the new one. No other
+    // shape is touched, and a drawing without `geo` is left entirely alone.
+    await db.$transaction(async tx => {
+      // updateMany keeps the org filter on the write, not just the read.
+      await tx.project.updateMany({ where: { id: project.id, orgId: ctx.orgId }, data })
+
+      const drawing = await tx.drawing.findUnique({
+        where: { projectId: project.id },
+        select: { rootJson: true },
+      })
+      if (!drawing) return
+      const payload = parseDrawingPayload(drawing.rootJson)
+      const survey = payload.survey
+      if (!survey?.geo) return
+
+      const geo = { ...survey.geo, lat: resolved.lat, lng: resolved.lng }
+      const { widthInches, heightInches } = imageSizeInches(
+        resolved.lat,
+        geo.zoom,
+        geo.mapWidthPx,
+        geo.mapHeightPx,
+      )
+
+      const priorBuildingId = survey.importedBuildingShapeId
+      const shapes =
+        priorBuildingId === undefined
+          ? payload.shapes
+          : payload.shapes.filter(shape => shape.id !== priorBuildingId)
+
+      const nextSurvey: SurveyConfig = { ...survey, geo, widthInches, heightInches }
+      delete nextSurvey.importedBuildingShapeId
+
+      await tx.drawing.update({
+        where: { projectId: project.id },
+        data: {
+          rootJson: serializeDrawingPayload({
+            ...payload,
+            shapes,
+            survey: nextSurvey,
+          }) as unknown as object,
+        },
+      })
+    })
 
     return {
       ok: true,
@@ -279,8 +307,6 @@ register({
         lat: resolved.lat,
         lng: resolved.lng,
         formattedAddress: resolved.formattedAddress,
-        parcelId: data.parcelId ?? project.parcelId,
-        jurisdiction: data.jurisdiction ?? project.jurisdiction,
       },
     }
   },
@@ -338,98 +364,6 @@ register({
   },
 })
 
-/* ---------------------------------------------------- site.import.parcel */
-
-const importParcelOutput = z.object({
-  projectId: z.string(),
-  shapeId: z.string(),
-  pointCount: z.number().int(),
-  parcelId: z.string().nullable(),
-  jurisdiction: z.string().nullable(),
-})
-
-type ImportParcelOutput = z.infer<typeof importParcelOutput>
-
-register({
-  id: SITE_GEO_COMMANDS.importParcel,
-  label: 'Import the parcel boundary',
-  description:
-    'Draw the lot boundary from county parcel data as a property line on the drawing, and fill in the parcel number and jurisdiction where they are still empty. Assessor lines are tax-map approximations, drawn to be adjusted, not surveyed. Requires parcel data to be configured and the site address to be set.',
-  category: 'site',
-  inputSchema: z.object({
-    projectId: z.string().min(1),
-    drawingId: z.string().min(1).optional(),
-  }),
-  outputSchema: importParcelOutput,
-  voiceExamples: [
-    'Import the property line from the county.',
-    'Draw the parcel boundary.',
-    'Bring in the lot lines.',
-  ],
-  execute: async (input, ctx): Promise<CommandResult<ImportParcelOutput>> => {
-    const unauthenticated = notAuthenticated<ImportParcelOutput>(ctx)
-    if (unauthenticated) return unauthenticated
-
-    if (!regridEnabled()) {
-      return { ok: false, error: 'Parcel data is not configured for this deployment.' }
-    }
-
-    const loaded = await loadProject(input.projectId, ctx)
-    if (!loaded.ok) return { ok: false, error: loaded.error }
-    const project = loaded.project
-    const location = requireLocation(project)
-    if (!location.ok) return { ok: false, error: location.error }
-
-    const parcel = await parcelAtPoint(location.origin.lat, location.origin.lng)
-    if (!parcel) {
-      return { ok: false, error: 'No parcel was found at the site location.' }
-    }
-
-    // The parcel ring in editor inches, with the site origin at (0, 0): the
-    // same origin the satellite backdrop centres on, so they line up.
-    const points = parcel.polygon.map(vertex => projectToInches(location.origin, vertex))
-
-    // The property line stencil is an axis-aligned rectangle (see
-    // `site/model.ts`), so v1 lands the parcel's bounding box: the shape a
-    // builder then drags and resizes like any hand-drawn lot. Its LotLimits
-    // stay empty; setback numbers are entered, never invented.
-    const bounds = boundsOf(points)
-    const appended = await appendShape({
-      projectId: project.id,
-      drawingId: input.drawingId,
-      ctx,
-      makeShape: existing => ({
-        id: newShapeId('site-parcel'),
-        kind: ShapeKind.STENCIL,
-        stencilId: PROPERTY_LINE_STENCIL,
-        x: bounds.x,
-        y: bounds.y,
-        width: bounds.width,
-        height: bounds.height,
-        rotation: 0,
-        zIndex: nextZIndex(existing),
-        locked: false,
-        hidden: false,
-        name: 'Property line',
-      }),
-      parcelFill: { parcelId: parcel.parcelId, jurisdiction: parcel.jurisdiction },
-      current: { parcelId: project.parcelId, jurisdiction: project.jurisdiction },
-    })
-    if (!appended.ok) return { ok: false, error: appended.error }
-
-    return {
-      ok: true,
-      data: {
-        projectId: project.id,
-        shapeId: appended.shapeId,
-        pointCount: points.length,
-        parcelId: parcel.parcelId,
-        jurisdiction: parcel.jurisdiction,
-      },
-    }
-  },
-})
-
 /* -------------------------------------------------- site.import.building */
 
 const importBuildingOutput = z.object({
@@ -482,10 +416,9 @@ register({
     // building's bounding box: the representation `site/model.ts` already
     // reads for "from house" setbacks, so nothing downstream changes.
     const bounds = boundsOf(points)
-    const appended = await appendShape({
+    const appended = await replaceImportedBuilding({
       projectId: project.id,
       drawingId: input.drawingId,
-      ctx,
       makeShape: existing => ({
         id: newShapeId('site-building'),
         kind: ShapeKind.STENCIL,
@@ -512,5 +445,31 @@ register({
         heightInches: bounds.height,
       },
     }
+  },
+})
+
+/* -------------------------------------------------- site.survey.opacity */
+
+register({
+  id: SITE_GEO_COMMANDS.surveyOpacity,
+  runsOn: 'client',
+  label: 'Set the backdrop opacity',
+  description:
+    'Fade the satellite backdrop under the drawing. 1 is the full photo, lower values let the paper and grid read through it.',
+  category: 'site',
+  inputSchema: surveyOpacityPayloadSchema,
+  outputSchema: surveyOpacityPayloadSchema,
+  voiceExamples: [
+    'Fade the satellite photo.',
+    'Make the backdrop lighter.',
+    'Set the site photo opacity to fifty percent.',
+  ],
+  // Pure client concern: the server half only validates and echoes, and the
+  // handler in ClientCommandHandlers.tsx writes the survey store, which the
+  // editor autosaves like any other survey edit.
+  execute: async (input, ctx): Promise<CommandResult<SurveyOpacityPayload>> => {
+    const unauthenticated = notAuthenticated<SurveyOpacityPayload>(ctx)
+    if (unauthenticated) return unauthenticated
+    return { ok: true, data: surveyOpacityPayloadSchema.parse(input) }
   },
 })

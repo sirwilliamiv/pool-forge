@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,8 +21,11 @@ const DEBOUNCE_MS = 300
 /**
  * The site's address, autocompleted against real ones.
  *
- * Typing queries the autocomplete proxy (the key never reaches the browser);
- * picking a suggestion dispatches `site.address.set` through the command
+ * Typing queries the autocomplete proxy (the key never reaches the browser).
+ * Picking a suggestion only fills the input and reveals an explicit confirm
+ * button: changing the address rewrites the drawing's satellite geo and
+ * deletes the imported building, so it must never happen from a stray click on
+ * a suggestion. The confirm dispatches `site.address.set` through the command
  * registry, which geocodes the place, stores the location on the project, and
  * enables Import site in the editor. The session token groups one focus
  * session's keystrokes for Google's billing and is retired on pick.
@@ -40,6 +44,8 @@ export function SiteAddressCard({
   const [highlight, setHighlight] = React.useState(0)
   const [state, setState] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [error, setError] = React.useState<string | null>(null)
+  /** The picked-but-not-confirmed suggestion; the confirm button shows while set. */
+  const [pending, setPending] = React.useState<AddressSuggestion | null>(null)
 
   /** One token per focus session, minted lazily on the first keystroke. */
   const sessionRef = React.useRef<string | null>(null)
@@ -57,6 +63,9 @@ export function SiteAddressCard({
     setQuery(value)
     setState('idle')
     setError(null)
+    // Typing again is a change of mind: the confirm button goes away until a
+    // new suggestion is picked.
+    setPending(null)
     dirtyRef.current = true
     if (sessionRef.current === null) sessionRef.current = crypto.randomUUID()
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -86,34 +95,51 @@ export function SiteAddressCard({
     }, DEBOUNCE_MS)
   }
 
-  async function pick(suggestion: AddressSuggestion) {
+  function pick(suggestion: AddressSuggestion) {
     setOpen(false)
     setSuggestions([])
     setQuery(suggestion.description)
     // The billing session ends when the place is resolved; the next focus
     // session mints a fresh token.
     sessionRef.current = null
+    setState('idle')
+    setError(null)
+    // Picking only proposes. Nothing is dispatched until the person confirms:
+    // setting the address rewrites the drawing's site data, which is too much
+    // to hang off a click in a dropdown.
+    setPending(suggestion)
+  }
+
+  async function confirm() {
+    if (!pending || state === 'saving') return
     setState('saving')
     setError(null)
 
     const result = await dispatch('site.address.set', {
       projectId,
-      placeId: suggestion.placeId,
+      placeId: pending.placeId,
     })
     if (!result.ok) {
+      // The pick stands so the confirm can simply be tried again.
       setState('error')
       setError(result.error)
       return
     }
+    setPending(null)
     setState('saved')
-    // Jurisdiction and parcel ID may have been autofilled server-side; the
-    // form below reads them from the server, so re-render it.
+    // The address and location were written server-side; the page reads them
+    // from the server, so re-render it.
     router.refresh()
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!open || suggestions.length === 0) {
       if (e.key === 'Escape') setOpen(false)
+      // Enter while the confirm button shows is the confirm.
+      if (e.key === 'Enter' && pending) {
+        e.preventDefault()
+        void confirm()
+      }
       return
     }
     if (e.key === 'ArrowDown') {
@@ -125,7 +151,7 @@ export function SiteAddressCard({
     } else if (e.key === 'Enter') {
       e.preventDefault()
       const chosen = suggestions[highlight]
-      if (chosen) void pick(chosen)
+      if (chosen) pick(chosen)
     } else if (e.key === 'Escape') {
       e.preventDefault()
       setOpen(false)
@@ -179,7 +205,7 @@ export function SiteAddressCard({
                   onMouseEnter={() => setHighlight(index)}
                   onMouseDown={(e) => {
                     e.preventDefault()
-                    void pick(suggestion)
+                    pick(suggestion)
                   }}
                   className={
                     'cursor-pointer rounded-sm px-2 py-1.5 text-bodyS ' +
@@ -191,6 +217,11 @@ export function SiteAddressCard({
               ))}
             </ul>
           ) : null}
+          {pending ? (
+            <Button type="button" size="sm" className="mt-2" disabled={state === 'saving'} onClick={() => void confirm()}>
+              Set as project address
+            </Button>
+          ) : null}
           <p className="mt-1.5 text-bodyS text-theme-muted" aria-live="polite">
             {state === 'saving'
               ? 'Locating…'
@@ -198,9 +229,11 @@ export function SiteAddressCard({
                 ? 'Saved. Import site is now available in the editor.'
                 : state === 'error'
                   ? (error ?? 'Could not set the address.')
-                  : initialAddress
-                    ? `Saved: ${initialAddress}`
-                    : 'No site address on this project yet.'}
+                  : pending
+                    ? 'Not set yet. Confirm to use this address.'
+                    : initialAddress
+                      ? `Saved: ${initialAddress}`
+                      : 'No site address on this project yet.'}
           </p>
         </div>
       </CardContent>

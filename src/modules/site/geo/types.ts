@@ -29,14 +29,6 @@ export const addressSuggestionSchema = z.object({
 })
 export type AddressSuggestion = z.infer<typeof addressSuggestionSchema>
 
-/** A parcel polygon in editor inches, ready to become a property-line shape. */
-export const parcelOutlineSchema = z.object({
-  points: z.array(z.object({ xInches: z.number(), yInches: z.number() })).min(3),
-  parcelId: z.string().nullable(),
-  jurisdiction: z.string().nullable(),
-})
-export type ParcelOutline = z.infer<typeof parcelOutlineSchema>
-
 /** Output of site.import.satellite, consumed verbatim by the client handler
  * that writes the survey store. All dimensions in editor inches; x/y are the
  * backdrop's top-left, already snapped to the drag grid by the server. */
@@ -55,9 +47,15 @@ export type SatelliteImportPayload = z.infer<typeof satelliteImportPayloadSchema
 export const SITE_GEO_COMMANDS = {
   addressSet: 'site.address.set',
   importSatellite: 'site.import.satellite',
-  importParcel: 'site.import.parcel',
   importBuilding: 'site.import.building',
+  surveyOpacity: 'site.survey.opacity',
 } as const
+
+/** Input and echo of site.survey.opacity: the backdrop's transparency. */
+export const surveyOpacityPayloadSchema = z.object({
+  opacity: z.number().min(0.05).max(1),
+})
+export type SurveyOpacityPayload = z.infer<typeof surveyOpacityPayloadSchema>
 
 /** Default import: 640x640 at zoom 20 covers roughly a suburban lot. */
 export const DEFAULT_SATELLITE = { zoom: 20, mapWidthPx: 640, mapHeightPx: 640 } as const

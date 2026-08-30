@@ -995,17 +995,34 @@ const EXERCISES: Record<string, Exercise> = {
       'the scaled payload, which this harness cannot reach without a Project row; covered by ' +
       'src/test/integration/site-geo-commands.test.ts. The client half writes the survey store.',
   },
-  'site.import.parcel': {
-    kind: 'server',
-    why:
-      'Fetches the parcel from Regrid and appends a property line to Drawing.rootJson in the ' +
-      'database. Covered by src/test/integration/site-geo-commands.test.ts.',
-  },
   'site.import.building': {
     kind: 'server',
     why:
       'Fetches the building footprint from the Solar API and appends a house to Drawing.rootJson ' +
       'in the database. Covered by src/test/integration/site-geo-commands.test.ts.',
+  },
+  'site.survey.opacity': {
+    kind: 'mutates',
+    input: async () => {
+      useSurveyStore.getState().setSurvey({
+        sourceImageId: '',
+        x: 0,
+        y: 0,
+        widthInches: 1200,
+        heightInches: 1200,
+        opacity: 0.9,
+        locked: true,
+        calibrationPxDistance: 100,
+        calibrationRealInches: 260,
+        imageNaturalWidthPx: 1280,
+        imageNaturalHeightPx: 1280,
+        geo: { lat: 27.88, lng: -82.49, zoom: 20, mapWidthPx: 640, mapHeightPx: 640 },
+      })
+      return { opacity: 0.5 }
+    },
+    notUndoable:
+      'A viewing condition on the reference photo, like the sun clock: the drawing itself is ' +
+      'untouched, and the slider is its own way back.',
   },
 
   // ---------- scene ----------

@@ -37,6 +37,12 @@ export interface SurveyConfig {
   // re-fetch it through `/api/projects/[id]/satellite` at view time. Validated
   // by `surveyGeoSchema` on the way in from `rootJson`.
   geo?: SurveyGeo
+  // The shape id of the last building imported by `site.import.building`, set
+  // server-side when the shape is appended. Importing again replaces that
+  // shape instead of stacking a second house; changing the site address
+  // deletes it, because a building from the old address is meaningless at the
+  // new one.
+  importedBuildingShapeId?: string
 }
 
 interface SurveyState {

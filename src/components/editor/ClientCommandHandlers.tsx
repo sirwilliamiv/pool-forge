@@ -32,7 +32,7 @@ import {
   type FinishSlot,
 } from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
-import { useSurveyStore } from '@/modules/editor/state/surveyStore'
+import { useSurveyStore, type SurveyConfig } from '@/modules/editor/state/surveyStore'
 import { satelliteImportPayloadSchema } from '@/modules/site/geo/types'
 import { useViewStore, type FocusTarget } from '@/modules/editor/state/viewStore'
 import {
@@ -352,6 +352,7 @@ const HANDLER_IDS: string[] = [
   'site.structure.place',
   'site.describe',
   'site.import.satellite',
+  'site.survey.opacity',
   // scene category
   'sun.set.time',
   'sun.run.study',
@@ -990,7 +991,12 @@ export function ClientCommandHandlers() {
       'site.import.satellite',
       (_input, serverData) => {
         const payload = satelliteImportPayloadSchema.parse(serverData)
-        useSurveyStore.getState().setSurvey({
+        // Which shape the building import placed survives a backdrop
+        // re-import: dropping it here would let the next autosave erase it
+        // from `rootJson.survey` and the next building import stack a second
+        // house.
+        const priorBuildingId = useSurveyStore.getState().survey?.importedBuildingShapeId
+        const next: SurveyConfig = {
           // No uploaded raster: the image comes from the satellite proxy.
           sourceImageId: '',
           x: payload.xInches,
@@ -1010,8 +1016,24 @@ export function ClientCommandHandlers() {
           imageNaturalWidthPx: payload.geo.mapWidthPx * 2,
           imageNaturalHeightPx: payload.geo.mapHeightPx * 2,
           geo: payload.geo,
-        })
+        }
+        if (priorBuildingId !== undefined) next.importedBuildingShapeId = priorBuildingId
+        useSurveyStore.getState().setSurvey(next)
         return { widthInches: payload.widthInches, heightInches: payload.heightInches }
+      },
+    )
+
+    // Fading the backdrop is a survey edit like any other: store write here,
+    // persisted by EditorPersistence's subscription. The slider previews by
+    // writing the store directly while dragging; this command is the committed
+    // value, so voice and the audit log see one event per adjustment.
+    registerClientHandler<{ opacity: number }, { opacity: number }>(
+      'site.survey.opacity',
+      (input) => {
+        const current = useSurveyStore.getState().survey
+        if (!current) throw new Error('There is no backdrop to fade. Import the satellite photo first.')
+        useSurveyStore.getState().setSurvey({ ...current, opacity: input.opacity })
+        return { opacity: input.opacity }
       },
     )
 

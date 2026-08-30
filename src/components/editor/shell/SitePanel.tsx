@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { Ruler, Satellite, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { toast } from 'sonner'
 
 import { dispatch } from '@/lib/commands/dispatch'
 import { formatFtIn, formatSignedFtIn } from '@/modules/measurements/engine'
@@ -15,6 +14,7 @@ import {
 } from '@/modules/editor/site/model'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
+import { useSurveyStore } from '@/modules/editor/state/surveyStore'
 
 // The lot, by hand.
 //
@@ -33,20 +33,18 @@ function ftOf(inches: number): number {
   return Math.round((inches / 12) * 10) / 10
 }
 
-/** Shown once per browser, the first time a parcel is drawn. */
-const PARCEL_NOTE_KEY = 'pf.site-import.parcel-note-shown'
-
-type ImportKind = 'satellite' | 'parcel' | 'building'
+type ImportKind = 'satellite' | 'building'
 
 /**
  * Import the property from its address.
  *
- * Three buttons, three commands, all through the registry: the satellite
+ * Two buttons, two commands, both through the registry: the satellite
  * backdrop resolves on the client (its handler writes the survey store), while
- * parcel and building append shapes to the drawing server-side, after which
- * the shape store is reloaded from the row so the canvas and the database
- * agree. Missing capability (no Regrid key, Solar knows nothing here) comes
- * back as a typed refusal; its message is rendered rather than swallowed.
+ * the building appends a shape to the drawing server-side, after which the
+ * shape store is reloaded from the row so the canvas and the database agree.
+ * Missing capability (maps off, Solar knows nothing here) comes back as a
+ * typed refusal; its message is rendered rather than swallowed. Property
+ * lines are hand-drawn below; there is no parcel data provider.
  */
 function SiteImportSection({
   projectId,
@@ -64,11 +62,7 @@ function SiteImportSection({
     setBusy(kind)
     setError(null)
     const commandId =
-      kind === 'satellite'
-        ? 'site.import.satellite'
-        : kind === 'parcel'
-          ? 'site.import.parcel'
-          : 'site.import.building'
+      kind === 'satellite' ? 'site.import.satellite' : 'site.import.building'
     const result = await dispatch(commandId, { projectId })
     if (!result.ok) {
       setError(result.error)
@@ -76,33 +70,32 @@ function SiteImportSection({
       return
     }
 
-    if (kind !== 'satellite') {
-      // Shapes were appended to the drawing server-side. Reload from the row,
+    if (kind === 'building') {
+      // A shape was appended to the drawing server-side. Reload from the row,
       // same as the drawing import flow does, so the store matches what was
-      // written and the next autosave cannot write the appended shapes away.
+      // written and the next autosave cannot write the appended shape away.
       try {
         const fresh = await loadDrawing(projectId)
         useShapesStore.getState().hydrate(fresh.shapes)
+        // The server recorded which shape it placed in
+        // `survey.importedBuildingShapeId`. The open editor's survey store
+        // autosaves over `rootJson.survey`, so the id has to land in the store
+        // too or the next autosave erases it and a re-import stacks a second
+        // house. The rest of the store's survey stays as it is: it may hold a
+        // backdrop newer than what the row has saved yet.
+        const importedId = fresh.survey?.importedBuildingShapeId
+        const surveyStore = useSurveyStore.getState()
+        if (importedId !== undefined) {
+          if (surveyStore.survey) {
+            surveyStore.patchSurvey({ importedBuildingShapeId: importedId })
+          } else {
+            surveyStore.setSurvey(fresh.survey ?? null)
+          }
+        }
       } catch {
         setError('Imported, but the canvas could not reload. Refresh the page to see it.')
         setBusy(null)
         return
-      }
-    }
-
-    if (kind === 'parcel') {
-      let firstTime = true
-      try {
-        firstTime = localStorage.getItem(PARCEL_NOTE_KEY) === null
-        localStorage.setItem(PARCEL_NOTE_KEY, '1')
-      } catch {
-        // Storage unavailable: err on the side of saying it.
-      }
-      if (firstTime) {
-        toast.info(
-          'Assessor parcel lines are tax-map approximations. Verify against the recorded survey before anything permits off them.',
-          { duration: 10000 },
-        )
       }
     }
 
@@ -142,14 +135,6 @@ function SiteImportSection({
         <button
           type="button"
           disabled={disabled}
-          onClick={() => void run('parcel')}
-          className="rounded-pfSm border border-border px-2 py-1 text-[11.5px] text-foreground hover:bg-rowHover disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {busy === 'parcel' ? 'Importing parcel…' : 'Parcel boundary'}
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
           onClick={() => void run('building')}
           className="rounded-pfSm border border-border px-2 py-1 text-[11.5px] text-foreground hover:bg-rowHover disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -158,6 +143,51 @@ function SiteImportSection({
       </div>
 
       {error ? <p className="mt-1.5 text-[11px] text-pfError">{error}</p> : null}
+
+      <BackdropOpacity />
+    </div>
+  )
+}
+
+/**
+ * The backdrop's opacity, as a slider.
+ *
+ * Dragging previews by writing the survey store directly, the same live
+ * manipulation contract as dragging a shape; releasing commits the value
+ * through `site.survey.opacity`, so the audit log and the voice agent see one
+ * event per adjustment rather than sixty per second of thumb travel.
+ */
+function BackdropOpacity() {
+  const survey = useSurveyStore(s => s.survey)
+  if (!survey?.geo) return null
+
+  const percent = Math.round(survey.opacity * 100)
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.5px] text-textMuted">
+        <span>Backdrop opacity</span>
+        <span className="font-mono tabular-nums">{percent}%</span>
+      </div>
+      <input
+        type="range"
+        min={5}
+        max={100}
+        value={percent}
+        aria-label="Backdrop opacity"
+        className="mt-1 h-2 w-full cursor-pointer accent-foreground"
+        onChange={e => {
+          const store = useSurveyStore.getState()
+          const current = store.survey
+          if (!current) return
+          store.setSurvey({ ...current, opacity: Number(e.target.value) / 100 })
+        }}
+        onPointerUp={e => {
+          void dispatch('site.survey.opacity', {
+            opacity: Number((e.target as HTMLInputElement).value) / 100,
+          })
+        }}
+      />
     </div>
   )
 }

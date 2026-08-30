@@ -112,17 +112,31 @@ export function parseSurvey(raw: unknown): SurveyConfig | null {
   const geoParsed = surveyGeoSchema.safeParse(obj.geo)
   const geo: SurveyGeo | null = geoParsed.success ? geoParsed.data : null
 
+  // Which shape the last building import placed, tolerated when absent: only
+  // `site.import.building` writes it, and every drawing made before it did not.
+  const importedBuildingShapeId =
+    typeof obj.importedBuildingShapeId === 'string' && obj.importedBuildingShapeId.length > 0
+      ? obj.importedBuildingShapeId
+      : null
+
   // No reference, no raster, no geo: there is no underlay to show. A survey
   // with `geo` and no sourceImageId is valid; its image comes from the
-  // satellite proxy at view time.
-  if (sourceImageId === '' && legacy === null && geo === null) return null
+  // satellite proxy at view time. A survey whose only claim is
+  // `importedBuildingShapeId` is also kept: dropping it would forget which
+  // shape the building import placed and let the next import stack a second
+  // house.
+  if (sourceImageId === '' && legacy === null && geo === null && importedBuildingShapeId === null) {
+    return null
+  }
 
   const rest: Record<string, unknown> = { ...obj }
   delete rest.imageDataUrl
   delete rest.geo
+  delete rest.importedBuildingShapeId
   const survey = { ...rest, sourceImageId } as SurveyConfig
   if (legacy !== null) survey.legacyImageDataUrl = legacy
   if (geo !== null) survey.geo = geo
+  if (importedBuildingShapeId !== null) survey.importedBuildingShapeId = importedBuildingShapeId
   return survey
 }
 
@@ -162,10 +176,11 @@ export function serializeDrawingPayload(payload: DrawingPayload): {
     if (typeof legacyImageDataUrl === 'string' && legacyImageDataUrl.length > 0) {
       survey.imageDataUrl = legacyImageDataUrl
     }
-    // `geo` rides through in `rest` when present. A key explicitly holding
-    // `undefined` would round-trip as a `geo: undefined` entry in JSON-land,
-    // so it is removed rather than written.
+    // `geo` and `importedBuildingShapeId` ride through in `rest` when present.
+    // A key explicitly holding `undefined` would round-trip as an `undefined`
+    // entry in JSON-land, so it is removed rather than written.
     if (survey.geo === undefined) delete survey.geo
+    if (survey.importedBuildingShapeId === undefined) delete survey.importedBuildingShapeId
     out.survey = survey
   }
 

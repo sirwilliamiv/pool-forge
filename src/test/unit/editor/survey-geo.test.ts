@@ -107,6 +107,34 @@ describe('drawing payload round-trips survey.geo', () => {
   })
 })
 
+describe('drawing payload round-trips survey.importedBuildingShapeId', () => {
+  it('preserves the id through serialize then parse', () => {
+    const survey: SurveyConfig = { ...satelliteSurvey(), importedBuildingShapeId: 'site-building-1' }
+    const back = parseDrawingPayload(serializeDrawingPayload({ shapes: [], survey }))
+    expect(back.survey?.importedBuildingShapeId).toBe('site-building-1')
+    expect(back.survey?.geo).toEqual(GEO)
+  })
+
+  it('keeps a survey whose only claim is the imported building id', () => {
+    // A building imported before any backdrop exists still has to be
+    // remembered, or the next import stacks a second house.
+    const parsed = parseSurvey({ sourceImageId: '', importedBuildingShapeId: 'site-building-2' })
+    expect(parsed).not.toBeNull()
+    expect(parsed?.importedBuildingShapeId).toBe('site-building-2')
+  })
+
+  it('tolerates absence and drops a non-string id', () => {
+    expect(parseSurvey({ ...satelliteSurvey() })?.importedBuildingShapeId).toBeUndefined()
+    expect(
+      parseSurvey({ ...satelliteSurvey(), importedBuildingShapeId: 42 })?.importedBuildingShapeId,
+    ).toBeUndefined()
+
+    // A survey that never had the id serialises without the key.
+    const serialized = serializeDrawingPayload({ shapes: [], survey: satelliteSurvey() })
+    expect('importedBuildingShapeId' in (serialized.survey as Record<string, unknown>)).toBe(false)
+  })
+})
+
 // ---------------------------------------------------------------------------
 
 const PAYLOAD: SatelliteImportPayload = {

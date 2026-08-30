@@ -11,7 +11,9 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import { db } from '@/lib/db'
 import { dispatchCommand } from '@/modules/commands/dispatch'
 import { parseDrawingPayload } from '@/modules/editor/drawing-payload'
-import { PROPERTY_LINE_STENCIL, STRUCTURE_STENCIL } from '@/modules/editor/site/model'
+import { STRUCTURE_STENCIL } from '@/modules/editor/site/model'
+import { ShapeKind, type Shape } from '@/modules/editor/state/shapes'
+import { imageSizeInches } from '@/modules/site/geo/mercator'
 import { satelliteImportPayloadSchema } from '@/modules/site/geo/types'
 import { bootstrapOrgWithProject, reachableDb } from '@/test/integration/bootstrap'
 
@@ -32,10 +34,46 @@ async function locate(projectId: string, lat = 28.4816, lng = -81.5062): Promise
   await db.project.update({ where: { id: projectId }, data: { latitude: lat, longitude: lng } })
 }
 
+/** A hand-drawn stencil shape that every import and address change must leave alone. */
+function handDrawnShape(id: string): Shape {
+  return {
+    id,
+    kind: ShapeKind.STENCIL,
+    stencilId: 'symbol.tree',
+    x: 100,
+    y: 100,
+    width: 48,
+    height: 48,
+    rotation: 0,
+    zIndex: 0,
+    locked: false,
+    hidden: false,
+    name: 'Tree',
+  }
+}
+
+/** The Solar API answering with a plausible bounding box. */
+function stubSolarAnswer(): void {
+  vi.stubEnv('MAPS_API_KEY', 'maps-key')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          boundingBox: {
+            sw: { latitude: 28.4814, longitude: -81.5064 },
+            ne: { latitude: 28.4818, longitude: -81.506 },
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    ),
+  )
+}
+
 beforeEach(() => {
-  // Keys absent unless a test stubs one in: the degrade paths are the default.
+  // Key absent unless a test stubs it in: the degrade paths are the default.
   vi.stubEnv('MAPS_API_KEY', '')
-  vi.stubEnv('REGRID_API_KEY', '')
 })
 
 afterEach(() => {
@@ -102,7 +140,7 @@ describe.skipIf(!reachable)('site geo commands', () => {
       expect(project.sitePlaceId).toBeNull()
       expect(project.latitude).toBe(28.4816)
       expect(project.longitude).toBe(-81.5062)
-      // Regrid is off in this test, so the permit fields stay untouched.
+      // Permit fields are hand-entered; setting the address never touches them.
       expect(project.parcelId).toBeNull()
       expect(project.jurisdiction).toBeNull()
 
@@ -169,19 +207,6 @@ describe.skipIf(!reachable)('site geo commands', () => {
   })
 
   describe('degrading without keys', () => {
-    it('site.import.parcel says parcel data is not configured', async () => {
-      const { orgId, userId, projectId } = await bootstrap()
-      await locate(projectId)
-      const result = await dispatchCommand(
-        'site.import.parcel',
-        { projectId },
-        { userId, orgId },
-        'UI',
-      )
-      expect(result.ok).toBe(false)
-      if (!result.ok) expect(result.error).toContain('not configured')
-    })
-
     it('site.import.building says building data is not configured', async () => {
       const { orgId, userId, projectId } = await bootstrap()
       await locate(projectId)
@@ -193,101 +218,6 @@ describe.skipIf(!reachable)('site geo commands', () => {
       )
       expect(result.ok).toBe(false)
       if (!result.ok) expect(result.error).toContain('not configured')
-    })
-  })
-
-  describe('site.import.parcel with Regrid answering', () => {
-    function stubRegrid(): void {
-      vi.stubEnv('REGRID_API_KEY', 'regrid-token')
-      vi.stubGlobal(
-        'fetch',
-        vi.fn(async () =>
-          new Response(
-            JSON.stringify({
-              parcels: {
-                features: [
-                  {
-                    geometry: {
-                      type: 'Polygon',
-                      coordinates: [
-                        [
-                          [-81.5065, 28.4813],
-                          [-81.5065, 28.4819],
-                          [-81.5059, 28.4819],
-                          [-81.5059, 28.4813],
-                          [-81.5065, 28.4813],
-                        ],
-                      ],
-                    },
-                    properties: {
-                      fields: { parcelnumb: '28-22-30-0000', county: 'Orange', ll_uuid: 'u-1' },
-                    },
-                  },
-                ],
-              },
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } },
-          ),
-        ),
-      )
-    }
-
-    it('appends one property line, never replacing, and fills only null permit fields', async () => {
-      const { orgId, userId, projectId } = await bootstrap()
-      await locate(projectId)
-      // The builder already looked up the jurisdiction by hand; it must survive.
-      await db.project.update({ where: { id: projectId }, data: { jurisdiction: 'Hand-entered' } })
-
-      const existingShape = {
-        id: `existing-${orgId}`,
-        kind: 'RECTANGLE_POOL',
-        x: 0,
-        y: 0,
-        width: 120,
-        height: 240,
-        rotation: 0,
-        zIndex: 0,
-        locked: false,
-        hidden: false,
-        depthShallow: 42,
-        depthDeep: 72,
-      }
-      await db.drawing.create({
-        data: { projectId, scale: 1, rootJson: { shapes: [existingShape], survey: null } },
-      })
-
-      stubRegrid()
-      const result = await dispatchCommand(
-        'site.import.parcel',
-        { projectId },
-        { userId, orgId },
-        'UI',
-      )
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.data).toMatchObject({
-        projectId,
-        parcelId: '28-22-30-0000',
-        jurisdiction: 'Orange',
-        pointCount: 4,
-      })
-
-      const drawing = await db.drawing.findUniqueOrThrow({ where: { projectId } })
-      const payload = parseDrawingPayload(drawing.rootJson)
-      // Appended: the pool the builder drew is still there, plus one lot line.
-      expect(payload.shapes.length).toBe(2)
-      expect(payload.shapes[0]?.id).toBe(existingShape.id)
-      const lot = payload.shapes[1]
-      expect(lot?.kind).toBe('STENCIL')
-      expect((lot as { stencilId?: string }).stencilId).toBe(PROPERTY_LINE_STENCIL)
-      expect(lot?.width).toBeGreaterThan(0)
-      expect(lot?.height).toBeGreaterThan(0)
-      expect(lot?.zIndex).toBe(1)
-
-      const project = await db.project.findUniqueOrThrow({ where: { id: projectId } })
-      expect(project.parcelId).toBe('28-22-30-0000')
-      // Null was filled; the hand-entered value was not overwritten.
-      expect(project.jurisdiction).toBe('Hand-entered')
     })
   })
 
@@ -328,6 +258,159 @@ describe.skipIf(!reachable)('site geo commands', () => {
       expect(house?.name).toBe('House')
       expect(house?.width).toBeGreaterThan(0)
       expect(house?.height).toBeGreaterThan(0)
+    })
+
+    it('importing twice yields exactly one imported building, tracked by id', async () => {
+      const { orgId, userId, projectId } = await bootstrap()
+      await locate(projectId)
+      stubSolarAnswer()
+
+      // A hand-drawn shape already on the drawing, which both imports must keep.
+      await db.drawing.create({
+        data: {
+          projectId,
+          scale: 1,
+          rootJson: { shapes: [handDrawnShape('hand-tree-1')], survey: null } as unknown as object,
+        },
+      })
+
+      const ctx = { userId, orgId }
+      const first = await dispatchCommand('site.import.building', { projectId }, ctx, 'UI')
+      const second = await dispatchCommand('site.import.building', { projectId }, ctx, 'UI')
+      expect(first.ok).toBe(true)
+      expect(second.ok).toBe(true)
+      if (!first.ok || !second.ok) return
+      const firstId = (first.data as { shapeId: string }).shapeId
+      const secondId = (second.data as { shapeId: string }).shapeId
+      expect(secondId).not.toBe(firstId)
+
+      const drawing = await db.drawing.findUniqueOrThrow({ where: { projectId } })
+      const payload = parseDrawingPayload(drawing.rootJson)
+
+      // One house, not two: the second import replaced the first's shape.
+      const houses = payload.shapes.filter(
+        shape => (shape as { stencilId?: string }).stencilId === STRUCTURE_STENCIL,
+      )
+      expect(houses.length).toBe(1)
+      expect(houses[0]?.id).toBe(secondId)
+      expect(payload.shapes.some(shape => shape.id === firstId)).toBe(false)
+
+      // The hand-drawn shape survived both imports.
+      expect(payload.shapes.some(shape => shape.id === 'hand-tree-1')).toBe(true)
+
+      // The tracked id points at the shape now on the drawing.
+      expect(payload.survey?.importedBuildingShapeId).toBe(secondId)
+    })
+  })
+
+  describe('site.address.set against an already imported site', () => {
+    const GEO = { lat: 28.4816, lng: -81.5062, zoom: 20, mapWidthPx: 640, mapHeightPx: 640 }
+
+    function importedSurvey(buildingShapeId: string): Record<string, unknown> {
+      return {
+        sourceImageId: '',
+        x: -384,
+        y: -384,
+        widthInches: 700,
+        heightInches: 700,
+        opacity: 0.9,
+        locked: true,
+        calibrationPxDistance: 100,
+        calibrationRealInches: 120,
+        imageNaturalWidthPx: 1280,
+        imageNaturalHeightPx: 1280,
+        geo: { ...GEO },
+        importedBuildingShapeId: buildingShapeId,
+      }
+    }
+
+    function importedBuilding(id: string): Shape {
+      return {
+        id,
+        kind: ShapeKind.STENCIL,
+        stencilId: STRUCTURE_STENCIL,
+        x: -200,
+        y: -150,
+        width: 480,
+        height: 300,
+        rotation: 0,
+        zIndex: 1,
+        locked: false,
+        hidden: false,
+        name: 'House',
+      }
+    }
+
+    it('repoints the geo, recomputes dimensions, and deletes only the imported building', async () => {
+      const { orgId, userId, projectId } = await bootstrap()
+      await locate(projectId)
+      await db.drawing.create({
+        data: {
+          projectId,
+          scale: 1,
+          rootJson: {
+            shapes: [importedBuilding('site-building-old'), handDrawnShape('hand-tree-2')],
+            survey: importedSurvey('site-building-old'),
+          } as unknown as object,
+        },
+      })
+
+      const result = await dispatchCommand(
+        'site.address.set',
+        { projectId, address: '900 Bayshore Blvd, Tampa, FL', lat: 27.9506, lng: -82.4572 },
+        { userId, orgId },
+        'UI',
+      )
+      expect(result.ok).toBe(true)
+
+      const project = await db.project.findUniqueOrThrow({ where: { id: projectId } })
+      expect(project.latitude).toBe(27.9506)
+      expect(project.longitude).toBe(-82.4572)
+
+      const drawing = await db.drawing.findUniqueOrThrow({ where: { projectId } })
+      const payload = parseDrawingPayload(drawing.rootJson)
+
+      // The geo now points at the new address, zoom and map pixels kept.
+      expect(payload.survey?.geo).toEqual({ ...GEO, lat: 27.9506, lng: -82.4572 })
+
+      // Dimensions recomputed for the new latitude's ground resolution.
+      const expected = imageSizeInches(27.9506, GEO.zoom, GEO.mapWidthPx, GEO.mapHeightPx)
+      expect(payload.survey?.widthInches).toBeCloseTo(expected.widthInches)
+      expect(payload.survey?.heightInches).toBeCloseTo(expected.heightInches)
+
+      // The old address's building is gone and its tracking cleared; the
+      // hand-drawn shape is untouched.
+      expect(payload.shapes.map(shape => shape.id)).toEqual(['hand-tree-2'])
+      expect(payload.survey?.importedBuildingShapeId).toBeUndefined()
+
+      // Nothing else about the survey moved.
+      expect(payload.survey?.x).toBe(-384)
+      expect(payload.survey?.y).toBe(-384)
+      expect(payload.survey?.opacity).toBe(0.9)
+      expect(payload.survey?.locked).toBe(true)
+    })
+
+    it('leaves the drawing alone when there is no satellite geo', async () => {
+      const { orgId, userId, projectId } = await bootstrap()
+      const before = {
+        shapes: [handDrawnShape('hand-tree-3')],
+        survey: null,
+      } as unknown as object
+      await db.drawing.create({ data: { projectId, scale: 1, rootJson: before } })
+
+      const result = await dispatchCommand(
+        'site.address.set',
+        { projectId, address: '1 First St, Orlando, FL', lat: 28.54, lng: -81.38 },
+        { userId, orgId },
+        'UI',
+      )
+      expect(result.ok).toBe(true)
+
+      const project = await db.project.findUniqueOrThrow({ where: { id: projectId } })
+      expect(project.siteAddress).toBe('1 First St, Orlando, FL')
+
+      const drawing = await db.drawing.findUniqueOrThrow({ where: { projectId } })
+      expect(drawing.rootJson).toEqual(before)
     })
   })
 })
