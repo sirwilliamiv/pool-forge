@@ -144,13 +144,25 @@ export function VoiceDock() {
     // lives: everywhere.
     registerClientHandler<{ targets: string[] }, { pointed: string[]; missing: string[] }>(
       'guide.point',
-      input => {
+      async input => {
         const pointed: string[] = []
         const missing: string[] = []
         let first: Element | null = null
         for (const id of input.targets) {
           const target = targetById(id)
-          const element = target ? resolveTarget(document, target) : null
+          if (!target) {
+            missing.push(id)
+            continue
+          }
+          let element = resolveTarget(document, target)
+          // A control in a closed tab exists only after the tab is opened.
+          // The path is visible labels, pressed through the same click code
+          // the agent uses, so a broken path fails the same way everywhere.
+          if (!element && target.openPath) {
+            for (const label of target.openPath) clickOnPage(label, false)
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+            element = resolveTarget(document, target)
+          }
           if (element) {
             pointed.push(id)
             if (!first) first = element
@@ -158,8 +170,6 @@ export function VoiceDock() {
             missing.push(id)
           }
         }
-        // Bring the first ring on screen. One scroll, not one per target:
-        // pointing at three toolbar buttons must not fight itself.
         if (first) {
           const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
           first.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' })

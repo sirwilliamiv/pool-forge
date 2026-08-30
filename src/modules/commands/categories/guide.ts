@@ -21,7 +21,7 @@ register({
   runsOn: 'client',
   label: 'Point at something',
   description:
-    'Ring one or more controls on screen so the user can see where they are, and say what each is for. Pass several when the answer is several: "the drawing tools" is three of them. This only draws attention, it never presses anything.',
+    'Ring one or more controls on screen so the user can see where they are, and say what each is for. Pass several when the answer is several: "the drawing tools" is three of them. If a control lives in a closed panel, pointing opens the panel first. This only draws attention to controls, it never presses an action button.',
   category: 'guide',
   inputSchema: z.object({
     // An enum, not free text. A hallucinated selector would either ring nothing
