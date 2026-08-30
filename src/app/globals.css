@@ -276,3 +276,77 @@
     opacity: 0;
   }
 }
+
+/* ── The wordmark pool ─────────────────────────────────────────────────────
+ *
+ * `src/components/auth/AuthStage.tsx`. The first O of POOL: the letter's
+ * stroke is the coping, the counter is the water, held still on brand blue.
+ * The parasol on its shoulder carries the colour instead: eight canopy panels,
+ * each hue self-shaded with a darker cut of itself so the turn stays visible
+ * without a drop of white, stepping through the five core hues on the loading
+ * pool's 6s clock. Flat steps, never blends — same reason as the water below.
+ *
+ * All ems, so it scales with the wordmark's clamp() type size. Reduced motion
+ * holds the canopy on brand blue and stops the turn, and it still reads as a
+ * parasol over a pool.
+ */
+.pf-mark-pool {
+  display: inline-block;
+  box-sizing: border-box;
+  position: relative;
+  width: 0.76em;
+  height: 0.71em;
+  margin: 0 0.015em;
+  border: 0.088em solid var(--ink-black);
+  border-radius: 50%;
+  vertical-align: -0.005em;
+  background: var(--brand-blue);
+}
+
+@property --pf-parasol-hue {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #00b6ff;
+}
+
+.pf-mark-parasol {
+  position: absolute;
+  left: 0.38em;
+  top: -0.16em;
+  width: 0.4em;
+  height: 0.4em;
+  border-radius: 50%;
+  --pf-parasol-hue: var(--brand-blue);
+  background:
+    radial-gradient(circle, rgb(0 0 0 / 0.72) 0 9%, transparent 9.5%),
+    repeating-conic-gradient(
+      color-mix(in srgb, var(--pf-parasol-hue), #000000 22%) 0deg 45deg,
+      var(--pf-parasol-hue) 45deg 90deg
+    );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pf-mark-parasol {
+    animation:
+      pf-pool-parasol 9s linear infinite,
+      pf-parasol-hue 6s steps(1, end) infinite;
+  }
+}
+
+@keyframes pf-parasol-hue {
+  0% {
+    --pf-parasol-hue: var(--brand-blue);
+  }
+  20% {
+    --pf-parasol-hue: var(--brand-green);
+  }
+  40% {
+    --pf-parasol-hue: var(--brand-orange);
+  }
+  60% {
+    --pf-parasol-hue: var(--brand-red);
+  }
+  80% {
+    --pf-parasol-hue: var(--brand-purple);
+  }
+}
