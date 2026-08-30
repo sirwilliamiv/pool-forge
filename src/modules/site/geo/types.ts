@@ -37,6 +37,20 @@ export const parcelOutlineSchema = z.object({
 })
 export type ParcelOutline = z.infer<typeof parcelOutlineSchema>
 
+/** Output of site.import.satellite, consumed verbatim by the client handler
+ * that writes the survey store. All dimensions in editor inches; x/y are the
+ * backdrop's top-left, already snapped to the drag grid by the server. */
+export const satelliteImportPayloadSchema = z.object({
+  geo: surveyGeoSchema,
+  widthInches: z.number().positive(),
+  heightInches: z.number().positive(),
+  xInches: z.number(),
+  yInches: z.number(),
+  // Ground resolution provenance for the existing calibration readout.
+  inchesPerPixel: z.number().positive(),
+})
+export type SatelliteImportPayload = z.infer<typeof satelliteImportPayloadSchema>
+
 // Command ids, registered in src/modules/commands/categories/site-geo.ts.
 export const SITE_GEO_COMMANDS = {
   addressSet: 'site.address.set',

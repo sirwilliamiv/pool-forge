@@ -793,6 +793,12 @@ const EXERCISES: Record<string, Exercise> = {
     kind: 'server',
     why: 'Presses a real button in the DOM, registered by VoiceDock. Covered by the page-click module tests.',
   },
+  'context.recent': {
+    kind: 'server',
+    why:
+      'Reads CommandAuditLog rows, org-scoped, server-side. Covered by ' +
+      'integration/commands/context-recent.test.ts against the real DB.',
+  },
 
   // ---------- settings / auth ----------
   'voice.session.begin': {

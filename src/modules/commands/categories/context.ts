@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { register } from '@/modules/commands/registry'
+import { get, register } from '@/modules/commands/registry'
 
 // Reading the screen.
 //
@@ -166,4 +166,115 @@ register({
       needsConfirmation: false,
     },
   }),
+})
+
+/**
+ * Commands excluded from `context.recent` because they are the assistant
+ * looking around rather than the user doing something: reads, listings and
+ * plain navigation. Including them would drown "created a project" under a
+ * pile of "read the page" and "went to the dashboard" every time someone asks
+ * a question or clicks between screens.
+ *
+ * `page.read`, `guide.list`, `guide.point`, `guide.clear`, `context.recent`
+ * and `scene.describe` are the set named directly in the spec. `nav.goto` and
+ * `nav.focus` are the same kind of noise: pure navigation and panel
+ * highlighting with no data behind them. The rest are every other read-only
+ * `*.describe` / `*.list` command in the registry, on the same reasoning as
+ * `scene.describe`: they answer a question, they do not record an action.
+ */
+const NOISY_AUDIT_COMMAND_IDS = [
+  'page.read',
+  'guide.list',
+  'guide.point',
+  'guide.clear',
+  'context.recent',
+  'scene.describe',
+  'nav.goto',
+  'nav.focus',
+  'project.describe',
+  'project.list.describe',
+  'pricebook.describe',
+  'grade.describe',
+  'site.describe',
+  'settings.team.describe',
+  'capture.coverage.describe',
+  'template.scene.list',
+  'import.intake.link.list',
+] as const
+
+/** Input fields worth surfacing in a recap. Nothing else, so a redacted or
+ * credential-bearing row stays opaque rather than leaking a field by accident. */
+const NAME_ISH_KEYS = ['name', 'projectId', 'label'] as const
+
+/**
+ * Turns one audit row into a sentence a person would say out loud.
+ *
+ * Pure and synchronous: it only reads the registry (already populated by the
+ * time any command runs) and the row's own fields, so it is trivial to call
+ * from a test without spinning up a database.
+ */
+export function describeAuditRow(commandId: string, source: string, inputJson: unknown): string {
+  const label = get(commandId)?.label ?? commandId
+
+  let nameish: string | undefined
+  if (inputJson && typeof inputJson === 'object' && !Array.isArray(inputJson)) {
+    const input = inputJson as Record<string, unknown>
+    for (const key of NAME_ISH_KEYS) {
+      const value = input[key]
+      if (typeof value === 'string' && value.trim().length > 0) {
+        nameish = value
+        break
+      }
+    }
+  }
+
+  const described = nameish ? `${label} (${nameish})` : label
+  return source === 'UI' ? described : `by ${source.toLowerCase()}: ${described}`
+}
+
+register({
+  id: 'context.recent',
+  label: 'What happened recently',
+  description:
+    'The most recent actions taken in this organisation, by anyone, through any surface: ' +
+    'buttons, keyboard, voice or import. Use it to answer "what did I just do", "what changed", ' +
+    'or to pick up where the user left off.',
+  category: 'context',
+  inputSchema: z.object({ limit: z.number().int().min(1).max(25).optional() }),
+  outputSchema: z.object({
+    actions: z.array(z.object({ when: z.string(), what: z.string() })),
+  }),
+  voiceExamples: [
+    'What did I just do?',
+    'What changed on this project today?',
+    'Where did we leave off?',
+  ],
+  // Server-side, unlike its `page.*` siblings: the audit log lives in the
+  // database, not the browser, so there is no client handler to write.
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+
+    const { db } = await import('@/lib/db')
+
+    const rows = await db.commandAuditLog.findMany({
+      where: {
+        orgId: ctx.orgId,
+        success: true,
+        commandId: { notIn: [...NOISY_AUDIT_COMMAND_IDS] },
+      },
+      orderBy: { ranAt: 'desc' },
+      take: input.limit ?? 10,
+      select: { commandId: true, ranAt: true, source: true, inputJson: true },
+    })
+
+    return {
+      ok: true,
+      data: {
+        actions: rows.map(row => ({
+          when: row.ranAt.toISOString(),
+          what: describeAuditRow(row.commandId, row.source, row.inputJson),
+        })),
+      },
+    }
+  },
 })
