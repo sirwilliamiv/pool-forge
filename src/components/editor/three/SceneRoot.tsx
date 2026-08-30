@@ -276,8 +276,13 @@ export function SceneRoot() {
     }
   }, [shapes])
 
-  const graded = finished.enabled || existing.enabled
-  const surface = finished.enabled ? finished : existing
+  // A grade with no spot elevations is a flat site, not a surface to draw.
+  // Rendering it anyway put an opaque plane at y=0 over everything beneath,
+  // which is exactly where the satellite underlay lives.
+  const graded =
+    (finished.enabled && finished.points.length > 0) ||
+    (existing.enabled && existing.points.length > 0)
+  const surface = finished.enabled && finished.points.length > 0 ? finished : existing
 
   return (
     <group name="scene-root">

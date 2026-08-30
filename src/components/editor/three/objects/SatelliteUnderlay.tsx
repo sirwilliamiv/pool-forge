@@ -50,6 +50,9 @@ export function SatelliteUnderlay({ projectId }: { projectId?: string | undefine
           return
         }
         tex.colorSpace = THREE.SRGBColorSpace
+        // The photo is viewed at grazing angles in 3D; without anisotropy it
+        // smears into mush a few feet from the camera.
+        tex.anisotropy = 8
         loaded = tex
         setTexture(tex)
       },
