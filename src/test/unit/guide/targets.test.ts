@@ -66,6 +66,20 @@ describe('resolving a target in the page', () => {
       element.getBoundingClientRect = () =>
         ({ width: 80, height: 24, top: 10, left: 10, right: 90, bottom: 34, x: 10, y: 10 }) as DOMRect
     }
+    // Mock elementFromPoint to return the first non-hidden element at the coordinate
+    const elementsWithBox = Array.from(document.body.querySelectorAll('*')).filter(el => {
+      const styled = el as HTMLElement
+      return styled.style.display !== 'none'
+    })
+    document.elementFromPoint = (x: number, y: number) => {
+      for (const element of elementsWithBox) {
+        const rect = element.getBoundingClientRect()
+        if (x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom) {
+          return element
+        }
+      }
+      return null
+    }
     return document
   }
 

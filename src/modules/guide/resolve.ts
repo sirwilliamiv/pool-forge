@@ -55,6 +55,7 @@ export function resolveTarget(doc: Document, target: GuideTarget): Element | nul
   for (const element of candidates) {
     if (isInsideCanvas(element)) continue
     if (!isVisible(element)) continue
+    if (isOccluded(element)) continue
     if (accessibleNames(element).some(name => name === want || name.startsWith(`${want} `) || name.startsWith(`${want}(`))) {
       return element
     }
@@ -85,4 +86,25 @@ export function isVisible(element: Element): boolean {
   const style = element.ownerDocument.defaultView?.getComputedStyle(element)
   if (!style) return true
   return style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0'
+}
+
+/**
+ * True when something else sits on top of the element's centre.
+ *
+ * The size and CSS checks in isVisible cannot see a full-screen layer drawn
+ * over a control: the editor covers the top nav, and the nav links keep real
+ * boxes. A hit test at the centre is the only honest answer. Off-viewport
+ * counts as not occluded, because scrolling fixes that and pointing should
+ * scroll rather than refuse.
+ */
+export function isOccluded(element: Element): boolean {
+  const rect = element.getBoundingClientRect()
+  const view = element.ownerDocument.defaultView
+  if (!view) return false
+  const cx = rect.left + rect.width / 2
+  const cy = rect.top + rect.height / 2
+  if (cx < 0 || cy < 0 || cx > view.innerWidth || cy > view.innerHeight) return false
+  const hit = element.ownerDocument.elementFromPoint(cx, cy)
+  if (!hit) return true
+  return !(element === hit || element.contains(hit) || hit.contains(element))
 }
