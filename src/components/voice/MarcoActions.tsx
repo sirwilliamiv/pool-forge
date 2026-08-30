@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Compass, Mic } from 'lucide-react'
 
+import { dispatch } from '@/lib/commands/dispatch'
 import { resolveTarget } from '@/modules/guide/resolve'
 import { useGuideStore } from '@/modules/guide/store'
 import { GUIDE_TARGETS } from '@/modules/guide/targets'
@@ -32,7 +33,6 @@ interface Props {
 }
 
 export function MarcoActions({ visible, onTalk }: Props) {
-  const point = useGuideStore(state => state.point)
   const clear = useGuideStore(state => state.clear)
   const [touring, setTouring] = useState(false)
 
@@ -50,7 +50,14 @@ export function MarcoActions({ visible, onTalk }: Props) {
     // screen is how a tour teaches somebody the wrong page.
     const here = GUIDE_TARGETS.filter(target => resolveTarget(document, target) !== null)
     if (here.length === 0) return
-    point(here.slice(0, TOUR_SIZE).map(target => target.id))
+
+    // Through the command, not straight into the store. `CLAUDE.md` requires it,
+    // and there is a second reason worth stating: this is the same path the
+    // agent takes when somebody asks where something is. Calling the store
+    // directly meant the pill worked while the agent did nothing, and the test
+    // covering the pill proved nothing about the agent. One path, one thing to
+    // get right, one thing to test.
+    void dispatch('guide.point', { targets: here.slice(0, TOUR_SIZE).map(target => target.id) })
     setTouring(true)
   }
 

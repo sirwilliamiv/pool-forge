@@ -46,6 +46,22 @@ test.describe('Marco', () => {
     await expect(page.getByRole('button', { name: /Ask me a question/i })).toBeVisible()
   })
 
+  // The bug this exists for: the guide handlers were registered by the editor's
+  // own handler component, which only the editor mounts. Everywhere else the
+  // agent called guide.point, found no handler, and reported that it was
+  // highlighting something while nothing on screen changed.
+  test('points at things away from the editor too', async ({ page }) => {
+    await signInAsDemo(page)
+    await page.goto('/settings/intake')
+
+    const marco = page.getByRole('button', { name: /Talk to Marco/i })
+    await expect(marco).toBeVisible({ timeout: 30_000 })
+    await marco.hover()
+    await page.getByRole('button', { name: /Explain this page/i }).click()
+
+    await expect(page.locator('[data-guide-ring]').first()).toBeVisible({ timeout: 10_000 })
+  })
+
   test('explaining the page rings real controls, and never the drawing', async ({ page }) => {
     await signInAsDemo(page)
     await page.goto('/projects/seed-project-demo/editor')

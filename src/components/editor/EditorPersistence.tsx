@@ -8,6 +8,8 @@ import { useCommentsStore } from '@/modules/editor/state/commentsStore'
 import { useSurveyStore } from '@/modules/editor/state/surveyStore'
 import { useSaveStatusStore } from '@/modules/editor/state/saveStore'
 import { saveDrawing } from '@/modules/editor/persistence'
+import { captureError } from '@/modules/monitoring'
+import { isStaleBuild } from '@/modules/editor/stale-build'
 import { recomputeAndCacheEditor } from '@/lib/cache/editor'
 import type { Shape } from '@/modules/editor/state/shapes'
 import type { SiteGrade } from '@/modules/editor/grade/model'
@@ -27,6 +29,8 @@ interface EditorPersistenceProps {
 }
 
 const DEBOUNCE_MS = 800
+
+
 
 export function EditorPersistence({ projectId, initial }: EditorPersistenceProps) {
   const hydratedRef = useRef(false)
@@ -52,13 +56,28 @@ export function EditorPersistence({ projectId, initial }: EditorPersistenceProps
         .then(() => {
           useSaveStatusStore.getState().markSaved()
           // Fire-and-forget: refresh quote + validation caches off the saved drawing.
-          void recomputeAndCacheEditor(projectId).catch((err) =>
-            console.error('recomputeAndCacheEditor failed', err),
-          )
+          void recomputeAndCacheEditor(projectId).catch((error) => {
+            captureError({ error, code: 'editor.recompute_failed', origin: 'client' })
+          })
         })
-        .catch((err) => {
-          console.error('saveDrawing failed', err)
+        .catch((error) => {
+          captureError({ error, code: 'editor.save_failed', origin: 'client' })
           useSaveStatusStore.getState().setStatus('error')
+
+          // A tab left open across a deploy holds a bundle whose server action
+          // ids no longer exist, so every save fails with "was not found on the
+          // server" while the drawing keeps changing on screen. Telling that
+          // person to check their connection sends them to look at their wifi
+          // while their work quietly goes nowhere. A reload is the whole fix,
+          // so say so and offer it.
+          if (isStaleBuild(error)) {
+            toast.error('Pool Forge was updated while this was open. Reload to keep saving.', {
+              duration: Infinity,
+              action: { label: 'Reload', onClick: () => window.location.reload() },
+            })
+            return
+          }
+
           // Says what is true. It said "retrying" and nothing retried, so a
           // builder was told their work was on its way when it was not.
           toast.error('Could not save your changes. Check your connection.')

@@ -77,12 +77,17 @@ export function runnableSuggestions(suggestions: Suggestion[]): Suggestion[] {
     if (!suggestion.innerCommandId) return false
     const command = get(suggestion.innerCommandId)
     if (!command) {
-      console.warn(`[suggestions] ${suggestion.id} names an unregistered command`)
+      // A wiring mistake, not a runtime condition: a suggestion naming a
+      // command that does not exist is a bug in the suggestion, and it is only
+      // actionable while somebody is building one.
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[suggestions] ${suggestion.id} names an unregistered command`)
+      }
       return false
     }
     const parsed = command.inputSchema.safeParse(suggestion.innerInput ?? {})
     if (!parsed.success) {
-      console.warn(
+      if (process.env.NODE_ENV !== 'production') console.warn(
         `[suggestions] ${suggestion.id} would fail ${suggestion.innerCommandId}: ${parsed.error.issues
           .map(issue => `${issue.path.join('.')}: ${issue.message}`)
           .join('; ')}`,

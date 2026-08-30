@@ -14,6 +14,9 @@ import { VoiceTranscript } from './VoiceTranscript'
 import { Marco, type MarcoState } from './Marco'
 import { MarcoActions } from './MarcoActions'
 import { GuideHighlight } from './GuideHighlight'
+import { useGuideStore } from '@/modules/guide/store'
+import { resolveTarget } from '@/modules/guide/resolve'
+import { GUIDE_TARGETS, targetById } from '@/modules/guide/targets'
 
 interface ClickReport {
   label: string
@@ -131,6 +134,52 @@ export function VoiceDock() {
         }
       },
     )
+
+    // Registered here rather than in the editor's handler block, which is where
+    // these started and why they did nothing. That component is mounted only by
+    // the editor, so on Customer Uploads or the price book the agent called
+    // guide.point, found no handler, and said it was highlighting something
+    // while nothing on screen changed. "Where is that" is a question about
+    // whatever screen somebody is on, so the answer has to live where the dock
+    // lives: everywhere.
+    registerClientHandler<{ targets: string[] }, { pointed: string[]; missing: string[] }>(
+      'guide.point',
+      input => {
+        const pointed: string[] = []
+        const missing: string[] = []
+        for (const id of input.targets) {
+          const target = targetById(id)
+          // Resolved rather than trusted, so the agent is told which of the
+          // things it asked for are not on this screen instead of describing a
+          // control nobody can see.
+          if (target && resolveTarget(document, target)) pointed.push(id)
+          else missing.push(id)
+        }
+        useGuideStore.getState().point(pointed)
+        return { pointed, missing }
+      },
+    )
+
+    registerClientHandler<Record<string, never>, { cleared: boolean }>('guide.clear', () => {
+      useGuideStore.getState().clear()
+      return { cleared: true }
+    })
+
+    registerClientHandler<
+      Record<string, never>,
+      { targets: { id: string; name: string; explain: string }[] }
+    >('guide.list', () => {
+      // Only what is actually on screen. Listing a control that is not here is
+      // how an agent ends up confidently describing another page.
+      const here = GUIDE_TARGETS.filter(target => resolveTarget(document, target) !== null)
+      return {
+        targets: here.map(target => ({
+          id: target.id,
+          name: target.name,
+          explain: target.explain,
+        })),
+      }
+    })
   }, [router])
 
   // Above the early return, or the hook count changes between renders and

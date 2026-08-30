@@ -117,7 +117,6 @@ export function SelectionHandles() {
      */
     function onDown(e: PointerEvent) {
       // eslint-disable-next-line no-console
-      console.info('[handles] onDown fired button', e.button)
       if (e.button !== 0) return
       const start = boxRef.current
       const id = idRef.current
@@ -150,9 +149,6 @@ export function SelectionHandles() {
         }
       }
       // eslint-disable-next-line no-console
-      console.info('[handles] down at', Math.round(e.clientX), Math.round(e.clientY),
-        'nearest', best ? Math.round(bestDistance) : 'none',
-        'grips', candidates.map(c => { const s2 = toScreen(c.at); return `${Math.round(s2.x)},${Math.round(s2.y)}` }).join(' '))
       if (!best) return
 
       e.stopImmediatePropagation()
@@ -225,7 +221,6 @@ export function SelectionHandles() {
     }
 
     // eslint-disable-next-line no-console
-    console.info('[handles] listener attached')
     dom.addEventListener('pointerdown', onDown, true)
     dom.addEventListener('pointermove', onMove)
     dom.addEventListener('pointerup', onUp)

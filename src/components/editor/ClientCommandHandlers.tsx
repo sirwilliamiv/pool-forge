@@ -37,9 +37,6 @@ import { ShapeKind, isPool, isSketchPath, type Shape } from '@/modules/editor/st
 import { polygonArea, polygonBounds } from '@/lib/geometry/polygon-footprint'
 import { gridInches, type GridSpacingId, type Point } from '@/lib/geometry/drawing'
 import { useDrawStore } from '@/modules/editor/state/drawStore'
-import { useGuideStore } from '@/modules/guide/store'
-import { resolveTarget } from '@/modules/guide/resolve'
-import { GUIDE_TARGETS, targetById } from '@/modules/guide/targets'
 import { depthOrderMessage } from '@/lib/commands/dimensions'
 import {
   PROPERTY_LINE_STENCIL,
@@ -289,10 +286,6 @@ function boundsOf(
 // register({...}) block under src/modules/commands/categories/.
 
 const HANDLER_IDS: string[] = [
-  // guide category
-  'guide.point',
-  'guide.clear',
-  'guide.list',
   // sketch category
   'sketch.create',
   'sketch.label',
@@ -1214,50 +1207,6 @@ export function ClientCommandHandlers() {
         return { commentId: input.commentId, resolved: input.resolved }
       },
     )
-
-    // ---------------------------------------------------------------- guide
-    //
-    // Showing, never pressing. Every handler here changes what is visible and
-    // nothing else, which is what makes it safe to hand to an agent.
-
-    registerClientHandler<{ targets: string[] }, { pointed: string[]; missing: string[] }>(
-      'guide.point',
-      (input) => {
-        const pointed: string[] = []
-        const missing: string[] = []
-        for (const id of input.targets) {
-          const target = targetById(id)
-          // Resolved here rather than trusted, so the agent is told plainly
-          // which of the things it asked for are not on this screen instead of
-          // describing a control nobody can see.
-          if (target && resolveTarget(document, target)) pointed.push(id)
-          else missing.push(id)
-        }
-        useGuideStore.getState().point(pointed)
-        return { pointed, missing }
-      },
-    )
-
-    registerClientHandler<Record<string, never>, { cleared: boolean }>('guide.clear', () => {
-      useGuideStore.getState().clear()
-      return { cleared: true }
-    })
-
-    registerClientHandler<
-      Record<string, never>,
-      { targets: { id: string; name: string; explain: string }[] }
-    >('guide.list', () => {
-      // Only what is actually on screen. Listing a control that is not here is
-      // how an agent ends up confidently describing another page.
-      const here = GUIDE_TARGETS.filter((target) => resolveTarget(document, target) !== null)
-      return {
-        targets: here.map((target) => ({
-          id: target.id,
-          name: target.name,
-          explain: target.explain,
-        })),
-      }
-    })
 
     // ---------------------------------------------------------------- sketch
     //

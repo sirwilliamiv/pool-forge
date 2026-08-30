@@ -33,6 +33,7 @@ import type {
   ValidationReport,
 } from '@/modules/validation/types'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { captureError } from '@/modules/monitoring'
 
 async function requireOrg(): Promise<{ orgId: string }> {
   const session = await auth()
@@ -224,7 +225,11 @@ export async function recomputeAndCacheEditor(projectId: string): Promise<void> 
     }
     const report = runValidation(ctx)
     await writeCachedValidation(projectId, report)
-  } catch (err) {
-    console.error('recomputeAndCacheEditor failed', err)
+  } catch (error) {
+    // Swallowed on purpose: the caches are a convenience and a failure here
+    // must not fail the save that triggered it. Recorded rather than printed,
+    // so it is countable in production instead of scrolling past in a console
+    // nobody has open.
+    captureError({ error, code: 'editor.recompute_failed', origin: 'server' })
   }
 }
