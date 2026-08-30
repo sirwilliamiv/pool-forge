@@ -15,6 +15,7 @@ import type { VoiceScreen } from '../scope'
 import type { DestructiveRequest } from '@/components/voice/DestructiveConfirm'
 import { isDestructive } from '../tools'
 import { startCapture, VoicePlayback, type CaptureHandle } from './audio'
+import { useVoiceLiveStore } from './liveStore'
 import { createWebSocketBridge, relayUrl } from './wsBridge'
 
 // The browser half of the voice agent.
@@ -349,6 +350,17 @@ export function useVoiceSession(
     if (projectName !== undefined) context.projectName = projectName
     bridge.current?.setScreen(screen, context)
   }, [projectId, projectName, screen, status])
+
+  // Mirrored to the shared store so surfaces the dock never touches (the
+  // editor's live border) can follow the session without prop-threading
+  // through the app shell. Reset on unmount, or a dead dock leaves the app
+  // looking live.
+  useEffect(() => {
+    useVoiceLiveStore.getState().setStatus(status)
+  }, [status])
+  useEffect(() => {
+    return () => useVoiceLiveStore.getState().setStatus('unavailable')
+  }, [])
 
   // A session outlives the component only as a bill, so end it on unmount.
   useEffect(() => {

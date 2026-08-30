@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 
 import { ClientCommandHandlers } from '@/components/editor/ClientCommandHandlers'
 import { EditorPersistence } from '@/components/editor/EditorPersistence'
+import { LiveSessionBorder } from '@/components/editor/LiveSessionBorder'
 import { ExportCommandHandlers } from '@/components/exports/ExportCommandHandlers'
 import { R3FCanvas } from '@/lib/three/r3f-canvas'
 import type { Shape } from '@/modules/editor/state/shapes'
@@ -127,6 +128,7 @@ export function EditorLayout({
           selectionLabelSlot={<SelectionLabelOverlay />}
           contextualToolbarSlot={<ContextualToolbar />}
         />
+        <LiveSessionBorder />
       </main>
 
       <RightPanel
