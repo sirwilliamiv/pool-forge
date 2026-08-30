@@ -87,27 +87,42 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
             <span className="sr-only">Project actions</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48" onClick={stop}>
-          <DropdownMenuItem onSelect={() => router.push(`/projects/${projectId}/editor`)}>
+        <DropdownMenuContent
+          align="end"
+          className="w-48 border-theme-line bg-theme-bg text-theme-fg shadow-elevation1"
+          onClick={stop}
+        >
+          <DropdownMenuItem
+            className="focus:bg-theme-card focus:text-theme-fg"
+            onSelect={() => router.push(`/projects/${projectId}/editor`)}
+          >
             <ExternalLink className="mr-2 h-4 w-4" />
             Open editor
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onDuplicate} disabled={pending}>
+          <DropdownMenuItem
+            className="focus:bg-theme-card focus:text-theme-fg"
+            onClick={onDuplicate}
+            disabled={pending}
+          >
             <Copy className="mr-2 h-4 w-4" />
             Duplicate
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onArchive} disabled={pending}>
+          <DropdownMenuItem
+            className="focus:bg-theme-card focus:text-theme-fg"
+            onClick={onArchive}
+            disabled={pending}
+          >
             <Archive className="mr-2 h-4 w-4" />
             Archive
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="bg-theme-line" />
           <DropdownMenuItem
             onClick={(e) => {
               stop(e)
               setConfirmOpen(true)
             }}
             disabled={pending}
-            className="text-destructive focus:text-destructive"
+            className="text-brand-red focus:bg-theme-card focus:text-brand-red"
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete…
@@ -116,12 +131,15 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
       </DropdownMenu>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent onClick={stop}>
+        <DialogContent
+          className="rounded-brand16 border-theme-line bg-theme-bg text-theme-fg sm:rounded-brand16"
+          onClick={stop}
+        >
           <DialogHeader>
-            <DialogTitle>Delete project</DialogTitle>
-            <DialogDescription>
-              Permanently delete <strong>{projectName}</strong>? This will remove the drawing,
-              quotes, exports, and validation runs. This cannot be undone.
+            <DialogTitle className="text-title4 font-semibold text-theme-fg">Delete project</DialogTitle>
+            <DialogDescription className="text-bodyS text-theme-muted">
+              Permanently delete <strong className="text-theme-fg">{projectName}</strong>? This will remove
+              the drawing, quotes, exports, and validation runs. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

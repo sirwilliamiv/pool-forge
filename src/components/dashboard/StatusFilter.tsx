@@ -31,8 +31,10 @@ export function StatusFilter() {
             key={s}
             href={href}
             className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              active ? 'border-primary bg-primary text-primary-foreground' : 'bg-background hover:bg-accent',
+              'rounded-full border px-3 py-1 text-bodyS font-medium transition-colors duration-brand ease-brand',
+              active
+                ? 'border-theme-fg bg-theme-fg text-theme-bg'
+                : 'border-theme-line bg-theme-bg text-theme-fg hover:bg-theme-card',
             )}
           >
             {label}

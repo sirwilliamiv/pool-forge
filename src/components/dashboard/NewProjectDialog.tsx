@@ -55,10 +55,12 @@ export function NewProjectDialog({ action }: { action: Action }) {
           New project
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="rounded-brand16 border-theme-line bg-theme-bg text-theme-fg sm:rounded-brand16">
         <DialogHeader>
-          <DialogTitle>Create project</DialogTitle>
-          <DialogDescription>Start a new pool design and quote.</DialogDescription>
+          <DialogTitle className="text-title4 font-semibold text-theme-fg">Create project</DialogTitle>
+          <DialogDescription className="text-bodyS text-theme-muted">
+            Start a new pool design and quote.
+          </DialogDescription>
         </DialogHeader>
         <form action={onSubmit} className="space-y-4">
           <div className="space-y-2">
