@@ -136,58 +136,53 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         ))}
       </div>
 
-      {/* ── Layer 2: the wordmark ─────────────────────────────────────── */}
-      {/* Sized off the viewport rather than off the card, so it runs wider than
-          the card can cover and the word continues out either side.
-       *
-          Set solid and centred rather than justified across the full width.
-          Justifying was tried and it spread POOL and FORGE into loose columns
-          of letters: with the card then covering the middle, nothing was left
-          to read. Occlusion only works if the eye can complete the word, so the
-          letters stay tight and the card takes a bite out of the middle.
-       *
-          Leading under 1 closes the two lines into one mass. All ink: the
-          spectrum lives in the shapes, not in the letters. */}
-      <div className="relative flex w-full flex-col items-center">
-        <Link
-          href="/"
-          aria-label="Pool Forge, home"
-          className="relative z-10 block text-center font-medium leading-[0.78] tracking-[-0.045em] text-theme-fg"
-        >
-          {WORDMARK.map((word) => (
-            {/* The lower bound is set off the viewport, not off taste: on a
-                phone the card is nearly full width, so if the wordmark is
-                narrower than the card the bottom line vanishes entirely and
-                there is no occlusion left, just a hidden word. It has to stay
-                wider than the card at every size. */}
-            <span key={word} aria-hidden className="block text-[clamp(5.5rem,32vw,12rem)]">
-              {word}
-            </span>
-          ))}
-        </Link>
-
       {/* ── Layer 3: shapes in FRONT of the type ──────────────────────── */}
-      {/* This is the layer that does the work. Occlusion is the strongest depth
-          cue there is short of real perspective, and a hard-edged shape cutting
-          straight across a letterform reads as depth instantly — the same trick
-          as a subject cut out over a headline, without needing a photograph
-          this product does not have. */}
+      {/* Positioned against the page rather than against the wordmark's own
+          wrapper, so `inset-0` means the viewport and the shapes crop at its
+          edges. It sits above the type in the stack but below the card. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 z-20">
         {SHAPES.filter((s) => s.layer === 'front').map((shape) => (
           <span key={shape.key} className={shape.className} style={shape.style} />
         ))}
       </div>
 
+      <div className="relative flex w-full flex-col items-center">
+        {/* ── Layer 2: the wordmark ───────────────────────────────────── */}
+        {/* Sized off the viewport rather than off the card, so it runs wider
+            than the card can cover and the word continues out either side.
+         *
+            Set solid and centred rather than justified across the full width.
+            Justifying was tried and it spread POOL and FORGE into loose columns
+            of letters: with the card then covering the middle there was nothing
+            left to read. Occlusion only works if the eye can complete the word.
+         *
+            The clamp's lower bound is set off the viewport, not off taste: on a
+            phone the card is nearly full width, and a wordmark narrower than the
+            card is not occluded, it is hidden.
+         *
+            Leading under 1 closes the two lines into one mass. All ink: the
+            spectrum lives in the shapes, not in the letters. */}
+        <Link
+          href="/"
+          aria-label="Pool Forge, home"
+          className="relative z-10 block text-center font-medium leading-[0.78] tracking-[-0.045em] text-theme-fg"
+        >
+          {WORDMARK.map((word) => (
+            <span key={word} aria-hidden className="block text-[clamp(5.5rem,32vw,12rem)]">
+              {word}
+            </span>
+          ))}
+        </Link>
+
         {/* ── Layer 4: the card, in front of everything ───────────────── */}
-        {/* The card is the front plane, pulled up so it takes a bite out of the
-            bottom word rather than sitting under the block. A negative margin
-            rather than absolute placement, so the overlap stays the same
-            fraction of the wordmark at every size instead of drifting as the
-            viewport changes.
+        {/* Pulled up so it takes a bite out of the bottom word rather than
+            sitting under the block. A negative margin rather than absolute
+            placement, so the overlap stays the same fraction of the wordmark at
+            every size instead of drifting as the viewport changes.
          *
             POOL stays clear above it and FORGE runs behind it and out both
-            sides, which is the read: one line whole, one line occluded. Cover
-            both and there is nothing left to complete. */}
+            sides: one line whole, one line occluded. Cover both and there is
+            nothing left for the eye to complete. */}
         <div className="relative z-30 -mt-10 w-full max-w-sm sm:-mt-14 lg:-mt-20">
           {children}
         </div>
