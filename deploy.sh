@@ -253,19 +253,9 @@ fi
 
 # ---------------------------------------------------------------- build
 # The public URL is compiled into the client bundle, so it has to be known
-# before the first build, when the service does not exist to be asked. Cloud Run
-# derives it from the service name and the project number, so it is knowable:
-# guessing it wrong once meant a first deploy whose sign-in callbacks pointed at
-# a hostname nobody serves, and a second full rebuild to correct it.
-if [ "$DRY" = "1" ]; then SERVICE_URL=""; else
-SERVICE_URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" \
-  --format 'value(status.url)' 2>/dev/null || true)"
-if [ -z "$SERVICE_URL" ]; then
-  PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format 'value(projectNumber)' 2>/dev/null || true)"
-  [ -n "$PROJECT_NUMBER" ] && SERVICE_URL="https://${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
-fi
-fi
-PUBLIC_URL="${APP_URL:-${SERVICE_URL:-https://${SERVICE}-${REGION}.run.app}}"
+# before the first build. Since 2026-08-30 the service is mapped to the custom
+# domain, so the default is fixed; APP_URL still overrides for a staging deploy.
+PUBLIC_URL="${APP_URL:-https://pool-forge.com}"
 
 if [ "$BUILD" = "1" ]; then
   say "Building the image"

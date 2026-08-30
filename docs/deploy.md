@@ -68,6 +68,26 @@ It is deliberately shallow and does not touch the database. A check that queries
 the database turns a slow database into an instance the platform kills and
 replaces, which is how a blip becomes an outage.
 
+## The domain
+
+`pool-forge.com` (registered at Porkbun, 2026-08-30) is mapped to the `pool-forge`
+Cloud Run service with `gcloud beta run domain-mappings`, apex and `www`. DNS at
+Porkbun points the apex at Google's four A / four AAAA records and `www` at
+`ghs.googlehosted.com`; the TLS certificate is Google-managed and renews itself.
+
+Three places know the hostname, and they must agree:
+
+- The domain ownership verification is a `google-site-verification` TXT record
+  on the apex, tied to the operator's Google account. Deleting that TXT record
+  eventually un-verifies the domain and blocks future mapping changes.
+- `deploy.sh` defaults `PUBLIC_URL` to `https://pool-forge.com`, which becomes
+  `APP_URL`, `AUTH_URL`, and the baked `NEXT_PUBLIC_APP_URL`. Changing domains
+  means a full rebuild, not just new env vars.
+- Porkbun's stock MX / SPF forwarding records were left in place; they carry
+  email forwarding only and do not affect the web mapping.
+
+The `*.run.app` URL keeps working alongside the domain.
+
 ## Things that bake at build time
 
 Anything named `NEXT_PUBLIC_*` is compiled into the browser bundle, so it cannot
