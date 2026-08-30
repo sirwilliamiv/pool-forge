@@ -64,13 +64,16 @@ export function HeaderBar({ orgName, customerName, projectName, projectId, user 
       </Link>
 
       <nav className="flex items-center gap-1 text-[12px] text-textMuted">
-        <span className={CRUMB} style={crumbHue(SPECTRUM.blue)}>
+        <Link href="/dashboard" className={CRUMB} style={crumbHue(SPECTRUM.blue)}>
           {orgName ?? 'Pool Forge'}
-        </span>
+        </Link>
         <ChevronRight className="h-3 w-3 text-textFaint" />
-        <span className={CRUMB} style={crumbHue(SPECTRUM.purple)}>
+        {/* The customer lives on the project overview; there is no customer
+            page of its own yet. A crumb with a hover state has to go
+            somewhere: a span that lights up and does nothing is a lie. */}
+        <Link href={`/projects/${projectId}`} className={CRUMB} style={crumbHue(SPECTRUM.purple)}>
           {customerName ?? 'Customer'}
-        </span>
+        </Link>
         <ChevronRight className="h-3 w-3 text-textFaint" />
         <Link
           href={`/projects/${projectId}`}
