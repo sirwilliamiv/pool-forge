@@ -52,6 +52,21 @@ async function createProjectAction(input: { name: string; customerName: string }
   return { ok: true, id: result.data.projectId }
 }
 
+/**
+ * The core spectrum, for the card hover.
+ *
+ * Cycled by position rather than derived from the project, because a colour
+ * that means something would be a status, and status is already a control on
+ * the card. This is only a hover cue.
+ */
+const CARD_HUES = [
+  'var(--brand-orange)',
+  'var(--brand-red)',
+  'var(--brand-purple)',
+  'var(--brand-blue)',
+  'var(--brand-green)',
+] as const
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -112,10 +127,16 @@ export default async function DashboardPage({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
+          {projects.map((p, i) => (
+            // Hover picks up a hairline in one of the core hues, cycling by
+            // position so a wall of cards is not a wall of one colour. Border
+            // only, not a fill: the card is dense with type and a saturated
+            // ground would fight every line of it. The shadow lifts at the same
+            // time, so the cue is depth first and colour second.
             <Card
               key={p.id}
-              className="h-full transition-shadow duration-brand ease-brand hover:shadow-elevation1"
+              style={{ '--card-hover': CARD_HUES[i % CARD_HUES.length] } as React.CSSProperties}
+              className="h-full border-theme-line transition-[border-color,box-shadow] duration-brand ease-brand hover:border-[var(--card-hover)] hover:shadow-elevation1"
             >
               <CardHeader className="space-y-2">
                 <div className="flex items-start justify-between gap-2">

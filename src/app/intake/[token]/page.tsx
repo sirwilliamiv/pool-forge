@@ -12,6 +12,7 @@ import { notFound } from 'next/navigation'
 
 import { db } from '@/lib/db'
 import { resolveIntakeLink } from '@/modules/imports/intake/links'
+import { MonsteraLeaf, PalmFrond } from '@/components/marketing/botanicals'
 import { IntakeUploadForm } from './IntakeUploadForm'
 
 export const dynamic = 'force-dynamic'
@@ -52,13 +53,41 @@ export default async function IntakePage({
   const accent = org.brandColor ?? '#0284c7'
 
   return (
-    <div className="min-h-screen bg-theme-card">
+    <div className="relative isolate min-h-screen overflow-hidden bg-theme-card">
+      {/* Colour, at a homeowner rather than at a builder.
+       *
+          This page asks a stranger to photograph their own back yard, so a flat
+          grey form is the wrong register: it reads as paperwork. The botanical
+          accents are the bible's answer, and this is squarely the surface they
+          were written for — it is about the finished yard rather than about the
+          tool.
+       *
+          Behind everything, cropped hard at the corners, and clear of the card
+          so nothing sits under the upload control. They shrink rather than
+          disappear on a phone, which is where this page is almost always
+          opened. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <MonsteraLeaf
+          id="intake-a"
+          className="absolute -right-16 -top-12 h-64 w-56 sm:-right-20 sm:h-96 sm:w-80"
+          style={{ color: 'var(--brand-green)', opacity: 0.9, transform: 'rotate(18deg)' }}
+        />
+        <PalmFrond
+          className="absolute -bottom-16 -left-20 h-64 w-64 sm:-bottom-24 sm:-left-24 sm:h-96 sm:w-96"
+          style={{ color: 'var(--tint-sage)', transform: 'rotate(-24deg)' }}
+        />
+        <span
+          className="absolute -left-10 top-1/3 hidden h-40 w-40 rounded-[100%_0_100%_0] lg:block"
+          style={{ background: 'var(--tint-honeydew)' }}
+        />
+      </div>
+
       {/* The 4px top border is the one place the builder's own brand colour
           shows, not ours: a customer needs to recognise who is asking for
           their photos, and that colour is real per-org data rather than a
           Pool Forge accent. */}
       <header
-        className="border-b border-theme-line bg-theme-bg"
+        className="relative border-b border-theme-line bg-theme-bg"
         style={{ borderTopColor: accent, borderTopWidth: 4 }}
       >
         <div className="mx-auto flex w-full max-w-xl items-center gap-3 px-4 py-4">
@@ -87,7 +116,7 @@ export default async function IntakePage({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-xl px-4 py-6">
+      <main className="relative mx-auto w-full max-w-xl px-4 py-6">
         <div className="mb-6">
           <h1 className="text-title3 font-medium text-theme-fg">
             Send {org.name} your inspiration pictures

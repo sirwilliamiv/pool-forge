@@ -192,3 +192,12 @@
     color: var(--theme-fg-faint);
   }
 }
+
+/* The loading mark's rotation. Named rather than using a Tailwind default so
+   the duration and easing live with the component that owns them, and so
+   `motion-safe:` is the only thing gating it. */
+@keyframes pf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
