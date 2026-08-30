@@ -52,55 +52,62 @@ export default async function IntakePage({
   const accent = org.brandColor ?? '#0284c7'
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="border-b bg-white" style={{ borderTopColor: accent, borderTopWidth: 4 }}>
+    <div className="min-h-screen bg-theme-card">
+      {/* The 4px top border is the one place the builder's own brand colour
+          shows, not ours: a customer needs to recognise who is asking for
+          their photos, and that colour is real per-org data rather than a
+          Pool Forge accent. */}
+      <header
+        className="border-b border-theme-line bg-theme-bg"
+        style={{ borderTopColor: accent, borderTopWidth: 4 }}
+      >
         <div className="mx-auto flex w-full max-w-xl items-center gap-3 px-4 py-4">
           {org.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={org.logoUrl}
               alt=""
-              className="h-10 w-10 rounded object-contain"
+              className="h-10 w-10 rounded-brand object-contain"
               width={40}
               height={40}
             />
           ) : (
             <div
               aria-hidden
-              className="flex h-10 w-10 items-center justify-center rounded text-sm font-semibold text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-brand text-bodyS font-semibold text-white"
               style={{ backgroundColor: accent }}
             >
               {org.name.slice(0, 2).toUpperCase()}
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-slate-900">{org.name}</p>
-            <p className="text-xs text-slate-500">Pool design intake</p>
+            <p className="truncate text-bodyL font-semibold text-theme-fg">{org.name}</p>
+            <p className="text-bodyS text-theme-muted">Pool design intake</p>
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-xl px-4 py-6">
         <div className="mb-6">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+          <h1 className="text-title3 font-medium text-theme-fg">
             Send {org.name} your inspiration pictures
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-bodyS text-theme-muted">
             Drop in any pictures of pools you like, a sketch of your yard, or a copy of your survey.
             {' '}
             {org.name} uses them to start your design. Nothing is shared publicly.
           </p>
         </div>
 
-        <div className="rounded-xl border bg-white p-4 shadow-sm sm:p-6">
+        <div className="rounded-brand16 border border-theme-line bg-theme-bg p-4 shadow-elevation1 sm:p-6">
           <IntakeUploadForm token={token} orgName={org.name} />
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-500">
+        <p className="mt-6 text-center text-bodyS text-theme-muted">
           You are uploading to {org.name}. If you were not expecting this link, close this page.
         </p>
-        <p className="mt-2 text-center text-xs text-slate-400">
-          <Link href="/" className="hover:underline">
+        <p className="mt-2 text-center text-bodyS text-theme-faint">
+          <Link href="/" className="hover:text-theme-fg hover:underline">
             Pool Forge
           </Link>
         </p>

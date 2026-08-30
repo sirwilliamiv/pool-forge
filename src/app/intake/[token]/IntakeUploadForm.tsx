@@ -123,11 +123,11 @@ export function IntakeUploadForm({ token, orgName }: IntakeUploadFormProps) {
   if (phase === 'sent') {
     return (
       <div
-        className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center"
+        className="rounded-brand16 border border-theme-line bg-tint-mint p-6 text-center"
         role="status"
       >
-        <h2 className="text-lg font-semibold text-emerald-900">Got it, thank you.</h2>
-        <p className="mt-2 text-sm text-emerald-800">
+        <h2 className="text-title4 font-medium text-ink-black">Got it, thank you.</h2>
+        <p className="mt-2 text-bodyS text-ink-black">
           Your photos are with {orgName}. Someone will be in touch about your pool.
         </p>
       </div>
@@ -147,12 +147,12 @@ export function IntakeUploadForm({ token, orgName }: IntakeUploadFormProps) {
           setDragging(false)
           addFiles(e.dataTransfer.files)
         }}
-        className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-          dragging ? 'border-sky-500 bg-sky-50' : 'border-slate-300 bg-slate-50'
+        className={`rounded-brand16 border-2 border-dashed p-6 text-center transition-[background,border-color] duration-brand ease-brand ${
+          dragging ? 'border-brand-uiBlue bg-tint-paleBlue' : 'border-theme-line bg-theme-card'
         }`}
       >
-        <p className="text-base font-medium text-slate-900">Add your photos</p>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="text-bodyL font-medium text-theme-fg">Add your photos</p>
+        <p className="mt-1 text-bodyS text-theme-muted">
           Inspiration pictures, a sketch, a survey, or a photo of your yard.
         </p>
 
@@ -180,7 +180,7 @@ export function IntakeUploadForm({ token, orgName }: IntakeUploadFormProps) {
         >
           Choose photos or take one
         </Button>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-bodyS text-theme-muted">
           Up to {MAX_IMAGES_PER_SESSION} files, {MAX_MB} MB each. Photos and PDFs.
         </p>
       </div>
@@ -190,21 +190,21 @@ export function IntakeUploadForm({ token, orgName }: IntakeUploadFormProps) {
           {files.map((file, index) => (
             <li
               key={`${file.name}-${file.size}-${index}`}
-              className="flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-3 rounded-brand border border-theme-line bg-theme-bg px-3 py-2 text-bodyS"
             >
-              <span className="min-w-0 flex-1 truncate text-slate-800">{file.name}</span>
-              <span className="shrink-0 text-xs text-slate-500">{formatSize(file.size)}</span>
+              <span className="min-w-0 flex-1 truncate text-theme-fg">{file.name}</span>
+              <span className="shrink-0 text-bodyS text-theme-muted">{formatSize(file.size)}</span>
               <button
                 type="button"
                 onClick={() => removeAt(index)}
-                className="shrink-0 rounded px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                className="shrink-0 rounded-brand px-2 py-1 text-bodyS font-medium text-theme-muted transition-[background] duration-brand ease-brand hover:bg-theme-card"
                 aria-label={`Remove file ${index + 1}`}
               >
                 Remove
               </button>
             </li>
           ))}
-          <li className="px-3 text-xs text-slate-500">
+          <li className="px-3 text-bodyS text-theme-muted">
             {files.length} file{files.length === 1 ? '' : 's'}, {formatSize(totalBytes)} total
           </li>
         </ul>
@@ -247,14 +247,14 @@ export function IntakeUploadForm({ token, orgName }: IntakeUploadFormProps) {
             rows={4}
             maxLength={4000}
             placeholder="Size you have in mind, features you like, where it goes in the yard."
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="w-full rounded-brand border-0 bg-theme-field px-3.5 py-2 text-bodyL text-theme-fg transition-[background,box-shadow] duration-brand ease-brand placeholder:text-theme-faint hover:bg-[color-mix(in_oklch,var(--theme-fg),transparent_84%)] focus-visible:bg-theme-bg focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_1.5px_var(--theme-fg)]"
           />
         </div>
-        <p className="text-xs text-slate-500">All of this is optional. The photos are the point.</p>
+        <p className="text-bodyS text-theme-muted">All of this is optional. The photos are the point.</p>
       </div>
 
       {error !== null && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p role="alert" className="rounded-brand border border-theme-line bg-tint-blush px-3 py-2 text-bodyS text-ink-black">
           {error}
         </p>
       )}
