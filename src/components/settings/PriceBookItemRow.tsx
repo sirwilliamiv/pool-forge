@@ -43,12 +43,18 @@ export function PriceBookItemRow({ item }: PriceBookItemRowProps) {
 
   return (
     <>
-      <tr className="border-b last:border-0 hover:bg-muted/40">
-        <td className="px-3 py-2 font-medium">{item.name}</td>
-        <td className="px-3 py-2 text-muted-foreground">{item.unitType}</td>
-        <td className="px-3 py-2 text-right tabular-nums">{fmt.format(item.unitCost)}</td>
-        <td className="px-3 py-2 text-right tabular-nums">{fmt.format(item.retailPrice)}</td>
-        <td className="px-3 py-2 text-xs text-muted-foreground">
+      <tr className="border-b border-theme-line last:border-0 hover:bg-theme-card">
+        <td className="px-3 py-2 font-medium text-theme-fg">{item.name}</td>
+        <td className="px-3 py-2 font-brandMono tracking-[0.5px] text-theme-muted">
+          {item.unitType}
+        </td>
+        <td className="px-3 py-2 text-right font-brandMono tabular-nums tracking-[0.5px] text-theme-fg">
+          {fmt.format(item.unitCost)}
+        </td>
+        <td className="px-3 py-2 text-right font-brandMono tabular-nums tracking-[0.5px] text-theme-fg">
+          {fmt.format(item.retailPrice)}
+        </td>
+        <td className="px-3 py-2 font-brandMono text-formLabel tracking-[0.5px] text-theme-muted">
           {flags.length ? flags.join(' · ') : '—'}
         </td>
         <td className="px-3 py-2 text-right">
