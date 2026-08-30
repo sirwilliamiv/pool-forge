@@ -2,29 +2,32 @@
 
 import { useEffect, useRef } from 'react'
 
+import { SPECTRUM, INK } from '@/lib/brand'
 import type { TranscriptLine } from '@/modules/voice/client/useVoiceSession'
 
 /**
  * What was said, over the drawing, without taking any of it.
  *
- * No panel. The editor is the product and the canvas is the part of it that
- * matters, so the transcript is text on top of the drawing rather than a card
- * sitting on the drawing. That means three things have to be true at once.
+ * The first version was bare halo text with no ground, and on real pages it
+ * failed twice over: the halo went fuzzy against the canvas grid, and on white
+ * document pages the words landed directly on the page's own text with nothing
+ * separating them. So each line now sits on a frosted pill: translucent white
+ * with a blur, which reads over water, grid and a project card alike without
+ * hiding what is underneath.
  *
- * It cannot be clicked. `pointer-events: none` all the way down, so a line of
- * speech lying over a pool is not a dead patch of canvas: every click goes
- * through it to the thing underneath.
+ * The pill border is the electric azure run, ui blue into core blue into
+ * purple, the same family as the live-session ring around the editor viewport.
+ * One gradient means one thing everywhere: this is the live session talking.
  *
- * It has to stay readable over anything. There is no background to guarantee
- * contrast, and the canvas underneath ranges from near-white deck to dark water,
- * so each line carries its own light halo. A shadow rather than a box: it holds
- * the letters up without claiming a rectangle.
- *
- * And it has to leave. Lines rise as new ones arrive and dissolve into nothing
- * at the top, which is what a mask does and what a scroll bar cannot: an
- * overflow container would either clip mid-word or grow a scrollbar, and both
- * read as a panel again.
+ * Two of the original rules still hold. It cannot be clicked:
+ * `pointer-events: none` all the way down, so a pill lying over a pool is not a
+ * dead patch of canvas. And it has to leave: lines rise as new ones arrive and
+ * dissolve into nothing at the top, because an overflow container would either
+ * clip mid-word or grow a scrollbar, and a scrollbar reads as a panel.
  */
+
+const PILL_BORDER = `linear-gradient(135deg, ${SPECTRUM.uiBlue}, ${SPECTRUM.blue}, ${SPECTRUM.purple})`
+
 export function VoiceTranscript({ lines }: { lines: TranscriptLine[] }) {
   const railRef = useRef<HTMLDivElement>(null)
 
@@ -52,24 +55,42 @@ export function VoiceTranscript({ lines }: { lines: TranscriptLine[] }) {
           'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.25) 12%, #000 38%)',
       }}
     >
-      <div className="flex flex-col items-end gap-1 text-right">
+      <div className="flex flex-col items-end gap-1.5">
         {lines.map(line => (
-          <p
+          <div
             key={line.id}
-            className={
-              line.role === 'user'
-                ? 'font-semibold text-slate-900'
-                : 'font-medium text-slate-600'
-            }
-            style={{
-              // The halo. Four offsets rather than a blur, so thin strokes stay
-              // crisp against the grid instead of going soft.
-              textShadow:
-                '0 1px 2px rgba(255,255,255,.95), 0 -1px 2px rgba(255,255,255,.95), 1px 0 2px rgba(255,255,255,.95), -1px 0 2px rgba(255,255,255,.95)',
-            }}
+            data-transcript-pill={line.role}
+            // The gradient is the border: a 1px gradient shell around a frosted
+            // core, because `border` cannot take a gradient and a pseudo-element
+            // per line is more machinery than a wrapper.
+            style={{ background: PILL_BORDER, borderRadius: 12, padding: 1, maxWidth: '100%' }}
           >
-            {line.text}
-          </p>
+            <p
+              className={line.role === 'user' ? 'font-medium' : 'font-normal'}
+              style={{
+                margin: 0,
+                textAlign: 'left',
+                borderRadius: 11,
+                padding: '6px 11px',
+                color: INK.black,
+                background: `${INK.white}D1`,
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+              }}
+            >
+              <span
+                className="block font-mono text-[9px] font-semibold uppercase"
+                style={{
+                  letterSpacing: '.6px',
+                  marginBottom: 1,
+                  color: line.role === 'user' ? INK.slate : SPECTRUM.uiBlue,
+                }}
+              >
+                {line.role === 'user' ? 'You' : 'Marco'}
+              </span>
+              {line.text}
+            </p>
+          </div>
         ))}
       </div>
     </div>
