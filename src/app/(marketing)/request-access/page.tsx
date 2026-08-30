@@ -10,10 +10,9 @@
 // That is a hard rule, not a preference. A builder who arrives expecting what
 // is written here and finds something else is a beta customer lost in the first
 // ten minutes, and there are only a few of them. Specifically: no photoreal
-// rendering, no LiDAR capture, no voice agent, no e-signature service, no
-// financing, no accounting sync, no drawing on a phone. The section headed
-// "What it does not do yet" says all of that out loud, because the people who
-// need it to do those things are better off knowing now.
+// rendering, no LiDAR capture, no e-signature service, no
+// financing, no accounting sync, no drawing on a phone. Those gaps are
+// recorded in `docs/feature-list.md`, so the honesty survives off the page.
 //
 // Before changing a word here, check it against the running app.
 //
@@ -24,9 +23,9 @@
 // surface, which suits the way in; it is free here because the announcement
 // bar, which is the other green thing, hides itself on its own destination.
 //
-// Three things in here are load-bearing for `src/test/e2e/waitlist.spec.ts` and
+// Two things in here are load-bearing for `src/test/e2e/waitlist.spec.ts` and
 // must not be reworded: the `<h1>`, the phrase "Invite only while it is early",
-// and the headings "What it does not do yet" and "Why access is limited".
+// and the heading "Why access is limited".
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -258,73 +257,6 @@ export default function RequestAccessPage() {
               },
             ]}
           />
-        </div>
-      </section>
-
-      <hr className="mk-rule" />
-
-      {/* ───────────────────────── The honest part ────────────────────────── */}
-      {/* The one tinted block on the page. It is the section a builder is most
-          likely to skim and the one they can least afford to, so it gets the
-          ground rather than the wall of white the rest of the page sits on. */}
-      <section className="mk-block mk-block--major mk-block--tinted">
-        <div className="mk-decor" aria-hidden>
-          <span
-            className="mk-shape mk-shape--bite"
-            style={{
-              background: 'var(--brand-green)',
-              width: '16rem',
-              height: '16rem',
-              right: '-5rem',
-              bottom: '-6rem',
-            }}
-          />
-          <span
-            className="mk-shape mk-shape--petal"
-            style={{
-              background: 'var(--tint-lilac)',
-              width: '11rem',
-              height: '11rem',
-              left: '-5rem',
-              top: '-3rem',
-            }}
-          />
-        </div>
-        <div className="mk-shell">
-          <Split>
-            <div>
-              <p className="mk-label mk-label--ink" style={{ marginBottom: '1.5rem' }}>
-                Not yet
-              </p>
-              <h2 className="mk-title1">What it does not do yet</h2>
-              <p className="mk-lead" style={{ marginTop: '1rem' }}>
-                Better you know now than in your first week. If one of these is the thing you were
-                hoping for, tell us in the form and we will say honestly where it sits.
-              </p>
-            </div>
-            <div>
-              <PointList
-                points={[
-                  {
-                    lead: 'The 3D is schematic, not photoreal.',
-                    rest: 'It is clean, and it is for reading shape, scale and layout. It will not out-render Pool Studio, and we are not going to pretend otherwise on a landing page.',
-                  },
-                  {
-                    lead: 'Acceptance is a typed name, not an e-signature.',
-                    rest: 'The customer accepts on the shared proposal and the accepted copy is kept as sent. It is not DocuSign, and we do not call it that.',
-                  },
-                  {
-                    lead: 'No financing, accounting sync, or CRM.',
-                    rest: 'No monthly payment under the total, no QuickBooks, no pipeline. It estimates and it produces documents.',
-                  },
-                  {
-                    lead: 'Drawing wants a laptop.',
-                    rest: 'Your customer reads the proposal fine on a phone. You will not be drawing a pool on one.',
-                  },
-                ]}
-              />
-            </div>
-          </Split>
         </div>
       </section>
 

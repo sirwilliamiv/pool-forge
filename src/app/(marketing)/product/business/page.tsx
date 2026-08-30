@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 
 import {
   FeatureGrid,
-  Gaps,
   Hero,
   PointList,
   ReadNext,
@@ -23,12 +22,12 @@ import {
 // This is the page where it is easiest to slip, because "runs the business"
 // invites claims about scheduling, job costing and invoicing that Pool Forge
 // does not make. It keeps customers against jobs and a record of what happened
-// to them. It is not a field service platform and it is not an ERP, and the
-// "Not yet" block says so in more words than the rest of the page.
+// to them. It is not a field service platform and it is not an ERP, and
+// `docs/feature-list.md` says so in more words than the rest of the page.
 //
 // Two specifics worth restating: there is no sales pipeline, and invite emails
 // do not send themselves yet — there is no mail provider configured, so an
-// operator mints the link and passes it on. Both are named below.
+// operator mints the link and passes it on. Both are recorded in the doc.
 //
 // `src/modules/marketing/competitors.ts` is the canonical record.
 
@@ -247,38 +246,6 @@ export default function BusinessPage() {
               },
             ]}
           />
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------- gaps */}
-      <section className="mk-block">
-        <div className="mk-shell">
-          <Gaps
-            title="This runs the job. It does not run the build"
-            items={[
-              'Scheduling',
-              'Service routing',
-              'Job costing',
-              'Purchase orders',
-              'Time tracking',
-              'A crew mobile app',
-              'Daily logs',
-              'Invoicing',
-              'Accounting sync',
-              'Reporting dashboards',
-              'A sales pipeline',
-              'Multiple locations',
-              'A customer account portal',
-              'A public API',
-              'Invite emails that send themselves',
-            ]}
-          />
-          <p className="mk-caption" style={{ marginTop: '1.5rem', maxWidth: '44rem' }}>
-            Pool Forge ends at the signed proposal and the construction set. Everything
-            after the dig belongs to whatever you already run, and there is no integration
-            to it yet. Invites work, but with no mail provider configured an operator
-            mints the link and passes it to you.
-          </p>
         </div>
       </section>
 

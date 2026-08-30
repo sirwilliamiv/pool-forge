@@ -869,47 +869,6 @@ svg.mk-botanical {
   font-weight: 500;
 }
 
-/* The honesty block. Every claim on these pages is something the app does
-   today, which only means anything if the gaps are named just as plainly. */
-.mk-gaps {
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 2.5rem;
-  display: grid;
-  gap: 2rem;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 56rem) {
-  .mk-gaps {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-    gap: 4rem;
-    padding: 3rem;
-  }
-}
-
-.mk-gaps__list {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  align-content: start;
-}
-
-.mk-gaps__item {
-  display: flex;
-  gap: 0.625rem;
-  align-items: baseline;
-  font-size: var(--size-body);
-  color: var(--fg-muted);
-}
-
-.mk-gaps__item::before {
-  content: '×';
-  font-family: var(--font-mono);
-  color: var(--fg-faint);
-  flex: none;
-}
-
 /* Cross-links to the other two pages. */
 .mk-next {
   display: grid;

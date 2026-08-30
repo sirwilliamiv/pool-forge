@@ -152,39 +152,6 @@ export function PointList({
   )
 }
 
-/* ------------------------------------------------------- the honesty block */
-
-/**
- * What this part of the product does not do yet, named as plainly as what it
- * does.
- *
- * This is not modesty. Pool Forge is invite only and there are only a few beta
- * builders; one who arrives expecting photoreal renders or a scheduling board
- * and finds neither is lost in the first ten minutes. Better that they read it
- * here. Same rule as `src/app/request-access/page.tsx`: every claim on these
- * pages is something the app does today, and this block is what makes that
- * rule checkable.
- */
-export function Gaps({ title, items }: { title: string; items: readonly string[] }) {
-  return (
-    <div className="mk-gaps">
-      <div>
-        <p className="mk-label mk-label--ink" style={{ marginBottom: '1rem' }}>
-          Not yet
-        </p>
-        <h2 className="mk-title3">{title}</h2>
-      </div>
-      <ul className="mk-gaps__list">
-        {items.map((item) => (
-          <li key={item} className="mk-gaps__item">
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
 /* ---------------------------------------------------------- read next / foot */
 
 export function ReadNext({ currentHref }: { currentHref: string }) {

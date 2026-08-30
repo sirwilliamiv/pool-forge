@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 
 import {
   FeatureGrid,
-  Gaps,
   Hero,
   PointList,
   ReadNext,
@@ -23,12 +22,12 @@ import {
 // Same hard rule as `src/app/request-access/page.tsx`, for the same reason:
 // Pool Forge is invite only, there are only a few beta builders, and one who
 // arrives expecting something written here and finds it missing is lost in the
-// first ten minutes. The "Not yet" block near the foot is not decoration; it is
-// what makes the rest of the page checkable.
+// first ten minutes. The gaps are recorded in `docs/feature-list.md` rather
+// than sold against on the page.
 //
 // Specifically not claimed here, because they are not built: photoreal
-// rendering, flythrough video, 360 panorama, VR, AR, drawing on a phone, a
-// plant library, and a voice agent. `src/modules/marketing/competitors.ts` is
+// rendering, flythrough video, 360 panorama, VR, AR, drawing on a phone, and
+// a plant library. `src/modules/marketing/competitors.ts` is
 // the canonical record of what is and is not true; check a claim against it and
 // against the running app before changing a word.
 
@@ -226,30 +225,6 @@ export default function EditorPage() {
               <VersionsPlate />
             </div>
           </Split>
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------- gaps */}
-      <section className="mk-block">
-        <div className="mk-shell">
-          <Gaps
-            title="The editor is a drawing tool, not a rendering house"
-            items={[
-              'Photoreal rendering',
-              'Flythrough video',
-              '360 panoramas',
-              'VR and AR',
-              'Drawing on a phone',
-              'A plant library',
-              'On-canvas resize handles',
-              'A voice agent',
-            ]}
-          />
-          <p className="mk-caption" style={{ marginTop: '1.5rem', maxWidth: '44rem' }}>
-            The render is clear, not photographic. If a photoreal image is what wins your
-            jobs, this is not the tool yet, and it is better to know that now than after
-            you have moved your price book across.
-          </p>
         </div>
       </section>
 

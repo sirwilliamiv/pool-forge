@@ -75,9 +75,9 @@ test.describe('the front door', () => {
     // The scarcity is stated as a decision with a reason behind it.
     await expect(page.getByText('Invite only while it is early')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Why access is limited' })).toBeVisible()
-    // And the page says out loud what the software does not do, which is the
-    // part that stops a builder arriving in week one expecting a render engine.
-    await expect(page.getByRole('heading', { name: 'What it does not do yet' })).toBeVisible()
+    // What the software does not do moved off the page and into
+    // docs/feature-list.md; the page must no longer carry the section.
+    await expect(page.getByRole('heading', { name: 'What it does not do yet' })).toHaveCount(0)
   })
 
   test('is where /register goes, now that nobody can sign themselves up', async ({ page }) => {

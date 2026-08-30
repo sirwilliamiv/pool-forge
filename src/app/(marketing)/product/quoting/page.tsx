@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 
 import {
   FeatureGrid,
-  Gaps,
   Hero,
   PointList,
   ReadNext,
@@ -26,7 +25,7 @@ import {
 // column and prices are flat per unit), margin targets, options and
 // alternates, change orders, online payment, financing, supplier catalogues,
 // a server-rendered PDF, and a third-party e-signature service. All of them
-// are named in the "Not yet" block.
+// are recorded in `docs/feature-list.md`.
 //
 // `src/modules/marketing/competitors.ts` is the canonical record. Check a claim
 // against it and against the running app before changing a word.
@@ -230,34 +229,6 @@ export default function QuotingPage() {
               },
             ]}
           />
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------- gaps */}
-      <section className="mk-block">
-        <div className="mk-shell">
-          <Gaps
-            title="Prices are flat per unit today, and the money stops at the proposal"
-            items={[
-              'Formulas and assemblies',
-              'Margin targets',
-              'Options and alternates',
-              'Change orders',
-              'Online payment',
-              'Financing',
-              'Supplier catalogues',
-              'A server-rendered PDF',
-              'A third-party e-signature service',
-              'Job costing against actuals',
-              'Invoicing',
-              'Accounting sync',
-            ]}
-          />
-          <p className="mk-caption" style={{ marginTop: '1.5rem', maxWidth: '44rem' }}>
-            A price book line is a unit and a number. If your pricing depends on a formula
-            across several measurements, you will be doing that arithmetic yourself for
-            now. Documents print from the browser rather than from a server.
-          </p>
         </div>
       </section>
 
