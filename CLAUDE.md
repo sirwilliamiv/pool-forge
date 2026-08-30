@@ -48,6 +48,35 @@ Every Prisma query in app code must filter by `orgId`. There is no global view a
 
 Cross-module imports are fine; bypassing the command registry is not.
 
+## Nothing off-brand ships
+
+`docs/brand-bible.md` is the product's visual specification, and it is enforced
+rather than requested. Colours come from `src/lib/brand.ts`: `SPECTRUM`, `INK`,
+`TINTS`, `ACCENT_FAMILIES`, plus `TYPE_SCALE`, `SPACING`, `RADII` and
+`ELEVATION` for everything that is not colour. Never write a hex value into a
+component.
+
+`src/test/unit/brand/palette.test.ts` fails the build on any colour in
+`src/components` or `src/app` that is not in the palette, naming the file and
+the value.
+
+It is a ratchet. The files that predate the bible are listed in that test with a
+reason each, and **that list may only ever get shorter**. Adding to it is
+choosing to ship something off brand, which is a decision somebody should have
+to write down and defend, not a thing that happens by default. Retire an entry
+by replacing its hex values with tokens and deleting the line.
+
+Two things are legitimately outside the palette, and both are already listed:
+documents that render standalone for paper, where a county planner's
+conventions win, and lit materials in the 3D scene, where picking water from a
+brand spectrum would make the pool the wrong colour rather than make it on
+brand.
+
+Semantic colour is not free either. Amber means a warning and red means an
+error, so a control being pointed at, highlighted or selected must not use them:
+it would read as something being wrong. Reach for a spectrum hue that carries no
+state.
+
 ## Build-priority discipline
 
 `docs/build-priority.md` is the active roadmap (mirrors the product brief §17). Before adding scope, check whether it's listed there. If not, surface the question rather than silently expanding.

@@ -20,6 +20,7 @@ import { normalizeToolId } from '@/modules/editor/interactions/toolIds'
 import { activeSnapInches, useDrawStore } from '@/modules/editor/state/drawStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useViewStore } from '@/modules/editor/state/viewStore'
+import { INK, SPECTRUM } from '@/lib/brand'
 
 /** Inches. How far apart the ends can be and still mean a closed outline. */
 const CLOSE_TOLERANCE = 18
@@ -246,13 +247,13 @@ export function SketchGestures() {
 
   return (
     <>
-      <Line points={points} color="#0F172A" lineWidth={2} dashed={false} />
+      <Line points={points} color={INK.warm} lineWidth={2} dashed={false} />
       {/* A dot per committed vertex, so it is obvious what a click did and how
           many corners the path actually has after snapping. */}
       {draft.map((p, i) => (
         <mesh key={i} position={[feet(p.x), 0.06, feet(p.y)]}>
           <sphereGeometry args={[0.12, 10, 10]} />
-          <meshBasicMaterial color="#F59E0B" />
+          <meshBasicMaterial color={SPECTRUM.orange} />
         </mesh>
       ))}
     </>

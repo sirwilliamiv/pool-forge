@@ -20,6 +20,7 @@ import {
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { usePresentationFlags } from '@/modules/editor/state/viewStore'
+import { SPECTRUM } from '@/lib/brand'
 
 // Grab handles on the selection.
 //
@@ -37,8 +38,8 @@ import { usePresentationFlags } from '@/modules/editor/state/viewStore'
 // The halo, the name plate and the accent are all the same blue, so handles
 // drawn in it disappeared into their own selection. A manipulator should read
 // as a thing to grab rather than as more outline.
-const HANDLE_COLOR = '#F59E0B'
-const ROTATE_COLOR = '#7C3AED'
+const HANDLE_COLOR = SPECTRUM.orange
+const ROTATE_COLOR = SPECTRUM.purple
 /** Scene units. Big enough to hit on a trackpad, small enough not to hide the pool. */
 const HANDLE_SIZE = 0.9
 /** Just off the ground, so handles are not buried in the deck they sit on. */

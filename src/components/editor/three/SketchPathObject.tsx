@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { feet } from '@/lib/three/units'
 import { useDrawStore } from '@/modules/editor/state/drawStore'
 import type { SketchPath } from '@/modules/editor/state/shapes'
+import { INK, SPECTRUM } from '@/lib/brand'
 
 /**
  * The ring as a flat fill, for the drop-target wash.
@@ -72,7 +73,7 @@ export function SketchPathObject({ shape }: { shape: SketchPath }) {
         >
           <shapeGeometry args={[fillShape(points)]} />
           <meshBasicMaterial
-            color="#F59E0B"
+            color={SPECTRUM.orange}
             transparent
             opacity={0.18}
             depthWrite={false}
@@ -84,7 +85,7 @@ export function SketchPathObject({ shape }: { shape: SketchPath }) {
       ) : null}
       <Line
         points={points}
-        color={isDropTarget ? '#F59E0B' : shape.closed ? '#0EA5E9' : '#334155'}
+        color={isDropTarget ? SPECTRUM.orange : shape.closed ? SPECTRUM.blue : INK.slate}
         lineWidth={isDropTarget ? 4 : 2}
         dashed={!shape.closed}
         dashSize={0.6}
