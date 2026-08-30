@@ -59,6 +59,7 @@ export function ProjectActions({ project }: ProjectActionsProps) {
         return
       }
       toast.success('Project archived')
+      router.refresh()
     })
   }
 
@@ -71,6 +72,7 @@ export function ProjectActions({ project }: ProjectActionsProps) {
       }
       toast.success('Project deleted')
       router.push('/dashboard')
+      router.refresh()
     })
   }
 

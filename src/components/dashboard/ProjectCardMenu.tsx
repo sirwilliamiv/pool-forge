@@ -62,6 +62,7 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
         return
       }
       toast.success('Project archived')
+      router.refresh()
     })
   }
 
@@ -74,6 +75,7 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
       }
       toast.success('Project deleted')
       setConfirmOpen(false)
+      router.refresh()
     })
   }
 

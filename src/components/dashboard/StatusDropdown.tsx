@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { ProjectStatus } from '@prisma/client'
 import { toast } from 'sonner'
 import {
@@ -49,6 +50,7 @@ export interface StatusDropdownProps {
 }
 
 export function StatusDropdown({ projectId, status, size = 'sm' }: StatusDropdownProps) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
 
   function onChange(next: string) {
@@ -61,6 +63,7 @@ export function StatusDropdown({ projectId, status, size = 'sm' }: StatusDropdow
         return
       }
       toast.success(`Status: ${STATUS_LABELS[parsed]}`)
+      router.refresh()
     })
   }
 
