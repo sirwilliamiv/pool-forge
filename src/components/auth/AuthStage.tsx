@@ -31,7 +31,7 @@ export const AUTH_VARIANTS: ReadonlyArray<{
   {
     id: 'garden',
     name: 'Garden',
-    note: 'Mirror flipped so the form is on the right, ice carrying the name on the left, and the sand from Column taken up as a second field under the lower half of the white — so the card straddles that seam instead of the page seam. Green monstera and frond crop out of the white side’s corners. Three of the five ideas at once, and the only one where the planting appears on an app screen rather than only on a customer’s.',
+    note: 'Three vertical bands: ice for half, white for a quarter, sand for the last quarter. The card centres on the right half, which lands it across the white-to-sand join, and the green crops out of the white band’s own corners so it reads as growing from behind rather than sitting on top. Three of the other ideas at once, and the only one where the planting appears on an app screen rather than only on a customer’s.',
   },
   {
     id: 'split',
@@ -88,43 +88,51 @@ export function AuthStage({
   children: React.ReactNode
 }) {
   // ── 00 Garden ────────────────────────────────────────────────────────────
+  //
+  // Three vertical bands across the page: ice for half, then white for a
+  // quarter, then sand for the last quarter. The card is centred on the right
+  // half, which puts it exactly over the white-to-sand join, so it straddles a
+  // seam the way the first Garden did — only now the seam is a vertical one at
+  // three quarters rather than a horizontal one at the middle.
+  //
+  // The planting crops out of the white band's own corners and is clipped at
+  // the ice, so the green appears to grow out from behind the middle band
+  // rather than being laid on top of the whole page.
   if (variant === 'garden') {
     return (
       <div className="flex min-h-screen flex-col bg-theme-bg text-theme-fg lg:flex-row">
-        {/* Left: the name on ice. Cool, flat, and the quietest of the tints, so
+        {/* Half the page: the name on ice. The quietest tint in the system, so
             it can hold type at this size without competing with the form. */}
         <div
-          className="flex items-center px-8 py-14 lg:w-[46%] lg:px-14 lg:py-0"
+          className="flex items-center px-8 py-14 lg:w-1/2 lg:px-14 lg:py-0"
           style={{ background: 'var(--tint-ice)' }}
         >
-          <Stacked className="text-[clamp(3.5rem,9vw,8rem)] text-ink-black" />
+          <Stacked className="text-[clamp(3.5rem,8vw,7.5rem)] text-ink-black" />
         </div>
 
-        {/* Right: white above, sand below, card across the join. A second seam
-            inside the panel rather than another split of the page — the card
-            lands on it, so the depth cue is in the same place the eye already
-            is rather than off at the page's centre line. */}
         <div className="relative isolate flex flex-1 items-center justify-center overflow-hidden px-8 py-16">
+          {/* The far quarter. On a phone the bands stack, so it becomes a base
+              the card sits above rather than a column beside it. */}
           <div
             aria-hidden
-            className="absolute inset-x-0 bottom-0 -z-10 h-1/2"
+            className="absolute inset-x-0 bottom-0 -z-20 h-1/3 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-auto lg:w-1/2"
             style={{ background: 'var(--tint-sand)' }}
           />
 
-          {/* Planting out of the corners. The botanicals were written for the
-              surfaces about the finished yard rather than about the tool; this
-              is the one app screen where that is still true, because it is the
-              door rather than the workshop. */}
+          {/* Planting out of the white band's corners. The botanicals belong to
+              the surfaces about the finished yard rather than about the tool,
+              and login holds that line because it is the door rather than the
+              workshop. */}
           <MonsteraLeaf
             id="auth-garden-leaf"
             aria-hidden
-            className="pointer-events-none absolute -right-20 -top-20 -z-10 h-72 w-64 lg:-right-24 lg:h-[26rem] lg:w-[22rem]"
-            style={{ color: 'var(--brand-green)', transform: 'rotate(22deg)' }}
+            className="pointer-events-none absolute -left-16 -top-20 -z-10 h-64 w-56 lg:-left-20 lg:h-[24rem] lg:w-[20rem]"
+            style={{ color: 'var(--brand-green)', transform: 'rotate(24deg)' }}
           />
           <PalmFrond
             aria-hidden
-            className="pointer-events-none absolute -bottom-24 -left-24 -z-10 h-72 w-72 lg:h-[26rem] lg:w-[26rem]"
-            style={{ color: 'var(--brand-green)', transform: 'rotate(-28deg)' }}
+            className="pointer-events-none absolute -bottom-24 -left-20 -z-10 h-64 w-64 lg:h-[24rem] lg:w-[24rem]"
+            style={{ color: 'var(--brand-green)', transform: 'rotate(-30deg)' }}
           />
 
           <Card className="relative z-10 rounded-brand24 bg-theme-bg shadow-elevation2">
