@@ -305,6 +305,7 @@ export const DESTRUCTIVE = new Set([
   'comment.remove',
   'version.delete',
   'pricebook.item.remove',
+  'project.share.revoke',
 ])
 
 /**

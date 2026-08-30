@@ -360,6 +360,32 @@ const EXERCISES: Record<string, Exercise> = {
     kind: 'server',
     why: 'Reads the source project and writes a copy plus its drawing through Prisma, org-scoped, inside a transaction that also assigns the new job number. Covered by integration/commands/project-lifecycle.test.ts against the real DB.',
   },
+  'project.share.create': {
+    kind: 'server',
+    why:
+      'Wraps shareProject: writes the share token and files an export copy of the proposal, ' +
+      'org-scoped through Prisma. Covered by integration/commands/describe.test.ts against the ' +
+      'real DB.',
+  },
+  'project.share.revoke': {
+    kind: 'server',
+    why:
+      'Wraps unshareProject: clears the share token, org-scoped through Prisma. Named by the ' +
+      'voice destructive gate. Covered by integration/commands/describe.test.ts against the real DB.',
+  },
+  'project.describe': {
+    kind: 'server',
+    why:
+      'Reads a project, its line items and its design versions through Prisma, org-scoped, and ' +
+      'reuses computeMeasurements for pool depth. Covered by integration/commands/describe.test.ts ' +
+      'against the real DB.',
+  },
+  'project.list.describe': {
+    kind: 'server',
+    why:
+      'Counts and lists Project rows through Prisma, org-scoped. Covered by ' +
+      'integration/commands/describe.test.ts against the real DB.',
+  },
 
   // ---------- canvas / camera / view ----------
   'canvas.zoom.in': {
@@ -791,9 +817,13 @@ const EXERCISES: Record<string, Exercise> = {
     kind: 'server',
     why:
       'Writes the org AppSetting row that hides the first-run setup checklist. Covered by ' +
-      'onboarding/first-run.test.ts against the real DB. Deliberately carries no voice ' +
-      'examples: there is nothing to gain from closing a checklist by voice and a whole card ' +
-      'to lose if the model mishears something else as it.',
+      'onboarding/first-run.test.ts against the real DB.',
+  },
+  'settings.team.describe': {
+    kind: 'server',
+    why:
+      'Reads OrganizationMember and AuthToken rows through Prisma, org-scoped. Covered by ' +
+      'integration/commands/describe.test.ts against the real DB.',
   },
   'settings.voice.set': {
     kind: 'server',

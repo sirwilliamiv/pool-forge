@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { Prisma, ProjectStatus } from '@prisma/client'
 import { register } from '@/modules/commands/registry'
 import { nextJobNumber } from '@/modules/projects/job-number'
+import type { Shape } from '@/modules/editor/state/shapes'
 
 register({
   id: 'create.project',
@@ -411,5 +412,204 @@ register({
     })
 
     return { ok: true, data: { projectId: newId } }
+  },
+})
+
+/**
+ * Share commands: the last two bypasses. `ShareProposalCard` used to call
+ * `shareProject` / `unshareProject` straight from a client component's event
+ * handler, which is exactly the pattern `CLAUDE.md` forbids. These wrap the
+ * same module functions, now taking `orgId` off the command context instead
+ * of reaching for a session themselves, so a voice call and a button click
+ * authenticate the same way.
+ */
+
+register({
+  id: 'project.share.create',
+  label: 'Create share link',
+  description:
+    "Create (or return the existing) public share link for a project's proposal, filing a copy " +
+    'of the proposal as it stands right now so the link and the record agree on what the ' +
+    'customer was shown.',
+  category: 'project',
+  inputSchema: z.object({ projectId: z.string().min(1) }),
+  outputSchema: z.object({ url: z.string() }),
+  voiceExamples: ['Make a share link for the customer.', 'Share this proposal.'],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+
+    const { shareProject } = await import('@/modules/projects/share')
+    const userId = ctx.userId && ctx.userId !== 'anonymous' ? ctx.userId : null
+    const result = await shareProject(input.projectId, ctx.orgId, userId)
+    if (!result.ok) return { ok: false, error: result.error }
+
+    return { ok: true, data: { url: `/share/${result.token}` } }
+  },
+})
+
+register({
+  id: 'project.share.revoke',
+  label: 'Revoke share link',
+  description:
+    "Revoke a project's public share link. The old link stops working immediately; a new one " +
+    'files a fresh copy of the proposal.',
+  category: 'project',
+  inputSchema: z.object({ projectId: z.string().min(1), confirm: z.boolean().optional() }),
+  outputSchema: z.object({ projectId: z.string() }),
+  voiceExamples: ['Revoke the share link.', 'Turn off the customer link.'],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+
+    const { unshareProject } = await import('@/modules/projects/share')
+    const result = await unshareProject(input.projectId, ctx.orgId)
+    if (!result.ok) return { ok: false, error: result.error ?? 'Project not found' }
+
+    return { ok: true, data: { projectId: input.projectId } }
+  },
+})
+
+/**
+ * Read-backs: what lets the voice agent answer a question about a project
+ * instead of guessing at it.
+ */
+
+register({
+  id: 'project.describe',
+  label: 'Describe a project',
+  description:
+    'Report a single project: its status, customer, line-item total, whether it has a share ' +
+    'link out and whether the customer has accepted, how many saved versions it has, its pool ' +
+    'depths, and its proposal expiry. Read-only.',
+  category: 'project',
+  inputSchema: z.object({ projectId: z.string().min(1) }),
+  outputSchema: z.object({
+    name: z.string(),
+    status: ProjectStatusSchema,
+    customerName: z.string().nullable(),
+    customerEmail: z.string().nullable(),
+    lineItemSubtotal: z.number(),
+    lineItemCount: z.number(),
+    shared: z.boolean(),
+    acceptedBy: z.string().nullable(),
+    acceptedAt: z.string().nullable(),
+    versionCount: z.number(),
+    depthShallow: z.number().nullable(),
+    depthDeep: z.number().nullable(),
+    proposalExpiry: z.string().nullable(),
+  }),
+  voiceExamples: [
+    'Tell me about this project.',
+    'What is the status of this job?',
+    'Has the customer accepted?',
+  ],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { db } = await import('@/lib/db')
+    const { computeMeasurements } = await import('@/modules/measurements/engine')
+
+    const project = await db.project.findFirst({
+      where: { id: input.projectId, orgId },
+      include: {
+        customer: { select: { name: true, email: true } },
+        drawing: { select: { rootJson: true } },
+        projectLineItems: { select: { quantity: true, unitPrice: true } },
+      },
+    })
+    if (!project) return { ok: false, error: 'Project not found' }
+
+    const versionCount = await db.designVersion.count({ where: { projectId: project.id, orgId } })
+
+    // Depth is read from the drawing, the same way the project page reads it:
+    // it is where the geometry actually lives, not a free-text field that can
+    // disagree with it.
+    const root = project.drawing?.rootJson
+    const shapes: Shape[] =
+      root && typeof root === 'object' && Array.isArray((root as { shapes?: unknown }).shapes)
+        ? (root as unknown as { shapes: Shape[] }).shapes
+        : []
+    const measurements = computeMeasurements(shapes)
+    const hasDepth = measurements.hasPool && measurements.poolDepthShallow > 0 && measurements.poolDepthDeep > 0
+
+    const lineItemSubtotal = project.projectLineItems.reduce(
+      (sum, item) => sum + Number(item.quantity) * Number(item.unitPrice),
+      0,
+    )
+
+    return {
+      ok: true,
+      data: {
+        name: project.name,
+        status: project.status,
+        customerName: project.customer?.name ?? null,
+        customerEmail: project.customer?.email ?? null,
+        lineItemSubtotal,
+        lineItemCount: project.projectLineItems.length,
+        shared: project.shareToken !== null,
+        acceptedBy: project.proposalAcceptedName,
+        acceptedAt: project.proposalAcceptedAt ? project.proposalAcceptedAt.toISOString() : null,
+        versionCount,
+        depthShallow: hasDepth ? measurements.poolDepthShallow : null,
+        depthDeep: hasDepth ? measurements.poolDepthDeep : null,
+        proposalExpiry: project.proposalExpiresAt ? project.proposalExpiresAt.toISOString() : null,
+      },
+    }
+  },
+})
+
+register({
+  id: 'project.list.describe',
+  label: 'Describe the project list',
+  description:
+    'Report how many projects this organisation has, broken down by status, and the ten most ' +
+    'recently touched. Optionally scoped to one status. Read-only.',
+  category: 'project',
+  inputSchema: z.object({ status: ProjectStatusSchema.optional() }),
+  outputSchema: z.object({
+    total: z.number(),
+    byStatus: z.array(z.object({ status: ProjectStatusSchema, count: z.number() })),
+    recent: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        status: ProjectStatusSchema,
+        updatedAt: z.string(),
+      }),
+    ),
+  }),
+  voiceExamples: ['How many jobs do I have going?', 'What projects were touched this week?'],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { db } = await import('@/lib/db')
+
+    const where = input.status ? { orgId, status: input.status } : { orgId }
+
+    const [total, grouped, recentRows] = await Promise.all([
+      db.project.count({ where }),
+      db.project.groupBy({ by: ['status'], where: { orgId }, _count: { _all: true } }),
+      db.project.findMany({
+        where,
+        select: { id: true, name: true, status: true, updatedAt: true },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+        take: 10,
+      }),
+    ])
+
+    return {
+      ok: true,
+      data: {
+        total,
+        byStatus: grouped.map(g => ({ status: g.status, count: g._count._all })),
+        recent: recentRows.map(row => ({
+          id: row.id,
+          name: row.name,
+          status: row.status,
+          updatedAt: row.updatedAt.toISOString(),
+        })),
+      },
+    }
   },
 })

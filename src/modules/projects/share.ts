@@ -2,7 +2,6 @@
 
 import { randomBytes } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { ensureJobNumber } from '@/modules/projects/job-number'
 
@@ -39,7 +38,12 @@ async function storeSentProposal(
 /**
  * Create (or return the existing) public share token for a project's proposal.
  * The token is an unguessable 24-byte value; anyone holding the link can view
- * the read-only proposal at /share/<token>. Owner-scoped.
+ * the read-only proposal at /share/<token>. Org-scoped.
+ *
+ * Called from `project.share.create`, which has already resolved and checked
+ * `orgId` off the command context. Nothing here reaches for a session itself,
+ * so the same function runs the same way whether it is dispatched from the
+ * project page or from a test that never had one.
  *
  * Sending files a copy. Every call stores the proposal as it stands right now,
  * including a second call on an already-shared project, because pressing the
@@ -47,11 +51,11 @@ async function storeSentProposal(
  * customer's link will start showing it. The record has to say which one they
  * were shown.
  */
-export async function shareProject(projectId: string): Promise<ShareResult> {
-  const session = await auth()
-  const orgId = session?.user?.orgId
-  if (!session || !orgId) return { ok: false, error: 'Not authenticated' }
-
+export async function shareProject(
+  projectId: string,
+  orgId: string,
+  userId: string | null,
+): Promise<ShareResult> {
   const project = await db.project.findFirst({
     where: { id: projectId, orgId },
     select: { id: true, shareToken: true },
@@ -59,15 +63,14 @@ export async function shareProject(projectId: string): Promise<ShareResult> {
   if (!project) return { ok: false, error: 'Project not found' }
 
   // The customer's copy prints the job number, and the share page is public so
-  // it cannot assign one itself. Stamped here, where there is still a session
-  // behind the request, which is the moment the proposal is actually sent.
-  // Before the copy is taken, so the copy has the number on it.
+  // it cannot assign one itself. Stamped here, before the copy is taken, so the
+  // copy has the number on it.
   await ensureJobNumber(project.id, orgId)
 
   // A send whose copy could not be filed is not a send. Refusing is the point:
   // handing over a link while recording nothing is exactly the state this
   // change exists to end.
-  const stored = await storeSentProposal(project.id, orgId, session.user?.id ?? null)
+  const stored = await storeSentProposal(project.id, orgId, userId)
   if (!stored.ok) return { ok: false, error: stored.error }
 
   let token = project.shareToken
@@ -81,12 +84,16 @@ export async function shareProject(projectId: string): Promise<ShareResult> {
   return { ok: true, token }
 }
 
-/** Revoke a project's share link. Owner-scoped. */
-export async function unshareProject(projectId: string): Promise<{ ok: boolean; error?: string }> {
-  const session = await auth()
-  const orgId = session?.user?.orgId
-  if (!session || !orgId) return { ok: false, error: 'Not authenticated' }
-
+/**
+ * Revoke a project's share link. Org-scoped.
+ *
+ * Called from `project.share.revoke` with an `orgId` the command context has
+ * already authenticated, on the same principle as `shareProject` above.
+ */
+export async function unshareProject(
+  projectId: string,
+  orgId: string,
+): Promise<{ ok: boolean; error?: string }> {
   const project = await db.project.findFirst({
     where: { id: projectId, orgId },
     select: { id: true },

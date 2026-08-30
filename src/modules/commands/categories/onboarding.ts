@@ -6,9 +6,9 @@ import { dismissFirstRun } from '@/modules/onboarding/first-run'
 // other user action and leaves an audit row. It would have been one line of
 // Prisma in an onClick, which is exactly the bypass `CLAUDE.md` forbids.
 //
-// Deliberately no `voiceExamples`. The converter refuses a command with none,
-// so the agent is never offered it: there is nothing to gain from dismissing a
-// checklist by voice, and plenty to lose if it mishears something else as it.
+// Carries `voiceExamples` now: dismissing is a one-way, harmless toggle with
+// no data behind it to lose, unlike the mutations in `team.ts` that stay
+// voiceless on purpose.
 register({
   id: 'settings.firstRun.dismiss',
   label: 'Dismiss the setup checklist',
@@ -18,6 +18,7 @@ register({
   category: 'settings',
   inputSchema: z.object({}),
   outputSchema: z.object({ dismissed: z.literal(true) }),
+  voiceExamples: ['Dismiss the setup checklist.'],
   execute: async (_input, ctx) => {
     if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
     await dismissFirstRun(ctx.orgId)

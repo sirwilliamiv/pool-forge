@@ -40,6 +40,16 @@ register({
 // draw schedule are contract content, and rewriting them from audio the model
 // may have misheard is not a mistake a builder would find until a customer had
 // already signed the result.
+//
+// Task 12's brief asked for two examples here ('Set our sales tax to 7
+// percent.', 'Make proposals valid for 45 days.'), on the theory that a
+// builder only ever means to touch two fields by voice. The input schema does
+// not agree: it is one all-or-nothing object covering the licence number and
+// the terms paragraph too, and `organization/company-settings.test.ts`
+// ("is never offered to the voice agent") pins the original decision. Left
+// unchanged rather than silently overriding a tested safety invariant; a
+// narrower, voice-only input for just tax rate and validity window is the
+// real way to grant this, and belongs in its own reviewed change.
 register({
   id: 'settings.company.update',
   label: 'Update company settings',
@@ -97,5 +107,54 @@ register({
     })
 
     return { ok: true, data: { name: input.name, paymentStages: input.paymentSchedule.length } }
+  },
+})
+
+/**
+ * Read-back for "who is on my team". Lives here, in `settings.ts`, under the
+ * `settings` category, rather than in `team.ts`, which is voiceless by
+ * decision: mutating a role or removing somebody is not something a misheard
+ * word should trigger. Reading the roster carries none of that risk, so it
+ * gets a spoken form; the mutations next door still do not.
+ *
+ * No email addresses in the answer. Names and roles only, so nothing sensitive
+ * lands in a voice transcript.
+ */
+register({
+  id: 'settings.team.describe',
+  label: 'Describe the team',
+  description:
+    'Report who is on this organization: each member\'s name and role, how many owners there ' +
+    'are, and how many invites are still pending. Read-only, and never includes an email ' +
+    'address.',
+  category: 'settings',
+  inputSchema: z.object({}),
+  outputSchema: z.object({
+    members: z.array(z.object({ name: z.string(), role: z.enum(['OWNER', 'ADMIN', 'MEMBER']) })),
+    ownerCount: z.number(),
+    pendingInvites: z.number(),
+  }),
+  voiceExamples: ['Who is on my team?', 'Any invites still pending?'],
+  execute: async (_input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { listMembers, countOwners } = await import('@/modules/invites/team')
+    const { listPendingInvites } = await import('@/modules/invites/invites')
+
+    const [members, ownerCount, pendingInvites] = await Promise.all([
+      listMembers(orgId),
+      countOwners(orgId),
+      listPendingInvites(orgId),
+    ])
+
+    return {
+      ok: true,
+      data: {
+        members: members.map(m => ({ name: m.name ?? 'Unnamed', role: m.role })),
+        ownerCount,
+        pendingInvites: pendingInvites.length,
+      },
+    }
   },
 })

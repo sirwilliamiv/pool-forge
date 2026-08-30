@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { shareProject, unshareProject } from '@/modules/projects/share'
+import { dispatch } from '@/lib/commands/dispatch'
 
 export function ShareProposalCard({
   projectId,
@@ -31,19 +31,27 @@ export function ShareProposalCard({
 
   function generate() {
     startTransition(async () => {
-      const res = await shareProject(projectId)
+      const res = await dispatch<{ projectId: string }, { url: string }>('project.share.create', {
+        projectId,
+      })
       if (!res.ok) {
         toast.error(res.error ?? 'Failed to create link')
         return
       }
-      setToken(res.token)
+      // The command hands back a path, not a token, so a share link built from
+      // this browser's own origin still shows a working "Open link" whatever
+      // host the server rendered the path from.
+      setToken(res.data.url.split('/share/')[1] ?? null)
       router.refresh()
     })
   }
 
   function revoke() {
     startTransition(async () => {
-      const res = await unshareProject(projectId)
+      const res = await dispatch<{ projectId: string }, { projectId: string }>(
+        'project.share.revoke',
+        { projectId },
+      )
       if (!res.ok) {
         toast.error(res.error ?? 'Failed to revoke link')
         return

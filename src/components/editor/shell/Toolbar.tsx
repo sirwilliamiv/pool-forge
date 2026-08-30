@@ -17,7 +17,7 @@ import {
   Waves,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { dispatch } from '@/lib/commands/dispatch'
+import { dispatch, dispatchEphemeral } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { GridControl } from './GridControl'
@@ -51,7 +51,6 @@ const TOOLS: ToolItem[] = [
 
 export function Toolbar() {
   const activeTool = useEditorStore((s) => s.activeTool)
-  const setActiveTool = useEditorStore((s) => s.setActiveTool)
 
   // The bar is a pill, so the things inside it are round too and sit far enough
   // in that the outer curve never crops one. A square button at either end of a
@@ -100,7 +99,7 @@ export function Toolbar() {
         <button
           key={tool.id}
           type="button"
-          onClick={() => setActiveTool(tool.id)}
+          onClick={() => void dispatchEphemeral('tool.activate', { tool: tool.id })}
           title={tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label}
           aria-label={tool.label}
           aria-pressed={active}
