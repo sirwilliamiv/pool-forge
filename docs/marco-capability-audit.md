@@ -265,7 +265,31 @@ Already the deepest surface (~66 tools). Additions:
 - Operator/reference pages. Globals only (`page.read`, `nav.*`, pointing at
   nav). No new commands; waitlist deliberately stays off the registry.
 
-### 4.12 Ambient page awareness (all pages, NEW)
+### 4.12 Cross-page state and context (NEW)
+
+What already survives: the dock is mounted in the app shell, so the Gemini
+session (and its conversation memory) survives client-side navigation; a
+screen change reconnects on a resumption handle that carries the conversation.
+
+What does not survive, and the design for each:
+
+1. **Reloads and new sessions lose everything.** A session journal (client
+   store persisted to sessionStorage, org+user keyed) keeps a rolling summary:
+   last active project, last quote total read, the last ~15 voice command
+   results, and a one-line summary of the previous conversation. Injected into
+   `contextPrompt()` on every start and reconnect, so "keep going" works after
+   a reload.
+2. **Marco is blind to what the user did by hand on other pages.** The
+   CommandAuditLog already records every UI action (and Phase 4 closes the
+   bypasses, so coverage becomes complete). A read-only `context.recent`
+   command returns the last N audit rows for this org/user as human sentences:
+   "you archived Jones Backyard, added a waterfall, changed the tax rate".
+   Global category, available on every screen.
+3. **No durable memory across days.** Deferred: an org-scoped note store
+   ("remember we always quote paver decks") is out of scope until the journal
+   and recap prove out.
+
+### 4.13 Ambient page awareness (all pages, NEW)
 
 Two prompt-side additions, both cheap:
 
