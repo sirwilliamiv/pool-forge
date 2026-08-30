@@ -17,7 +17,7 @@ import type { VoiceScreen } from '../scope'
 import type { DestructiveRequest } from '@/components/voice/DestructiveConfirm'
 import { isDestructive } from '../tools'
 import { startCapture, VoicePlayback, type CaptureHandle } from './audio'
-import { readJournal, recordCommand, recordSummary } from './journal'
+import { clearJournal, readJournal, recordCommand, recordSummary } from './journal'
 import { useVoiceLiveStore } from './liveStore'
 import { createWebSocketBridge, relayUrl } from './wsBridge'
 
@@ -151,6 +151,32 @@ export function useVoiceSession(
     }
     setStatus(relayUrl() ? 'idle' : 'unavailable')
   }, [])
+
+  /**
+   * The journal belongs to one project, not to the tab.
+   *
+   * sessionStorage survives exactly as long as the tab, which also survives
+   * navigating from project A to project B. Left alone, ending a session on A
+   * and starting a new one on B would hand the model A's actions framed as
+   * "context from earlier in this session" for a project it has nothing to do
+   * with. Cleared on an actual transition between two different project
+   * identities only: the ref starts uninitialized so the very first render
+   * (a fresh mount, or a reload that is meant to keep the journal) never
+   * counts as a switch.
+   */
+  const previousProjectId = useRef<string | undefined>(undefined)
+  const projectIdSeen = useRef(false)
+  useEffect(() => {
+    if (!projectIdSeen.current) {
+      projectIdSeen.current = true
+      previousProjectId.current = projectId
+      return
+    }
+    if (projectId !== previousProjectId.current) {
+      clearJournal()
+    }
+    previousProjectId.current = projectId
+  }, [projectId])
 
   // Set when a turn ends, so the next fragment starts a new caption line rather
   // than continuing the last answer's sentence.
