@@ -363,6 +363,63 @@ describe('shape.rename, shape.hide, shape.lock', () => {
   })
 })
 
+describe('sketch.fill.set', () => {
+  /** Draw a closed square outline, the way the freehand tool would. */
+  async function addSketch(): Promise<string> {
+    const { shapeId } = await run<{ shapeId: string }>('sketch.create', {
+      points: [
+        { x: 0, y: 0 },
+        { x: 120, y: 0 },
+        { x: 120, y: 120 },
+        { x: 0, y: 120 },
+      ],
+      closed: true,
+    })
+    return shapeId
+  }
+
+  it('paints a fill colour onto the shape', async () => {
+    const id = await addSketch()
+
+    await run('sketch.fill.set', { id, color: 'blue' })
+
+    expect(shapeById(id)).toMatchObject({ fillColor: 'blue' })
+  })
+
+  it('clearing the fill removes the field rather than leaving it undefined', async () => {
+    // The regression this guards: updateShape used to merge `{ ...s, ...patch
+    // }`, and a patch of `{ fillColor: undefined }` sets that key to
+    // undefined instead of deleting it. The shape then carries an own
+    // `fillColor` key forever, which is the exact anti-pattern the repo's own
+    // conventions (site.limits.set's `delete`, commentsStore's field-by-field
+    // rebuild) exist to avoid elsewhere.
+    const id = await addSketch()
+    await run('sketch.fill.set', { id, color: 'blue' })
+
+    await run('sketch.fill.set', { id, color: 'none' })
+
+    const shape = shapeById(id)
+    expect(Object.hasOwn(shape, 'fillColor')).toBe(false)
+    expect('fillColor' in shape).toBe(false)
+  })
+
+  it('refuses an open path, which has no inside', async () => {
+    const { shapeId } = await run<{ shapeId: string }>('sketch.create', {
+      points: [
+        { x: 0, y: 0 },
+        { x: 120, y: 0 },
+      ],
+      closed: false,
+    })
+
+    await expect(
+      run('sketch.fill.set', { id: shapeId, color: 'blue' }),
+    ).rejects.toThrow(/no inside/i)
+
+    expect(Object.hasOwn(shapeById(shapeId), 'fillColor')).toBe(false)
+  })
+})
+
 describe('selection.set', () => {
   it('replaces the selection with the ids given', async () => {
     const a = await addShape(GENERIC_STENCIL)

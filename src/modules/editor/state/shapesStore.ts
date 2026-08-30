@@ -231,9 +231,23 @@ export const useShapesStore = create<ShapesState>((set, get) => {
       txTimer = setTimeout(endTransaction, TRANSACTION_AUTOCOMMIT_MS)
 
       set({
-        shapes: get().shapes.map((s) =>
-          s.id === id ? ({ ...s, ...patch } as Shape) : s,
-        ),
+        shapes: get().shapes.map((s) => {
+          if (s.id !== id) return s
+          const merged: Record<string, unknown> = { ...s, ...patch }
+          // A patch value of `undefined` means "remove this field", not "set
+          // it to undefined": under exactOptionalPropertyTypes an optional
+          // field's own declared type never includes undefined, so a caller
+          // can only put one there on purpose, to ask for the field to go
+          // away (e.g. clearing a sketch's fill). Leaving it as an own key
+          // with value undefined is exactly the state this guards against —
+          // it still shows up in Object.keys, JSON.stringify drops it but a
+          // reload never runs, and the field never truly comes back to being
+          // absent.
+          for (const [key, value] of Object.entries(patch)) {
+            if (value === undefined) delete merged[key]
+          }
+          return merged as unknown as Shape
+        }),
       })
     },
 

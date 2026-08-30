@@ -1350,10 +1350,16 @@ export function ClientCommandHandlers() {
       if (!shape.closed) {
         throw new Error('An open line has no inside to fill. Close the outline first.')
       }
-      // A typed intermediate rather than a spread: exactOptionalPropertyTypes
-      // forbids writing `fillColor: undefined` straight into a Partial<Shape>
-      // patch, since the field's own type never includes undefined. Reading it
-      // back off SketchPath does, which is exactly the type this needs.
+      // `fillColor` is not a key of Partial<Shape> at all: Shape is a union
+      // and a mapped type over a union only sees the keys every member
+      // shares, so this cast is the same one `sketch.label` already needs for
+      // `labelText`. The typed intermediate is what makes the 'none' branch
+      // legal under exactOptionalPropertyTypes: SketchPath['fillColor'] is an
+      // indexed-access read, which always includes undefined for an optional
+      // field, even though the field's own declared type does not. Passing
+      // that undefined through is not the anti-pattern of leaving a stray
+      // `fillColor: undefined` on the shape — updateShape treats an explicit
+      // undefined patch value as a real field removal, not a value.
       const fillColor: SketchPath['fillColor'] =
         input.color === 'none' ? undefined : input.color
       useShapesStore.getState().updateShape(input.id, { fillColor } as Partial<Shape>)
