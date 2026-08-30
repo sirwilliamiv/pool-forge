@@ -21,9 +21,9 @@ export const metadata: Metadata = {
 }
 
 const SAMPLES = [
-  { what: 'the price book', rows: 5, note: 'The slowest page in the product, and the one this was designed against.' },
-  { what: 'this project', rows: 3, note: 'The common case: a handful of rows under a title.' },
-  { what: 'your projects', rows: 2, note: 'Short, for a page that fills quickly.' },
+  { what: 'the price book', note: 'The slowest page in the product, and the one this was designed against.' },
+  { what: 'this project', note: 'The common case, and the phrasing most routes will use.' },
+  { what: 'your projects', note: 'Plural, to check the sentence still reads.' },
 ] as const
 
 export default function LoadingDesignPage() {
@@ -43,27 +43,25 @@ export default function LoadingDesignPage() {
 
         <div className="mt-8 max-w-2xl space-y-4 text-bodyL leading-relaxed text-theme-muted">
           <p>
-            <span className="text-theme-fg">It is not a spinner.</span> A spinner says
-            something is happening and nothing else. The ray fan is already the brand&apos;s
-            section marker, so turning it is an indicator that could not belong to another
-            product, and it costs one element and one keyframe.
+            <span className="text-theme-fg">It is a pool, and it is filling.</span> A spinner
+            says something is happening and nothing else, and it would look identical in any
+            product in the world. This is a pool in plan with its coping band, the water
+            cycling the five core hues, and a ripple going out from the middle the way one
+            does when something lands in it.
+          </p>
+          <p>
+            <span className="text-theme-fg">The hue steps rather than blends.</span> The
+            spectrum is meant to read as five flat colours, and interpolating between them
+            lands on exactly the muddy midpoints the palette exists to avoid.
           </p>
           <p>
             <span className="text-theme-fg">It names what is loading.</span> &ldquo;Loading&rdquo;
-            on its own is the least useful word available. Each route passes its own thing, so
-            the wait is attached to an object and the sentence reads the way the rest of the
-            product talks.
+            on its own is the least useful word available, so each route passes its own thing
+            and the wait is attached to an object.
           </p>
           <p>
-            <span className="text-theme-fg">It reserves the shape underneath.</span> The
-            blocks are roughly where the real title and rows will land. Content arriving into
-            about the right shape is a much calmer transition than content arriving into an
-            empty page, and it costs nothing because those are the same tokens the real page
-            uses.
-          </p>
-          <p>
-            Reduced motion stops the rotation and leaves the mark still. The message and the
-            reserved shape already carry the meaning.
+            Reduced motion holds the water on brand blue and never starts the ripple. It still
+            reads as a pool, and nothing meaningful is carried by the movement alone.
           </p>
         </div>
 
@@ -77,7 +75,7 @@ export default function LoadingDesignPage() {
                 <span className="text-bodyS text-theme-faint">{sample.note}</span>
               </div>
               <div className="mt-4 overflow-hidden rounded-brand16 border border-theme-line">
-                <PageLoading what={sample.what} rows={sample.rows} />
+                <PageLoading what={sample.what} />
               </div>
             </section>
           ))}

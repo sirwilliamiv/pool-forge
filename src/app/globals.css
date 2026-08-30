@@ -193,11 +193,66 @@
   }
 }
 
-/* The loading mark's rotation. Named rather than using a Tailwind default so
-   the duration and easing live with the component that owns them, and so
-   `motion-safe:` is the only thing gating it. */
-@keyframes pf-spin {
-  to {
-    transform: rotate(360deg);
+
+/* ── The loading pool ──────────────────────────────────────────────────────
+ *
+ * `src/components/monitoring/PageLoading.tsx`. The water steps through the five
+ * core hues rather than blending between them: the spectrum is meant to read as
+ * five flat colours, and interpolating lands on the muddy midpoints the palette
+ * exists to avoid.
+ *
+ * Both animations sit behind `prefers-reduced-motion`. With motion off the
+ * water holds on brand blue and the ripple never starts, which still reads as a
+ * pool — nothing meaningful is carried by the movement alone.
+ */
+.pf-pool-water {
+  fill: var(--brand-blue);
+}
+
+.pf-pool-ripple {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pf-pool-water {
+    animation: pf-pool-hue 6s steps(1, end) infinite;
+  }
+
+  .pf-pool-ripple {
+    animation: pf-pool-ripple 2.25s ease-out infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+}
+
+@keyframes pf-pool-hue {
+  0% {
+    fill: var(--brand-blue);
+  }
+  20% {
+    fill: var(--brand-green);
+  }
+  40% {
+    fill: var(--brand-orange);
+  }
+  60% {
+    fill: var(--brand-red);
+  }
+  80% {
+    fill: var(--brand-purple);
+  }
+}
+
+@keyframes pf-pool-ripple {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.75;
+  }
+  80% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(5);
+    opacity: 0;
   }
 }

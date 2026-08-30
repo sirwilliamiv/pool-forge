@@ -7,5 +7,5 @@ import { PageLoading } from '@/components/monitoring/PageLoading'
 // Rolling this out is one file like this per route, with `what` set to the
 // thing that route loads.
 export default function Loading() {
-  return <PageLoading what="the price book" rows={5} />
+  return <PageLoading what="the price book" />
 }
