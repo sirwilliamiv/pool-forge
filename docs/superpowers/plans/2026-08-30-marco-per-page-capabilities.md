@@ -500,7 +500,7 @@ Replace the early return in `VoiceDock.tsx` (line 192):
 ```ts
   // Voice needs a relay or the Electron bridge; the tour needs neither. The
   // guide renders regardless, so "Explain this page" works with the mic off
-  // and in a deployment with no relay host.
+  // and in local dev, where no relay URL is configured.
   if (status === 'unavailable') {
     return (
       <>
@@ -1651,6 +1651,6 @@ git commit -m "fix: command docs page lists every category"
 
 - Spec §2 items 1-11 map to Tasks 1-6 (occlusion, scroll, clearing, targets-per-screen is Phase 2, reveal, view.cube, disambiguation, unavailable-render, tour timer, churn; z-order is resolved by the occlusion check rather than a z change, recorded in Task 6).
 - Spec §3: orphaned categories (Task 9), intake scoping (Task 9), settings category emptiness (Tasks 11, 12), dead destructive ids (Task 10), registry bypasses (Tasks 10, 11, 12), eval blind spot (Task 14), docs page (Task 15).
-- Spec §4 per-page "Do" items all trace to a task; the deferred set (§5: relay deployment, canvas pointing, the project-form autosave migration, team writes) is deliberately absent.
+- Spec §4 per-page "Do" items all trace to a task; the deferred set (§5: local-dev relay setup, canvas pointing, the project-form autosave migration, team writes) is deliberately absent.
 - Enum literals in Tasks 10 and 11 tests are flagged for correction against `prisma/schema.prisma` before running; that is a verification step, not a placeholder.
 - `update.projectLineItem` gains a UI caller opportunity in `ProjectLineItems.tsx`; not scheduled here since voice already reaches it and the page's Add/Remove suffice. Revisit if quantity edits by voice misfire.

@@ -13,8 +13,12 @@ do on every authenticated page. The implementation plan lives at
   user, so a session survives client-side navigation.
 - Session runs on Gemini Live (`gemini-live-2.5-flash-native-audio`, Vertex AI)
   in the Electron main process or the `services/voice-relay` service. The relay
-  has no deployed host, so voice does not work in the deployed web app today
-  (`docs/guide-agent-plan.md:149-153`, `NEXT_PUBLIC_VOICE_RELAY_URL` empty).
+  IS deployed: `deploy.sh:203-249` deploys `pool-forge-voice-relay` to Cloud
+  Run when the ticket secret exists and bakes the derived `wss://` URL into the
+  app build. Verified live in `pool-forge-prod` on 2026-08-30. Note
+  `docs/guide-agent-plan.md:149-153` claims otherwise and is stale, and the
+  URL never appears in `.env*` files because it exists only inside the
+  production build.
 - Tools are generated from the command registry (`src/modules/voice/tools.ts`).
   A command becomes a voice tool only if: its category is in the current
   screen's scope (`src/modules/voice/scope.ts:38-49`), it has `voiceExamples`,
@@ -306,10 +310,11 @@ Two prompt-side additions, both cheap:
 
 ## 5. Out of scope for this plan (flagged, not forgotten)
 
-- **Deploying the voice relay.** Voice does not work in the deployed app until
-  `services/voice-relay` gets a host and `NEXT_PUBLIC_VOICE_RELAY_URL` is set.
-  Infra work, tracked separately; everything in this plan works in Electron and
-  local dev today and lights up in prod when the relay lands.
+- **Local dev voice.** The relay is deployed in prod (see §1), but local dev
+  has no `NEXT_PUBLIC_VOICE_RELAY_URL`, so the web dock is voice-dead in dev
+  unless you run `pnpm voice:relay` and point the var at it, or use
+  `pnpm electron:dev`. Worth a dev-setup note, not part of this plan. Also
+  update the stale status lines in `docs/guide-agent-plan.md`.
 - Pointing inside the WebGL canvas (world-space highlights). Still refused by
   design.
 - The project form autosave bypass (28 fields through `saveProjectAction`).
