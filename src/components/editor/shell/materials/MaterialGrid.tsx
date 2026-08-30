@@ -83,8 +83,8 @@ export function MaterialGrid({ searchQuery }: MaterialGridProps) {
   if (grouped.length === 0) {
     return (
       <div className="px-3 py-3 text-[11.5px] text-textFaint">
-        No materials in this org yet. Run <code>pnpm db:seed</code> to populate
-        the demo set.
+        No materials yet. Finishes come from your price book: add interior,
+        coping or tile items there and they appear here, priced.
       </div>
     )
   }
