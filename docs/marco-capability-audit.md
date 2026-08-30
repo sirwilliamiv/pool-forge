@@ -193,7 +193,8 @@ Already the deepest surface (~66 tools). Additions:
   jump-to-shape), NEW `quote.explain` (why is the total X: per-group
   contributions and the drawn-but-not-priced list).
 - **Do**: everything today, plus unlock `sketch` (draw/label/convert,
-  `grid.set`, `grid.snap.toggle`), `version`, `comment` (NEW voiceExamples:
+  `grid.set`, `grid.snap.toggle`), NEW `sketch.fill.set` (fill a closed drawn
+  outline with a flat spectrum colour, by click or voice), `version`, `comment` (NEW voiceExamples:
   "leave a note on the spa saying...", "resolve that note"),
   `capture.coverage.describe`. Toolbar clicks route through `tool.activate`
   (bypass fix).

@@ -1551,6 +1551,144 @@ git add src/modules/commands/categories/context.ts src/test/integration/commands
 git commit -m "feat: context.recent gives voice cross-page awareness from the audit log"
 ```
 
+### Task 18: Fill a drawn shape with a color
+
+Requested by Billy mid-plan: draw a line (close the outline) and fill the
+shape with a color. Sketches render as outlines only today; the renderer
+already builds a fill mesh for the drag-over wash, so a persistent fill is a
+small extension. Voice reaches it via the sketch category (Task 9).
+
+**Files:**
+- Modify: `src/modules/editor/state/shapes.ts` (SketchPath field)
+- Modify: `src/modules/commands/categories/sketch.ts` (new command)
+- Modify: `src/components/editor/three/SketchPathObject.tsx` (persistent fill)
+- Modify: the sketch client-handler block (wherever `sketch.label`'s client
+  handler is registered, likely `src/components/editor/ClientCommandHandlers.tsx`)
+- Modify: `src/components/editor/inspector/SketchSection.tsx` (swatch row)
+- Test: `src/test/unit/commands/sketch-fill.test.ts` (create)
+
+**Interfaces:**
+- Produces: `SketchPath.fillColor?: 'blue' | 'green' | 'orange' | 'purple'`;
+  command `sketch.fill.set {id, color: 'blue'|'green'|'orange'|'purple'|'none'}`
+  ('none' clears the fill). Red and amber are excluded: brand says they mean
+  error and warning.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// src/test/unit/commands/sketch-fill.test.ts
+import { describe, expect, it } from 'vitest'
+import { initCommands } from '@/modules/commands/init'
+import { get } from '@/modules/commands/registry'
+
+describe('sketch.fill.set', () => {
+  it('is registered, client-run, voiced, and accepts the four hues plus none', () => {
+    initCommands()
+    const command = get('sketch.fill.set')
+    expect(command).toBeTruthy()
+    expect(command?.runsOn).toBe('client')
+    expect(command?.category).toBe('sketch')
+    expect((command?.voiceExamples?.length ?? 0)).toBeGreaterThan(0)
+    for (const color of ['blue', 'green', 'orange', 'purple', 'none']) {
+      expect(command?.inputSchema.safeParse({ id: 'a', color }).success, color).toBe(true)
+    }
+    expect(command?.inputSchema.safeParse({ id: 'a', color: 'red' }).success).toBe(false)
+  })
+})
+```
+
+Run: `pnpm vitest run src/test/unit/commands/sketch-fill.test.ts`
+Expected: FAIL, unknown command.
+
+- [ ] **Step 2: Field and command**
+
+In `shapes.ts`, add to `SketchPath` below `labelText`:
+
+```ts
+  /** Flat plan-view fill for a closed outline. Spectrum hue name, not a hex. */
+  fillColor?: 'blue' | 'green' | 'orange' | 'purple'
+```
+
+Shapes serialize wholesale through the drawing payload, so the field survives
+the save round trip with no payload change; verify by grepping
+`drawing-payload.ts` for any per-field sketch allowlist and extending it only
+if one exists.
+
+In `sketch.ts`, register after `sketch.toDeck`:
+
+```ts
+register({
+  id: 'sketch.fill.set',
+  runsOn: 'client',
+  label: 'Fill a drawn shape',
+  description:
+    'Fill a closed drawn outline with a flat colour in plan, or clear it with none. Purely visual: it does not price or convert the shape. Refuses an open path, which has no inside.',
+  category: 'sketch',
+  inputSchema: z.object({
+    id: z.string().min(1),
+    color: z.enum(['blue', 'green', 'orange', 'purple', 'none']),
+  }),
+  outputSchema: z.object({ id: z.string(), color: z.string() }),
+  voiceExamples: ['Fill that shape with green.', 'Colour the outline blue.', 'Remove the fill.'],
+  execute: async () => ({ ok: true, data: { id: '', color: '' } }),
+})
+```
+
+- [ ] **Step 3: Client handler**
+
+In the block where `sketch.label`'s client handler lives, register:
+
+```ts
+registerClientHandler<{ id: string; color: 'blue' | 'green' | 'orange' | 'purple' | 'none' }, { id: string; color: string }>(
+  'sketch.fill.set',
+  input => {
+    const store = useShapesStore.getState()
+    const shape = store.shapes.find(s => s.id === input.id)
+    if (!shape || !isSketchPath(shape)) throw new Error('That is not a drawn outline.')
+    if (!shape.closed) throw new Error('An open line has no inside to fill. Close the outline first.')
+    if (input.color === 'none') {
+      store.updateShape(input.id, { fillColor: undefined })
+    } else {
+      store.updateShape(input.id, { fillColor: input.color })
+    }
+    return { id: input.id, color: input.color }
+  },
+)
+```
+
+Match the surrounding handlers' exact error style and the store's real update
+API (if `updateShape` rejects explicit undefined under exactOptionalPropertyTypes,
+use the store's field-removal path or omit-key update the codebase already uses).
+
+- [ ] **Step 4: Renderer**
+
+In `SketchPathObject.tsx`, render a persistent fill mesh when
+`shape.closed && shape.fillColor && points.length > 2 && !isDropTarget`,
+reusing the existing `fillShape` helper and mesh setup from the drop-target
+wash, with `color={SPECTRUM[shape.fillColor]}`, `opacity: 0.35`, same
+rotation/raycast/depthWrite settings. The drop-target wash keeps precedence
+while dragging.
+
+- [ ] **Step 5: Swatch row in SketchSection**
+
+Add a labeled row of five buttons (four hue swatches + None) that dispatch
+`sketch.fill.set` for the selected sketch, visible only when the path is
+closed. Swatch backgrounds come from `SPECTRUM[...]` tokens; no hex literals.
+Give each button an aria-label ("Fill blue", "Fill green", "Fill orange",
+"Fill purple", "No fill").
+
+- [ ] **Step 6: Run everything**
+
+Run: `pnpm vitest run src/test/unit/commands/sketch-fill.test.ts src/test/unit/commands/wiring.test.ts src/test/unit/brand/palette.test.ts && pnpm tsc --noEmit`
+Expected: PASS (brand test proves no hex leaked into components).
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/modules/editor/state/shapes.ts src/modules/commands/categories/sketch.ts src/components/editor src/test/unit/commands/sketch-fill.test.ts
+git commit -m "feat: fill a closed drawn outline with a spectrum colour, by click or voice"
+```
+
 ---
 
 ## Phase 6: evals and docs
