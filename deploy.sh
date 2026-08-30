@@ -148,6 +148,8 @@ OPTIONAL_SECRETS=(
   "MONITORING_ALERT_WEBHOOK_URL=pool-forge-monitoring-webhook"
   "GOOGLE_CLIENT_ID=pool-forge-google-client-id"
   "GOOGLE_CLIENT_SECRET=pool-forge-google-client-secret"
+  "MAPS_API_KEY=pool-forge-maps-api-key"
+  "REGRID_API_KEY=pool-forge-regrid-api-key"
 )
 
 say "Checking secrets"

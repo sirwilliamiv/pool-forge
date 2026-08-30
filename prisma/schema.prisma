@@ -222,6 +222,13 @@ model Project {
   // Printed on the permit set, which is rejected without them.
   jurisdiction         String?
   parcelId             String?
+  // The site's geocoded location, set by address autocomplete. Drives the
+  // satellite backdrop, parcel, and building imports; the imagery itself is
+  // never stored (Google ToS), only these coordinates.
+  siteAddress          String?
+  sitePlaceId          String?
+  latitude             Float?
+  longitude            Float?
   proposalExpiresAt    DateTime?
   internalNotes        String?
   poolFields           Json          @default("{}")
