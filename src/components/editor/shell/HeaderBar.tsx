@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { ChevronRight, MessageSquare, Play, Share2, Upload } from 'lucide-react'
+import { SPECTRUM } from '@/lib/brand'
 import { dispatchEphemeral } from '@/lib/commands/dispatch'
 import { unresolvedCount } from '@/modules/editor/comments/model'
 import { useCommentsStore } from '@/modules/editor/state/commentsStore'
@@ -30,6 +31,17 @@ export interface HeaderBarProps {
   }
 }
 
+// Each breadcrumb wears its own hue on hover: a 1px border in one bold colour
+// per crumb, cycling through the cool half of the spectrum. Orange and red are
+// deliberately absent, they mean warning and error everywhere else in the app,
+// and the transparent resting border keeps hover from shifting layout.
+const CRUMB =
+  'rounded-pfXs border border-transparent px-1.5 py-0.5 hover:bg-rowHover hover:border-[color:var(--crumb-hue)]'
+
+function crumbHue(hue: string): React.CSSProperties {
+  return { '--crumb-hue': hue } as React.CSSProperties
+}
+
 function initialsFor(user: HeaderBarProps['user']): string {
   const source = user.name ?? user.email ?? 'U'
   const parts = source.split(/[\s@.]+/).filter(Boolean)
@@ -52,13 +64,18 @@ export function HeaderBar({ orgName, customerName, projectName, projectId, user 
       </Link>
 
       <nav className="flex items-center gap-1 text-[12px] text-textMuted">
-        <span className="rounded-pfXs px-1.5 py-0.5 hover:bg-rowHover">{orgName ?? 'Pool Forge'}</span>
+        <span className={CRUMB} style={crumbHue(SPECTRUM.blue)}>
+          {orgName ?? 'Pool Forge'}
+        </span>
         <ChevronRight className="h-3 w-3 text-textFaint" />
-        <span className="rounded-pfXs px-1.5 py-0.5 hover:bg-rowHover">{customerName ?? 'Customer'}</span>
+        <span className={CRUMB} style={crumbHue(SPECTRUM.purple)}>
+          {customerName ?? 'Customer'}
+        </span>
         <ChevronRight className="h-3 w-3 text-textFaint" />
         <Link
           href={`/projects/${projectId}`}
-          className="flex items-center gap-1 rounded-pfXs px-1.5 py-0.5 font-medium text-foreground hover:bg-rowHover"
+          className={`flex items-center gap-1 font-medium text-foreground ${CRUMB}`}
+          style={crumbHue(SPECTRUM.green)}
         >
           {projectName}
           <ChevronRight className="h-3 w-3 -rotate-90 text-textFaint" />
