@@ -32,8 +32,16 @@ import {
   type FinishSlot,
 } from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
+import { useSurveyStore } from '@/modules/editor/state/surveyStore'
+import { satelliteImportPayloadSchema } from '@/modules/site/geo/types'
 import { useViewStore, type FocusTarget } from '@/modules/editor/state/viewStore'
-import { ShapeKind, isPool, isSketchPath, type Shape } from '@/modules/editor/state/shapes'
+import {
+  ShapeKind,
+  isPool,
+  isSketchPath,
+  type Shape,
+  type SketchPath,
+} from '@/modules/editor/state/shapes'
 import { polygonArea, polygonBounds } from '@/lib/geometry/polygon-footprint'
 import { gridInches, type GridSpacingId, type Point } from '@/lib/geometry/drawing'
 import { useDrawStore } from '@/modules/editor/state/drawStore'
@@ -291,6 +299,7 @@ const HANDLER_IDS: string[] = [
   'sketch.label',
   'sketch.toPool',
   'sketch.toDeck',
+  'sketch.fill.set',
   'grid.set',
   'grid.snap.toggle',
   // shape category
@@ -342,6 +351,7 @@ const HANDLER_IDS: string[] = [
   'site.limits.set',
   'site.structure.place',
   'site.describe',
+  'site.import.satellite',
   // scene category
   'sun.set.time',
   'sun.run.study',
@@ -970,6 +980,41 @@ export function ClientCommandHandlers() {
       return { shapeId, label }
     })
 
+    // The server half resolves the project's stored lat/lng, computes the
+    // backdrop's scale from ground resolution, and echoes a payload matching
+    // `satelliteImportPayloadSchema`. This half writes the survey store, which
+    // EditorPersistence is already subscribed to, so the backdrop persists the
+    // same way any survey edit does. The payload is validated rather than
+    // trusted: a malformed echo becomes a refusal, not a NaN-sized underlay.
+    registerClientHandler<unknown, { widthInches: number; heightInches: number }>(
+      'site.import.satellite',
+      (_input, serverData) => {
+        const payload = satelliteImportPayloadSchema.parse(serverData)
+        useSurveyStore.getState().setSurvey({
+          // No uploaded raster: the image comes from the satellite proxy.
+          sourceImageId: '',
+          x: payload.xInches,
+          y: payload.yInches,
+          widthInches: payload.widthInches,
+          heightInches: payload.heightInches,
+          opacity: 0.9,
+          // Locked at birth: a reference photo dragged out of registration is
+          // worse than no photo at all.
+          locked: true,
+          // Ground-resolution provenance for the existing calibration readout,
+          // so "N px = M in" keeps telling the truth about this backdrop.
+          calibrationPxDistance: 100,
+          calibrationRealInches: 100 * payload.inchesPerPixel,
+          // Static Maps scale=2 doubles the bitmap density over the requested
+          // map size, so the natural raster is twice the requested pixels.
+          imageNaturalWidthPx: payload.geo.mapWidthPx * 2,
+          imageNaturalHeightPx: payload.geo.mapHeightPx * 2,
+          geo: payload.geo,
+        })
+        return { widthInches: payload.widthInches, heightInches: payload.heightInches }
+      },
+    )
+
     registerClientHandler<unknown, SiteDescription>('site.describe', () => {
       const shapes = useShapesStore.getState().shapes
       const report = siteSetbackReport(shapes)
@@ -1294,6 +1339,25 @@ export function ClientCommandHandlers() {
       if (!deckId) throw new Error('That drawing is no longer on the plan.')
       useSelectionStore.getState().select(deckId)
       return { shapeId: deckId }
+    })
+
+    registerClientHandler<
+      { id: string; color: 'blue' | 'green' | 'orange' | 'purple' | 'none' },
+      { id: string; color: string }
+    >('sketch.fill.set', (input) => {
+      const shape = requireShape(input.id)
+      if (!isSketchPath(shape)) throw new Error('That is not a drawn path.')
+      if (!shape.closed) {
+        throw new Error('An open line has no inside to fill. Close the outline first.')
+      }
+      // A typed intermediate rather than a spread: exactOptionalPropertyTypes
+      // forbids writing `fillColor: undefined` straight into a Partial<Shape>
+      // patch, since the field's own type never includes undefined. Reading it
+      // back off SketchPath does, which is exactly the type this needs.
+      const fillColor: SketchPath['fillColor'] =
+        input.color === 'none' ? undefined : input.color
+      useShapesStore.getState().updateShape(input.id, { fillColor } as Partial<Shape>)
+      return { id: input.id, color: input.color }
     })
 
     registerClientHandler<{ spacing: GridSpacingId }, { spacing: string }>('grid.set', (input) => {

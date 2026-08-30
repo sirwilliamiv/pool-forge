@@ -23,6 +23,7 @@ import {
   parsePaymentSchedule,
 } from '@/modules/organization/company'
 import { effectiveLightingQuantity } from '@/modules/pricing/engine'
+import { parseSurvey } from '@/modules/editor/drawing-payload'
 import { loadProjectQuote } from '@/modules/projects/snapshot'
 import { ConstructionDocument } from '@/components/exports/ConstructionDocument'
 import type { ConstructionPageSize } from '@/components/exports/ConstructionDocument'
@@ -226,7 +227,7 @@ async function buildConstructionPacket(
 async function buildSitePlan(projectId: string, orgId: string): Promise<BuiltDocument | null> {
   const project = await db.project.findFirst({
     where: { id: projectId, orgId },
-    include: { customer: true },
+    include: { customer: true, drawing: { select: { rootJson: true } } },
   })
   if (!project) return null
 
@@ -234,9 +235,17 @@ async function buildSitePlan(projectId: string, orgId: string): Promise<BuiltDoc
   if (!priced) return null
   const { shapes, measurements, priceBookId } = priced
 
-  // Survey image overlay is still editor-side state; render without an
-  // underlay until it lives on the server.
-  const surveyImageUrl: string | null = null
+  // The satellite backdrop, when the drawing has one. The image itself is
+  // never stored (Google ToS): the survey carries `{lat, lng, zoom, px}` and
+  // the page re-fetches through the authenticated proxy, whose session cookie
+  // rides along because this document renders in-app. Uploaded surveys still
+  // render without an underlay here, as before.
+  const survey = parseSurvey(
+    (project.drawing?.rootJson as { survey?: unknown } | null | undefined)?.survey,
+  )
+  const surveyImageUrl: string | null = survey?.geo
+    ? `/api/projects/${project.id}/satellite?zoom=${survey.geo.zoom}&w=${survey.geo.mapWidthPx}&h=${survey.geo.mapHeightPx}`
+    : null
 
   // Columns, not `poolFields`: these are permit facts about the property and
   // they are typed on the project page.

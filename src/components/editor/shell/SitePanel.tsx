@@ -1,10 +1,13 @@
 'use client'
 
-import { Ruler, Trash2 } from 'lucide-react'
-import { useMemo } from 'react'
+import Link from 'next/link'
+import { Ruler, Satellite, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 
 import { dispatch } from '@/lib/commands/dispatch'
 import { formatFtIn, formatSignedFtIn } from '@/modules/measurements/engine'
+import { loadDrawing } from '@/modules/editor/persistence'
 import {
   siteSetbackReport,
   suggestedLot,
@@ -30,7 +33,141 @@ function ftOf(inches: number): number {
   return Math.round((inches / 12) * 10) / 10
 }
 
-export function SitePanel() {
+/** Shown once per browser, the first time a parcel is drawn. */
+const PARCEL_NOTE_KEY = 'pf.site-import.parcel-note-shown'
+
+type ImportKind = 'satellite' | 'parcel' | 'building'
+
+/**
+ * Import the property from its address.
+ *
+ * Three buttons, three commands, all through the registry: the satellite
+ * backdrop resolves on the client (its handler writes the survey store), while
+ * parcel and building append shapes to the drawing server-side, after which
+ * the shape store is reloaded from the row so the canvas and the database
+ * agree. Missing capability (no Regrid key, Solar knows nothing here) comes
+ * back as a typed refusal; its message is rendered rather than swallowed.
+ */
+function SiteImportSection({
+  projectId,
+  site,
+}: {
+  projectId: string
+  site: { locationSet: boolean; address: string | null }
+}) {
+  const [busy, setBusy] = useState<ImportKind | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const disabled = !site.locationSet || busy !== null
+
+  async function run(kind: ImportKind) {
+    setBusy(kind)
+    setError(null)
+    const commandId =
+      kind === 'satellite'
+        ? 'site.import.satellite'
+        : kind === 'parcel'
+          ? 'site.import.parcel'
+          : 'site.import.building'
+    const result = await dispatch(commandId, { projectId })
+    if (!result.ok) {
+      setError(result.error)
+      setBusy(null)
+      return
+    }
+
+    if (kind !== 'satellite') {
+      // Shapes were appended to the drawing server-side. Reload from the row,
+      // same as the drawing import flow does, so the store matches what was
+      // written and the next autosave cannot write the appended shapes away.
+      try {
+        const fresh = await loadDrawing(projectId)
+        useShapesStore.getState().hydrate(fresh.shapes)
+      } catch {
+        setError('Imported, but the canvas could not reload. Refresh the page to see it.')
+        setBusy(null)
+        return
+      }
+    }
+
+    if (kind === 'parcel') {
+      let firstTime = true
+      try {
+        firstTime = localStorage.getItem(PARCEL_NOTE_KEY) === null
+        localStorage.setItem(PARCEL_NOTE_KEY, '1')
+      } catch {
+        // Storage unavailable: err on the side of saying it.
+      }
+      if (firstTime) {
+        toast.info(
+          'Assessor parcel lines are tax-map approximations. Verify against the recorded survey before anything permits off them.',
+          { duration: 10000 },
+        )
+      }
+    }
+
+    setBusy(null)
+  }
+
+  return (
+    <div className="border-b border-borderLight pb-3">
+      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.5px] text-textMuted">
+        <Satellite className="h-3 w-3" aria-hidden />
+        Import site
+      </div>
+
+      {!site.locationSet ? (
+        <p className="mb-1.5 text-[11px] text-textFaint">
+          No site location on this project yet. Set the address on the{' '}
+          <Link href={`/projects/${projectId}`} className="text-foreground underline">
+            project page
+          </Link>{' '}
+          to import the property.
+        </p>
+      ) : (
+        <p className="mb-1.5 text-[11px] text-textFaint">
+          {site.address ?? 'Site located.'}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-1.5">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => void run('satellite')}
+          className="rounded-pfSm bg-foreground px-2 py-1 text-[11.5px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy === 'satellite' ? 'Importing backdrop…' : 'Satellite backdrop'}
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => void run('parcel')}
+          className="rounded-pfSm border border-border px-2 py-1 text-[11.5px] text-foreground hover:bg-rowHover disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy === 'parcel' ? 'Importing parcel…' : 'Parcel boundary'}
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => void run('building')}
+          className="rounded-pfSm border border-border px-2 py-1 text-[11.5px] text-foreground hover:bg-rowHover disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy === 'building' ? 'Importing building…' : 'Building footprint'}
+        </button>
+      </div>
+
+      {error ? <p className="mt-1.5 text-[11px] text-pfError">{error}</p> : null}
+    </div>
+  )
+}
+
+export interface SitePanelProps {
+  projectId: string
+  site: { locationSet: boolean; address: string | null }
+}
+
+export function SitePanel({ projectId, site }: SitePanelProps) {
   const shapes = useShapesStore(s => s.shapes)
   const select = useSelectionStore(s => s.select)
   const report = useMemo(() => siteSetbackReport(shapes), [shapes])
@@ -81,6 +218,8 @@ export function SitePanel() {
           Site &amp; setbacks
         </span>
       </div>
+
+      <SiteImportSection projectId={projectId} site={site} />
 
       {!lot ? (
         <>

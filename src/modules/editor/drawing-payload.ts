@@ -8,6 +8,7 @@ import type { SurveyConfig } from '@/modules/editor/state/surveyStore'
 import type { SiteGrade } from '@/modules/editor/grade/model'
 import { emptyGrade, parseCaptureProvenance } from '@/modules/editor/grade/model'
 import { parseComments, type DrawingComment } from '@/modules/editor/comments/model'
+import { surveyGeoSchema, type SurveyGeo } from '@/modules/site/geo/types'
 
 export interface DrawingPayload {
   shapes: Shape[]
@@ -104,13 +105,24 @@ export function parseSurvey(raw: unknown): SurveyConfig | null {
       ? obj.imageDataUrl
       : null
 
-  // Neither reference nor raster: there is no underlay to show.
-  if (sourceImageId === '' && legacy === null) return null
+  // Satellite backdrop parameters, validated rather than trusted: `geo` is
+  // what the renderer turns into a fetch URL, and a corrupt zoom or size would
+  // otherwise ride straight from the database into the proxy route. Invalid
+  // geo is dropped, not fatal, so a damaged record degrades to "no backdrop".
+  const geoParsed = surveyGeoSchema.safeParse(obj.geo)
+  const geo: SurveyGeo | null = geoParsed.success ? geoParsed.data : null
+
+  // No reference, no raster, no geo: there is no underlay to show. A survey
+  // with `geo` and no sourceImageId is valid; its image comes from the
+  // satellite proxy at view time.
+  if (sourceImageId === '' && legacy === null && geo === null) return null
 
   const rest: Record<string, unknown> = { ...obj }
   delete rest.imageDataUrl
+  delete rest.geo
   const survey = { ...rest, sourceImageId } as SurveyConfig
   if (legacy !== null) survey.legacyImageDataUrl = legacy
+  if (geo !== null) survey.geo = geo
   return survey
 }
 
@@ -150,6 +162,10 @@ export function serializeDrawingPayload(payload: DrawingPayload): {
     if (typeof legacyImageDataUrl === 'string' && legacyImageDataUrl.length > 0) {
       survey.imageDataUrl = legacyImageDataUrl
     }
+    // `geo` rides through in `rest` when present. A key explicitly holding
+    // `undefined` would round-trip as a `geo: undefined` entry in JSON-land,
+    // so it is removed rather than written.
+    if (survey.geo === undefined) delete survey.geo
     out.survey = survey
   }
 

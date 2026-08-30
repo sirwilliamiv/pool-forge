@@ -5,6 +5,7 @@ import type { ProjectStatus, Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { ProjectForm } from '@/components/project/ProjectForm'
+import { SiteAddressCard } from '@/components/project/SiteAddressCard'
 import { ProjectActions } from '@/components/project/ProjectActions'
 import { ShareProposalCard } from '@/components/project/ShareProposalCard'
 import { VersionsCard } from '@/components/versions/VersionsCard'
@@ -276,6 +277,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         items={lineItems}
         priceBookChoices={priceBookChoices}
       />
+      <SiteAddressCard projectId={project.id} initialAddress={project.siteAddress ?? null} />
       <ProjectForm
         projectId={project.id}
         initial={initial}

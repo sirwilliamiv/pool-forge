@@ -741,6 +741,10 @@ const EXERCISES: Record<string, Exercise> = {
     undoLeaves: { paths: ['selection.selectedIds'], why: SELECTION_IS_A_POINTER },
     input: async () => ({ id: await addSketch(), surface: 'concrete' as const }),
   },
+  'sketch.fill.set': {
+    kind: 'mutates',
+    input: async () => ({ id: await addSketch(), color: 'blue' as const }),
+  },
   'grid.set': {
     kind: 'mutates',
     input: async () => ({ spacing: 'small' }),
@@ -975,6 +979,33 @@ const EXERCISES: Record<string, Exercise> = {
       await must('site.property.place', { widthFt: 70, depthFt: 90 })
       return {}
     },
+  },
+
+  // ---------- site geo ----------
+  'site.address.set': {
+    kind: 'server',
+    why:
+      'Resolves the address against Google and writes the geocoded location onto the Project row. ' +
+      'Covered by src/test/integration/site-geo-commands.test.ts against the real database.',
+  },
+  'site.import.satellite': {
+    kind: 'server',
+    why:
+      'The server half validates the project\'s stored location against the database and computes ' +
+      'the scaled payload, which this harness cannot reach without a Project row; covered by ' +
+      'src/test/integration/site-geo-commands.test.ts. The client half writes the survey store.',
+  },
+  'site.import.parcel': {
+    kind: 'server',
+    why:
+      'Fetches the parcel from Regrid and appends a property line to Drawing.rootJson in the ' +
+      'database. Covered by src/test/integration/site-geo-commands.test.ts.',
+  },
+  'site.import.building': {
+    kind: 'server',
+    why:
+      'Fetches the building footprint from the Solar API and appends a house to Drawing.rootJson ' +
+      'in the database. Covered by src/test/integration/site-geo-commands.test.ts.',
   },
 
   // ---------- scene ----------

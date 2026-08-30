@@ -9,6 +9,7 @@ import { DragHandler } from './DragHandler'
 import { Ground } from './Ground'
 import { Lighting } from './Lighting'
 import { RevealNewShapes } from './RevealNewShapes'
+import { SatelliteUnderlay } from './objects/SatelliteUnderlay'
 import { SceneRoot } from './SceneRoot'
 import { SketchGestures } from './SketchGestures'
 import { SelectionHalo } from './SelectionHalo'
@@ -17,7 +18,7 @@ import { SelectionLabel } from './SelectionLabel'
 import { SelectionPicker } from './SelectionPicker'
 import { ToolGestures } from './ToolGestures'
 
-export function SceneCanvas() {
+export function SceneCanvas({ projectId }: { projectId?: string | undefined }) {
   return (
     <Canvas
       shadows
@@ -30,6 +31,9 @@ export function SceneCanvas() {
       <CustomOrbit />
       <Lighting />
       <Ground />
+      {/* Between the base plane and the grid; one scene, so the backdrop shows
+          in the plan (ortho) and 3D (perspective) views alike. */}
+      <SatelliteUnderlay projectId={projectId} />
       <SceneRoot />
       <RevealNewShapes />
       <DragHandler />

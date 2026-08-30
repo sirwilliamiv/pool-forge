@@ -69,6 +69,12 @@ export interface EditorLayoutProps {
    * quote cannot show three different prices for one finish.
    */
   finishCatalog?: FinishCatalog
+  /**
+   * Whether the project has a geocoded site, and the address it was set from.
+   * Drives the Site panel's import affordances: without a location the buttons
+   * are disabled and say where to set the address.
+   */
+  site?: { locationSet: boolean; address: string | null }
 }
 
 export function EditorLayout({
@@ -82,6 +88,7 @@ export function EditorLayout({
   pricing,
   paletteSuggestions,
   finishCatalog = EMPTY_FINISH_CATALOG,
+  site = { locationSet: false, address: null },
 }: EditorLayoutProps) {
   // Seeded on the first render rather than in an effect, because the finish
   // rows and the live quote both read the catalogue on their first paint and an
@@ -114,10 +121,10 @@ export function EditorLayout({
         />
       </div>
 
-      <LeftPanel />
+      <LeftPanel projectId={projectId} site={site} />
 
       <main className="relative overflow-hidden">
-        <R3FCanvas />
+        <R3FCanvas projectId={projectId} />
         <CanvasOverlay
           modePillSlot={<ModePillContainer />}
           quoteDockSlot={<QuoteDock />}

@@ -2,11 +2,17 @@
 
 import { create } from 'zustand'
 
+import type { SurveyGeo } from '@/modules/site/geo/types'
+
 export interface SurveyConfig {
   // Reference to a `SourceImage` row; the bytes live in the BlobStore and are
   // served through an org-scoped authenticated route. Never a data URL: a
   // single 12MP photo base64s to roughly 16MB inside `Drawing.rootJson`, on
   // every save and every load.
+  //
+  // Empty string when the underlay is a satellite backdrop (`geo` set): the
+  // image then comes from the authenticated satellite proxy, never the blob
+  // store (Google ToS forbids storing the imagery).
   sourceImageId: string
   // Position + size are in canvas inches (the store-internal unit).
   x: number
@@ -27,6 +33,10 @@ export interface SurveyConfig {
   // drawings still open and still show their underlay. `scripts/migrate-survey-images.ts`
   // clears it. Nothing writes this field.
   legacyImageDataUrl?: string
+  // Satellite backdrop parameters. The image itself is never persisted: these
+  // re-fetch it through `/api/projects/[id]/satellite` at view time. Validated
+  // by `surveyGeoSchema` on the way in from `rootJson`.
+  geo?: SurveyGeo
 }
 
 interface SurveyState {

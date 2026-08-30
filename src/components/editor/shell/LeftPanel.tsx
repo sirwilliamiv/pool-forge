@@ -25,7 +25,13 @@ const VIEW_MODES: { id: ViewMode; label: string }[] = [
   { id: 'section', label: 'Section' },
 ]
 
-export function LeftPanel() {
+export interface LeftPanelProps {
+  projectId: string
+  /** Whether the project has a geocoded site; drives the Site panel's import controls. */
+  site: { locationSet: boolean; address: string | null }
+}
+
+export function LeftPanel({ projectId, site }: LeftPanelProps) {
   const leftTab = useViewStore((s) => s.leftTab)
   const setLeftTab = useViewStore((s) => s.setLeftTab)
   const viewMode = useViewStore((s) => s.viewMode)
@@ -85,7 +91,7 @@ export function LeftPanel() {
         {leftTab === 'layers' ? <LayersTab /> : null}
         {leftTab === 'stencils' ? <StencilGrid search={search} /> : null}
         {leftTab === 'materials' ? <MaterialGrid searchQuery={search} /> : null}
-        {leftTab === 'site' ? <SitePanel /> : null}
+        {leftTab === 'site' ? <SitePanel projectId={projectId} site={site} /> : null}
         {leftTab === 'grade' ? <GradePanel /> : null}
       </div>
 

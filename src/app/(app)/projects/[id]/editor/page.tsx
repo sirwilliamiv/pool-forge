@@ -31,6 +31,9 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
       orgId: true,
       poolFields: true,
       proposalExpiresAt: true,
+      siteAddress: true,
+      latitude: true,
+      longitude: true,
       org: { select: { name: true, taxRatePct: true } },
       customer: { select: { name: true, address: true } },
     },
@@ -115,6 +118,10 @@ export default async function ProjectEditorPage({ params }: { params: Promise<{ 
       pricing={pricing}
       paletteSuggestions={paletteSuggestions}
       finishCatalog={priced?.finishCatalog ?? EMPTY_FINISH_CATALOG}
+      site={{
+        locationSet: project.latitude !== null && project.longitude !== null,
+        address: project.siteAddress ?? null,
+      }}
     />
   )
 }
