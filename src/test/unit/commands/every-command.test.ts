@@ -344,6 +344,22 @@ const EXERCISES: Record<string, Exercise> = {
     kind: 'server',
     why: 'Advances ProjectStatus and stamps the signature through Prisma, org-scoped. Covered by projects/proposal-acceptance.test.ts against the real DB, including the public share route that dispatches it with no session.',
   },
+  'project.status.set': {
+    kind: 'server',
+    why: 'Writes ProjectStatus through Prisma, org-scoped. Covered by integration/commands/project-lifecycle.test.ts against the real DB.',
+  },
+  'project.archive': {
+    kind: 'server',
+    why: 'Sets ProjectStatus to ARCHIVED through Prisma, org-scoped. Named by the voice destructive gate. Covered by integration/commands/project-lifecycle.test.ts against the real DB.',
+  },
+  'project.delete': {
+    kind: 'server',
+    why: 'Deletes a Project row through Prisma, org-scoped; the schema cascades the drawing, quotes, exports and validation runs. Named by the voice destructive gate. Covered by integration/commands/project-lifecycle.test.ts against the real DB.',
+  },
+  'project.duplicate': {
+    kind: 'server',
+    why: 'Reads the source project and writes a copy plus its drawing through Prisma, org-scoped, inside a transaction that also assigns the new job number. Covered by integration/commands/project-lifecycle.test.ts against the real DB.',
+  },
 
   // ---------- canvas / camera / view ----------
   'canvas.zoom.in': {

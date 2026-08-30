@@ -295,13 +295,13 @@ export function buildToolSurface(categories: readonly CommandCategory[]): ToolSu
  * its own mistake — which it tries to do, and which is worth more than a
  * confirmation on something already reversible.
  */
-const DESTRUCTIVE = new Set([
+export const DESTRUCTIVE = new Set([
   'import.session.discard',
   'import.intent.apply',
   'template.scene.apply',
   'template.scene.delete',
   'project.delete',
-  'archive.project',
+  'project.archive',
   'comment.remove',
   'version.delete',
 ])

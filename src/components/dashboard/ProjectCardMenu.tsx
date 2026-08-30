@@ -20,11 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  archiveProject,
-  deleteProject,
-  duplicateProject,
-} from '@/modules/projects/actions'
+import { dispatch } from '@/lib/commands/dispatch'
 
 export interface ProjectCardMenuProps {
   projectId: string
@@ -44,37 +40,40 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
   function onDuplicate(e: React.MouseEvent) {
     stop(e)
     startTransition(async () => {
-      try {
-        const result = await duplicateProject(projectId)
-        toast.success('Project duplicated')
-        router.push(`/projects/${result.id}`)
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to duplicate')
+      const result = await dispatch<{ projectId: string }, { projectId: string }>(
+        'project.duplicate',
+        { projectId },
+      )
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success('Project duplicated')
+      router.push(`/projects/${result.data.projectId}`)
     })
   }
 
   function onArchive(e: React.MouseEvent) {
     stop(e)
     startTransition(async () => {
-      try {
-        await archiveProject(projectId)
-        toast.success('Project archived')
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to archive')
+      const result = await dispatch('project.archive', { projectId })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success('Project archived')
     })
   }
 
   function onDeleteConfirmed() {
     startTransition(async () => {
-      try {
-        await deleteProject(projectId)
-        toast.success('Project deleted')
-        setConfirmOpen(false)
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to delete')
+      const result = await dispatch('project.delete', { projectId })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success('Project deleted')
+      setConfirmOpen(false)
     })
   }
 

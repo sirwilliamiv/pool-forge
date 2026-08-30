@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import { initCommands } from '@/modules/commands/init'
 import { all, type CommandCategory } from '@/modules/commands/registry'
-import { buildToolSurface, describable, isDestructive } from '@/modules/voice/tools'
+import { DESTRUCTIVE, buildToolSurface, describable, isDestructive } from '@/modules/voice/tools'
 
 initCommands()
 
@@ -142,6 +142,15 @@ describe('voice tool surface', () => {
     // Confirming a shape delete costs the agent the ability to correct its own
     // mistake, and buys nothing that Cmd+Z did not already provide.
     expect(isDestructive('delete.shape')).toBe(false)
+  })
+
+  it('every destructive id is a registered command', () => {
+    // A gate that names a command which does not exist protects nothing: the
+    // model can never trigger the confirmation because it can never call the
+    // id in the first place. `project.delete` and `archive.project` were both
+    // dead this way until the lifecycle commands landed.
+    const known = new Set(all().map(command => command.id))
+    for (const id of DESTRUCTIVE) expect(known, id).toContain(id)
   })
 })
 

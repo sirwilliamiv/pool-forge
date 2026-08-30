@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
-import { updateProjectStatus } from '@/modules/projects/actions'
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
   DRAFT: 'Draft',
@@ -55,12 +55,12 @@ export function StatusDropdown({ projectId, status, size = 'sm' }: StatusDropdow
     if (next === status) return
     const parsed = next as ProjectStatus
     startTransition(async () => {
-      try {
-        await updateProjectStatus(projectId, parsed)
-        toast.success(`Status: ${STATUS_LABELS[parsed]}`)
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to update status')
+      const result = await dispatch('project.status.set', { projectId, status: parsed })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success(`Status: ${STATUS_LABELS[parsed]}`)
     })
   }
 

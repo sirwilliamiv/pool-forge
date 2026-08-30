@@ -21,11 +21,7 @@ import {
   ExportCommandHandlers,
   runExportCommand,
 } from '@/components/exports/ExportCommandHandlers'
-import {
-  archiveProject,
-  deleteProject,
-  duplicateProject,
-} from '@/modules/projects/actions'
+import { dispatch } from '@/lib/commands/dispatch'
 
 export interface ProjectActionsProps {
   project: {
@@ -42,36 +38,39 @@ export function ProjectActions({ project }: ProjectActionsProps) {
 
   function onDuplicate() {
     startTransition(async () => {
-      try {
-        const result = await duplicateProject(project.id)
-        toast.success('Project duplicated')
-        router.push(`/projects/${result.id}`)
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to duplicate')
+      const result = await dispatch<{ projectId: string }, { projectId: string }>(
+        'project.duplicate',
+        { projectId: project.id },
+      )
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success('Project duplicated')
+      router.push(`/projects/${result.data.projectId}`)
     })
   }
 
   function onArchive() {
     startTransition(async () => {
-      try {
-        await archiveProject(project.id)
-        toast.success('Project archived')
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to archive')
+      const result = await dispatch('project.archive', { projectId: project.id })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success('Project archived')
     })
   }
 
   function onDeleteConfirmed() {
     startTransition(async () => {
-      try {
-        await deleteProject(project.id)
-        toast.success('Project deleted')
-        router.push('/dashboard')
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to delete')
+      const result = await dispatch('project.delete', { projectId: project.id })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success('Project deleted')
+      router.push('/dashboard')
     })
   }
 

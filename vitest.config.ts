@@ -23,6 +23,9 @@ export default defineConfig({
       // gate. A property that only runs when someone remembers to run it is a
       // property nobody is checking.
       'src/test/property/**/*.property.test.ts',
+      // Integration tests hit the real local Postgres (`pnpm db:up`), same as
+      // several tests already living under src/test/unit. New ones go here.
+      'src/test/integration/**/*.test.ts',
     ],
     css: false,
   },

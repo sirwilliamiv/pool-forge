@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { ProjectStatus } from '@prisma/client'
+import type { Prisma, ProjectStatus } from '@prisma/client'
 import { register } from '@/modules/commands/registry'
 import { nextJobNumber } from '@/modules/projects/job-number'
 
@@ -284,5 +284,132 @@ register({
         alreadyAccepted,
       },
     }
+  },
+})
+
+/**
+ * Lifecycle commands (status, duplicate, archive, delete) that used to live as
+ * direct server actions in `src/modules/projects/actions.ts`. The voice
+ * destructive gate names two of these ids, so they have to be real commands
+ * rather than dead strings a spoken "delete this" could never actually reach.
+ */
+
+register({
+  id: 'project.status.set',
+  label: 'Set project status',
+  description: 'Move a project to a different status.',
+  category: 'project',
+  inputSchema: z.object({ projectId: z.string().min(1), status: ProjectStatusSchema }),
+  outputSchema: z.object({ projectId: z.string(), status: ProjectStatusSchema }),
+  voiceExamples: ['Mark this project approved.', 'Move this job to proposal sent.'],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const { db } = await import('@/lib/db')
+
+    const result = await db.project.updateMany({
+      where: { id: input.projectId, orgId: ctx.orgId },
+      data: { status: input.status },
+    })
+    if (result.count === 0) return { ok: false, error: 'Project not found' }
+
+    return { ok: true, data: { projectId: input.projectId, status: input.status } }
+  },
+})
+
+register({
+  id: 'project.archive',
+  label: 'Archive project',
+  description:
+    'Move a project off the active pipeline. It stays visible as archived and can be brought back by changing its status again.',
+  category: 'project',
+  inputSchema: z.object({ projectId: z.string().min(1) }),
+  outputSchema: z.object({ projectId: z.string() }),
+  voiceExamples: ['Archive this project.'],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const { db } = await import('@/lib/db')
+
+    const result = await db.project.updateMany({
+      where: { id: input.projectId, orgId: ctx.orgId },
+      data: { status: 'ARCHIVED' },
+    })
+    if (result.count === 0) return { ok: false, error: 'Project not found' }
+
+    return { ok: true, data: { projectId: input.projectId } }
+  },
+})
+
+register({
+  id: 'project.delete',
+  label: 'Delete project',
+  description:
+    'Permanently delete a project. Removes the drawing, quotes, exports, and validation runs. Cannot be undone.',
+  category: 'project',
+  inputSchema: z.object({ projectId: z.string().min(1) }),
+  outputSchema: z.object({ projectId: z.string() }),
+  voiceExamples: ['Delete this project.'],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const { db } = await import('@/lib/db')
+
+    const result = await db.project.deleteMany({
+      where: { id: input.projectId, orgId: ctx.orgId },
+    })
+    if (result.count === 0) return { ok: false, error: 'Project not found' }
+
+    return { ok: true, data: { projectId: input.projectId } }
+  },
+})
+
+register({
+  id: 'project.duplicate',
+  label: 'Duplicate project',
+  description: 'Create a copy of a project, as a new draft with its own job number.',
+  category: 'project',
+  inputSchema: z.object({ projectId: z.string().min(1) }),
+  outputSchema: z.object({ projectId: z.string() }),
+  voiceExamples: ['Duplicate this job.', 'Copy this project.'],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+    const { db } = await import('@/lib/db')
+
+    const source = await db.project.findFirst({
+      where: { id: input.projectId, orgId },
+      include: { customer: true, drawing: true },
+    })
+    if (!source) return { ok: false, error: 'Project not found' }
+
+    const newId = await db.$transaction(async tx => {
+      const projectData: Prisma.ProjectCreateInput = {
+        org: { connect: { id: orgId } },
+        name: `${source.name} (Copy)`,
+        status: 'DRAFT',
+        poolFields: source.poolFields as unknown as Prisma.InputJsonValue,
+        // A copy is a different job and gets its own number. Carrying the
+        // original's over would put two projects on one reference, which is
+        // the one thing a job number must never do.
+        jobNumber: await nextJobNumber(tx, orgId),
+      }
+      if (source.salesperson) projectData.salesperson = source.salesperson
+      if (source.designer) projectData.designer = source.designer
+      if (source.internalNotes) projectData.internalNotes = source.internalNotes
+      if (source.customer) projectData.customer = { connect: { id: source.customer.id } }
+
+      const created = await tx.project.create({ data: projectData })
+
+      if (source.drawing) {
+        await tx.drawing.create({
+          data: {
+            projectId: created.id,
+            scale: source.drawing.scale,
+            rootJson: source.drawing.rootJson as unknown as Prisma.InputJsonValue,
+          },
+        })
+      }
+      return created.id
+    })
+
+    return { ok: true, data: { projectId: newId } }
   },
 })
