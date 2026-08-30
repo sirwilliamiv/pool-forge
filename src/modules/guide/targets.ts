@@ -28,6 +28,18 @@ export interface GuideTarget {
   aliases?: string[]
   /** One sentence, in a builder's words, for the agent to say while pointing. */
   explain: string
+  /**
+   * CSS selector that finds it directly. For controls whose accessible name
+   * lives on something the candidate query cannot see, like a role=group.
+   */
+  selector?: string
+  /** CSS selector for the container to search in, when the name repeats on the page. */
+  within?: string
+  /**
+   * Visible labels to click, in order, to make this control exist. A tab that
+   * has to be opened first. Consumed by guide.point's reveal step.
+   */
+  openPath?: string[]
 }
 
 /**
@@ -151,6 +163,7 @@ export const GUIDE_TARGETS: readonly GuideTarget[] = [
     name: 'View cube',
     screen: 'editor',
     aliases: ['camera angles', 'top left right front'],
+    selector: '[aria-label="View cube"]',
     explain: 'Jump the camera to a named angle.',
   },
   {

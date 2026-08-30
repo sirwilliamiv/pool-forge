@@ -39,18 +39,31 @@ function accessibleNames(element: Element): string[] {
   return names.map(name => name.toLowerCase().replace(/\s+/g, ' ').trim())
 }
 
+const CANDIDATES =
+  'button, a, [role="tab"], [role="menuitem"], select, summary, input[type="checkbox"], [role="slider"], [data-guide]'
+
 /**
  * The element a target names, or null.
  *
- * Matches a leading prefix rather than the whole string, because labels carry
- * their shortcut: the Line tool is titled "Line (P)". Anchoring at the start
- * keeps "Line" from also matching "Lines per page" somewhere else on the page.
+ * A `selector` finds the element directly, for controls whose accessible name
+ * lives on something the candidate query cannot see, like a role=group. A
+ * `within` narrows the search to a container, for a name that repeats on the
+ * page.
+ *
+ * Otherwise matches a leading prefix rather than the whole string, because
+ * labels carry their shortcut: the Line tool is titled "Line (P)". Anchoring
+ * at the start keeps "Line" from also matching "Lines per page" somewhere
+ * else on the page.
  */
 export function resolveTarget(doc: Document, target: GuideTarget): Element | null {
+  if (target.selector) {
+    const element = doc.querySelector(target.selector)
+    if (!element || isInsideCanvas(element) || !isVisible(element) || isOccluded(element)) return null
+    return element
+  }
+  const root: ParentNode = target.within ? (doc.querySelector(target.within) ?? doc) : doc
   const want = target.name.toLowerCase().replace(/\s+/g, ' ').trim()
-  const candidates = doc.querySelectorAll(
-    'button, a, [role="tab"], [role="menuitem"], select, summary',
-  )
+  const candidates = root.querySelectorAll(CANDIDATES)
 
   for (const element of candidates) {
     if (isInsideCanvas(element)) continue
