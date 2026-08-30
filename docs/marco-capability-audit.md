@@ -235,10 +235,13 @@ Already the deepest surface (~66 tools). Additions:
 - **Explain** (NEW targets): the form regions, payment schedule Add stage /
   Remove stage, Save.
 - **Answer** (via `page.read` today): tax rate, proposal terms, schedule.
-- **Do**: NEW voiceExamples on `settings.company.update` ("set our sales tax
-  to 7 percent", "make proposals valid for 45 days"). Payment schedule edits
-  stay in the UI (structured list editing by voice is error-prone; Marco
-  points instead).
+- **Do**: `settings.company.update` stays voiceless: a pinned test asserts it
+  is never offered to voice, and its schema is one all-or-nothing object that
+  includes the licence number. Ruled during implementation: the safety
+  decision wins. A future narrow command (for example `settings.tax.set`)
+  is the right way to voice "set our sales tax to 7 percent"; deferred.
+  Payment schedule edits stay in the UI (structured list editing by voice is
+  error-prone; Marco points instead).
 
 ### 4.8 `/settings/team`
 
