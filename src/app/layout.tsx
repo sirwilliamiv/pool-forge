@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Instrument_Sans, JetBrains_Mono } from 'next/font/google'
+import { ParasolFavicon } from '@/components/dashboard/ParasolFavicon'
 import { Providers } from '@/lib/providers'
 import './globals.css'
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           } as React.CSSProperties
         }
       >
+        <ParasolFavicon />
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -303,6 +303,43 @@
   background: var(--brand-blue);
 }
 
+/* Every pool cycles the water on the loading pool's clock, one hue step apart
+ * from its neighbour and from the parasol (which starts at zero), so the four
+ * of them always show four different hues. Reduced motion holds them all on
+ * brand blue, same as the loading pool. */
+@media (prefers-reduced-motion: no-preference) {
+  .pf-mark-pool--1 {
+    animation: pf-mark-water 6s steps(1, end) infinite;
+    animation-delay: -1.2s;
+  }
+  .pf-mark-pool--2 {
+    animation: pf-mark-water 6s steps(1, end) infinite;
+    animation-delay: -2.4s;
+  }
+  .pf-mark-pool--3 {
+    animation: pf-mark-water 6s steps(1, end) infinite;
+    animation-delay: -3.6s;
+  }
+}
+
+@keyframes pf-mark-water {
+  0% {
+    background-color: var(--brand-blue);
+  }
+  20% {
+    background-color: var(--brand-green);
+  }
+  40% {
+    background-color: var(--brand-orange);
+  }
+  60% {
+    background-color: var(--brand-red);
+  }
+  80% {
+    background-color: var(--brand-purple);
+  }
+}
+
 @property --pf-parasol-hue {
   syntax: '<color>';
   inherits: false;

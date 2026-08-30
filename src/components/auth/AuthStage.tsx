@@ -23,14 +23,15 @@ import { MonsteraLeaf, PalmFrond } from '@/components/marketing/botanicals'
 // as a base — and the card keeps straddling the join, so the composition
 // survives the layout change instead of being replaced by a different one.
 
-// The first O of POOL is a pool. The letter's own stroke is the coping and its
-// counter is the water, held still on brand blue; a parasol crops onto its
-// top-right shoulder, turning at breeze speed while its canopy steps through
-// the five core hues on the loading pool's 6s clock. The door and the loading
-// screen share one piece of furniture and one clock. Styles live with the
-// loading pool's in `globals.css` (`.pf-mark-pool`, `.pf-mark-parasol`); the
-// link's aria-label carries the name, so the glyph swap costs a screen reader
-// nothing.
+// Every O in the wordmark is a pool. The letter's own stroke is the coping and
+// its counter is the water, and each pool steps through the five core hues on
+// the loading pool's 6s clock, one hue step apart, so the parasol and the
+// three pools always show four different hues and no two are ever the same.
+// The parasol on the first O's shoulder turns at breeze speed while its canopy
+// cycles too. The door, the loading screen and the favicon share one piece of
+// furniture and one clock. Styles live with the loading pool's in
+// `globals.css` (`.pf-mark-pool`, `.pf-mark-parasol`); the link's aria-label
+// carries the name, so the glyph swaps cost a screen reader nothing.
 export function AuthStage({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-theme-bg text-theme-fg lg:flex-row">
@@ -44,13 +45,13 @@ export function AuthStage({ children }: { children: React.ReactNode }) {
           <span className="block font-medium leading-[0.78] tracking-[-0.05em] text-ink-black">
             <span className="block text-[clamp(3.5rem,8vw,7.5rem)]" aria-hidden>
               P
-              <span className="pf-mark-pool">
+              <span className="pf-mark-pool pf-mark-pool--1">
                 <span className="pf-mark-parasol" />
               </span>
-              OL
+              <span className="pf-mark-pool pf-mark-pool--2" />L
             </span>
             <span className="block text-[clamp(3.5rem,8vw,7.5rem)]" aria-hidden>
-              FORGE
+              F<span className="pf-mark-pool pf-mark-pool--3" />RGE
             </span>
           </span>
         </Link>
