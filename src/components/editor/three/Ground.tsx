@@ -1,53 +1,62 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 
+import { INK, TINTS } from '@/lib/brand'
 import { gridInches } from '@/lib/geometry/drawing'
+import { gridCentre, gridLayout } from '@/modules/editor/grid-layout'
 import { useDrawStore } from '@/modules/editor/state/drawStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 
 /**
- * Keep the number of drawn lines sane at every grid size.
+ * The ground, and the grid drawn on it.
  *
- * A three-inch grid across the whole 400 ft ground plane is sixteen hundred
- * divisions each way, which costs a lot to draw and reads as solid grey anyway.
- * The span shrinks as the cells do, so a fine grid covers the area somebody is
- * actually detailing rather than the whole county.
+ * One span for both grids and integer divisions by construction, so a drawn
+ * square is exactly the size things snap to and a heavy line always falls on a
+ * fine one. See `grid-layout.ts` for what went wrong when they were computed
+ * separately.
  */
-const MAX_DIVISIONS = 240
-
-function gridFor(cellFt: number): { spanFt: number; divisions: number } {
-  const spanFt = Math.min(400, Math.max(40, cellFt * MAX_DIVISIONS))
-  return { spanFt, divisions: Math.round(spanFt / cellFt) }
-}
-
 export function Ground() {
   const gridVisible = useEditorStore(s => s.gridVisible)
   const spacing = useDrawStore(s => s.gridSpacing)
   const cellFt = gridInches(spacing) / 12
 
-  const { fine, major } = useMemo(() => {
-    const f = gridFor(cellFt)
-    // A heavier line every ten cells, which is what makes a grid countable
-    // rather than a texture: at a one-foot grid that is a line every ten feet.
-    const majorCell = cellFt * 10
-    return { fine: f, major: gridFor(majorCell) }
-  }, [cellFt])
+  const layout = useMemo(() => gridLayout(cellFt), [cellFt])
+
+  // The grid follows where the camera is looking, snapped to whole major cells
+  // so its lines stay put in world space instead of crawling.
+  const camera = useThree(state => state.camera)
+  const fine = useRef<THREE.GridHelper>(null)
+  const major = useRef<THREE.GridHelper>(null)
+  useFrame(() => {
+    if (!gridVisible) return
+    // Where the camera is over the ground, which for both the orbit and the
+    // orthographic views is simply its x and z.
+    const centre = gridCentre({ x: camera.position.x, z: camera.position.z }, cellFt)
+    if (fine.current) fine.current.position.set(centre.x, 0.01, centre.z)
+    if (major.current) major.current.position.set(centre.x, 0.012, centre.z)
+  })
 
   return (
     <>
       <mesh receiveShadow rotation-x={-Math.PI / 2} position={[0, -2, 0]}>
         <planeGeometry args={[400, 400]} />
-        <meshStandardMaterial color="#EEF2F4" roughness={0.95} />
+        <meshStandardMaterial color={INK.paper} roughness={0.95} />
       </mesh>
       {gridVisible ? (
         <>
           <gridHelper
-            args={[fine.spanFt, fine.divisions, '#dbe3e9', '#e6ebf0']}
+            ref={fine}
+            args={[layout.spanFt, layout.divisions, TINTS.slateMist, TINTS.slateMist]}
             position={[0, 0.01, 0]}
           />
+          {/* Same span, a factor of the same divisions, so these lines land on
+              fine ones rather than beside them. */}
           <gridHelper
-            args={[major.spanFt, major.divisions, '#9fb2bf', '#b9c7d1']}
+            ref={major}
+            args={[layout.spanFt, layout.majorDivisions, INK.slate, INK.slate]}
             position={[0, 0.012, 0]}
           />
         </>
