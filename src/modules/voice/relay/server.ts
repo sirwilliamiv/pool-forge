@@ -248,6 +248,7 @@ async function handleConnection(
           // ever the browser's to say, and it is already framed as untrusted
           // content in the prompt.
           ...(start.pageSummary ? { pageSummary: start.pageSummary } : {}),
+          ...(start.journal ? { journal: start.journal } : {}),
         },
       )
       send(VOICE_CHANNELS.start, { ok: true })

@@ -17,6 +17,7 @@ import type { VoiceScreen } from '../scope'
 import type { DestructiveRequest } from '@/components/voice/DestructiveConfirm'
 import { isDestructive } from '../tools'
 import { startCapture, VoicePlayback, type CaptureHandle } from './audio'
+import { readJournal, recordCommand, recordSummary } from './journal'
 import { useVoiceLiveStore } from './liveStore'
 import { createWebSocketBridge, relayUrl } from './wsBridge'
 
@@ -158,6 +159,13 @@ export function useVoiceSession(
   /** Set once `touchIdle` exists, so `addLine` can reach it from above. */
   const touchIdleRef = useRef<(() => void) | null>(null)
 
+  /**
+   * The model line as heard so far this turn, kept outside React state so the
+   * journal can be updated synchronously alongside the transcript rather than
+   * waiting a render behind it.
+   */
+  const lastModelText = useRef('')
+
   const addLine = useCallback((role: 'user' | 'model', text: string) => {
     if (!text.trim()) return
     // A long answer is not an idle session, and neither is a long question, so
@@ -170,11 +178,14 @@ export function useVoiceSession(
       // a stutter.
       if (last?.role === role && !startNewLine.current) {
         const merged = [...previous]
-        merged[merged.length - 1] = { ...last, text: last.text + text }
+        const mergedLine = { ...last, text: last.text + text }
+        merged[merged.length - 1] = mergedLine
+        if (role === 'model') lastModelText.current = mergedLine.text
         return merged.slice(-TRANSCRIPT_LIMIT)
       }
       startNewLine.current = false
       lineId.current += 1
+      if (role === 'model') lastModelText.current = text
       return [...previous, { id: lineId.current, role, text }].slice(-TRANSCRIPT_LIMIT)
     })
   }, [])
@@ -331,6 +342,10 @@ export function useVoiceSession(
         // A new question about the page makes the last answer's rings stale.
         if (event.role === 'user') useGuideStore.getState().clear()
         addLine(event.role, event.text)
+        // Cheap and good enough: overwrite the journal's one-line summary with
+        // what the model has said so far this turn. The last fragment before
+        // turnComplete leaves the whole sentence in place, not a smarter recap.
+        if (event.role === 'model') recordSummary(`Last exchange: ${lastModelText.current}`)
       }),
       current.onClosed(reason => {
         void teardown()
@@ -351,6 +366,8 @@ export function useVoiceSession(
     if (projectName !== undefined) request.projectName = projectName
     const summary = pageSnapshot()
     if (summary) request.pageSummary = summary
+    const journal = readJournal()
+    if (journal) request.journal = journal
     const result = await current.start(request)
 
     if (!result.ok) {
@@ -453,12 +470,21 @@ async function runToolCall(
     // Labelled VOICE so the audit log can answer "what did the agent actually
     // do, and did it work" — which is the whole basis of evaluating it.
     const result = await dispatch(event.commandId, withProjectId(event.args, projectId), 'VOICE')
-    bridge.respond({
-      requestId: event.requestId,
-      outcome: result.ok
-        ? { ok: true, summary: summarize(event.commandId, result.data), data: result.data }
-        : { ok: false, summary: result.error },
-    })
+    if (result.ok) {
+      const spoken = summarize(event.commandId, result.data)
+      // Same spoken summary the model hears, kept so a reload or a reconnect
+      // opens already knowing what just happened.
+      recordCommand(event.commandId, spoken)
+      bridge.respond({
+        requestId: event.requestId,
+        outcome: { ok: true, summary: spoken, data: result.data },
+      })
+    } else {
+      bridge.respond({
+        requestId: event.requestId,
+        outcome: { ok: false, summary: result.error },
+      })
+    }
   } catch {
     bridge.respond({
       requestId: event.requestId,

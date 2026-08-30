@@ -41,6 +41,13 @@ export interface VoiceStartRequest {
    */
   pageSummary?: string
   /**
+   * A rolling record of what happened earlier in this session (or an earlier
+   * session, before a reload), so the model opens with context instead of
+   * amnesia. Untrusted, same framing as pageSummary. Sent once at start only:
+   * the live session already remembers everything after that.
+   */
+  journal?: string
+  /**
    * Every screen's tool surface, computed by the renderer.
    *
    * The main process does not register commands: doing so would pull Prisma and
