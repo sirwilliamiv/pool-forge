@@ -277,10 +277,18 @@ export const GUIDE_TARGETS: readonly GuideTarget[] = [
     explain: 'Property line, structures and setback limits.',
   },
   {
+    // Three of the four render states (no quote loaded, nothing drawn, no
+    // active price book) show only the Shell wrapper with no toggle button
+    // inside it, so a name match against "Quote" only ever resolved in the
+    // fully priced state. The Shell wrapper itself carries the scope
+    // attribute in all four states, so a selector on the scope attribute
+    // resolves everywhere: the ring lands on the whole dock instead of just
+    // the toggle button, which is exactly what you want to point at when
+    // there is nothing to expand yet.
     id: 'quote.dock',
     name: 'Quote',
     screen: 'editor',
-    within: '[data-guide-scope="quote-dock"]',
+    selector: '[data-guide-scope="quote-dock"]',
     aliases: ['price', 'total', 'how much'],
     explain: 'The live price of what is drawn, with the breakdown.',
   },
