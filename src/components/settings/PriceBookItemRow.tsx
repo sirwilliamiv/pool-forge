@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { deleteItem } from '@/app/(app)/settings/price-book/actions'
+import { dispatch } from '@/lib/commands/dispatch'
 import { optionLabel } from '@/modules/pricing/engine'
 import { PriceBookItemDialog, type ExistingItem } from './PriceBookItemDialog'
 
@@ -15,18 +16,20 @@ export interface PriceBookItemRowProps {
 const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
 export function PriceBookItemRow({ item }: PriceBookItemRowProps) {
+  const router = useRouter()
   const [editOpen, setEditOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
   function handleDelete() {
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return
     startTransition(async () => {
-      try {
-        await deleteItem(item.id)
-        toast.success('Item deleted')
-      } catch (err) {
-        toast.error((err as Error).message ?? 'Failed to delete')
+      const result = await dispatch('pricebook.item.remove', { itemId: item.id })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success('Item deleted')
+      router.refresh()
     })
   }
 

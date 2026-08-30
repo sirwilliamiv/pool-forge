@@ -1,22 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
-import { PriceCategory, UnitType } from '@prisma/client'
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { createBookVersion } from '../actions'
-
-const ImportItemSchema = z.object({
-  category: z.nativeEnum(PriceCategory),
-  name: z.string().min(1),
-  unitType: z.nativeEnum(UnitType),
-  retailPrice: z.number().min(0),
-  unitCost: z.number().min(0).optional(),
-  customerVisible: z.boolean().optional(),
-})
-
-const ImportArraySchema = z.array(ImportItemSchema).min(1).max(5000)
+import { dispatchCommand } from '@/modules/commands/dispatch'
 
 /**
  * Load a price list as a new version of the book.
@@ -30,37 +16,28 @@ const ImportArraySchema = z.array(ImportItemSchema).min(1).max(5000)
  * on top, and the book it replaced stays readable. An import that turns out to
  * be the wrong file is then a thing you can back out of, which is the whole
  * reason a builder would risk pressing the button at all.
+ *
+ * The work itself lives in `pricebook.import.replace`, so the bulk replace
+ * runs through the registry and leaves an audit row like every other price
+ * book edit. This wrapper only turns the session into a command context and
+ * revalidates the page the form is on; the shape it hands back is unchanged.
  */
 export async function importPriceBookItems(
   rawItems: unknown,
 ): Promise<{ created: number; version: number; replaced: number }> {
   const session = await auth()
+  const userId = session?.user?.id
   const orgId = session?.user?.orgId
-  if (!orgId) throw new Error('Not authenticated')
+  if (!userId || !orgId) throw new Error('Not authenticated')
 
-  const items = ImportArraySchema.parse(rawItems)
-
-  // A fresh version, then empty it: the copy is what keeps the previous version
-  // intact, and the emptying is what stops the import stacking on top of it.
-  const version = await createBookVersion()
-  const priceBookId = version.id
-  const cleared = await db.priceBookItem.deleteMany({ where: { priceBookId } })
-
-  const result = await db.priceBookItem.createMany({
-    data: items.map((it) => ({
-      priceBookId,
-      category: it.category,
-      name: it.name,
-      unitType: it.unitType,
-      retailPrice: it.retailPrice,
-      unitCost: it.unitCost ?? 0,
-      customerVisible: it.customerVisible ?? true,
-      internalOnly: false,
-      required: false,
-      upgradeOnly: false,
-    })),
-  })
+  const result = await dispatchCommand<{ created: number; version: number; replaced: number }>(
+    'pricebook.import.replace',
+    { items: rawItems },
+    { userId, orgId },
+    'IMPORT',
+  )
+  if (!result.ok) throw new Error(result.error)
 
   revalidatePath('/settings/price-book')
-  return { created: result.count, version: version.version, replaced: cleared.count }
+  return result.data
 }

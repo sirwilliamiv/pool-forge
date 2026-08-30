@@ -304,6 +304,7 @@ export const DESTRUCTIVE = new Set([
   'project.archive',
   'comment.remove',
   'version.delete',
+  'pricebook.item.remove',
 ])
 
 /**

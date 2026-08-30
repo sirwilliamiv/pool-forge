@@ -1,32 +1,10 @@
 import { z } from 'zod'
 import { PriceCategory, UnitType } from '@prisma/client'
 import { register } from '@/modules/commands/registry'
+import { PRICING_OPTIONS } from '@/modules/pricing/engine'
 
-register({
-  id: 'add.priceBookItem',
-  label: 'Add price book item',
-  description: 'Add a new line item to the active price book.',
-  category: 'pricing',
-  inputSchema: z.object({
-    priceBookId: z.string(),
-    category: z.string(),
-    name: z.string().min(1),
-    unitType: z.string().min(1),
-    unitCost: z.number().nonnegative().optional(),
-    retailPrice: z.number().nonnegative().optional(),
-    customerVisible: z.boolean().optional(),
-    required: z.boolean().optional(),
-  }),
-  outputSchema: z.object({
-    itemId: z.string(),
-  }),
-  voiceExamples: [
-    'Add a new price book item for salt cell maintenance.',
-    'Add an upgrade for LED lighting.',
-  ],
-  unimplemented: true,
-  execute: async () => ({ ok: false, error: 'not implemented' }),
-})
+const CATEGORY_VALUES = Object.values(PriceCategory) as [PriceCategory, ...PriceCategory[]]
+const UNIT_VALUES = Object.values(UnitType) as [UnitType, ...UnitType[]]
 
 register({
   id: 'select.equipment',
@@ -127,6 +105,298 @@ register({
 })
 
 // ---------------------------------------------------------------------------
+// Price book CRUD.
+//
+// These used to be direct Prisma calls in `settings/price-book/actions.ts`
+// with no audit row and no way for voice to reach them: a builder could price
+// a job but had to open the settings screen to touch a price. The registry is
+// the only entry point now, so the price book dialog, the row's delete button
+// and the voice agent all write through the same code and each edit leaves a
+// `CommandAuditLog` row.
+// ---------------------------------------------------------------------------
+
+/**
+ * Which customer selection turns a line on, or null for "billed by its
+ * category rule". Constrained to the options the app actually asks about, the
+ * same way the dialog it replaces was.
+ */
+const OptionKeyField = z.enum(PRICING_OPTIONS).nullable()
+
+register({
+  id: 'pricebook.item.add',
+  label: 'Add price book item',
+  description: 'Add a new line item to the organisation\'s active price book.',
+  category: 'pricing',
+  inputSchema: z.object({
+    category: z.enum(CATEGORY_VALUES),
+    name: z.string().min(1).max(120),
+    unitType: z.enum(UNIT_VALUES),
+    retailPrice: z.number().nonnegative(),
+    unitCost: z.number().nonnegative().optional(),
+    customerVisible: z.boolean().optional(),
+    internalOnly: z.boolean().optional(),
+    required: z.boolean().optional(),
+    upgradeOnly: z.boolean().optional(),
+    optionKey: OptionKeyField.optional(),
+  }),
+  outputSchema: z.object({ itemId: z.string() }),
+  voiceExamples: [
+    'Add a price book item: pool light, 450 each.',
+    'Put excavation in the price book at 4500 per job.',
+  ],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const name = input.name.trim()
+    if (!name) return { ok: false, error: 'A price book item needs a name.' }
+
+    const { db } = await import('@/lib/db')
+    const { getOrCreateActiveBookId } = await import('@/modules/pricing/book')
+    const priceBookId = await getOrCreateActiveBookId(orgId)
+
+    const row = await db.priceBookItem.create({
+      data: {
+        priceBookId,
+        category: input.category,
+        name,
+        unitType: input.unitType,
+        retailPrice: input.retailPrice,
+        unitCost: input.unitCost ?? 0,
+        customerVisible: input.customerVisible ?? true,
+        internalOnly: input.internalOnly ?? false,
+        required: input.required ?? false,
+        upgradeOnly: input.upgradeOnly ?? false,
+        optionKey: input.optionKey ?? null,
+      },
+      select: { id: true },
+    })
+
+    return { ok: true, data: { itemId: row.id } }
+  },
+})
+
+register({
+  id: 'pricebook.item.update',
+  label: 'Update price book item',
+  description: 'Change one or more fields of an existing price book item.',
+  category: 'pricing',
+  inputSchema: z.object({
+    itemId: z.string().min(1),
+    category: z.enum(CATEGORY_VALUES).optional(),
+    name: z.string().min(1).max(120).optional(),
+    unitType: z.enum(UNIT_VALUES).optional(),
+    retailPrice: z.number().nonnegative().optional(),
+    unitCost: z.number().nonnegative().optional(),
+    customerVisible: z.boolean().optional(),
+    internalOnly: z.boolean().optional(),
+    required: z.boolean().optional(),
+    upgradeOnly: z.boolean().optional(),
+    optionKey: OptionKeyField.optional(),
+  }),
+  outputSchema: z.object({ itemId: z.string() }),
+  voiceExamples: [
+    'Change the pool light price to 500.',
+    'Set the unit cost on excavation to 3800.',
+  ],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { db } = await import('@/lib/db')
+    const existing = await db.priceBookItem.findFirst({
+      where: { id: input.itemId, priceBook: { orgId } },
+      select: { id: true },
+    })
+    if (!existing) return { ok: false, error: 'That price book item is not in this organisation.' }
+
+    const patch: {
+      category?: PriceCategory
+      name?: string
+      unitType?: UnitType
+      retailPrice?: number
+      unitCost?: number
+      customerVisible?: boolean
+      internalOnly?: boolean
+      required?: boolean
+      upgradeOnly?: boolean
+      optionKey?: string | null
+    } = {}
+    if (input.category !== undefined) patch.category = input.category
+    if (input.name !== undefined) {
+      const name = input.name.trim()
+      if (!name) return { ok: false, error: 'A price book item needs a name.' }
+      patch.name = name
+    }
+    if (input.unitType !== undefined) patch.unitType = input.unitType
+    if (input.retailPrice !== undefined) patch.retailPrice = input.retailPrice
+    if (input.unitCost !== undefined) patch.unitCost = input.unitCost
+    if (input.customerVisible !== undefined) patch.customerVisible = input.customerVisible
+    if (input.internalOnly !== undefined) patch.internalOnly = input.internalOnly
+    if (input.required !== undefined) patch.required = input.required
+    if (input.upgradeOnly !== undefined) patch.upgradeOnly = input.upgradeOnly
+    // Explicit null is a real edit here ("stop gating this line"), so the
+    // check is against undefined rather than a truthiness test.
+    if (input.optionKey !== undefined) patch.optionKey = input.optionKey
+
+    await db.priceBookItem.updateMany({
+      where: { id: existing.id, priceBook: { orgId } },
+      data: patch,
+    })
+
+    return { ok: true, data: { itemId: existing.id } }
+  },
+})
+
+register({
+  id: 'pricebook.item.remove',
+  label: 'Remove price book item',
+  description: 'Delete a line item from the price book. Cannot be undone.',
+  category: 'pricing',
+  inputSchema: z.object({ itemId: z.string().min(1) }),
+  outputSchema: z.object({ itemId: z.string(), name: z.string() }),
+  voiceExamples: ['Remove the old heater line from the price book.'],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { db } = await import('@/lib/db')
+    const existing = await db.priceBookItem.findFirst({
+      where: { id: input.itemId, priceBook: { orgId } },
+      select: { id: true, name: true },
+    })
+    if (!existing) return { ok: false, error: 'That price book item is not in this organisation.' }
+
+    await db.priceBookItem.deleteMany({ where: { id: existing.id, priceBook: { orgId } } })
+
+    return { ok: true, data: { itemId: existing.id, name: existing.name } }
+  },
+})
+
+register({
+  id: 'pricebook.describe',
+  label: 'Describe price book coverage',
+  description:
+    'Report what the active price book covers: how many items it has, how many still carry the starting placeholder price, and which categories a drawing can produce that have no line or never bill. Read-only.',
+  category: 'pricing',
+  inputSchema: z.object({}),
+  outputSchema: z.object({
+    bookName: z.string(),
+    version: z.number(),
+    itemCount: z.number(),
+    placeholderCount: z.number(),
+    missingCategories: z.array(z.string()),
+    neverBills: z.array(z.string()),
+  }),
+  voiceExamples: ['What is missing from my price book?', 'How many prices have I set up?'],
+  execute: async (_input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { db } = await import('@/lib/db')
+    const book = await db.priceBook.findFirst({
+      where: { orgId, isActive: true },
+      orderBy: { version: 'desc' },
+      include: { items: true },
+    })
+
+    const items = (book?.items ?? []).map(it => ({
+      category: it.category,
+      name: it.name,
+      unitType: it.unitType,
+      unitCost: Number(it.unitCost),
+      retailPrice: Number(it.retailPrice),
+    }))
+
+    // Same computation the price book page's coverage panel runs, over the
+    // same stencil mapping, so a hole reported here is exactly the hole a
+    // quote would refuse to price.
+    const { priceBookCoverage } = await import('@/modules/onboarding/coverage')
+    const { unchangedStarterLines } = await import('@/modules/onboarding/starter-price-book')
+
+    const coverage = priceBookCoverage(items)
+    const placeholderCount = unchangedStarterLines(items).length
+    const missingCategories = coverage.filter(row => row.status === 'MISSING').map(row => row.label)
+    const neverBills = coverage
+      .filter(row => row.status === 'UNIT_UNMEASURED')
+      .map(row => row.label)
+
+    return {
+      ok: true,
+      data: {
+        bookName: book?.name ?? 'No active book',
+        version: book?.version ?? 0,
+        itemCount: items.length,
+        placeholderCount,
+        missingCategories,
+        neverBills,
+      },
+    }
+  },
+})
+
+register({
+  id: 'pricebook.import.replace',
+  label: 'Replace the price book from an import',
+  description:
+    'Publish an XLSX-derived list as a new version of the price book, replacing its contents. The version this replaces is kept. Bulk, file-driven and destructive: auditable, not spoken.',
+  category: 'pricing',
+  inputSchema: z.object({
+    items: z
+      .array(
+        z.object({
+          category: z.enum(CATEGORY_VALUES),
+          name: z.string().min(1),
+          unitType: z.enum(UNIT_VALUES),
+          retailPrice: z.number().nonnegative(),
+          unitCost: z.number().nonnegative().optional(),
+          customerVisible: z.boolean().optional(),
+        }),
+      )
+      .min(1)
+      .max(5000),
+  }),
+  outputSchema: z.object({ created: z.number(), version: z.number(), replaced: z.number() }),
+  // No voiceExamples: the converter refuses a command without them, so this
+  // never reaches the voice agent. A misheard "replace the price book" would
+  // wipe every rate in it.
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { db } = await import('@/lib/db')
+    const { createBookVersionForOrg } = await import('@/modules/pricing/book')
+
+    // A fresh version, then empty it: the copy is what keeps the previous
+    // version intact, and the emptying is what stops the import stacking on
+    // top of it.
+    const version = await createBookVersionForOrg(orgId)
+    const priceBookId = version.id
+    const cleared = await db.priceBookItem.deleteMany({ where: { priceBookId } })
+
+    const result = await db.priceBookItem.createMany({
+      data: input.items.map(it => ({
+        priceBookId,
+        category: it.category,
+        name: it.name,
+        unitType: it.unitType,
+        retailPrice: it.retailPrice,
+        unitCost: it.unitCost ?? 0,
+        customerVisible: it.customerVisible ?? true,
+        internalOnly: false,
+        required: false,
+        upgradeOnly: false,
+      })),
+    })
+
+    return {
+      ok: true,
+      data: { created: result.count, version: version.version, replaced: cleared.count },
+    }
+  },
+})
+
+// ---------------------------------------------------------------------------
 // Per-job line items.
 //
 // Five price categories — lanai, fence, wall, electrical and other — have no
@@ -142,9 +412,6 @@ register({
 // and the voice agent all reach the same code and each write leaves an audit
 // row behind it.
 // ---------------------------------------------------------------------------
-
-const CATEGORY_VALUES = Object.values(PriceCategory) as [PriceCategory, ...PriceCategory[]]
-const UNIT_VALUES = Object.values(UnitType) as [UnitType, ...UnitType[]]
 
 /** What a hand-entered line is worth, as the quote will bill it. */
 const LineItemOutput = z.object({

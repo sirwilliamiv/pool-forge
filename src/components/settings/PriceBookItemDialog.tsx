@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { PriceCategory, UnitType } from '@prisma/client'
 import { Button } from '@/components/ui/button'
@@ -22,12 +23,26 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { createItem, updateItem, type ItemInput } from '@/app/(app)/settings/price-book/actions'
+import { dispatch } from '@/lib/commands/dispatch'
 import {
   PRICING_OPTIONS,
   optionLabel,
   type PricingOptionKey,
 } from '@/modules/pricing/engine'
+
+/** What the price book dialog sends to `pricebook.item.add` / `.update`. */
+export interface ItemInput {
+  category: PriceCategory
+  name: string
+  unitType: UnitType
+  retailPrice: number
+  unitCost?: number
+  customerVisible: boolean
+  internalOnly: boolean
+  required: boolean
+  upgradeOnly: boolean
+  optionKey: PricingOptionKey | null
+}
 
 const UNIT_TYPES: UnitType[] = [UnitType.SQFT, UnitType.LF, UnitType.EACH, UnitType.LUMP, UnitType.HOUR]
 const PRICE_CATEGORIES: PriceCategory[] = Object.values(PriceCategory) as PriceCategory[]
@@ -77,6 +92,7 @@ export function PriceBookItemDialog({
   onOpenChange,
   item,
 }: PriceBookItemDialogProps) {
+  const router = useRouter()
   const isEdit = Boolean(item)
   const [pending, startTransition] = useTransition()
 
@@ -140,18 +156,17 @@ export function PriceBookItemDialog({
     }
 
     startTransition(async () => {
-      try {
-        if (isEdit && item) {
-          await updateItem(item.id, payload)
-          toast.success('Item updated')
-        } else {
-          await createItem(payload)
-          toast.success('Item created')
-        }
-        handleClose(false)
-      } catch (err) {
-        toast.error((err as Error).message ?? 'Failed to save')
+      const result =
+        isEdit && item
+          ? await dispatch('pricebook.item.update', { itemId: item.id, ...payload })
+          : await dispatch('pricebook.item.add', payload)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
       }
+      toast.success(isEdit ? 'Item updated' : 'Item created')
+      handleClose(false)
+      router.refresh()
     })
   }
 

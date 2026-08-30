@@ -807,7 +807,7 @@ export const EVAL_CASES: EvalCase[] = [
     project: OPEN_PROJECT,
     scene: [POOL_32x16, DECK_24x20],
     expect: [
-      { kind: 'doesNotCall', commandId: 'add.priceBookItem' },
+      { kind: 'doesNotCall', commandId: 'pricebook.item.add' },
       { kind: 'doesNotCall', commandId: 'select.equipment' },
     ],
   },
@@ -818,7 +818,8 @@ export const EVAL_CASES: EvalCase[] = [
     utterance: 'Bump the salt cell price a bit.',
     screen: 'priceBook',
     expect: [
-      { kind: 'doesNotCall', commandId: 'add.priceBookItem' },
+      { kind: 'doesNotCall', commandId: 'pricebook.item.add' },
+      { kind: 'doesNotCall', commandId: 'pricebook.item.update' },
       { kind: 'doesNotCall', commandId: 'settings.update' },
       { kind: 'doesNotCall', commandId: 'page.fill' },
     ],

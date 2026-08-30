@@ -673,7 +673,7 @@ function apply(commandId: string, args: Record<string, unknown>, world: World): 
   if (commandId === 'select.equipment') {
     return { projectId: str('projectId') ?? 'proj_eval_1', selections: args['selections'] ?? {} }
   }
-  if (commandId === 'add.priceBookItem') return { itemId: 'pbi_stand_in' }
+  if (commandId === 'pricebook.item.add') return { itemId: 'pbi_stand_in' }
 
   // ---- saved layouts ----------------------------------------------------
 

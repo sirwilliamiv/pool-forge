@@ -541,7 +541,6 @@ const EXERCISES: Record<string, Exercise> = {
   },
 
   // ---------- pricing ----------
-  'add.priceBookItem': { kind: 'stub' },
   'select.equipment': { kind: 'stub' },
   'generate.quote': {
     kind: 'server',
@@ -558,6 +557,26 @@ const EXERCISES: Record<string, Exercise> = {
   'remove.projectLineItem': {
     kind: 'server',
     why: 'Deletes a ProjectLineItem row from the database. Covered by the pricing engine tests.',
+  },
+  'pricebook.item.add': {
+    kind: 'server',
+    why: 'Writes a PriceBookItem row, org-scoped through the active book. Covered by integration/commands/pricebook.test.ts against the real DB.',
+  },
+  'pricebook.item.update': {
+    kind: 'server',
+    why: 'Updates a PriceBookItem row, org-scoped in the query itself. Covered by integration/commands/pricebook.test.ts against the real DB.',
+  },
+  'pricebook.item.remove': {
+    kind: 'server',
+    why: 'Deletes a PriceBookItem row, org-scoped in the query itself. Named by the voice destructive gate. Covered by integration/commands/pricebook.test.ts against the real DB.',
+  },
+  'pricebook.describe': {
+    kind: 'server',
+    why: 'Reads the active PriceBook and reuses the PriceBookCoverage panel\'s own coverage computation. Covered by integration/commands/pricebook.test.ts against the real DB.',
+  },
+  'pricebook.import.replace': {
+    kind: 'server',
+    why: 'Cuts a new PriceBook version and replaces its items through Prisma, org-scoped. Carries no voice examples on purpose. Covered by the XLSX import path and pricing module tests.',
   },
 
   // ---------- validation ----------
