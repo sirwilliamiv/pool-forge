@@ -255,7 +255,9 @@ fi
 # The public URL is compiled into the client bundle, so it has to be known
 # before the first build. Since 2026-08-30 the service is mapped to the custom
 # domain, so the default is fixed; APP_URL still overrides for a staging deploy.
-PUBLIC_URL="${APP_URL:-https://pool-forge.com}"
+# The apex is reserved for the marketing site; the SaaS lives on the app
+# subdomain.
+PUBLIC_URL="${APP_URL:-https://app.pool-forge.com}"
 
 if [ "$BUILD" = "1" ]; then
   say "Building the image"

@@ -40,6 +40,9 @@ const displayMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Pool Forge',
   description: 'Pool design, estimating, and proposal platform',
+  // The app lives on app.pool-forge.com and must never compete with the
+  // marketing site on the apex for search placement.
+  robots: { index: false, follow: false },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

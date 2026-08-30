@@ -12,6 +12,19 @@ function isProtected(pathname: string): boolean {
 
 export default auth((req) => {
   const { pathname } = req.nextUrl
+
+  // The apex is the marketing site's home. Until that site exists its mapping
+  // still points here, so send visitors to the app's canonical origin rather
+  // than serving the app on two hostnames with split cookies.
+  const host = req.headers.get('host') ?? ''
+  if (host === 'pool-forge.com' || host === 'www.pool-forge.com') {
+    const url = req.nextUrl.clone()
+    url.protocol = 'https'
+    url.host = 'app.pool-forge.com'
+    url.port = ''
+    return NextResponse.redirect(url, 308)
+  }
+
   if (!isProtected(pathname)) return NextResponse.next()
   if (req.auth) return NextResponse.next()
 

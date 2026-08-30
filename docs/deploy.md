@@ -70,10 +70,22 @@ replaces, which is how a blip becomes an outage.
 
 ## The domain
 
-`pool-forge.com` (registered at Porkbun, 2026-08-30) is mapped to the `pool-forge`
-Cloud Run service with `gcloud beta run domain-mappings`, apex and `www`. DNS at
-Porkbun points the apex at Google's four A / four AAAA records and `www` at
-`ghs.googlehosted.com`; the TLS certificate is Google-managed and renews itself.
+`pool-forge.com` (registered at Porkbun, 2026-08-30) splits by audience:
+
+- **`app.pool-forge.com`** is the SaaS: the `pool-forge` Cloud Run service,
+  mapped with `gcloud beta run domain-mappings`. Every route carries
+  `<meta name="robots" content="noindex">` (root layout metadata) and
+  `src/app/robots.ts` disallows everything, so login screens and app shells
+  never compete with the marketing pages in search.
+- **`pool-forge.com`** (and `www`) is reserved for the static marketing site,
+  the SEO surface. Until that site exists, its mapping points at the app
+  service and `src/middleware.ts` 308-redirects apex traffic to the app
+  subdomain. When the marketing site ships, remap the apex to it and the
+  redirect simply stops firing.
+
+DNS at Porkbun points the apex at Google's four A / four AAAA records, and
+`www` / `app` at `ghs.googlehosted.com`; TLS certificates are Google-managed
+and renew themselves.
 
 Three places know the hostname, and they must agree:
 
