@@ -87,6 +87,23 @@ register({
 })
 
 register({
+  id: 'sketch.fill.set',
+  runsOn: 'client',
+  label: 'Fill a drawn shape',
+  description:
+    'Fill a closed drawn outline with a flat colour in plan, or clear it with none. Purely ' +
+    'visual: it does not price or convert the shape. Refuses an open path, which has no inside.',
+  category: 'sketch',
+  inputSchema: z.object({
+    id: z.string().min(1),
+    color: z.enum(['blue', 'green', 'orange', 'purple', 'none']),
+  }),
+  outputSchema: z.object({ id: z.string(), color: z.string() }),
+  voiceExamples: ['Fill that shape with green.', 'Colour the outline blue.', 'Remove the fill.'],
+  execute: async () => ({ ok: true, data: { id: '', color: '' } }),
+})
+
+register({
   id: 'grid.set',
   runsOn: 'client',
   label: 'Set the grid size',

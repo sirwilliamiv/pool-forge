@@ -58,6 +58,27 @@ export function SketchPathObject({ shape }: { shape: SketchPath }) {
 
   return (
     <group userData={{ id: shape.id }}>
+      {/* The persistent fill a builder actually asked for: a closed outline
+          coloured flat in plan. Purely decorative, same mesh setup as the
+          drop-target wash below, but it steps aside for that wash rather than
+          fighting it for the same pixels while something is being dragged
+          over the shape. */}
+      {shape.closed && shape.fillColor && points.length > 2 && !isDropTarget ? (
+        <mesh
+          position={[0, LIFT - 0.02, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+          raycast={() => null}
+        >
+          <shapeGeometry args={[fillShape(points)]} />
+          <meshBasicMaterial
+            color={SPECTRUM[shape.fillColor]}
+            transparent
+            opacity={0.35}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ) : null}
       {/* A filled wash under the outline while it is a live drop target, so
           the whole area reads as the thing that will catch the object, not just
           its edge. Drawn below the line and never picked, so it cannot swallow

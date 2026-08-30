@@ -8,6 +8,10 @@ import { dispatch } from '@/lib/commands/dispatch'
 import { polygonArea } from '@/lib/geometry/polygon-footprint'
 import { isSketchPath } from '@/modules/editor/state/shapes'
 import { useSelectionStore, useShapesStore } from '@/modules/editor/state'
+import { SPECTRUM } from '@/lib/brand'
+
+/** The four hues a fill may take. Red and amber are excluded: they mean error and warning. */
+const FILL_HUES = ['blue', 'green', 'orange', 'purple'] as const
 
 /**
  * What a drawn path can become.
@@ -38,6 +42,12 @@ export function SketchSection() {
     if (!result.ok) toast.error(result.error)
   }
 
+  async function fill(color: (typeof FILL_HUES)[number] | 'none') {
+    if (!sketch) return
+    const result = await dispatch('sketch.fill.set', { id: sketch.id, color })
+    if (!result.ok) toast.error(result.error)
+  }
+
   return (
     <section className="border-b border-borderLight px-3 py-3">
       <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-textFaint">
@@ -63,6 +73,40 @@ export function SketchSection() {
         {sketch.points.length} points
         {sketch.closed ? ` · ${areaSqft.toFixed(0)} sq ft` : ' · open, no area'}
       </p>
+
+      {sketch.closed ? (
+        <div className="mb-3">
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-textFaint">
+            Fill
+          </span>
+          <div className="flex items-center gap-1.5">
+            {FILL_HUES.map(hue => (
+              <button
+                key={hue}
+                type="button"
+                aria-label={`Fill ${hue}`}
+                aria-pressed={sketch.fillColor === hue}
+                onClick={() => void fill(hue)}
+                style={{ backgroundColor: SPECTRUM[hue] }}
+                className={`h-6 w-6 rounded-full border-2 transition-shadow ${
+                  sketch.fillColor === hue ? 'border-foreground' : 'border-transparent'
+                }`}
+              />
+            ))}
+            <button
+              type="button"
+              aria-label="No fill"
+              aria-pressed={!sketch.fillColor}
+              onClick={() => void fill('none')}
+              className={`flex h-6 w-6 items-center justify-center rounded-full border-2 bg-white text-[10px] text-textMuted transition-shadow ${
+                !sketch.fillColor ? 'border-foreground' : 'border-input'
+              }`}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {sketch.closed ? (
         <div className="flex flex-col gap-1.5">

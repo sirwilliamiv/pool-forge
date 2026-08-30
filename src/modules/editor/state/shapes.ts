@@ -119,6 +119,13 @@ export interface SketchPath extends ShapeBase {
   closed: boolean
   /** What the drawer called it: "House", "Lot line", "Deck edge". */
   labelText?: string
+  /**
+   * Flat plan-view fill for a closed outline. A spectrum hue name, never a hex:
+   * only blue, green, orange and purple are offered here, since red and amber
+   * already mean error and warning and a fill in either would read as a
+   * problem with the drawing rather than a colour choice about it.
+   */
+  fillColor?: 'blue' | 'green' | 'orange' | 'purple'
 }
 
 // Generic shape backed by an entry in the StencilDef catalog. Display +
