@@ -68,6 +68,19 @@ function collapseNullable(node: unknown): unknown {
     }
   }
 
+  // A constraint-free `.nullable()` (a plain string or number with no other
+  // refinement) is not rendered as `anyOf` at all: zod-to-json-schema emits a
+  // two-element `type` array instead, e.g. `["string", "null"]`. Same
+  // convention as above, different shape. Left alone, `describable()` reads
+  // an array `type` as a genuine union and refuses the command, so any command
+  // with an unrefined nullable field would be unreachable for a reason that
+  // has nothing to do with what the shape can express.
+  const type = schema['type']
+  if (Array.isArray(type) && type.length === 2 && type.includes('null')) {
+    const value = type.find(t => t !== 'null')
+    if (value !== undefined) schema['type'] = value
+  }
+
   for (const [key, value] of Object.entries(schema)) {
     schema[key] = collapseNullable(value)
   }
@@ -289,6 +302,8 @@ const DESTRUCTIVE = new Set([
   'template.scene.delete',
   'project.delete',
   'archive.project',
+  'comment.remove',
+  'version.delete',
 ])
 
 /**

@@ -1,9 +1,10 @@
 // Customer-intake link management.
 //
-// Category `import`, but a separate file from `categories/import.ts`: the
-// pipeline commands there are owned by other tracks and both files register
-// into the same registry, so keeping them apart costs nothing and keeps the
-// tracks from editing the same lines.
+// Category `settings`, since the intake UI lives at `/settings/intake`, but a
+// separate file from `categories/import.ts`: the pipeline commands there are
+// owned by other tracks and both files register into the same registry, so
+// keeping them apart costs nothing and keeps the tracks from editing the same
+// lines.
 //
 // Every button in the settings UI dispatches one of these. No event handler in
 // this track touches Prisma.
@@ -55,7 +56,7 @@ register({
   label: 'Create customer upload link',
   description:
     'Mint a public intake link a customer can use to send inspiration photos, a sketch, or a survey. Submissions land as a draft project with an import session waiting.',
-  category: 'import',
+  category: 'settings',
   inputSchema: IntakeLinkCreateSchema,
   outputSchema: IntakeLinkOutputSchema,
   voiceExamples: [
@@ -97,7 +98,7 @@ register({
   label: 'Update customer upload link',
   description:
     'Rename a customer upload link, change its expiry, or deactivate it. A deactivated link stops accepting uploads immediately and gives visitors the same response as a link that never existed.',
-  category: 'import',
+  category: 'settings',
   inputSchema: IntakeLinkUpdateSchema,
   outputSchema: IntakeLinkOutputSchema,
   voiceExamples: [
@@ -166,7 +167,7 @@ register({
   label: 'List customer upload links',
   description:
     'Every customer upload link this organization owns, newest first, with how many submissions each has received.',
-  category: 'import',
+  category: 'settings',
   inputSchema: z.object({}),
   outputSchema: listOutput,
   voiceExamples: ['Show me my customer upload links.'],

@@ -39,9 +39,12 @@ const ALWAYS: CommandCategory[] = ['navigation', 'palette', 'context', 'guide']
 
 const BY_SCREEN: Record<VoiceScreen, CommandCategory[]> = {
   dashboard: ['project'],
-  project: ['project', 'export'],
+  project: ['project', 'export', 'pricing', 'version'],
   // The editor is the whole point: this is where a pool gets built by voice.
-  editor: ['canvas', 'shape', 'measurement', 'pricing', 'validation', 'scene', 'template', 'grade', 'site'],
+  editor: [
+    'canvas', 'shape', 'measurement', 'pricing', 'validation', 'scene',
+    'template', 'grade', 'site', 'sketch', 'version', 'comment', 'capture',
+  ],
   import: ['import'],
   priceBook: ['pricing', 'settings'],
   settings: ['settings', 'template'],

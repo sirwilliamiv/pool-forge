@@ -54,7 +54,10 @@ describe.skipIf(!reachable)('intake link commands', () => {
     await db.organization.deleteMany({ where: { id: { in: [orgA, orgB] } } })
   })
 
-  it('registers the three link commands under the import category', () => {
+  it('registers the three link commands under the settings category', () => {
+    // The intake UI lives at /settings/intake, which maps to the settings
+    // voice screen, so the commands are reachable from where they actually
+    // appear rather than from the import pipeline screen.
     for (const id of [
       'import.intake.link.create',
       'import.intake.link.update',
@@ -62,7 +65,7 @@ describe.skipIf(!reachable)('intake link commands', () => {
     ]) {
       const cmd = get(id)
       expect(cmd, `${id} is missing`).toBeDefined()
-      expect(cmd?.category).toBe('import')
+      expect(cmd?.category).toBe('settings')
     }
   })
 

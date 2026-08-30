@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 
+import { all } from '@/modules/commands/registry'
 import { initCommands } from '@/modules/commands/init'
 import { scopeFor, screenForPath, VOICE_SCREENS } from '@/modules/voice/scope'
 
@@ -116,4 +117,16 @@ describe('navigation commands', () => {
     expect(result.ok).toBe(true)
     if (result.ok) expect((result.data as { path: string }).path).toBe('/projects/abc123/editor')
   })
+})
+
+it('every implemented command with voice examples is reachable from some screen', () => {
+  initCommands()
+  const reachable = new Set(
+    VOICE_SCREENS.flatMap(screen => scopeFor(screen).surface.tools.map(tool => tool.name)),
+  )
+  const unreachable = all()
+    .filter(command => (command.voiceExamples?.length ?? 0) > 0 && !command.unimplemented)
+    .map(command => command.id)
+    .filter(id => !reachable.has(id))
+  expect(unreachable).toEqual([])
 })

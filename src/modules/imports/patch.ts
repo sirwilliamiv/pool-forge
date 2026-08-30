@@ -19,14 +19,22 @@ import {
   type DesignIntent,
 } from './intent'
 
+// Footprints are excluded from every section below. Nothing in the review
+// screen ever writes one through this command: `IntentField`/`intent-fields.ts`
+// never lists a footprint path, and the overlay only reads them to draw the
+// polygon. Keeping them out is not just unused-field cleanup: a footprint is
+// an array of `{x, y}` points nested inside a section nested inside this
+// patch, which puts its leaves one level past what `describable()` accepts
+// for a voice tool argument, and would refuse `import.intent.patch` outright
+// for a shape nothing ever actually populates.
 export const DesignIntentPatchSchema = z
   .object({
     sourceImageIds: z.array(z.string()),
-    pool: PoolIntentSchema.partial(),
+    pool: PoolIntentSchema.omit({ footprint: true }).partial(),
     features: z.array(FeatureIntentSchema),
-    deck: DeckIntentSchema.partial(),
-    enclosure: EnclosureIntentSchema.partial(),
-    site: SiteIntentSchema.partial(),
+    deck: DeckIntentSchema.omit({ footprint: true }).partial(),
+    enclosure: EnclosureIntentSchema.omit({ footprint: true }).partial(),
+    site: SiteIntentSchema.omit({ propertyBoundary: true, houseFootprint: true }).partial(),
     materials: MaterialsIntentSchema.partial(),
     scale: ScaleSchema.partial(),
     fieldConfidence: z.record(z.string(), z.number().min(0).max(1)),

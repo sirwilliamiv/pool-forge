@@ -239,6 +239,7 @@ register({
     id: z.string(),
     axis: z.enum(['x', 'y']),
   }),
+  voiceExamples: ['Flip the pool the other way.', 'Mirror it left to right.'],
   // CLIENT: reflect shape geometry locally — for X axis flip, negate width-side
   //   asymmetric features (e.g., shallow vs deep ends, sun shelf side); for Y
   //   axis, mirror along width. Track A wires the actual geometry mutation.
@@ -283,6 +284,7 @@ register({
     id: z.string(),
     locked: z.boolean(),
   }),
+  voiceExamples: ['Lock the proportions.', 'Keep the shape ratio when I resize.'],
   // CLIENT: useEditorStore.getState().setRatioLock(input.id, input.locked)
   //   — purely UI state; resize commands consult this when both L and W change
   //   in the same commit. Track A adds the editorStore field + consumer.

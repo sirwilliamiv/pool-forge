@@ -111,6 +111,7 @@ register({
     authorName: z.string(),
     createdAt: z.string(),
   }),
+  voiceExamples: ['Leave a note on the spa saying check the gas run.', 'Add a note here for the crew.'],
   // CLIENT: useCommentsStore.getState().addComment(...)
   execute: async (input, ctx) => {
     const actor = await actorFor(ctx)
@@ -138,6 +139,7 @@ register({
   category: 'comment',
   inputSchema: CommentEditInputSchema,
   outputSchema: z.object({ commentId: z.string(), actorName: z.string(), at: z.string() }),
+  voiceExamples: ['Change that note to say tile arrives Tuesday.'],
   // CLIENT: useCommentsStore.getState().editComment(...)
   execute: async (input, ctx) => {
     const actor = await actorFor(ctx)
@@ -157,6 +159,7 @@ register({
   category: 'comment',
   inputSchema: CommentRemoveInputSchema,
   outputSchema: z.object({ commentId: z.string(), actorName: z.string(), at: z.string() }),
+  voiceExamples: ['Delete that note.'],
   // CLIENT: useCommentsStore.getState().removeComment(...)
   execute: async (input, ctx) => {
     const actor = await actorFor(ctx)
@@ -182,6 +185,7 @@ register({
     actorName: z.string(),
     at: z.string(),
   }),
+  voiceExamples: ['Mark that note done.', 'Resolve the note about the skimmer.'],
   // CLIENT: useCommentsStore.getState().setResolved(...)
   execute: async (input, ctx) => {
     const actor = await actorFor(ctx)
