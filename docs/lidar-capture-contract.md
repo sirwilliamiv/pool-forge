@@ -462,3 +462,86 @@ These are decisions, not omissions.
 - Every change lands with its tests in the same commit:
   `src/test/property/capture.property.test.ts` for the invariants,
   `src/test/unit/capture/` for the boundary and the size.
+
+---
+
+## Appendix A: what Apple actually exposes (added 2026-08-30)
+
+Reference for whoever works on `ios/PoolForgeCapture`. Apple never exposes the
+raw sensor: no photon or SPAD returns, no access to the emitter's dot pattern.
+Everything below is a **fused** depth product (LiDAR plus the wide camera plus
+an ML model), which is why §6's coverage rule cannot be replaced by "trust the
+sensor".
+
+### A.1 ARKit, the path this app is on
+
+```swift
+let cfg = ARWorldTrackingConfiguration()
+guard ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) else { ... }
+cfg.frameSemantics.insert(.sceneDepth)
+cfg.sceneReconstruction = .mesh
+```
+
+`CaptureController.swift:19-63` already gates exactly this way. Never gate on a
+device model string; gate on `supportsFrameSemantics` / `supportsSceneReconstruction`.
+
+| API | Type | Notes |
+|---|---|---|
+| `ARFrame.sceneDepth` | `ARDepthData` | what `FrameRecorder.appendDepth` writes as PFD1 |
+| `ARDepthData.depthMap` | `CVPixelBuffer`, `DepthFloat32` | **metres**, 256x192, at session frame rate (60 Hz) |
+| `ARDepthData.confidenceMap` | `CVPixelBuffer`, `UInt8` | `ARConfidenceLevel` low / medium / high |
+| `ARFrame.smoothedSceneDepth` | `ARDepthData` | temporally smoothed, less flicker, more lag. Not currently requested |
+| `ARFrame.camera.intrinsics` + `.transform` | `simd` matrices | what unprojects depth into a point cloud; both already serialized into the pose JSONL |
+| `ARMeshAnchor` / `ARMeshGeometry` | vertices, normals, faces | from `sceneReconstruction`; `.meshWithClassification` adds per-face wall / floor / ceiling / table / seat / window / door |
+
+256x192 is ARKit's output resolution, not the sensor's grid. The emitter fires
+on the order of a few hundred points; everything between them is inferred. That
+inference is invisible in `depthMap` and only partly visible in `confidenceMap`,
+which is the whole argument for §1's coverage mask.
+
+Practical range is about five metres and degrades badly in direct sun, which is
+already assumed by §1's lawnmower walking pattern.
+
+### A.2 AVFoundation, if capture ever needs to run outside an AR session
+
+- `AVCaptureDevice.DeviceType.builtInLiDARDepthCamera` (iOS 15.4+)
+- `AVCaptureDepthDataOutput` yields `AVDepthData`:
+  - `depthDataMap` as `DepthFloat16` / `DepthFloat32` or disparity
+  - `depthDataAccuracy == .absolute` on LiDAR, meaning true metric scale.
+    Stereo-derived depth reports `.relative` and is worthless for our purposes
+  - `cameraCalibrationData`: intrinsic matrix, extrinsics, lens distortion
+    lookup tables
+  - resolutions come from `device.activeFormat.supportedDepthDataFormats`,
+    typically 320x240 up to 640x480, so higher spatial resolution than ARKit's
+    256x192 but with no pose attached
+- `AVCapturePhotoOutput.isDepthDataDeliveryEnabled` gives `AVCapturePhoto.depthData`,
+  also written into HEIC as an auxiliary image
+
+The tradeoff is stark: AVFoundation gives a better depth map and no world
+tracking. Since our artefact is a heightfield stitched across a walk, pose is
+worth more than pixels, so ARKit stays the right choice.
+
+### A.3 Higher-level frameworks built on the same sensor
+
+- **RoomPlan** (iOS 16+): `RoomCaptureSession` produces `CapturedRoom` with
+  walls, doors, windows, openings and categorized objects; `CapturedStructure`
+  (iOS 17+) merges rooms; exports USDZ. Indoor-only by design, so not a fit for
+  a backyard, but it is the API shape to study if we ever do screen enclosures
+  or lanai interiors.
+- **Object Capture**: `ObjectCaptureSession` (iOS 17+) and RealityKit
+  `PhotogrammetrySession`. LiDAR supplies scale and gravity, so output is
+  metrically correct rather than unit-less. Relevant to the deferred "meshes and
+  textures" item in §11.
+- **RealityKit scene understanding**:
+  `arView.environment.sceneUnderstanding.options = [.occlusion, .physics, .collision]`,
+  plus `.personSegmentationWithDepth` for people occlusion. Relevant only if we
+  ship an in-yard AR preview.
+
+### A.4 Device gating
+
+Rear LiDAR ships on iPhone Pro and Pro Max from the 12 Pro onward, iPad Pro from
+2020 onward, and iPad Air 5th generation. Non-Pro iPhones have never had it.
+The app must stay useful on a device without it: `sceneDepth` is absent, so the
+capture degrades to visual-inertial odometry with no measured ground, and every
+resulting cell should be uploaded with coverage 0 rather than a guess. See §11,
+"Filling holes on the phone. Do not."

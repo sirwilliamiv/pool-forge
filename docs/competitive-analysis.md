@@ -6,6 +6,8 @@ Research date: 2026-07-24. Method: live product inspection where accessible (Ced
 
 ## Re-verification log
 
+**Pass 3 · 2026-08-30.** No competitor figures re-checked. Added the **Adjacency** section (which market to enter next: landscape ranked 1, render 2, financing 3, maintenance rejected). Its figures are directional and carry their own sourcing caveat; nothing in Tracks 1 to 4 changed.
+
 **Pass 2 · 2026-08-28.** Baseline capture date for this document remains **2026-07-24**. Anything below not explicitly stamped `verified 2026-08-28` was **not** re-checked in this pass and should be read as "as recorded 2026-07-24".
 
 **Added this pass:** JobTread (§4.7) and Pool Brain (§4.8) in Track 4, plus a new **Market context** section (Florida permit data) that is customer research, not a competitor profile. Both new entries are in the scorecard.
@@ -524,4 +526,99 @@ Five columns; **no competitor holds more than three, and that is still true afte
 6. **Consider the integration beachhead before the frontal assault (new, 2026-08-28).** JobTread has 11,000 construction businesses, an open API with webhooks, a public integration-partner program, a "Rendering & Design" partner category, and a live precedent (RENDR) for the exact data flow we produce: captured geometry → populated estimate. Pool Forge as the pool design and takeoff front end for JobTread reaches that base without building CRM, job costing, AIA billing or a lender relationship. Standalone is the bigger prize; this is the cheaper first door, and the two are compatible.
 7. **Build the comparison pages from structured data, not by hand (new, 2026-08-28).** Pool Brain's nine-page comparison hub (§4.8) is the format to copy, including its four cell states, its per-row definitions, its dated freshness stamp, its correction invitation and its scenario-normalized price row. It is also the cautionary tale: their pages have rotted at different rates and their own self-claims now contradict each other across pages. Generate every page from one file with a per-competitor `verified_on` date. **This dossier is that file in prose form**, and the re-verification log at the top is the mechanism: and it must stay accurate, because everything in here is about to become a public claim about a named company.
 
-*Dossier compiled 2026-07-24 from four parallel research tracks + live product inspection. Re-verification pass and two added profiles (JobTread, Pool Brain) plus market context: 2026-08-28. Unknowns are marked inline throughout; nothing is fabricated. Every figure carries the date it was last checked, and figures that moved are shown as `was → now` rather than overwritten.*
+# ADJACENCY · which market to enter next (added 2026-08-30)
+
+Not a competitor profile. This section ranks the four candidate expansions off
+the current product and records why one of them is rejected outright.
+
+**Sourcing caveat, stated once and applying to every figure below:** the market
+counts, growth rates and price points in this section came in from a strategy
+pass on 2026-08-30 and have **not** been re-derived against primary sources the
+way Track 1 to Track 4 figures were. Treat them as directional. The Structure
+Studios prices are the exception; those are verified in §1.1 to §1.3.
+
+## Rejected: pool maintenance and service
+
+The counts are tempting: roughly **40,100 service businesses against 22,731
+construction firms**, and maintenance is the recession-resistant ~**64% of
+industry revenue**. Reject it anyway.
+
+**It is a different product, not a feature.** Service software is route
+optimization, chemical logs, recurring billing, and a mobile app a tech uses in
+a truck on one bar of signal. Almost nothing we have built transfers: not the
+design engine, not the price book, not the proposal generator.
+
+**The economics are worse, not better.** Pooltrackr runs $45 to $104/mo and
+Jobber starts at $29, against Skimmer, Jobber and Housecall Pro who have each
+been at it for a decade. Compare §4.8: Pool Brain is $50/mo + $65/tech. That is
+a seat-tax business at a tenth of our ticket, and §"MARKET CONTEXT" conclusion 1
+says explicitly that nothing in our demand data supports competing on cheapness.
+
+Entering it means starting a second, harder company from zero and calling it an
+add-on. **Skip it permanently.** If the revenue ever matters, partner with
+Skimmer or Pool Brain rather than rebuild them. §4.8 already frames Pool Brain
+as an adjacency and a partner candidate for exactly this reason.
+
+## Ranked 1: landscape and outdoor living
+
+Same engine, adjacent buyer, and roughly **6x the market**: ~**48,721 landscape
+design businesses** in the US against **22,731 pool construction firms**, with
+design-build installation the fastest-growing segment at a projected **8.8%
+CAGR through 2030**.
+
+**This is not speculative. It is the exact ladder Structure Studios climbed.**
+VizTerra at $97 for hardscape and landscape, Pool Studio at $147 for pools,
+Vip3D at $197 for both (§1.1 to §1.3, all three verified 2026-08-28). They built
+the pool tool first and then found the bigger market sitting next to it.
+
+**We are already most of the way there.** The stencil library carries concrete
+and paver decks, lanais, pillars, walls, raised decks, coping, trees, loungers,
+fences, outdoor kitchens and fire pits. The grading and earthwork module is
+generic. The price book is category-and-unit driven with nothing pool-specific
+in it. The quote engine, the validation checklist, the four documents and the
+voice agent are all substrate-agnostic. What is genuinely missing is a **plant
+library, irrigation, and lighting layout**. Months, not years, on a codebase we
+already know.
+
+**And it is the Tampa Bay shape specifically.** The same company frequently
+sells the pool, the pavers, the outdoor kitchen and the screen cage on one
+contract, which is the same observation the permit data makes in MARKET CONTEXT
+conclusion 4. We already generate a screen-enclosure RFQ. We are one stencil
+pack away from being the tool for the whole backyard rather than the hole in
+the middle of it.
+
+## Ranked 2: photoreal rendering
+
+Not new TAM, but it removes the biggest objection and moves us from the $147
+tier to the $197 tier **on the same customer**. Highest impact per unit of work,
+and a browser-based path tracer against Structure Studios' Windows-plus-RTX
+requirement is a real wedge. This is already strategic conclusion 1 above; the
+adjacency lens does not change its rank, it confirms it.
+
+## Ranked 3: embedded financing
+
+Biggest revenue-per-customer lever and the slowest to reach.
+
+Lyon has closed more than **$5 billion in pool loans** and disburses in stages
+directly to the builder, which maps onto the draw schedule we already generate.
+Referral economics in home improvement lending typically run low single-digit
+percentages of loan value, but **pool-specific contractor compensation could not
+be verified**. Treat that as a range to confirm, not a number to model. At an
+$85k average build even 1% is $850 a job, which dwarfs a $4,380 ACV if a builder
+puts thirty jobs a year through us.
+
+The catch: it requires the builder to route deals through us, which requires
+them to already trust us, which is a year-three problem rather than a year-one
+one.
+
+## The sequence
+
+1. **Ship the render.** (strategic conclusion 1)
+2. **Ship the landscape stencils.** Plants, irrigation, lighting.
+3. **Hold financing** until there are fifty customers who would be annoyed if we
+   disappeared.
+4. **Never build maintenance.** Partner if it ever matters.
+
+---
+
+*Dossier compiled 2026-07-24 from four parallel research tracks + live product inspection. Re-verification pass and two added profiles (JobTread, Pool Brain) plus market context: 2026-08-28. Adjacency ranking added 2026-08-30 (directional figures, not re-derived from primary sources; see the caveat in that section). Unknowns are marked inline throughout; nothing is fabricated. Every figure carries the date it was last checked, and figures that moved are shown as `was → now` rather than overwritten.*
