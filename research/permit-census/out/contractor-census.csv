@@ -1,0 +1,441 @@
+rank,contractor,permits_24mo,licenses,jurisdictions,first_permit,last_permit,name_variants
+1,TAMPA BAY POOLS ON THE GULF LLC/Marc Mihalsky,584,CPC1460499,Hillsborough County (unincorporated):351; Pasco County (unincorporated):222; Tampa:11,2024-09-06,2026-08-26,TAMPA BAY POOLS ON THE GULF LLC/Marc Mihalsky | TAMPA BAY POOLS ON THE GULF LLC | TAMPA BAY POOL ON THE GULF
+2,GULFSTREAM POOLS & SPAS INC,261,CPC1458745,Pasco County (unincorporated):197; Hillsborough County (unincorporated):42; Pinellas County (unincorporated + contract cities):13; Tampa:6; Pinellas · Clearwater:3,2024-09-02,2026-08-26,GULFSTREAM POOLS & SPAS INC/TIMOTHY TENNANT | GULFSTREAM POOLS & SPAS INC
+3,TRENDSETTER POOLS LLC,207,CPC1456591 CPC1457950,Tampa:126; Hillsborough County (unincorporated):53; Pasco County (unincorporated):28,2024-09-03,2026-08-17,TRENDSETTER POOLS LLC/Harold Robert Koster | TRENDSETTER POOLS LLC
+4,"ISLANDWAY POOLS, LLC",193,CPC1459475,Hillsborough County (unincorporated):56; Pasco County (unincorporated):55; Pinellas County (unincorporated + contract cities):34; Tampa:30; Pinellas · Clearwater:18,2024-09-04,2026-08-18,"ISLANDWAY POOLS | ISLANDWAY POOLS LLC | ISLANDWAY POOLS, LLC"
+5,POOL PERFECTION LLC,167,CPC1459557 CPC1461120,Hillsborough County (unincorporated):65; Pasco County (unincorporated):55; Pinellas County (unincorporated + contract cities):28; Tampa:13; Pinellas · Clearwater:6,2024-09-03,2026-08-24,POOL PERFECTION/KEvin Plankey | POOL PERFECTION LLC/Meghan  Kylene Byrne | POOL PERFECTION LLC | POOL PERFECTION | FROM THE GROUNG UP POOLS LLC
+6,CODY POOLS INC,150,CPC1460475,Pasco County (unincorporated):65; Hillsborough County (unincorporated):52; Tampa:23; Pinellas County (unincorporated + contract cities):6; Pinellas · Clearwater:4,2024-09-05,2026-08-18,"CODY POOLS/Matthew Trissel | CODY POOLS INC | CODY POOLS, INC | CODY POOLS"
+7,PREMIER POOLS & SPAS OF TAMPA LLC,127,CPC1457370 CPC1459471,Hillsborough County (unincorporated):64; Pasco County (unincorporated):30; Pinellas County (unincorporated + contract cities):21; Tampa:7; Pinellas · Clearwater:5,2024-09-04,2026-08-26,"PREMIER POOLS & SPAS | PREMIER POOLS & SPAS OF TAMPA LLC | PREMIER POOLS & SPAS OF TAMPA, LLC"
+8,DYNASTY POOLS AND SPAS CORP/DANAYS ACOSTA BENITEZ,114,CPC1459886,Hillsborough County (unincorporated):54; Pasco County (unincorporated):43; Tampa:12; Pinellas County (unincorporated + contract cities):4; Pinellas · Clearwater:1,2024-09-05,2026-08-26,"DYNASTY POOLS AND SPAS CORP/DANAYS ACOSTA BENITEZ | DYNASTY POOLS AND SPAS CORP | DYNASTY POOLS AND SPAS, CORP | DYNASTY POOLS AND SPA CORP"
+9,BELLA DIFFERENZA CONSTRUCTION/Devin Palazzo,110,CPC1459962 CPC1461463,Hillsborough County (unincorporated):109; Tampa:1,2024-09-05,2026-08-14,BELLA DIFFERENZA CONSTRUCTION/Devin Palazzo
+10,NATURAL SPRINGS POOLS INC,104,CPC057112,Tampa:43; Pasco County (unincorporated):33; Hillsborough County (unincorporated):28,2024-09-06,2026-08-20,NATURAL SPRINGS POOLS INC
+11,TROPICAL POOLS AND PAVERS LLC,88,CPC057338,Pasco County (unincorporated):29; Pinellas County (unincorporated + contract cities):25; Hillsborough County (unincorporated):19; Tampa:10; Pinellas · Clearwater:5,2024-09-04,2026-08-17,"TROPICIAL POOLS & PAVERS LLC/Ronald Wayne Larson | TROPICAL POOLS & PAVERS LLC | TROPICAL POOLS AND PAVERS LLC | TROPICAL POOLS AND PAVERS,LLC"
+12,PATIO POOLS INC,80,CPC1458992,Pasco County (unincorporated):44; Hillsborough County (unincorporated):26; Tampa:10,2024-09-13,2026-08-20,"PATIO POOLS/Gina Schrader | PATIO POOLS INC | PATIO POOLS, INC"
+13,BLUE SKY POOLS,79,CPC056999,Tampa:53; Pasco County (unincorporated):23; Hillsborough County (unincorporated):3,2024-09-11,2026-08-25,BLUE SKY POOLS INC | BLUE SKY POOLS
+14,TOTALLY BLU BUILDERS INC,78,CPC1460835 CPC1460353,Pasco County (unincorporated):71; Hillsborough County (unincorporated):7,2024-09-19,2026-08-21,TOTALLY BLU BUILDERS/Sunil Mohammed | TOTALLY BLU BUILDERS INC
+15,LARSENS POOL & SPA LLC,75,CPC1457680,Pasco County (unincorporated):27; Hillsborough County (unincorporated):26; Tampa:14; Pinellas County (unincorporated + contract cities):7; Pinellas · Clearwater:1,2024-09-04,2026-08-24,LARSENS POOL & SPA LLC | LARSEN'S POOL & SPA LLC
+16,WAHOO POOLS GROUP INC,74,CPC1458680,Hillsborough County (unincorporated):57; Tampa:10; Pasco County (unincorporated):7,2024-09-10,2026-07-30,"WAHOO POOLS GROUP INC | WAHOO POOLS GROUP, INC"
+17,MANDALAY POOLS AND SPAS,69,CPC1460451,Hillsborough County (unincorporated):36; Pasco County (unincorporated):21; Pinellas County (unincorporated + contract cities):9; Pinellas · Clearwater:3,2024-09-06,2026-07-13,MANDALAY POOLS & SPA/DAYANAY CASTILLO VILLA | MANDALAY POOLS AND SPAS | AQUA POOL GROUP LLC
+18,PCS POOLS LLC,60,CPC1460402,Pinellas County (unincorporated + contract cities):22; Tampa:13; Hillsborough County (unincorporated):12; Pasco County (unincorporated):12; Pinellas · Clearwater:1,2024-09-04,2026-08-12,"PCS POOLS, LLC/David Palmer | PCS POOLS LLC"
+19,LANDMARK POOLS INC,58,CPC1459121,Tampa:20; Pasco County (unincorporated):16; Hillsborough County (unincorporated):8; Pinellas County (unincorporated + contract cities):8; Pinellas · Clearwater:6,2024-09-03,2026-08-14,"LANDMARK POOLS INC | LANDMARK POOLS, INC | LANDMARK POOLS, INC."
+20,PARADISE POOLS OF TAMPA BAY/Zachary Lyons,57,CPC1459732,Hillsborough County (unincorporated):26; Pasco County (unincorporated):24; Tampa:6; Pinellas County (unincorporated + contract cities):1,2024-09-05,2026-08-14,PARADISE POOLS OF TAMPA BAY/Zachary Lyons | PARADISE POOLS OF TAMPA BAY LLC | PARADISE POOLS OF TAMPA BAY
+21,A BETTER POOL & SPA SERVICE LLC,56,CPC1456781,Pasco County (unincorporated):24; Hillsborough County (unincorporated):16; Tampa:15; Pinellas · Clearwater:1,2024-09-10,2026-08-13,"A BETTER POOL & SPA SERVICE LLC/Robert J Grosso | A BETTER POOL & SPA SERVICE LLC | A-BETTER POOL & SPA SERVICE, L"
+22,HAWAIIAN ISLAND POOLS,48,CPC1461196 RP0066899,Pasco County (unincorporated):36; Hillsborough County (unincorporated):6; Pinellas County (unincorporated + contract cities):3; Pinellas · Clearwater:3,2024-09-16,2026-08-26,"HAWAIIAN ISLAND POOLS/Weston  Harry Hull | TWO TRACKS LLC DBA HAWAIIAN ISLAND POOLS | HAWAIIAN ISLAND POOLS | HAWAIIAN ISLAND POOLS INC | TWO TRACKS, LLC"
+23,PETTIT FIBERGLASS POOLS,48,CPC1459625,Pasco County (unincorporated):35; Hillsborough County (unincorporated):8; Pinellas County (unincorporated + contract cities):4; Tampa:1,2024-09-03,2026-08-27,PETTIT POOLS/Daniel Edwards | PETTIT FIBERGLASS POOLS
+24,COAST TO COAST POOLS,45,CPC1457311,Hillsborough County (unincorporated):25; Pasco County (unincorporated):20,2024-11-07,2026-08-26,COAST TO COAST POOLS | POINTERS POOLS & SPAS INC   DBA/COAST TO COAST POOLS
+25,HIVE OUTDOOR LIVING LLC,43,CPC1458419,Hillsborough County (unincorporated):16; Tampa:16; Pasco County (unincorporated):8; Pinellas County (unincorporated + contract cities):2; Pinellas · Clearwater:1,2024-09-05,2026-07-27,HIVE OUTDOOR LIVING LLC/Robert F Foster | HIVE OUTDOOR LIVING LLC
+26,J&C FIBERGLASS POOLS INC,43,CPC1460418,Hillsborough County (unincorporated):17; Pasco County (unincorporated):16; Tampa:5; Pinellas County (unincorporated + contract cities):4; Pinellas · Clearwater:1,2024-09-10,2026-08-27,J&C FIBERGLASS POOLS INC/COREY MORENO | J&C FIBERGLASS POOLS INC | J & C FIBERGLASS POOLS INC
+27,PAYNE POOL PROFESSIONALS LLC,43,CPC1459092,Hillsborough County (unincorporated):18; Pasco County (unincorporated):18; Tampa:4; Pinellas County (unincorporated + contract cities):2; Pinellas · Clearwater:1,2024-09-10,2026-08-05,PAYNE POOL PROFESSIONALS/Sanders Payne | PAYNE POOL PROFESSIONALS LLC | PAYNE POOL PROFESSIONALS
+28,TROPICAL ESCAPES POOL & SPA CONSTRUCTION INC,42,CPC1459158,Pasco County (unincorporated):28; Hillsborough County (unincorporated):12; Tampa:2,2024-10-15,2026-08-13,TROPICAL ESCAPES POOL BUILDERS LLC/Cody Allan Brown | TROPICAL ESCAPES POOL & SPA CONSTRUCTION INC | TROPICAL ESCAPES POOL BUILDERS LLC
+29,SOUTHERN SERENITY POOLS LLC,40,CPC1460191,Pasco County (unincorporated):34; Hillsborough County (unincorporated):4; Pinellas County (unincorporated + contract cities):2,2024-10-11,2026-08-17,SOUTHERN SERENITY POOLS LLC/James  Michael Lavine | SOUTHERN SERENITY POOLS LLC
+30,SPLASH CITY POOLS LLC/Andrew Christopher Mcadam,39,CPC1460097 CGC1534434,Hillsborough County (unincorporated):21; Pasco County (unincorporated):9; Tampa:6; Pinellas County (unincorporated + contract cities):3,2024-09-18,2026-08-10,SPLASH CITY POOLS LLC/Andrew Christopher Mcadam | SPLASH CITY POOLS LLC/Andrew  Christopher Mcadam | SPLASH CITY POOLS LLC
+31,LIV POOLS,37,CPC1459998 EC13011994,Tampa:29; Hillsborough County (unincorporated):6; Pasco County (unincorporated):1; Pinellas County (unincorporated + contract cities):1,2024-09-16,2026-06-29,"YR DEVELOPMENT GROUP LLC/Yanni Ramos | YR DEVELOPMENT GROUP LLC | YR DEVELOPMENT GROUP, LLC | LIV POOLS"
+32,COOL WATER POOLS & SPAS INC,34,CPC057246,Pasco County (unincorporated):27; Hillsborough County (unincorporated):3; Pinellas · Clearwater:2; Pinellas County (unincorporated + contract cities):1; Tampa:1,2024-09-11,2026-08-04,COOL WATER POOLS & SPAS INC/Jerry Lappert | COOL WATER POOLS & SPAS INC
+33,INTEGRITY POOLS,32,CPC049399,Hillsborough County (unincorporated):32,2024-09-06,2026-07-24,INTEGRITY POOLS
+34,SHARPER IMAGE POOL SERVICE INC,30,CPC1457590 CPC056903,Tampa:18; Pasco County (unincorporated):5; Pinellas County (unincorporated + contract cities):4; Hillsborough County (unincorporated):3,2024-09-12,2026-08-13,"SHARPER IMAGE POOL SERVICE | SHARPER IMAGE POOLS LLC | SHARPER IMAGE POOLS, LLC. | SHARPER IMAGE POOLS, LLC | SHARPER IMAGE POOL SERVICE INC"
+35,TILNEY POOLS,29,CPC1457980 CPC1457443,Pinellas County (unincorporated + contract cities):17; Pinellas · Clearwater:5; Pasco County (unincorporated):3; Hillsborough County (unincorporated):2; Tampa:2,2024-09-16,2026-07-02,TILNEY POOLS/Doug Tilney | TILNEY POOLS
+36,DIG IT POOLS LLC,28,CPC1458723,Pinellas County (unincorporated + contract cities):13; Pasco County (unincorporated):9; Pinellas · Clearwater:3; Hillsborough County (unincorporated):2; Tampa:1,2024-09-17,2026-08-04,DIG IT POOLS LLC
+37,GRAND VISTA POOLS LLC,26,CBC1255688 CPC1456691,Hillsborough County (unincorporated):12; Pasco County (unincorporated):11; Pinellas County (unincorporated + contract cities):3,2024-09-19,2026-07-27,GRAND VISTA POOLS | GRAND VISTA POOLS LLC | GRAND VISTA POOLS/Kevin Jason Shipp | GRAND VISTA POOLS LLC/Kevin Jason Shipp
+38,LEE CUSTOM POOLS/Keegan Lee,25,CPC1459601,Hillsborough County (unincorporated):23; Pasco County (unincorporated):2,2024-11-13,2026-08-17,LEE CUSTOM POOLS/Keegan Lee | LEE CUSTOM POOLS INC
+39,FLAGSTONE POOLS & PAVERS INC./Philip Scott Struthers,24,CPC1457668,Hillsborough County (unincorporated):11; Pasco County (unincorporated):8; Pinellas · Clearwater:3; Pinellas County (unincorporated + contract cities):2,2024-12-10,2026-07-20,"FLAGSTONE POOLS & PAVERS INC./Philip Scott Struthers | FLAGSTONE POOLS & PAVERS INC | FLAGSTONE POOLS & PAVERS, INC"
+40,POOLS BY MIKE INC,23,CPC1459395,Tampa:20; Hillsborough County (unincorporated):3,2024-09-06,2026-04-25,POOLS BY MIKE INC/Bud Henry Wendel | POOLS BY MIKE INC
+41,AQUA SCAPE POOLS & SPAS INC,22,CPC1456680,Pasco County (unincorporated):10; Pinellas County (unincorporated + contract cities):8; Hillsborough County (unincorporated):2; Pinellas · Clearwater:2,2024-09-23,2026-07-27,"AQUA SCAPE POOLS AND SPAS, INC/Greg  S Helton | AQUA SCAPE POOLS & SPAS INC | AQUA SCAPE POOLS & SPAS INC."
+42,FREESTYLE POOLS & SPAS INC,22,CPC035658,Pinellas County (unincorporated + contract cities):8; Tampa:7; Pinellas · Clearwater:5; Hillsborough County (unincorporated):2,2024-09-19,2026-07-30,FREESTYLE POOLS & SPAS INC | FREESTYLE POOLS AND SPAS INC
+43,SUNSATION POOLS & SPAS INC,22,CPC1456710,Pinellas County (unincorporated + contract cities):22,2024-11-15,2026-07-17,SUNSATION POOLS & SPAS INC
+44,U S POOLS,22,CPC1457799,Pinellas County (unincorporated + contract cities):14; Tampa:5; Hillsborough County (unincorporated):2; Pinellas · Clearwater:1,2024-10-02,2026-07-28,U. S. POOLS | U S POOLS | US POOLS | U.S. POOLS
+45,LIFESTYLE POOL AND SPA,21,CPC1460980,Pasco County (unincorporated):14; Hillsborough County (unincorporated):6; Tampa:1,2025-07-15,2026-08-26,LIFESTYLE POOL AND SPA/Alex Foster | LIFESTYLE POOL AND SPA
+46,Jose L Gomez,19,CPC1460544,Hillsborough County (unincorporated):13; Pasco County (unincorporated):2; Pinellas County (unincorporated + contract cities):2; Tampa:2,2025-02-09,2026-07-10,Jose L Gomez | G&S POOL AND SPA LLC
+47,APOLLO POOLS,18,CPC1457589,Hillsborough County (unincorporated):17; Tampa:1,2024-09-03,2026-08-11,APOLLO POOLS | APOLLO POOLS INC.
+48,"HOLLOWAY POOLS, INC.",18,CPC037062,Tampa:16; Hillsborough County (unincorporated):2,2024-11-21,2026-02-17,"HOLLOWAY POOLS INC/James A Holloway | HOLLOWAY POOLS, INC."
+49,"MARQUEZ BUILDERS GROUP, LLC/Dayanay Castillo Villa",18,CGC1532624 CPC1460344,Hillsborough County (unincorporated):9; Tampa:5; Pasco County (unincorporated):3; Pinellas County (unincorporated + contract cities):1,2024-09-17,2026-08-11,"MARQUEZ BUILDERS GROUP, LLC/Dayanay Castillo Villa | MARQUEZ BUILDERS GROUP LLC | MARQUEZ BUILDERS GROUP, LLC"
+50,RYAN HUGHES DESIGN INC,17,CPC1458355,Pinellas County (unincorporated + contract cities):6; Tampa:5; Hillsborough County (unincorporated):4; Pinellas · Clearwater:2,2025-01-30,2026-03-05,"RYAN HUGHES DESIGN INC/Ryan M Hughes | RYAN HUGHES DESIGN INC | RYAN HUGHES DESIGN, INC"
+51,CAM PROJECT MANAGEMENT LLC,16,CPC1460675,Hillsborough County (unincorporated):5; Pasco County (unincorporated):3; Pinellas County (unincorporated + contract cities):3; Tampa:3; Pinellas · Clearwater:2,2024-11-20,2026-08-20,CAM PROJECT MANAGEMENT LLC/scott pietroforte | CAM PROJECT MANAGEMENT LLC
+52,HOLIDAY POOLS OF WEST FLORIDA INC/James A Mcleod,16,CPC1458597,Hillsborough County (unincorporated):12; Pinellas County (unincorporated + contract cities):2; Pasco County (unincorporated):1; Tampa:1,2024-09-03,2026-07-27,HOLIDAY POOLS OF WEST FLORIDA INC | HOLIDAY POOLS OF WEST FLORIDA INC/James A Mcleod | HOLIDAY POOLS OF W FL INC
+53,OASIS PAVERS & POOLS LLC,16,CPC1458930,Pinellas County (unincorporated + contract cities):14; Hillsborough County (unincorporated):1; Tampa:1,2024-09-18,2026-07-22,OASIS PAVERS & POOLS/BRIAN GODDEN | OASIS PAVERS & POOLS LLC | OASIS PAVERS AND POOLS
+54,SWIM INCORPORATED,16,CPC1459758,Pasco County (unincorporated):13; Pinellas County (unincorporated + contract cities):2; Hillsborough County (unincorporated):1,2024-09-04,2026-08-27,SWIM INC/David Sepulveda | SWIM INCORPORATED | ARMOR INVESTMENT GROUP DBA SWIM INC | SWIM INC.
+55,"YOUTOPIA POOLS, LLC",15,CPC1459608,Pinellas County (unincorporated + contract cities):8; Pinellas · Clearwater:4; Tampa:2; Hillsborough County (unincorporated):1,2025-01-14,2026-05-04,"YOUTOPIA POOLS/Reina Jamie Craig | YOUTOPIA POOLS, LLC | YOUTOPIA POOLS LLC"
+56,BLUE HAVEN POOLS AND SPA- JACKSONVILLE/Marc  R Mihalsky,14,CPC1460073,Hillsborough County (unincorporated):10; Pasco County (unincorporated):4,2024-09-25,2025-03-10,BLUE HAVEN POOLS AND SPA- JACKSONVILLE/Marc  R Mihalsky | BLUE HAVEN POOLS AND SPA JACKSONVILLE
+57,LANDSCAPE FUSION,14,CGC1526438 CPC1460761,Tampa:13; Hillsborough County (unincorporated):1,2024-09-12,2025-11-17,LANDSCAPE FUSION
+58,SITEWORX POOLS SPAS AND OUTDOOR LIVING/Ryan Marsh,14,CPC1460380,Hillsborough County (unincorporated):11; Tampa:2; Pasco County (unincorporated):1,2024-09-30,2026-07-06,SITEWORX POOLS SPAS AND OUTDOOR LIVING/Ryan Marsh | SITEWORX POOLS & SPAS LLC | SITEWORX POOLS & SPA LLC
+59,DALI.BUILD/Marcos Rivera,13,CGC1533418,Hillsborough County (unincorporated):7; Pasco County (unincorporated):4; Tampa:2,2024-11-18,2026-08-14,DALI.BUILD/Marcos Rivera | DALI.BUILD LLC | DALI.BUILD
+60,FOUNTAIN OF YOUTH POOL AND SPA,13,CPC1460808,Pasco County (unincorporated):8; Pinellas County (unincorporated + contract cities):2; Hillsborough County (unincorporated):1; Pinellas · Clearwater:1; Tampa:1,2025-05-12,2026-07-28,FOUNTAIN OF YOUTH POOL AND SPA/Edward D Selego | FOUNTAIN OF YOUTH POOL AND SPA
+61,HOMETOWN POOLS & PAVERS LLC,13,CPC056961,Pasco County (unincorporated):12; Hillsborough County (unincorporated):1,2024-09-10,2026-07-25,HOMETOWN POOLS AND PAVERS/Jamie  Jon Mills | HOMETOWN POOLS & PAVERS LLC
+62,REEDS SWIMMING POOLS/ SERVICE INC,13,CPC027500,Hillsborough County (unincorporated):9; Tampa:4,2024-09-07,2026-02-20,REEDS SWIMMING POOLS/ SERVICE INC | REEDS SWIMMING POOLS SERV IN
+63,WHITEWATER POOLS & SPAS INC,13,CPC057151,Hillsborough County (unincorporated):9; Tampa:2; Pasco County (unincorporated):1; Pinellas · Clearwater:1,2024-09-24,2026-04-02,WHITEWATER POOLS & SPAS INC | WHITEWATER POOLS AND SPAS
+64,CLEAR TECH POOLS,12,CPC1459346,Pinellas County (unincorporated + contract cities):9; Pasco County (unincorporated):2; Tampa:1,2025-04-04,2026-07-24,CLEAR TECH POOLS
+65,CURTISPOOLS,12,CPC1460218 CPC1456828,Pinellas County (unincorporated + contract cities):7; Hillsborough County (unincorporated):2; Tampa:2; Pinellas · Clearwater:1,2024-09-23,2026-07-20,CURTIS POOLS/Jeremy  Eric Floyd | CURTISPOOLS | CURTIS POOLS
+66,MASTERPIECE POOLS LLC/Kenneth Franklin,12,CPC042935,Hillsborough County (unincorporated):12,2024-09-09,2026-08-10,MASTERPIECE POOLS LLC/Kenneth Franklin
+67,NICS POOL CONSTRUCTION LLC/nicholas oliva,12,CPC1459839,Hillsborough County (unincorporated):6; Pasco County (unincorporated):6,2024-10-29,2025-11-06,NICS POOL CONSTRUCTION LLC/nicholas oliva | NICS POOL CONSTRUCTION LLC
+68,RAINBOW POOLS INC,12,CPC039895,Pasco County (unincorporated):11; Hillsborough County (unincorporated):1,2024-10-22,2026-08-29,RAINBOW POOLS INC/Lawrence A Nelson | RAINBOW POOLS INC
+69,SOUTH SHORE POOLS INC/Joseph  m Sorrells,12,CPC1460497,Hillsborough County (unincorporated):12,2024-09-12,2026-05-13,SOUTH SHORE POOLS INC/Joseph  m Sorrells
+70,SOUTHERN ALUMINUM INSTALL INC/Mark Weiss,12,RX0066688,Hillsborough County (unincorporated):11; Tampa:1,2024-09-19,2026-05-26,SOUTHERN ALUMINUM INSTALL INC/Mark Weiss | SOUTHERN ALUMINUM INSTALL INC
+71,SOUTHERN POOLS OF TAMPA BAY INC,12,CPC1458442,Hillsborough County (unincorporated):11; Tampa:1,2024-09-13,2026-06-05,SOUTHERN POOLS OF TAMPA BAY INC
+72,ULTRA CUSTOM POOL DESIGNS LLC,12,CPC1457644,Hillsborough County (unincorporated):5; Tampa:4; Pasco County (unincorporated):3,2024-09-23,2026-02-12,ULTRA CUSTOM POOL DESIGNS LLC | ULTRA CUSTOM POOL DESIGNS
+73,WEST SHORE POOLS AND OUTDOOR LIVING LLC,12,CPC1461075,Tampa:10; Hillsborough County (unincorporated):1; Pinellas County (unincorporated + contract cities):1,2025-12-04,2026-06-09,"WEST SHORE POOLS AND OUTDOOR LIVING, LLC/Anthony Arredondo | WEST SHORE POOLS AND OUTDOOR LIVING LLC"
+74,AQUATIC TREASURES POOLS AND PARADISES INC,11,CPC1459071,Pinellas County (unincorporated + contract cities):6; Tampa:3; Hillsborough County (unincorporated):1; Pinellas · Clearwater:1,2024-10-25,2025-11-06,AQUATIC TREASURES POOLS AND PARADISES INC/Dylan Thompson | AQUATIC TREASURES POOLS AND PARADISES INC | AQUATIC TREASURES POOLS AND PARADISES INC.
+75,ELITE POOL DESIGNS INC./Robert Sicignano,11,CPC1457671,Hillsborough County (unincorporated):6; Pasco County (unincorporated):2; Tampa:2; Pinellas County (unincorporated + contract cities):1,2024-12-06,2026-07-29,ELITE POOL DESIGNS INC./Robert Sicignano | ELITE POOL DESIGNS INC | ELITE POOL DESIGNS INC.
+76,HOGFISH POOLS AND SPAS LLC,11,CPC1460098 CGC1533048,Pinellas County (unincorporated + contract cities):6; Hillsborough County (unincorporated):4; Pasco County (unincorporated):1,2024-10-02,2026-07-24,HOGFISH POOLS AND SPAS LLC/Justin  Corey Flye | HOGFISH POOLS AND SPAS LLC
+77,INNOVATIVE POOLS AND SPA INC,11,CPC1460231,Tampa:5; Hillsborough County (unincorporated):3; Pinellas County (unincorporated + contract cities):3,2025-02-27,2026-02-27,INNOVATIVE POOLS AND SPA/Staci C Esquinaldo | INNOVATIVE POOLS AND SPA INC
+78,LUXURY CUSTOM POOLS LLC,11,CPC1461438,Hillsborough County (unincorporated):10; Pasco County (unincorporated):1,2026-03-12,2026-08-20,LUXURY CUSTOM POOLS LLC
+79,"PHOENIX POOLS, INC.",11,CPC1458071,Tampa:7; Hillsborough County (unincorporated):2; Pasco County (unincorporated):1; Pinellas · Clearwater:1,2024-12-07,2026-04-24,"PHOENIX POOLS  INC | PHOENIX POOLS INC | PHOENIX POOLS, INC."
+80,SANTOS USA CONSTRUCTION/Taylor Santos,11,CPC1459627,Hillsborough County (unincorporated):6; Pinellas County (unincorporated + contract cities):3; Pasco County (unincorporated):1; Tampa:1,2026-02-17,2026-08-20,SANTOS USA CONSTRUCTION/Taylor Santos | SANTOS USA CONSTRUCTION
+81,SUNSHINE CITY POOLS OF ST PETERSBURG,11,CPC1460981,Tampa:7; Hillsborough County (unincorporated):1; Pasco County (unincorporated):1; Pinellas · Clearwater:1; Pinellas County (unincorporated + contract cities):1,2025-04-01,2026-03-30,"SUNSHINE CITY POOLS OF ST. PETERSBURG, LLC/Erica  Elizabeth Beaurline | SUNSHINE CITY POOLS OF ST PETERSBURG LLC | SUNSHINE CITY POOLS OF ST. PETERSBURG, LLC | SUNSHINE CITY POOLS OF ST.PETERSBURG LLC | SUNSHINE CITY POOLS OF ST PETERSBURG"
+82,FIVE STAR POOL/Roman Huf,10,CPC1457749,Hillsborough County (unincorporated):6; Pasco County (unincorporated):1; Pinellas · Clearwater:1; Pinellas County (unincorporated + contract cities):1; Tampa:1,2024-10-31,2026-08-10,FIVE STAR POOL/Roman Huf | YP SERVICES INC DBA FIVE STAR POOL | FIVE STAR POOL
+83,JACKSON POOLS INC,10,CPC022504,Pasco County (unincorporated):4; Hillsborough County (unincorporated):3; Pinellas County (unincorporated + contract cities):3,2024-09-20,2026-08-27,JACKSON POOLS INC/Chad Jackson | JACKSON POOLS INC
+84,NATIONAL POOLS OF PASCO INC,10,CPC1457034,Pasco County (unincorporated):8; Hillsborough County (unincorporated):1; Pinellas · Clearwater:1,2024-10-31,2026-08-18,NATIONAL POOLS OF PASCO INC/Maurice F Weisberg Jr | NATIONAL POOLS OF PASCO INC
+85,POOL CARE,10,CPC1458394,Tampa:5; Pasco County (unincorporated):2; Pinellas County (unincorporated + contract cities):2; Pinellas · Clearwater:1,2025-07-11,2025-12-05,"POOL CARE OF TAMPA BAY INC   DBA/POOL CARE | POOL CARE | POOL CARE OF TAMPA BAY, INC"
+86,James Christiansen,9,CPC1460225,Hillsborough County (unincorporated):5; Pinellas County (unincorporated + contract cities):3; Pinellas · Clearwater:1,2024-09-20,2026-01-30,James Christiansen | GREAT ESCAPES CUSTOM POOLS LLC
+87,JIMENEZ QUALITY POOLS INC,9,CPC1458155 CPC1460429,Pasco County (unincorporated):4; Tampa:3; Hillsborough County (unincorporated):2,2025-02-28,2026-07-02,JIMENEZ QUALITY POOLS INC/JAMES MICHAEL CURTIS | JIMENEZ QUALITY POOLS INC | JIMENEZ QUALITY POOLS
+88,PAUL SCHAPER CONSTRUCTION INC,9,CPC1456713,Pasco County (unincorporated):8; Pinellas County (unincorporated + contract cities):1,2024-09-10,2026-06-10,PAUL SCHAPER CONSTRUCTION INC
+89,WATERMARK DESIGN BUILD INC,9,CBC1261697,Hillsborough County (unincorporated):8; Pasco County (unincorporated):1,2024-10-24,2026-08-13,WATERMARK DESIGN BUILD INC
+90,ANDUX AQUATICS POOLS & SPAS/Luis Andux,8,CPC1459483,Hillsborough County (unincorporated):6; Pasco County (unincorporated):2,2025-02-17,2026-08-13,ANDUX AQUATICS POOLS & SPAS/Luis Andux | ANDUX INC
+91,"BAY AREA POOL AUTHORITY, INC",8,CPC1458542,Tampa:6; Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2024-09-19,2026-07-13,"BAY AREA POOL AUTHORITY INC | BAY AREA POOL AUTHORITY, INC"
+92,FAMILY POOLS/Earl Rissler,8,CPC1460750,Hillsborough County (unincorporated):4; Pasco County (unincorporated):2; Pinellas County (unincorporated + contract cities):2,2025-09-10,2026-07-24,FAMILY POOLS/Earl Rissler | LAUTENSCHLAGER POOLS LLC DBA FAMILY POOLS | FAMILY POOLS
+93,FREEDOM SKY CONSTRUCTION/Gustavo Perez,8,CBC1254524,Hillsborough County (unincorporated):5; Pasco County (unincorporated):2; Tampa:1,2024-09-30,2026-02-17,FREEDOM SKY CONSTRUCTION/Gustavo Perez | FREEDOM SKY CONSTRUCTION INC
+94,HOLLYWOOD POOLS AND SPAS OF FLORIDA INC,8,CPC1458531,Pinellas County (unincorporated + contract cities):6; Hillsborough County (unincorporated):1; Tampa:1,2025-04-02,2026-06-03,HOLLYWOOD POOLS AND SPAS OF FLORIDA INC./Ronald W Davis | HOLLYWOOD POOLS AND SPAS OF FLORIDA INC | HOLLYWOOD POOLS & SPAS OF FLORIDA
+95,K HARDT SERVICES/Keith Joseph Hardt,8,CPC1460138,Hillsborough County (unincorporated):5; Pasco County (unincorporated):2; Tampa:1,2024-10-15,2025-06-18,K HARDT SERVICES/Keith Joseph Hardt | K HARDT SERVICES LLC | K HART SERVICES
+96,SALTWATER POOLS OF FLORIDA INC/Jereme Carter,8,CPC1459924,Hillsborough County (unincorporated):4; Pinellas County (unincorporated + contract cities):3; Pasco County (unincorporated):1,2025-04-03,2026-07-11,SALTWATER POOLS OF FLORIDA INC/Jereme Carter | SALTWATER POOLS OF FLORIDA INC
+97,SEAMCO OF TAMPA BAY INC,8,CPC056725,Pasco County (unincorporated):4; Hillsborough County (unincorporated):2; Pinellas County (unincorporated + contract cities):1; Tampa:1,2024-10-02,2026-06-26,SEAMCO OF TAMPA BAY/David Lee McKinnon | SEAMCO OF TAMPA BAY INC | SEAMCO TAMPA BAY
+98,TAMPAPOOLPRO.COM LLC,8,CPC1460139,Tampa:5; Hillsborough County (unincorporated):3,2024-10-29,2025-08-13,"TAMPAPOOLPROL.COM, LLC/Anthony F Arredondo | TAMPAPOOLPRO.COM LLC"
+99,AFFORDABLE POOLS AND SPAS LLC,7,CPC1460374,Pinellas County (unincorporated + contract cities):6; Pasco County (unincorporated):1,2025-01-15,2026-08-12,AFFORDABLE POOLS AND SPAS LLC
+100,BARBER WATERSHAPES INC,7,CPC1458933,Pasco County (unincorporated):4; Hillsborough County (unincorporated):3,2024-09-10,2026-05-15,"BARBER WATERSHAPES, INC/William B Barber | BARBER WATERSHAPES INC"
+101,BORDER CREATIONS INC,7,CPC1458494,Pasco County (unincorporated):6; Tampa:1,2024-11-05,2025-10-06,BORDER CREATIONS INC
+102,CAPSHAW & KING LLC,7,CPC1457770,Pasco County (unincorporated):4; Hillsborough County (unincorporated):3,2025-03-12,2026-04-28,CAPSHAW & KING LLC
+103,COAST 2 COAST CONSTRUCTION LLC/Adan Castro,7,CPC1460512,Hillsborough County (unincorporated):4; Pasco County (unincorporated):2; Pinellas County (unincorporated + contract cities):1,2025-10-20,2026-08-17,COAST 2 COAST CONSTRUCTION LLC/Adan Castro | COAST 2 COAST CONSTRUCTION LLC
+104,DUNOTA POOL SUPPLIES LLC,7,CPC1459402,Pasco County (unincorporated):4; Hillsborough County (unincorporated):3,2024-11-21,2025-12-08,DUNOTA POOL SUPPLIES LLC./Francisco Ferrer | DUNOTA POOL SUPPLIES LLC
+105,KELLY POOLS INC,7,CPC029638,Pinellas County (unincorporated + contract cities):7,2024-12-26,2025-11-25,KELLY POOLS INC
+106,POOLS PAVERS & PATIOS LLC,7,CPC1459762,Pasco County (unincorporated):7,2024-09-19,2026-05-28,POOLS PAVERS & PATIOS LLC
+107,SEKAS CUSTOM POOLS LLC,7,CPC1456589,Tampa:4; Pinellas County (unincorporated + contract cities):3,2024-10-31,2026-03-20,SEKAS CUSTOM POOLS LLC
+108,TOP GUNN POOLS INC,7,CPC1457955,Pasco County (unincorporated):6; Hillsborough County (unincorporated):1,2024-10-16,2026-03-13,TOP GUNN POOLS INC
+109,TRUSTED POOL AND SPA LLC/Christopher M Hegedus,7,CPC1457264,Hillsborough County (unincorporated):7,2024-09-13,2026-08-03,TRUSTED POOL AND SPA LLC/Christopher M Hegedus
+110,WATERSCAPES POOLS & SPAS LLC,7,CPC1457280,Pasco County (unincorporated):4; Hillsborough County (unincorporated):3,2025-01-08,2026-05-06,WATERSCAPES POOLS & SPAS  LLC | WATERSCAPES POOLS & SPAS LLC
+111,WELSEY CHAPEL POOLS LLC,7,CPC1459486,Pasco County (unincorporated):7,2024-09-06,2026-06-29,WELSEY CHAPEL POOLS LLC
+112,BIG SPLASH POOLS & SPA,6,CPC1457911,Pasco County (unincorporated):6,2025-01-31,2026-08-04,BIG SPLASH POOLS & SPA
+113,DUWET INC./Carl  R Holbrook,6,CPC1456995,Hillsborough County (unincorporated):6,2025-04-14,2026-03-24,DUWET INC./Carl  R Holbrook
+114,GRACO POOLS  LLC/Larry F Mohr,6,CPC1460908,Hillsborough County (unincorporated):6,2025-11-10,2026-07-23,GRACO POOLS  LLC/Larry F Mohr
+115,HAVEN OUTDOOR LIVING LLC,6,CPC1460978,Tampa:5; Hillsborough County (unincorporated):1,2025-07-30,2026-02-05,HAVEN OUTDOOR LIVING LLC/Larry Begy | HAVEN OUTDOOR LIVING LLC
+116,PETTIT POOLS SOUTH LLC,6,CPC1459940,Tampa:3; Pinellas County (unincorporated + contract cities):2; Pasco County (unincorporated):1,2025-11-24,2026-05-11,PETTIT POOLS SOUTH LLC
+117,PICCS DESIGNS POOL AND SPA LLC,6,CPC1460938,Pasco County (unincorporated):4; Pinellas County (unincorporated + contract cities):1; Tampa:1,2025-09-25,2026-08-24,PICCS DESIGNS POOL AND SPA LLC | PICCS DESIGNS POOL & SPA LLC
+118,POOLS WATERFALLS LLC,6,CPC1460910,Tampa:6,2025-07-29,2025-12-28,POOLS WATERFALLS LLC
+119,SALTY FLORIDA CONCEPTS LLC,6,CPC1458819,Pasco County (unincorporated):6,2024-11-04,2025-09-11,SALTY FLORIDA CONCEPTS LLC
+120,"SEA KING POOLS, INC/Emma  C Greene",6,CPC1460479,Hillsborough County (unincorporated):6,2024-09-24,2026-01-16,"SEA KING POOLS, INC/Emma  C Greene"
+121,ZEN POOLS AND OUTDOOR LIVING LLC,6,CPC1461079,Pasco County (unincorporated):6,2025-07-31,2026-07-06,ZEN POOLS AND OUTDOOR LIVING LLC
+122,ALPHA FOUNDATIONS,5,CBC1257350,Tampa:5,2024-09-10,2025-10-27,ALPHA FOUNDATIONS
+123,ARTISTRY POOLS,5,CPC1459250,Tampa:4; Hillsborough County (unincorporated):1,2024-12-26,2026-06-15,ARTISTRY POOLS/Brian Collins | ARTISTRY POOLS
+124,COASTAL IMPROVEMENT CORP,5,CPC1460577,Pasco County (unincorporated):5,2024-10-08,2025-01-27,COASTAL IMPROVEMENT CORP
+125,CRYSTAL TIDE POOLS LLC,5,CPC1461019,Hillsborough County (unincorporated):2; Pinellas County (unincorporated + contract cities):2; Pasco County (unincorporated):1,2025-07-18,2026-07-08,CRYSTAL TIDE POOLS LLC/hunter  Joseph cataldo | CRYSTAL TIDE POOLS LLC
+126,DALI.POOLS LLC,5,CPC1460767,Tampa:5,2025-07-18,2025-10-10,DALI.POOLS LLC
+127,EMERALD ISLE POOLS LLC,5,CPC1460132,Pasco County (unincorporated):4; Hillsborough County (unincorporated):1,2025-10-28,2026-08-17,EMERALD ISLE POOLS/Padraic Buckley | EMERALD ISLE POOLS LLC
+128,ENCLAVE LUXURY OUTDOOR LIVING INC,5,CPC1460022 CRC1334960,Pinellas County (unincorporated + contract cities):3; Pasco County (unincorporated):1; Tampa:1,2024-10-02,2026-05-29,ENCLAVE LUXURY OUTDOOR LIVING INC | ENCLAVE POOLS INC | ENCLAVE LUXURY OUTDOOR LIVING
+129,H E FELDMAN & SONS INC,5,CPC1458244,Pinellas County (unincorporated + contract cities):2; Hillsborough County (unincorporated):1; Pasco County (unincorporated):1; Tampa:1,2025-06-12,2025-11-14,"H.E. FELDMAN & SON, INC./John Langston | H E FELDMAN & SONS INC | H.E. FELDMAN AND SONS, INC."
+130,HARVEY K&K COMPANY LLC,5,CPC1461424,Tampa:4; Hillsborough County (unincorporated):1,2026-08-04,2026-08-04,HARVEY K&K COMPANY LLC/Harvey  Roberto Carreno Arredondo | HARVEY K&K COMPANY LLC
+131,INNOVATIVE LABOR SOLUTIONS LLC DBA:ILS POOLS,5,CPC1460632,Pinellas County (unincorporated + contract cities):3; Pinellas · Clearwater:2,2025-02-21,2026-03-05,INNOVATIVE LABOR SOLUTIONS LLC DBA:ILS POOLS | ILS POOLS
+132,"MODERN DESIGN POOLS & OUTDOOR LIVING, LLC/JACK  CHARLIE MERRELL",5,CPC020280,Hillsborough County (unincorporated):4; Tampa:1,2025-03-14,2025-10-20,"MODERN DESIGN POOLS & OUTDOOR LIVING, LLC/JACK  CHARLIE MERRELL | MODERN DESIGN POOLS & OUTDOOR LIVING LLC"
+133,PENA ALL CONSTRUCTION LLC,5,CPC1460719,Tampa:5,2025-04-16,2025-11-13,PENA ALL CONSTRUCTION LLC
+134,READY'S POOLS SERVICE/CHRIS  MICHAEL READY,5,CPC1458802,Hillsborough County (unincorporated):3; Pasco County (unincorporated):2,2025-02-06,2026-07-20,READY'S POOLS SERVICE/CHRIS  MICHAEL READY | READY'S POOLS SERVICE/CHRIS MICHAEL READY | READY'S POOL SERVICE INC
+135,Timothy L Allore,5,CPC057317,Hillsborough County (unincorporated):5,2025-04-08,2026-04-08,Timothy L Allore
+136,,4,CPC1460755,Hillsborough County (unincorporated):4,2025-09-09,2026-04-18,
+137,"BLUE FLAMINGO POOLS, INC",4,CPC1459467,Tampa:3; Hillsborough County (unincorporated):1,2024-11-14,2025-11-27,"BLUE FLAMINGO POOLS/James Manning | BLUE FLAMINGO POOLS, INC"
+138,CARLOS PAVERS POOL & SPAS INC,4,CPC1459936,Pinellas County (unincorporated + contract cities):2; Pasco County (unincorporated):1; Pinellas · Clearwater:1,2025-05-06,2026-06-17,CARLOS PAVERS POOLS & SPAS INC | CARLOS PAVERS POOL & SPAS INC
+139,CARTER POOLS/Jereme Carter,4,CPC1458938,Hillsborough County (unincorporated):2; Pinellas County (unincorporated + contract cities):2,2024-09-09,2024-12-11,CARTER POOLS/Jereme Carter | CARTER POOLS
+140,DANNY'S POOLS OF SOUTHWEST FLORIDA LLC,4,CPC1459370,Hillsborough County (unincorporated):3; Pinellas County (unincorporated + contract cities):1,2025-03-25,2026-07-24,"DANNY'S POOLS OF SOUTHWEST FLORIDA LLC | DANNY'S POOLS OF SOUTHWEST FLORIDA, LLC"
+141,David Fake,4,,Hillsborough County (unincorporated):4,2025-02-18,2026-06-22,David Fake
+142,"ELEMENTS POOLS AND SPAS, LLC",4,CPC1458238,Pinellas · Clearwater:4,2025-08-04,2025-08-04,"ELEMENTS POOLS AND SPAS, LLC"
+143,Jakob Rosiek,4,CPC1460521,Hillsborough County (unincorporated):2; Pasco County (unincorporated):1; Pinellas County (unincorporated + contract cities):1,2026-01-30,2026-07-06,Jakob Rosiek | PNR POOLS LLC
+144,MR ELECTRIC OF LAND O LAKES,4,EC13008910,Pasco County (unincorporated):4,2024-09-18,2026-03-27,MR ELECTRIC OF LAND O LAKES
+145,OUTBACK POOLS INC,4,CPC057079,Pinellas County (unincorporated + contract cities):4,2025-03-07,2026-05-31,OUTBACK POOLS INC
+146,POOL RENOVATORS LLC,4,CPC1460612 CPC1460038,Tampa:3; Hillsborough County (unincorporated):1,2024-11-21,2025-12-05,POOL RENOVATORS LLC/Keith  William Taylor | POOL RENOVATORS LLC
+147,ROOF TO STAY LLC/Eddys  Gustavo Sanchez,4,CPC1460890,Hillsborough County (unincorporated):2; Pasco County (unincorporated):1; Pinellas County (unincorporated + contract cities):1,2025-09-25,2026-06-26,ROOF TO STAY LLC/Eddys  Gustavo Sanchez | ROOF TO STAY LLC | ROOF TO STAY
+148,SHONEY'S POOLS LLC,4,CPC1459574,Pinellas County (unincorporated + contract cities):4,2025-04-07,2026-07-11,SHONEY'S POOLS LLC
+149,TAMPA SCREENS & ALUMINUM INC,4,RX0059137,Hillsborough County (unincorporated):2; Tampa:2,2024-11-13,2025-10-30,TAMPA SCREENS & ALUMINUM INC | TAMPA SCREENS & ALUMINUM INC/Richard Ciro Puls
+150,TCHIBUM POOLS LLC/Claudio  R. L. Mariano,4,CPC1460127,Hillsborough County (unincorporated):2; Pasco County (unincorporated):2,2025-11-13,2026-07-30,TCHIBUM POOLS LLC/Claudio  R. L. Mariano | TCHIBUM POOLS LLC
+151,TEMPLAR POOLS & OUTDOOR LIVING INC,4,CPC1461163,Pasco County (unincorporated):2; Hillsborough County (unincorporated):1; Pinellas · Clearwater:1,2026-01-27,2026-06-04,"TEMPLAR POOLS & OUTDOOR LIVING, INC/Jeffrey  Owen Lovelle | TEMPLAR POOLS & OUTDOOR LIVING INC | TEMPLAR POOLS & OUTDOOR LIVING, INC"
+152,TULIA DEVELOPMENT & CONSTRUCTION LLC,4,CGC1516428,Pinellas County (unincorporated + contract cities):3; Hillsborough County (unincorporated):1,2024-12-26,2026-05-18,TULIA DEVELOPMENT & CONSTRUCTION LLC/George  Anthony Nicholas | TULIA DEVELOPMENT & CONSTRUCTION LLC
+153,"AAASCO, INC",3,,Pinellas County (unincorporated + contract cities):3,2024-09-24,2025-04-07,"AAASCO, INC"
+154,ALWAYS THERE POOLS INC,3,CPC1459872,Pasco County (unincorporated):3,2024-10-23,2025-11-30,ALWAYS THERE POOLS INC
+155,APD ADVANCED STABILIZATION,3,CBC1267611,Tampa:3,2024-12-16,2026-02-05,APD ADVANCED STABILIZATION
+156,AQUA DREAMS POOL AND OUTDOOR INC/Zachary Vaughn,3,CPC1461032,Hillsborough County (unincorporated):2; Pasco County (unincorporated):1,2025-07-23,2026-05-11,AQUA DREAMS POOL AND OUTDOOR INC/Zachary Vaughn | AQUA DREAMS POOL & OUTDOOR INC
+157,ASPEN CONSTRUCTION/William Dienes,3,CBC1263340,Hillsborough County (unincorporated):2; Tampa:1,2026-01-08,2026-07-28,ASPEN CONSTRUCTION/William Dienes | ASPEN CONSTRUCTION SOLUTIONS INC.
+158,BIRCHWOOD BUILDING & POOLS INC,3,CPC1460551,Pinellas County (unincorporated + contract cities):2; Pasco County (unincorporated):1,2025-04-08,2026-07-07,BIRCHWOOD BUILDING & POOLS INC
+159,BOBCO CONSTRUCTION LLC/Robert Little,3,CGC1520960 CPC1458297,Hillsborough County (unincorporated):3,2024-12-31,2026-03-02,BOBCO CONSTRUCTION LLC/Robert Little
+160,C & C QUALITY HOMES/Ryan Casper,3,CPC1460072 CBC1262634,Hillsborough County (unincorporated):1; Pinellas County (unincorporated + contract cities):1; Tampa:1,2025-10-01,2026-07-15,C & C QUALITY HOMES/Ryan Casper | C & C QUALITY HOMES INC | C & C QUALITY HOMES
+161,CLEAR PERFECTION CUSTOM POOL & SPA LLC,3,CPC1458861,Pasco County (unincorporated):2; Pinellas County (unincorporated + contract cities):1,2024-11-11,2025-11-13,CLEAR PERFECTION CUSTOM POOL & SPA LLC
+162,COSTAS OASIS LLC,3,CPC1459969,Pinellas County (unincorporated + contract cities):2; Pasco County (unincorporated):1,2025-04-02,2025-12-23,COSTAS OASIS LLC
+163,D&J POOL PREP CORP/Francisco Ferrer,3,CPC1459797,Hillsborough County (unincorporated):2; Pasco County (unincorporated):1,2025-10-17,2026-07-21,D&J POOL PREP CORP/Francisco Ferrer | D & J POOL PREP CORP
+164,DIAMOND BAY POOL SERVICES LLC,3,CPC1461390,Tampa:2; Hillsborough County (unincorporated):1,2025-10-28,2026-08-17,DIAMOND BAY POOL SERVICES LLC/Nolan Rodriguez | DIAMOND BAY POOL SERVICES LLC
+165,DROME CONTRACTING SERVICES INC D.B.A. GRAND PATIO POOLS/Richard Drouet,3,CPC1457711,Hillsborough County (unincorporated):3,2025-04-27,2026-08-10,ABILITY ROOFING SOLUTIONS/Richard Drouet | DROME CONTRACTING SERVICES INC D.B.A. GRAND PATIO POOLS/Richard Drouet
+166,GREAT ESCAPES CU7STOM POOLS LLC,3,CPC1460013,Pasco County (unincorporated):3,2024-11-22,2025-07-07,GREAT ESCAPES CU7STOM POOLS LLC
+167,JAY'S CUSTOM POOLS & SPAS INC,3,CPC1457230,Pasco County (unincorporated):3,2025-06-04,2026-03-07,JAY'S CUSTOM POOLS & SPAS INC
+168,"MANFRED CONSTRUCTION SERVICES, INC",3,CGC1520549,Pinellas County (unincorporated + contract cities):3,2025-11-12,2026-04-27,"MANFRED CONSTRUCTION SERVICES, INC"
+169,MANZI ELECTRIC SERVICE INC,3,EC13012639,Pasco County (unincorporated):2; Tampa:1,2024-12-03,2025-08-05,MANZI ELECTRIC SERVICE INC | MANZI ELECTRIC SERVICES LLC
+170,ML STAGING AND CONSTRUCTION LLC/Miguel  NEMECIO Aguirre Fuentes,3,CPC1460720 CGC1530479,Hillsborough County (unincorporated):3,2025-02-28,2025-07-15,ML STAGING AND CONSTRUCTION LLC/Miguel  NEMECIO Aguirre Fuentes
+171,NOAH BUILDERS & DESIGNS LLC/Freddy  Antonio Almonte Valdez,3,CPC1460382,Hillsborough County (unincorporated):2; Pasco County (unincorporated):1,2025-11-20,2026-07-06,NOAH BUILDERS & DESIGNS LLC/Freddy  Antonio Almonte Valdez | NOAH BUILDERS & DESIGNS LLC
+172,PEYTON & ASSOCIATES INC,3,CPC1457020,Hillsborough County (unincorporated):1; Pinellas County (unincorporated + contract cities):1; Tampa:1,2025-07-08,2026-02-25,PEYTON & ASSOCIATES INC
+173,POOL PROS OF CENTRAL FLORIDA LLC,3,CPC1459873 CPC1461047,Tampa:2; Pinellas · Clearwater:1,2025-08-04,2026-07-17,POOL PROS OF CENTRAL FLORIDA LLC
+174,POOL SUBCONTRACTING SERVICES LLC,3,CPC1460443,Pinellas County (unincorporated + contract cities):2; Pinellas · Clearwater:1,2025-10-15,2026-01-26,POOL SUBCONTRACTING SERVICES LLC | POOL SUBCONTRACTING SERVICES
+175,SCHMIDT CONSTRUCTION GROUP  LLC,3,CPC1458255 CGC043397,Hillsborough County (unincorporated):3,2024-11-18,2026-02-17,SCHMIDT CONSTRUCTION GROUP  LLC | SCHMIDT CONSTRUCTION GROUP LLC
+176,SCHULTZ BUILDERS AND POOLS INC,3,CGC1519632,Pinellas County (unincorporated + contract cities):3,2024-10-24,2026-05-05,SCHULTZ BUILDERS AND POOLS INC
+177,SLUSSER SERVICES LLC,3,CPC1456712,Pasco County (unincorporated):2; Hillsborough County (unincorporated):1,2026-06-18,2026-07-23,SLUSSER SERVICES LLC/Kenneth  Duane Slusser | SLUSSER SERVICES LLC
+178,SNOWBIRD ELECTRIC LLC,3,ER13016198,Pasco County (unincorporated):3,2026-01-06,2026-08-03,SNOWBIRD ELECTRIC LLC
+179,SOLUTION SOURCE INC,3,CPC054843,Pasco County (unincorporated):2; Hillsborough County (unincorporated):1,2026-01-26,2026-06-02,MICHAEL JEMISON | SOLUTION SOURCE INC
+180,SUNNY POOLS USA LLC,3,CPC1460135,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1; Tampa:1,2026-06-29,2026-08-11,SUNNY POOLS USA LLC/Luise  Moraes MORAES Ferreira | SUNNY POOLS USA LLC
+181,"THE ROGERS GROUP OF SOUTH FLORIDA, LLC",3,CBC1258172,Hillsborough County (unincorporated):3,2025-01-09,2026-07-24,"THE ROGERS GROUP OF SOUTH FLORIDA, LLC"
+182,Alex Moya,2,CGC1513581,Hillsborough County (unincorporated):1; Tampa:1,2026-01-27,2026-01-27,Alex Moya | COM-RES PROPERTY SERVICES LLC
+183,ALL CLEAR POOL MAINTENANCE LLC/ronnie henderson,2,CPC1459229,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2026-02-20,2026-03-26,ALL CLEAR POOL MAINTENANCE LLC/ronnie henderson | ALL CLEAR POOL MAINTENANCE LLC
+184,ALLURE POOLS LLC/John  Leslie Langston IV,2,CPC1461294,Hillsborough County (unincorporated):1; Pinellas County (unincorporated + contract cities):1,2026-03-20,2026-06-11,ALLURE POOLS LLC/John  Leslie Langston IV | ALLURE POOLS LLC
+185,AMAZING POOL AND PAVERS,2,CGC1532484,Hillsborough County (unincorporated):1; Tampa:1,2025-03-13,2025-03-13,AMAZING POOL AND PAVERS
+186,ANCLOTE POOLS LLC,2,CPC1459745,Pinellas County (unincorporated + contract cities):2,2024-12-02,2024-12-23,ANCLOTE POOLS LLC
+187,AQUA SCRUB INC.,2,CPC1461143,Pinellas County (unincorporated + contract cities):2,2025-08-06,2026-04-13,AQUA SCRUB INC. | AQUA SCRUB INC
+188,AQUATIC SURFACES LLC,2,CPC1460264,Pinellas County (unincorporated + contract cities):2,2025-02-07,2025-04-03,AQUATIC SURFACES LLC
+189,ASHTON POOLS & SPAS INC,2,CPC057026,Pasco County (unincorporated):2,2026-01-20,2026-01-21,ASHTON POOLS & SPAS INC
+190,ATLANTIC POOL BUILDERS INC,2,CPC029632,Pinellas County (unincorporated + contract cities):2,2025-10-16,2025-11-12,ATLANTIC POOL BUILDERS INC
+191,BACKYARD OUTFITTERS/Reina Craig,2,CPC1459869,Hillsborough County (unincorporated):2,2024-10-22,2025-02-28,BACKYARD OUTFITTERS/Reina Craig
+192,CARMACKS QUALITY ALUM INC,2,SCC056758,Hillsborough County (unincorporated):2,2025-04-23,2025-09-04,CARMACKS QUALITY ALUM INC
+193,COASTAL CREATIONS POOLS AND LAGOONS LLC,2,CPC1461058,Pasco County (unincorporated):1; Pinellas County (unincorporated + contract cities):1,2025-03-12,2026-06-29,COASTAL CREATIONS POOLS AND LAGOONS LLC | COASTAL CREATIONS POOLS AND LAGOONS
+194,"COASTAL POOLS AND SPAS, INC/Jeffrey  Owen Lovelle",2,CPC056945,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2024-09-05,2025-04-22,"COASTAL POOLS AND SPAS, INC/Jeffrey  Owen Lovelle | COASTAL POOLS AND SPAS INC"
+195,COELUM CONSTRUCTION/Melissa Lasseter,2,CBC1263052,Hillsborough County (unincorporated):2,2025-11-20,2026-01-19,COELUM CONSTRUCTION/Melissa Lasseter
+196,DEEPLY POOLS LLC,2,CPC1460699,Pasco County (unincorporated):2,2026-05-01,2026-07-20,DEEPLY POOLS LLC
+197,ELITE BUILDERS GROUP INC/Jacquelin Kim Whitaker,2,CGC1513921,Hillsborough County (unincorporated):2,2026-08-05,2026-08-19,ELITE BUILDERS GROUP INC/Jacquelin Kim Whitaker
+198,FGS SOLUTIONS LLC/Gabriel Costa Dantas,2,CRC1335808,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2026-02-02,2026-04-21,FGS SOLUTIONS LLC/Gabriel Costa Dantas | FGS SOLUTIONS LLC
+199,FIBER GLASS POOLS OUTLET (FPO SOLUTIONS LLC)/Daniel Vilela,2,CPC1461404,Hillsborough County (unincorporated):2,2026-05-12,2026-06-03,FIBER GLASS POOLS OUTLET (FPO SOLUTIONS LLC)/Daniel Vilela
+200,FLORIDA DEVELOPMENT AND CONSTRUTION CORPORATION/Stephen Ciriaco,2,CPC1459786,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2026-02-18,2026-05-13,FLORIDA DEVELOPMENT AND CONSTRUTION CORPORATION/Stephen Ciriaco | FLORIDA DEVELOPMENT AND CONSTRUCTION CORPORATION
+201,FLORIDA NATIVE POOLS & PAVER DESIGN LLC,2,CPC1461176,Pinellas County (unincorporated + contract cities):2,2026-01-13,2026-01-13,FLORIDA NATIVE POOLS & PAVER DESIGN LLC
+202,FOUR DOWN SOUTH LLC/Joshua  David Cook,2,CPC1460932,Hillsborough County (unincorporated):2,2025-10-02,2026-06-02,FOUR DOWN SOUTH LLC/Joshua  David Cook
+203,"HAWKINS SERVICE COMPANY, LLC",2,EC13011713,Pinellas County (unincorporated + contract cities):2,2024-10-30,2025-05-06,"HAWKINS SERVICE COMPANY, LLC"
+204,HOPPER CONSTR & EXCAVATION & POOLS & SPAS INC,2,CPC1456435,Pasco County (unincorporated):2,2024-11-05,2025-04-30,HOPPER CONSTR & EXCAVATION & POOLS & SPAS INC
+205,INDIVIDUAL,2,CPC048242 CPC1457132,Pinellas County (unincorporated + contract cities):2,2025-12-22,2026-01-14,INDIVIDUAL
+206,INNOVAELECTRIC LLC,2,ER13016530,Tampa:2,,,INNOVAELECTRIC LLC
+207,INNOVATIVE POOL CONCEPTS INC,2,CPC056683,Pinellas County (unincorporated + contract cities):2,2025-05-15,2025-06-30,INNOVATIVE POOL CONCEPTS INC
+208,"INSTYLE POOLS AND SPA, INC./Akram Syed",2,CPC1460327,Hillsborough County (unincorporated):2,2025-06-30,2026-06-04,"INSTYLE POOLS AND SPA, INC./Akram Syed"
+209,JCE SERVICES OF FLORIDA INC/Jose Antonio Jr Caride,2,CBC1264095,Hillsborough County (unincorporated):2,2025-09-30,2025-10-22,JCE SERVICES OF FLORIDA INC/Jose Antonio Jr Caride
+210,JF CONSTRUCTION ENTERPRISES INC,2,CPC057290,Pasco County (unincorporated):2,2026-02-21,2026-05-07,JF CONSTRUCTION ENTERPRISES INC
+211,JHUNT LLC,2,CPC1459692,Pinellas · Clearwater:1; Tampa:1,2025-09-23,2026-04-28,JHUNT LLC
+212,JTB POOL CONTRACTING/Charles  Paul Smith,2,CPC056938,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2025-06-17,2026-05-18,JTB POOL CONTRACTING/Charles  Paul Smith | JTB POOL CONTRACTING
+213,JUSTIN & STEPHANIE JONES INC,2,CGC1518648,Pinellas County (unincorporated + contract cities):2,2026-03-16,2026-04-01,JUSTIN & STEPHANIE JONES INC
+214,LARRY BOSSE JR. POOLS INC./Andrew Bosse,2,CPC1459778,Hillsborough County (unincorporated):2,2025-05-29,2025-10-15,LARRY BOSSE JR. POOLS INC./Andrew Bosse
+215,LEGACY CUSTOM POOLS/Darren Griffin,2,CPC1460037,Hillsborough County (unincorporated):2,2026-02-05,2026-08-14,LEGACY CUSTOM POOLS/Darren Griffin
+216,"LEGACY OUTDOOR, LLC/Reina  Jamie Craig",2,CPC1460199,Hillsborough County (unincorporated):1; Tampa:1,2026-05-08,2026-05-08,"LEGACY OUTDOOR, LLC/Reina  Jamie Craig | LEGACY OUTDOOR LLC"
+217,LEISURE POOLS SARASOTA/DAVID GREENE,2,CPC1459648,Hillsborough County (unincorporated):2,2026-01-27,2026-07-21,LEISURE POOLS SARASOTA/DAVID GREENE
+218,"LUCAS LAGOONS CONSTRUCTION, LLC/William Van Staden",2,CPC1460527,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2024-09-25,2024-10-02,"LUCAS LAGOONS CONSTRUCTION, LLC/William Van Staden | LUCAS LAGOONS CONSTRUCTION LLC"
+219,MILLENNIUM DEVELOPERS & CONSTRUCTION INC/Nair  W Feliciano,2,CBC1264451,Hillsborough County (unincorporated):2,2025-06-15,2025-07-03,MILLENNIUM DEVELOPERS & CONSTRUCTION INC/Nair  W Feliciano
+220,ORANGE CONSTRUCTION INC,2,CGC1533773,Pasco County (unincorporated):2,2026-03-16,2026-03-25,ORANGE CONSTRUCTION INC
+221,PINCH A PENNY/Casey Wiley,2,CPC1460601,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2024-09-16,2025-09-15,PINCH A PENNY/Casey Wiley | PINCH A PENNY 095
+222,PLAYWELL POOLS INC,2,CPC1457140,Pasco County (unincorporated):1; Pinellas County (unincorporated + contract cities):1,2025-04-29,2025-06-17,PLAYWELL POOLS INC | PLAYWELL POOLS INC.
+223,POLK COUNTY POOLS INC/Gina Fisher,2,RP0067353,Hillsborough County (unincorporated):2,2025-02-28,2025-05-08,POLK COUNTY POOLS INC/Gina Fisher
+224,POOL & SPA CREATIONS INC,2,CPC1457685,Pinellas County (unincorporated + contract cities):1; Pinellas · Clearwater:1,2024-12-12,2025-04-04,POOL & SPA CREATIONS INC
+225,POOLS BY NICHOLAS LLC/Nicholas Raffaele,2,CPC1460596,Hillsborough County (unincorporated):1; Tampa:1,2026-02-15,2026-03-11,POOLS BY NICHOLAS LLC/Nicholas Raffaele | POOLS BY NICHOLAS LLC
+226,PRIVATE PROVIDER - INNOVATIVE CONSTRUCTION INSPECTION INC,2,,Tampa:2,,,PRIVATE PROVIDER - INNOVATIVE CONSTRUCTION INSPECTION INC
+227,"PRIVATE PROVIDER - UES PROFESSIONAL SOLUTIONS, LLC",2,,Tampa:2,,,"PRIVATE PROVIDER - UES PROFESSIONAL SOLUTIONS, LLC"
+228,REVIVE KITCHEN AND BATH/Justin Caballero,2,CBC1264856,Hillsborough County (unincorporated):2,2025-03-28,2025-09-30,REVIVE KITCHEN AND BATH/Justin Caballero | REVIVE DESIGN AND RENOVATION/Justin Caballero
+229,REYES CONSTRUCTION INC,2,RCI080423,Pasco County (unincorporated):2,2026-01-07,2026-04-14,REYES CONSTRUCTION INC
+230,ROBLES POOL CARE LLC/Robert Faller,2,CPC1457173,Hillsborough County (unincorporated):1; Pinellas County (unincorporated + contract cities):1,2025-07-16,2026-04-13,ROBLES POOL CARE LLC/Robert Faller | ROBLES POOL CARE LLC
+231,SAFECIRCUIT ELECTRIC & LIGHTING LLC,2,EC13011168,Pinellas County (unincorporated + contract cities):2,2024-11-10,2026-06-04,SAFECIRCUIT ELECTRIC & LIGHTING LLC
+232,SANCTUARY POOLS LLC,2,CPC1460291,Pinellas County (unincorporated + contract cities):1; Tampa:1,2025-09-25,2025-09-25,SANCTUARY POOLS LLC
+233,STUNNING BACKYARDS BY FAST BAND LLC/jose  david rivas,2,CPC1459865,Hillsborough County (unincorporated):2,2025-04-09,2025-05-28,STUNNING BACKYARDS BY FAST BAND LLC/jose  david rivas
+234,"SWIMSHAPES, LLC",2,CPC1460216,Pinellas County (unincorporated + contract cities):2,2025-01-28,2025-05-15,"SWIMSHAPES, LLC"
+235,SYMBIONT SERVICE CORPORATION/John R Bowen,2,CPC1456477,Hillsborough County (unincorporated):1; Pinellas · Clearwater:1,2025-11-26,2026-02-06,SYMBIONT SERVICE CORPORATION/John R Bowen | SYMBIONT SERVICE CORP
+236,TEMPLAR CONTRACTING/Joe Gillispie,2,CBC1255382,Hillsborough County (unincorporated):2,2024-10-07,2025-09-18,TEMPLAR CONTRACTING/Joe Gillispie
+237,THE POOL GUYZ INC/Richard Reineke,2,CPC1457545,Hillsborough County (unincorporated):1; Pasco County (unincorporated):1,2026-07-23,2026-08-05,THE POOL GUYZ INC/Richard Reineke | THE POOL GUYZ INC
+238,UNITED OUTDOOR LIVING LLC,2,CPC1460200,Tampa:2,,,UNITED OUTDOOR LIVING LLC
+239,USBR CONTRACTOR LLC,2,CGC1540109,Pasco County (unincorporated):2,2026-06-04,2026-07-16,USBR CONTRACTOR LLC
+240,VENUR CONSTRUCTION LLC,2,CGC1523860,Pinellas · Clearwater:2,2025-09-25,2025-12-18,VENUR CONSTRUCTION LLC
+241,VERGA ELECTRIC INC.,2,ER0011309,Tampa:2,2025-11-11,2025-11-11,VERGA ELECTRIC INC.
+242,VMW LUXURY POOLS,2,CPC1460952,Pasco County (unincorporated):1; Tampa:1,2025-06-02,2025-06-02,"VMW LUXURY POOLS | VMW LUXURY POOLS, LLC"
+243,VOLT ELECTRIC CORP,2,EC13009377,Tampa:2,,,VOLT ELECTRIC CORP
+244,WINWAY POOLS LLC,2,CPC1460607,Pinellas · Clearwater:2,2025-11-03,2026-04-03,WINWAY POOLS LLC
+245,ZENUN ENTERPRISES INC/Kirenia Nunez,2,CGC1512411,Hillsborough County (unincorporated):2,2025-06-02,2025-08-18,ZENUN ENTERPRISES INC/Kirenia Nunez
+246,,1,CBC1265879,Hillsborough County (unincorporated):1,2025-02-20,2025-02-20,
+247,,1,CBC1269183,Hillsborough County (unincorporated):1,2026-02-02,2026-02-02,
+248,A R M ALUMINUM INC/Michael Terrance Anderson,1,SCC056764,Hillsborough County (unincorporated):1,2026-02-17,2026-02-17,A R M ALUMINUM INC/Michael Terrance Anderson
+249,A.R.M PROPERTY SERVICES/Addiel Roger Martinez,1,CPC1460617,Hillsborough County (unincorporated):1,2025-10-22,2025-10-22,A.R.M PROPERTY SERVICES/Addiel Roger Martinez
+250,A&R BAL LLC,1,CPC1460732,Pasco County (unincorporated):1,2025-07-24,2025-07-24,A&R BAL LLC
+251,ACCENT POOL DESIGN INC,1,CPC1458975,Pasco County (unincorporated):1,2025-11-24,2025-11-24,ACCENT POOL DESIGN INC
+252,ACME ELECTRICAL SERVICES INC.,1,EC13006149,Tampa:1,2026-02-17,2026-02-17,ACME ELECTRICAL SERVICES INC.
+253,ACOTTO BUILDERS LLC,1,,Pinellas County (unincorporated + contract cities):1,2026-04-15,2026-04-15,ACOTTO BUILDERS LLC
+254,"ADAMS CONSTRUCTION SERVICES, LLC",1,CGC1510302,Tampa:1,2025-05-30,2025-05-30,"ADAMS CONSTRUCTION SERVICES, LLC"
+255,ALADDIN POOLS LLC,1,CPC1460831,Pasco County (unincorporated):1,2026-01-26,2026-01-26,ALADDIN POOLS LLC
+256,ALL AMERICAN GENERAL CONTRACTORS LLC,1,CBC1262297,Pinellas County (unincorporated + contract cities):1,2025-02-11,2025-02-11,ALL AMERICAN GENERAL CONTRACTORS LLC
+257,ALL CUSTOM STONE & TILE INC./Jason  J Bickford,1,CPC1458846,Hillsborough County (unincorporated):1,2025-04-08,2025-04-08,ALL CUSTOM STONE & TILE INC./Jason  J Bickford
+258,ALUMINUM STRUCTURES AND HOME IMPROVEMENTS/Eddy G Mora,1,RX11066991,Hillsborough County (unincorporated):1,2025-07-25,2025-07-25,ALUMINUM STRUCTURES AND HOME IMPROVEMENTS/Eddy G Mora
+259,ANAMUAH CONSTRUCTION INC,1,CGC1505151,Pinellas County (unincorporated + contract cities):1,2026-04-14,2026-04-14,ANAMUAH CONSTRUCTION INC
+260,ANCHOR MARINE & BOATLIFT CO,1,,Tampa:1,2026-02-05,2026-02-05,ANCHOR MARINE & BOATLIFT CO
+261,ANMAR BUILDERS,1,CBC1268534,Tampa:1,2025-05-08,2025-05-08,ANMAR BUILDERS
+262,AZURE POOLS,1,CPC1461379,Pasco County (unincorporated):1,2026-01-28,2026-01-28,AZURE POOLS
+263,AZURE SIGNATURE CONCEPTS LLC,1,CPC1461297,Pasco County (unincorporated):1,2026-05-07,2026-05-07,AZURE SIGNATURE CONCEPTS LLC
+264,BACH LAND DEVELOPMENT LLC/William J Bushkie,1,CBC1260502,Hillsborough County (unincorporated):1,2025-04-14,2025-04-14,BACH LAND DEVELOPMENT LLC/William J Bushkie
+265,BACKYARD VENTURES INC,1,CPC053293,Pasco County (unincorporated):1,2025-05-09,2025-05-09,BACKYARD VENTURES INC
+266,BADGER CONST & ASSOCIATES INC/Marco A Raffaele,1,CBC059783,Hillsborough County (unincorporated):1,2026-01-07,2026-01-07,BADGER CONST & ASSOCIATES INC/Marco A Raffaele
+267,BATH & KITCHEN GALLERY INC/Gennaro Joseph Ferrante,1,CBC057910,Hillsborough County (unincorporated):1,2026-06-24,2026-06-24,BATH & KITCHEN GALLERY INC/Gennaro Joseph Ferrante
+268,BCS LICENSING SECTION,1,,Pasco County (unincorporated):1,2026-02-17,2026-02-17,BCS LICENSING SECTION
+269,"BDH CONSULTING, LLC. D/B/A LOGISTX/Paul D. Kidwell",1,,Hillsborough County (unincorporated):1,2026-03-09,2026-03-09,"BDH CONSULTING, LLC. D/B/A LOGISTX/Paul D. Kidwell"
+270,BEASLEY ROOFING AND CONSTRUCTION LLC/Gregory A Beasley,1,CRC1327850,Hillsborough County (unincorporated):1,2026-08-14,2026-08-14,BEASLEY ROOFING AND CONSTRUCTION LLC/Gregory A Beasley
+271,BENZA CONSTRUCTION LLC/Nazar Hrusevych,1,CBC1269664,Hillsborough County (unincorporated):1,2026-03-19,2026-03-19,BENZA CONSTRUCTION LLC/Nazar Hrusevych
+272,BEST OLE SWIMMIN HOLE POOLS IN,1,,Pinellas · Clearwater:1,2025-04-10,2025-04-10,BEST OLE SWIMMIN HOLE POOLS IN
+273,BEST OLE SWIMMIN HOLE POOLS INC,1,,Pinellas County (unincorporated + contract cities):1,2025-03-12,2025-03-12,BEST OLE SWIMMIN HOLE POOLS INC
+274,BEST SOLUTION ELECTRICAL CORP,1,EC13012248,Pinellas County (unincorporated + contract cities):1,2025-05-13,2025-05-13,BEST SOLUTION ELECTRICAL CORP
+275,BIKINI POOLS OF FLORIDA,1,CPC1461488,Pinellas County (unincorporated + contract cities):1,2026-07-15,2026-07-15,BIKINI POOLS OF FLORIDA
+276,BLUE HERON POOLS OF FLORIDA/Brandon Chester Rist,1,CPC1459015,Hillsborough County (unincorporated):1,2025-06-13,2025-06-13,BLUE HERON POOLS OF FLORIDA/Brandon Chester Rist
+277,"BOBBY ALVAREZ, INC",1,CBC1258048,Pinellas County (unincorporated + contract cities):1,2026-06-10,2026-06-10,"BOBBY ALVAREZ, INC"
+278,BOBS POOLS & SCREENS,1,CPC1457513,Pasco County (unincorporated):1,2025-12-17,2025-12-17,BOBS POOLS & SCREENS
+279,BOUTROS CONSTRUCTION LLC,1,CBC1262525,Pinellas County (unincorporated + contract cities):1,2024-12-24,2024-12-24,BOUTROS CONSTRUCTION LLC
+280,BRITTLAN CONTRACTORS INC,1,CGC1505871,Pasco County (unincorporated):1,2026-02-27,2026-02-27,BRITTLAN CONTRACTORS INC
+281,BROCKS ELECTRIC LLC,1,ER13015883,Pasco County (unincorporated):1,2026-04-28,2026-04-28,BROCKS ELECTRIC LLC
+282,BUILDMYPOOL/Sunny Makati,1,CPC1460147,Hillsborough County (unincorporated):1,2024-11-20,2024-11-20,BUILDMYPOOL/Sunny Makati
+283,CALELLO PLUMBING LLC,1,CFC1427767,Tampa:1,2025-09-26,2025-09-26,CALELLO PLUMBING LLC
+284,CARCAMO ENTERPRISES/George Miller,1,CRC1333120,Hillsborough County (unincorporated):1,2025-11-06,2025-11-06,CARCAMO ENTERPRISES/George Miller
+285,CASS PLUMBING INC,1,CFC057412,Hillsborough County (unincorporated):1,2024-12-30,2024-12-30,CASS PLUMBING INC
+286,"CENTRAL FLORIDA POOL & SPA, LLC/Jeffrey McKinney",1,CPC1459125,Hillsborough County (unincorporated):1,2026-02-05,2026-02-05,"CENTRAL FLORIDA POOL & SPA, LLC/Jeffrey McKinney"
+287,CHALLENGER GENERAL SERVICES LLC,1,CPC1460905,Pasco County (unincorporated):1,2026-07-08,2026-07-08,CHALLENGER GENERAL SERVICES LLC
+288,CHRISTOPHER MICHAEL KNORR,1,,Pasco County (unincorporated):1,2025-07-29,2025-07-29,CHRISTOPHER MICHAEL KNORR
+289,COASTAL PALMS ELECTRICAL CONTRACTING,1,,Pinellas County (unincorporated + contract cities):1,2026-02-10,2026-02-10,COASTAL PALMS ELECTRICAL CONTRACTING
+290,COSTENA SERVICES LLC,1,EC13003223,Hillsborough County (unincorporated):1,2026-02-23,2026-02-23,COSTENA SERVICES LLC
+291,CRC BUILDERS/Brandy Nagel,1,CBC1267086,Hillsborough County (unincorporated):1,2024-11-05,2024-11-05,CRC BUILDERS/Brandy Nagel
+292,CREATIVE RESURFACING/David Joseph Mays,1,CGC1511579,Hillsborough County (unincorporated):1,2026-08-06,2026-08-06,CREATIVE RESURFACING/David Joseph Mays
+293,CSM CONSTRUCTION LLC,1,CGC1508184,Pinellas County (unincorporated + contract cities):1,2026-05-13,2026-05-13,CSM CONSTRUCTION LLC
+294,DAVID BRYAN ELECTRIC LLC,1,EC13011507,Pasco County (unincorporated):1,2026-05-28,2026-05-28,DAVID BRYAN ELECTRIC LLC
+295,DGP&S CONSTRUCTION INC/Jason Martinez,1,CGC1517403,Hillsborough County (unincorporated):1,2026-02-03,2026-02-03,DGP&S CONSTRUCTION INC/Jason Martinez
+296,DIGGLE CONSTRUCTION LLC,1,CRC1333706,Pinellas County (unincorporated + contract cities):1,2025-08-19,2025-08-19,DIGGLE CONSTRUCTION LLC
+297,DKL BUILDERS/Daniel  Kevin Longueil,1,CGC1535195,Hillsborough County (unincorporated):1,2026-03-31,2026-03-31,DKL BUILDERS/Daniel  Kevin Longueil
+298,DUC NGUYEN,1,CGC1537958,Hillsborough County (unincorporated):1,2026-06-18,2026-06-18,DUC NGUYEN
+299,DYNAMITE DEMOLITION SERVICE INC,1,CBC1263093,Pinellas · Clearwater:1,2024-10-03,2024-10-03,DYNAMITE DEMOLITION SERVICE INC
+300,EAMON WALSH CONSTRUCTION INC,1,CBC1251343,Pasco County (unincorporated):1,2026-08-28,2026-08-28,EAMON WALSH CONSTRUCTION INC
+301,ELIZABETH CONSTRUCTION LLC/Jesus Gonzalez,1,CGC1514684,Hillsborough County (unincorporated):1,2026-07-23,2026-07-23,ELIZABETH CONSTRUCTION LLC/Jesus Gonzalez
+302,FAKE,1,,Hillsborough County (unincorporated):1,2026-01-09,2026-01-09,FAKE
+303,Fake Pool,1,,Hillsborough County (unincorporated):1,2026-01-06,2026-01-06,Fake Pool
+304,FANTASY DREAM REALTY LLC/Roger Benitez,1,CPC1460306,Hillsborough County (unincorporated):1,2025-08-14,2025-08-14,FANTASY DREAM REALTY LLC/Roger Benitez
+305,FIESTA POOLS OF OCALA INC,1,CPC1458234,Pasco County (unincorporated):1,2026-06-03,2026-06-03,FIESTA POOLS OF OCALA INC
+306,FIRETHORN LANDSCAPE,1,CPC1457151,Tampa:1,2026-01-07,2026-01-07,FIRETHORN LANDSCAPE
+307,FLAMINGO POOL & SPA INC,1,CPC1457362,Pinellas · Clearwater:1,2025-07-24,2025-07-24,FLAMINGO POOL & SPA INC
+308,FLORIDA AQUATICS CUSTOM POOLS LLC,1,CPC1460204,Pinellas County (unincorporated + contract cities):1,2025-01-30,2025-01-30,FLORIDA AQUATICS CUSTOM POOLS LLC
+309,FOWCON/Jeff Norris,1,CGC1531101,Hillsborough County (unincorporated):1,2025-12-12,2025-12-12,FOWCON/Jeff Norris
+310,FREEDOM CODE COMPLIANCE/Michael Williams,1,,Hillsborough County (unincorporated):1,2025-05-06,2025-05-06,FREEDOM CODE COMPLIANCE/Michael Williams
+311,G&B LUXURY HOMES INC,1,CBC1269959,Tampa:1,,,G&B LUXURY HOMES INC
+312,G&M REMODELING & RESTORATION SERVICES LLC,1,CGC1527373,Pinellas County (unincorporated + contract cities):1,2025-09-30,2025-09-30,G&M REMODELING & RESTORATION SERVICES LLC
+313,GAS MASTERS INC/Frank L Winter,1,CFC037165,Hillsborough County (unincorporated):1,2024-10-22,2024-10-22,GAS MASTERS INC/Frank L Winter
+314,GENERAL CONTRACTORS IDK CORP/DELVIS ORTIZ,1,CGC1525596,Hillsborough County (unincorporated):1,2026-02-27,2026-02-27,GENERAL CONTRACTORS IDK CORP/DELVIS ORTIZ
+315,GERALD ENGEL,1,,Pasco County (unincorporated):1,2026-06-04,2026-06-04,GERALD ENGEL
+316,GRAND SOUTH BUILDERS LLC,1,CBC1266075,Tampa:1,2024-09-17,2024-09-17,GRAND SOUTH BUILDERS LLC
+317,GREAT ESCAPE POOLS LLC,1,CPC1460354,Pinellas County (unincorporated + contract cities):1,2025-04-24,2025-04-24,GREAT ESCAPE POOLS LLC
+318,GRUNIT POOL CONTRACTOR,1,CPC1459109,Tampa:1,,,GRUNIT POOL CONTRACTOR
+319,GULF CURRENT ELECTRIC LLC,1,EC13010044,Pasco County (unincorporated):1,2025-02-03,2025-02-03,GULF CURRENT ELECTRIC LLC
+320,HAMPE POOLS INC.,1,CPC1460302,Pinellas County (unincorporated + contract cities):1,2024-10-02,2024-10-02,HAMPE POOLS INC.
+321,HANLEY POOLS LLC/PATRICK Hanley,1,CPC1461025,Hillsborough County (unincorporated):1,2026-06-17,2026-06-17,HANLEY POOLS LLC/PATRICK Hanley
+322,HANOVER FLOORS  INC/James F Nesbitt,1,CBC1258760,Hillsborough County (unincorporated):1,2024-09-20,2024-09-20,HANOVER FLOORS  INC/James F Nesbitt
+323,"HARDEMAN LANDSCAPE NURSERY, INC.",1,CGC1535979,Tampa:1,2024-12-04,2024-12-04,"HARDEMAN LANDSCAPE NURSERY, INC."
+324,HAVERCAMP LLC DBA: ANTONELL CONSTRUCTION SERVICES/Stephen  F. Antonell,1,CGC062418,Hillsborough County (unincorporated):1,2025-07-28,2025-07-28,HAVERCAMP LLC DBA: ANTONELL CONSTRUCTION SERVICES/Stephen  F. Antonell
+325,HILLCREST CONTRACTING LLC,1,CGC1515966,Tampa:1,,,HILLCREST CONTRACTING LLC
+326,HIMES ELECTRIC COMPANY LLC,1,EC13012298,Pasco County (unincorporated):1,2025-06-16,2025-06-16,HIMES ELECTRIC COMPANY LLC
+327,HOME CONSTRUCTION LLC/FERNANDA PUPO,1,CPC1461585,Hillsborough County (unincorporated):1,2026-08-03,2026-08-03,HOME CONSTRUCTION LLC/FERNANDA PUPO
+328,HOME TECH EXTERIORS INC,1,CBC1263903,Hillsborough County (unincorporated):1,2025-11-24,2025-11-24,HOME TECH EXTERIORS INC
+329,"INNOVATIVE SOLAR, INC./Jerry  A Taracek",1,CVC56776,Hillsborough County (unincorporated):1,2025-01-24,2025-01-24,"INNOVATIVE SOLAR, INC./Jerry  A Taracek"
+330,ISKRA & SONS CONSTRUCTION LLC,1,CGC1526060,Pinellas · Clearwater:1,2025-02-11,2025-02-11,ISKRA & SONS CONSTRUCTION LLC
+331,JACK'S SWIMMIN' HOLES,1,CPC1459478,Pinellas County (unincorporated + contract cities):1,2025-04-18,2025-04-18,JACK'S SWIMMIN' HOLES
+332,"JASON ADAMS INTERNATIONAL, LLC",1,CGC1534781,Pinellas · Clearwater:1,2025-12-05,2025-12-05,"JASON ADAMS INTERNATIONAL, LLC"
+333,JB BROMLEY CONSTRUCTION INC,1,CBC1253400,Pinellas · Clearwater:1,2026-04-22,2026-04-22,JB BROMLEY CONSTRUCTION INC
+334,JEMSTONE CONSTRUCTION INC   DBA/JEMSTONE POOLS,1,CPC1457182,Pasco County (unincorporated):1,2026-06-09,2026-06-09,JEMSTONE CONSTRUCTION INC   DBA/JEMSTONE POOLS
+335,JENGRO DEVELOPMENT CORP,1,CRC1333438,Tampa:1,2025-09-19,2025-09-19,JENGRO DEVELOPMENT CORP
+336,"JJS SERVICES, INC",1,,Pinellas County (unincorporated + contract cities):1,2025-07-11,2025-07-11,"JJS SERVICES, INC"
+337,JLB NAPLES CONSTRUCTION LLC/Julio Bernal,1,CPC1460797,Hillsborough County (unincorporated):1,2026-06-04,2026-06-04,JLB NAPLES CONSTRUCTION LLC/Julio Bernal
+338,JOE GOLDSMITH CONSTRUCTION,1,CPC1459406,Tampa:1,2025-01-20,2025-01-20,JOE GOLDSMITH CONSTRUCTION
+339,JUST IN TIME BUILDING LLC/Justin  cory Czternastek,1,CBC1267638,Hillsborough County (unincorporated):1,2026-05-14,2026-05-14,JUST IN TIME BUILDING LLC/Justin  cory Czternastek
+340,K & D ELECTRIC INC OF DAYTONA,1,EC13001811,Tampa:1,2025-12-30,2025-12-30,K & D ELECTRIC INC OF DAYTONA
+341,KATHY'S POOL SUPPLIES DBA PINCH A PENNY 191/James Rutledge,1,CPC1460920,Hillsborough County (unincorporated):1,2026-05-08,2026-05-08,KATHY'S POOL SUPPLIES DBA PINCH A PENNY 191/James Rutledge
+342,Keith Taylor,1,CGC1535727,Hillsborough County (unincorporated):1,2026-06-24,2026-06-24,Keith Taylor
+343,"KINETIC GAS, CORP",1,,Pinellas County (unincorporated + contract cities):1,2026-06-15,2026-06-15,"KINETIC GAS, CORP"
+344,LAKE POOL AND TILE INC,1,,Pasco County (unincorporated):1,2025-07-29,2025-07-29,LAKE POOL AND TILE INC
+345,LARCO POOLS LLC,1,CPC1459853,Pinellas County (unincorporated + contract cities):1,2025-03-13,2025-03-13,LARCO POOLS LLC
+346,LEGION CONSTRUCTION LLC,1,CBC1260172,Hillsborough County (unincorporated):1,2025-06-16,2025-06-16,LEGION CONSTRUCTION LLC
+347,LES WADE INTERIOR POOL SERVICES INC,1,CPC1457172,Pasco County (unincorporated):1,2024-10-22,2024-10-22,LES WADE INTERIOR POOL SERVICES INC
+348,LEVEL CONSTRUCTION AND DESIGN LLC,1,CGC1531048,Pinellas County (unincorporated + contract cities):1,2025-02-14,2025-02-14,LEVEL CONSTRUCTION AND DESIGN LLC
+349,LEVEL FOUNDATION REPAIR LLC,1,CGC1535620,Tampa:1,2025-09-18,2025-09-18,LEVEL FOUNDATION REPAIR LLC
+350,LIGHTNING BAY ELECTRIC,1,EC13013571,Pinellas County (unincorporated + contract cities):1,2025-10-27,2025-10-27,LIGHTNING BAY ELECTRIC
+351,LIGHTNING POOLS AND PAVERS,1,CPC1458401,Pinellas County (unincorporated + contract cities):1,2026-02-10,2026-02-10,LIGHTNING POOLS AND PAVERS
+352,LUNA CONSTRUCTION SERVICES LLC,1,CBC1265649,Tampa:1,2026-01-08,2026-01-08,LUNA CONSTRUCTION SERVICES LLC
+353,LUXURY BATH SYSTEMS/Jamie M Gillespie,1,CGC1521270,Hillsborough County (unincorporated):1,2026-06-08,2026-06-08,LUXURY BATH SYSTEMS/Jamie M Gillespie
+354,M & I BUILDERS INC,1,CBC1262506,Tampa:1,2026-01-21,2026-01-21,M & I BUILDERS INC
+355,"M&G BROTHERS CONSTRUCTION, LLC/CARLOS A MEJIA",1,CPC1460884,Hillsborough County (unincorporated):1,2026-01-29,2026-01-29,"M&G BROTHERS CONSTRUCTION, LLC/CARLOS A MEJIA"
+356,MAGNIFY GROUP INC.,1,CBC1261582,Tampa:1,,,MAGNIFY GROUP INC.
+357,MANDALAY HOMES INC,1,CRC1326673,Hillsborough County (unincorporated):1,2025-07-08,2025-07-08,MANDALAY HOMES INC
+358,MANDY ELECTRIC INC,1,EC13004396,Pasco County (unincorporated):1,2025-07-30,2025-07-30,MANDY ELECTRIC INC
+359,MARIO AZCARRAGA,1,,Pasco County (unincorporated):1,2025-05-07,2025-05-07,MARIO AZCARRAGA
+360,MCBAINE ELECTRIC LLC/Craig McBaine,1,EC13014193,Hillsborough County (unincorporated):1,2026-04-08,2026-04-08,MCBAINE ELECTRIC LLC/Craig McBaine
+361,MDS BUILDERS INC,1,CGC043314,Tampa:1,2024-12-05,2024-12-05,MDS BUILDERS INC
+362,MENAPACE WIRED INC,1,EC13011091,Pinellas County (unincorporated + contract cities):1,2025-06-26,2025-06-26,MENAPACE WIRED INC
+363,"MILANA CUSTOM HOMES, LLC",1,CBC1262468,Tampa:1,,,"MILANA CUSTOM HOMES, LLC"
+364,MJR DREAM HOMES INC,1,CRC1328269,Tampa:1,2025-11-03,2025-11-03,MJR DREAM HOMES INC
+365,MODERN ARCHITECTURE AND CONSTRUCTIONS/adrian costache costache,1,CPC1459489,Hillsborough County (unincorporated):1,2026-03-11,2026-03-11,MODERN ARCHITECTURE AND CONSTRUCTIONS/adrian costache costache
+366,MOREIRA NEW CONSTRUCTION LLC/Lazaro Moreira,1,CBC1268265,Hillsborough County (unincorporated):1,2026-06-08,2026-06-08,MOREIRA NEW CONSTRUCTION LLC/Lazaro Moreira
+367,N&Y CONTRACTORS LLC/YERANDY RODRIGUEZ,1,CPC1461017,Hillsborough County (unincorporated):1,2025-12-09,2025-12-09,N&Y CONTRACTORS LLC/YERANDY RODRIGUEZ
+368,NEW WAVE GENERAL CONTRACTING/Nathaniel Greg Zimmer,1,CGC1519150,Hillsborough County (unincorporated):1,2026-01-05,2026-01-05,NEW WAVE GENERAL CONTRACTING/Nathaniel Greg Zimmer
+369,NEXUS CONSTRUCTION CORP/Walter R Urquia,1,CBC1261801,Hillsborough County (unincorporated):1,2025-06-30,2025-06-30,NEXUS CONSTRUCTION CORP/Walter R Urquia
+370,NOVELTY HOUSES LLC,1,CRC1334367,Tampa:1,,,NOVELTY HOUSES LLC
+371,OMARS CONSTRUCTION OF TAMPA INC,1,CGC059872,Tampa:1,2025-12-17,2025-12-17,OMARS CONSTRUCTION OF TAMPA INC
+372,OTERO-COSSIO CONSTRUCTION LLC/Francisco Javier Otero-Cossio,1,CBC1263431,Hillsborough County (unincorporated):1,2025-03-20,2025-03-20,OTERO-COSSIO CONSTRUCTION LLC/Francisco Javier Otero-Cossio
+373,OVERTIME ELECTRIC/Jasiel Jose  Alfaro Vitos,1,EC13015676,Hillsborough County (unincorporated):1,2026-07-01,2026-07-01,OVERTIME ELECTRIC/Jasiel Jose  Alfaro Vitos
+374,PARADISE CUSTOM CONSTRUCTIONS,1,CBC1261627,Tampa:1,2026-02-16,2026-02-16,PARADISE CUSTOM CONSTRUCTIONS
+375,PAYNE POOLS TAMPA LLC,1,CPC1460793,Pasco County (unincorporated):1,2026-08-11,2026-08-11,PAYNE POOLS TAMPA LLC
+376,PICCS POOLS LLC/Charles Piccirilli,1,CPC1460641,Hillsborough County (unincorporated):1,2025-06-16,2025-06-16,PICCS POOLS LLC/Charles Piccirilli
+377,PINELLAS COUNTY ELECTRIC LLC,1,EC13004964,Pinellas County (unincorporated + contract cities):1,2026-02-03,2026-02-03,PINELLAS COUNTY ELECTRIC LLC
+378,POMBOS CONTRACTING SERVICES/YOESLANDY POMBO,1,CRC1328960,Hillsborough County (unincorporated):1,2026-04-22,2026-04-22,POMBOS CONTRACTING SERVICES/YOESLANDY POMBO
+379,POOL MATTERS LLC,1,CPC1457409,Pasco County (unincorporated):1,2025-04-23,2025-04-23,POOL MATTERS LLC
+380,POOL PROS BUILDER LLC,1,CPC1460136,Tampa:1,,,POOL PROS BUILDER LLC
+381,POOLS AND PAVERS BY GEORGE INC,1,CPC1459037,Pasco County (unincorporated):1,2026-02-18,2026-02-18,POOLS AND PAVERS BY GEORGE INC
+382,POOLS INTERNATIONAL LLC,1,CPC1458101,Pinellas County (unincorporated + contract cities):1,2026-06-12,2026-06-12,POOLS INTERNATIONAL LLC
+383,POWERSERVICES BIZ LLC,1,EC0002121,Pinellas County (unincorporated + contract cities):1,2026-02-11,2026-02-11,POWERSERVICES BIZ LLC
+384,PRECISION ELECTRIC OF TAMPA BAY INC,1,EC13007022,Pinellas County (unincorporated + contract cities):1,2026-06-18,2026-06-18,PRECISION ELECTRIC OF TAMPA BAY INC
+385,PRIME POOLS FL LLC,1,CPC1461063,Pinellas County (unincorporated + contract cities):1,2025-11-14,2025-11-14,PRIME POOLS FL LLC
+386,"PRIVATE PROVIDER - SANDS ENGINEERING, LLC",1,,Tampa:1,,,"PRIVATE PROVIDER - SANDS ENGINEERING, LLC"
+387,"PRIVATE PROVIDER - VIRTUAL INSPECTION SERVICES LLC, PRIVATE PROVIDER - FILLMORE PROFESSIONAL SOLUTIONS",1,,Tampa:1,,,"PRIVATE PROVIDER - VIRTUAL INSPECTION SERVICES LLC, PRIVATE PROVIDER - FILLMORE PROFESSIONAL SOLUTIONS"
+388,PRO PAINTING AND CONSTRUCTION/Thomas Mike Griffin,1,CBC1257612,Hillsborough County (unincorporated):1,2024-09-05,2024-09-05,PRO PAINTING AND CONSTRUCTION/Thomas Mike Griffin
+389,"PROACTIVE CONSTRUCTION + DESIGN, LLC/Brian Wesley",1,CBC1263413,Hillsborough County (unincorporated):1,2026-03-25,2026-03-25,"PROACTIVE CONSTRUCTION + DESIGN, LLC/Brian Wesley"
+390,PROGRESSIVE ELECTRIC INC,1,EC13005096,Pinellas County (unincorporated + contract cities):1,2026-07-21,2026-07-21,PROGRESSIVE ELECTRIC INC
+391,REALCITY  CONSTRUCTION LLC/AYAM RODRIGUEZ PEREZ,1,CGC1530911,Hillsborough County (unincorporated):1,2026-02-12,2026-02-12,REALCITY  CONSTRUCTION LLC/AYAM RODRIGUEZ PEREZ
+392,RED ROYAL SERVICES,1,EC13004626,Pinellas County (unincorporated + contract cities):1,2025-11-19,2025-11-19,RED ROYAL SERVICES
+393,REX FARLOW CONSTRUCTION INC,1,CGC1505796,Hillsborough County (unincorporated):1,2026-07-07,2026-07-07,REX FARLOW CONSTRUCTION INC
+394,ROBERT J SKINNER INC,1,CPC1457415,Pasco County (unincorporated):1,2025-09-26,2025-09-26,ROBERT J SKINNER INC
+395,ROBINSON'S ALUMINUM/Mickey Flowers,1,,Hillsborough County (unincorporated):1,2025-06-26,2025-06-26,ROBINSON'S ALUMINUM/Mickey Flowers
+396,"ROCK STAR POOLS & WATERFALLS, INC.",1,CPC1458909,Tampa:1,2025-04-25,2025-04-25,"ROCK STAR POOLS & WATERFALLS, INC."
+397,SALCO SCREENS INC/Tony Saladino III,1,,Hillsborough County (unincorporated):1,2026-04-10,2026-04-10,SALCO SCREENS INC/Tony Saladino III
+398,SFC CONSTRUCTION/Amine Rahal,1,CRC1335023,Hillsborough County (unincorporated):1,2026-04-06,2026-04-06,SFC CONSTRUCTION/Amine Rahal
+399,SHELBY CONSTRUCTION/Amy Foley,1,CBC1267812,Hillsborough County (unincorporated):1,2025-08-15,2025-08-15,SHELBY CONSTRUCTION/Amy Foley
+400,"SHONAVE CUSTOM HOMES, INC/Shon Altbaier-Meere",1,CRC1335445,Hillsborough County (unincorporated):1,2026-03-30,2026-03-30,"SHONAVE CUSTOM HOMES, INC/Shon Altbaier-Meere"
+401,SHORE COMMERCIAL INC,1,EC13004101,Tampa:1,,,SHORE COMMERCIAL INC
+402,SIGNATURE SOLUTIONS CORP.,1,CPC1459721,Pinellas County (unincorporated + contract cities):1,2025-09-17,2025-09-17,SIGNATURE SOLUTIONS CORP.
+403,SKY'S THE LIMIT & PAVERS INC,1,CBC1267413,Pinellas County (unincorporated + contract cities):1,2025-04-21,2025-04-21,SKY'S THE LIMIT & PAVERS INC
+404,SMART HOME ELECTRIC LLC,1,EC13012172,Pinellas County (unincorporated + contract cities):1,2024-11-08,2024-11-08,SMART HOME ELECTRIC LLC
+405,SOHO BUILDERS RESIDENTIAL AND COMMERCIAL PROJECTS,1,CBC1265495,Tampa:1,,,SOHO BUILDERS RESIDENTIAL AND COMMERCIAL PROJECTS
+406,SOLAR HYBRID ELECTRIC LLC,1,EC13009757,Pinellas County (unincorporated + contract cities):1,2025-08-07,2025-08-07,SOLAR HYBRID ELECTRIC LLC
+407,SOLAR SOURCE/Wayne D Wallace,1,CVC056646,Hillsborough County (unincorporated):1,2026-01-22,2026-01-22,SOLAR SOURCE/Wayne D Wallace
+408,SOLEIL DESIGN BUILD INC,1,CBC056720,Tampa:1,,,SOLEIL DESIGN BUILD INC
+409,SOLID FOUNDATION SOLUTIONS LLC,1,CBC1267322,Tampa:1,2025-11-03,2025-11-03,SOLID FOUNDATION SOLUTIONS LLC
+410,SOUTHEASTERN FACILITY MAINTENANCE LLC/Sean Burke,1,CGC1535857,Hillsborough County (unincorporated):1,2026-07-08,2026-07-08,SOUTHEASTERN FACILITY MAINTENANCE LLC/Sean Burke
+411,"SOUTHERN CONSTRUCTION INDUSTRIES, INC./Blair Johnson",1,CGC1526952,Hillsborough County (unincorporated):1,2025-05-01,2025-05-01,"SOUTHERN CONSTRUCTION INDUSTRIES, INC./Blair Johnson"
+412,SOUTHSHORE CONSTRUCTION LLC,1,CGC1517322,Hillsborough County (unincorporated):1,2025-08-11,2025-08-11,SOUTHSHORE CONSTRUCTION LLC
+413,"SRQ BUILDING SERVICES, INC",1,EC13006985,Pinellas County (unincorporated + contract cities):1,2025-07-01,2025-07-01,"SRQ BUILDING SERVICES, INC"
+414,STABLE FOUNDATION SOLUTIONS INC,1,CBC1263287,Tampa:1,2024-12-20,2024-12-20,STABLE FOUNDATION SOLUTIONS INC
+415,SUGARMILL WOODS POOL & SPA SERVICE LLC,1,CPC1459560,Pasco County (unincorporated):1,2026-07-24,2026-07-24,SUGARMILL WOODS POOL & SPA SERVICE LLC
+416,SUNCOAST ENERGY SYSTEMS INC,1,,Tampa:1,2026-01-23,2026-01-23,SUNCOAST ENERGY SYSTEMS INC
+417,SUNCOAST WRECKING AND ASSET RECOVERY LLC,1,,Pinellas County (unincorporated + contract cities):1,2025-09-02,2025-09-02,SUNCOAST WRECKING AND ASSET RECOVERY LLC
+418,SUNRISE ELECTRIC,1,EC13010400,Pinellas County (unincorporated + contract cities):1,2025-01-14,2025-01-14,SUNRISE ELECTRIC
+419,"SUNTAN POOLS, LLC/Alberto A Labrada",1,CPC1459866,Hillsborough County (unincorporated):1,2025-02-12,2025-02-12,"SUNTAN POOLS, LLC/Alberto A Labrada"
+420,SWENSON CONSTRUCTION   LLC/Thayne W Swenson,1,CGC1513457,Hillsborough County (unincorporated):1,2025-05-12,2025-05-12,SWENSON CONSTRUCTION   LLC/Thayne W Swenson
+421,TAMPA BAY CONTRACTING CO LLC/Steven  Theodore Anthony,1,CBC1262377,Hillsborough County (unincorporated):1,2025-03-27,2025-03-27,TAMPA BAY CONTRACTING CO LLC/Steven  Theodore Anthony
+422,TAMPA BAY QUALITY BUILDERS,1,CRC1333914,Tampa:1,2025-11-30,2025-11-30,TAMPA BAY QUALITY BUILDERS
+423,"TAMPA STANDARD CONSTRUCTION, LLC/Matt Mobley",1,CBC1258843,Hillsborough County (unincorporated):1,2024-10-30,2024-10-30,"TAMPA STANDARD CONSTRUCTION, LLC/Matt Mobley"
+424,TCD ELECTRIC INC,1,EC0002166,Tampa:1,2025-09-26,2025-09-26,TCD ELECTRIC INC
+425,"TERRANOVA LANDSCAPES AND DESIGNS, INC",1,CGC1535649,Tampa:1,2025-07-15,2025-07-15,"TERRANOVA LANDSCAPES AND DESIGNS, INC"
+426,THE ONE ESTATE GROUP LLC,1,CGC1536286,Pinellas County (unincorporated + contract cities):1,2025-03-28,2025-03-28,THE ONE ESTATE GROUP LLC
+427,"THE RENAISSANCE MEN, LLC",1,CBC1261792,Pinellas · Clearwater:1,2026-03-17,2026-03-17,"THE RENAISSANCE MEN, LLC"
+428,TIDWELL ELECTRIC CO INC/Frank I Tidwell,1,EC0002506,Hillsborough County (unincorporated):1,2025-09-24,2025-09-24,TIDWELL ELECTRIC CO INC/Frank I Tidwell
+429,TOM PICI & SONS BUILDERS INC,1,CBC1250749,Pinellas · Clearwater:1,2024-12-09,2024-12-09,TOM PICI & SONS BUILDERS INC
+430,TRITON DEMOLITION AND EXCAVATION,1,CGC1520734,Pinellas · Clearwater:1,2025-08-27,2025-08-27,TRITON DEMOLITION AND EXCAVATION
+431,ULTIMATE POOL REMODEL,1,CPC1461199,Tampa:1,2026-02-02,2026-02-02,ULTIMATE POOL REMODEL
+432,"URBAN DWELLINGS PROPERTY GROUP, LLC",1,CPC1457665,Tampa:1,,,"URBAN DWELLINGS PROPERTY GROUP, LLC"
+433,VALLA CONSTRUCTION LLC,1,CBC1265023,Tampa:1,2024-11-27,2024-11-27,VALLA CONSTRUCTION LLC
+434,VELÁSQUEZ AND COLINDRES/Marlon Ivan Colindres,1,CGC1512648,Hillsborough County (unincorporated):1,2025-08-20,2025-08-20,VELÁSQUEZ AND COLINDRES/Marlon Ivan Colindres
+435,VELOCITY CONSTRUCTION/Matthew Kennedy,1,CGC1533087,Hillsborough County (unincorporated):1,2024-12-03,2024-12-03,VELOCITY CONSTRUCTION/Matthew Kennedy
+436,W F SEXTON INC,1,CGC003886,Pinellas County (unincorporated + contract cities):1,2025-01-15,2025-01-15,W F SEXTON INC
+437,WESTCOAST ELECTRIC,1,EC13006487,Tampa:1,,,WESTCOAST ELECTRIC
+438,WINDSTAR HOMES INC,1,CRC045776,Hillsborough County (unincorporated):1,2025-01-14,2025-01-14,WINDSTAR HOMES INC
+439,YMY ELECTRIC LLC/Yordanis Allegue,1,EC13011391,Hillsborough County (unincorporated):1,2025-09-15,2025-09-15,YMY ELECTRIC LLC/Yordanis Allegue
+440,YOUNG CARDINAL ELECTRIC LLC/Adam  Scott Nelson,1,EC13009930,Hillsborough County (unincorporated):1,2025-10-16,2025-10-16,YOUNG CARDINAL ELECTRIC LLC/Adam  Scott Nelson
