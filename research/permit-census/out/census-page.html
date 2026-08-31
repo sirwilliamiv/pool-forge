@@ -1,0 +1,402 @@
+<title>Tampa Bay Pool Builder Census</title>
+<style>
+:root {
+  --paper:#FAF9F5; --ink:#141413; --slate:#697485; --hairline:#D2D9E2;
+  --accent:#00B6FF; --tint:#E5F4FF; --surface:#FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#141413; --ink:#FAF9F5; --slate:#9AA4B2; --hairline:#33363B;
+    --accent:#00B6FF; --tint:#0E2A3A; --surface:#1C1D1F;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#141413; --ink:#FAF9F5; --slate:#9AA4B2; --hairline:#33363B;
+  --accent:#00B6FF; --tint:#0E2A3A; --surface:#1C1D1F;
+}
+* { box-sizing:border-box; }
+body { background:var(--paper); color:var(--ink); margin:0;
+  font-family:"Archivo","SF Pro Display",system-ui,helvetica,sans-serif;
+  font-size:15px; line-height:1.55; }
+.mono { font-family:"Spline Sans Mono","SF Mono",menlo,monospace; font-variant-numeric:tabular-nums; }
+main { max-width:960px; margin:0 auto; padding:56px 28px 80px; }
+.eyebrow { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--slate);
+  font-weight:600; margin-bottom:14px; }
+h1 { font-size:clamp(30px,5vw,44px); font-weight:700; letter-spacing:-0.02em; line-height:1.05;
+  margin:0 0 10px; text-wrap:balance; }
+.dek { color:var(--slate); max-width:62ch; margin:0 0 8px; }
+h2 { font-size:13px; letter-spacing:.12em; text-transform:uppercase; font-weight:700;
+  margin:0 0 18px; padding-top:26px; border-top:1px solid var(--hairline); }
+section { margin-top:44px; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:0;
+  border:1px solid var(--hairline); border-radius:6px; overflow:hidden; margin-top:36px; }
+.tile { padding:18px 20px 16px; background:var(--surface); border-left:1px solid var(--hairline); }
+.tile:first-child { border-left:none; }
+.tnum { font-size:32px; font-weight:700; letter-spacing:-0.02em; }
+.tnum em { font-style:normal; color:var(--accent); }
+.tsub { color:var(--slate); font-size:12.5px; margin-top:2px; }
+.brow,.jrow { display:grid; grid-template-columns:230px 1fr; gap:12px; align-items:center;
+  padding:3px 0; }
+.bname,.jname { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.btrack { position:relative; height:16px; display:flex; align-items:center; }
+.bfill { height:12px; background:var(--accent); border-radius:0 3px 3px 0; min-width:2px; }
+.brow:hover .bfill,.jrow:hover .bfill { filter:brightness(.85); }
+.bval { font-family:"Spline Sans Mono",menlo,monospace; font-size:12px; margin-left:8px;
+  color:var(--ink); font-variant-numeric:tabular-nums; }
+.tiers { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--hairline);
+  border:1px solid var(--hairline); border-radius:6px; overflow:hidden; }
+.tier { background:var(--surface); padding:14px 16px; }
+.tcount { font-size:24px; font-weight:700; }
+.tlabel { font-size:12px; color:var(--slate); }
+.tablewrap { overflow-x:auto; border:1px solid var(--hairline); border-radius:6px; }
+table { border-collapse:collapse; width:100%; min-width:760px; background:var(--surface); }
+th { text-align:left; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--slate); padding:10px 12px; border-bottom:1px solid var(--hairline); }
+td { padding:8px 12px; border-bottom:1px solid var(--hairline); vertical-align:top; font-size:13.5px; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:var(--tint); }
+.rk { color:var(--slate); width:36px; }
+.nm { font-weight:600; }
+.pv { width:130px; }
+.tbar { height:4px; background:var(--tint); border-radius:2px; margin-top:5px; }
+.tbar div { height:4px; background:var(--accent); border-radius:2px; }
+.jr { color:var(--slate); font-size:12.5px; }
+.lc { font-size:12px; color:var(--slate); white-space:nowrap; }
+.note { color:var(--slate); font-size:13px; max-width:70ch; }
+.note strong { color:var(--ink); }
+ul.note { padding-left:18px; } ul.note li { margin-bottom:6px; }
+footer { margin-top:56px; padding-top:18px; border-top:1px solid var(--hairline);
+  color:var(--slate); font-size:12px; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Spline+Sans+Mono:wght@400;600&display=swap">
+<main>
+  <div class="eyebrow">Pool Forge research · permit records, Sep 2024 to Aug 2026</div>
+  <h1>Tampa Bay Pool Builder Census</h1>
+  <p class="dek">Every residential pool permit filed in Hillsborough, Pinellas, and Pasco over 24 months,
+  pulled from the counties' permit systems, deduped by contractor name and state license.
+  Ranked by volume, this is the beta prospect list in call order.</p>
+
+  <div class="tiles">
+    <div class="tile"><div class="tnum"><em>440</em></div><div class="tsub">distinct licensed contractors pulled a pool permit</div></div>
+    <div class="tile"><div class="tnum">121</div><div class="tsub">built at steady pace (6+ permits), the real builder market</div></div>
+    <div class="tile"><div class="tnum">6,516</div><div class="tsub">residential pool permits across 22 jurisdictions</div></div>
+    <div class="tile"><div class="tnum">41%</div><div class="tsub">of attributed volume sits with the top 10 shops</div></div>
+  </div>
+
+  <section>
+    <h2>Volume tiers · contractors by 24-month permit count</h2>
+    <div class="tiers"><div class="tier"><div class="tcount mono">39</div><div class="tlabel">24+ permits</div></div><div class="tier"><div class="tcount mono">34</div><div class="tlabel">12 to 23 permits</div></div><div class="tier"><div class="tcount mono">48</div><div class="tlabel">6 to 11 permits</div></div><div class="tier"><div class="tcount mono">124</div><div class="tlabel">2 to 5 permits</div></div><div class="tier"><div class="tcount mono">195</div><div class="tlabel">1 permits</div></div></div>
+    <p class="note" style="margin-top:14px">The 195 one-permit entries are mostly GCs, custom home
+    builders, and out-of-market firms, not pool companies. The sellable market is the
+    121 shops at 6+ permits; the 39 shops at 24+ (a pool a month or better)
+    are the ones with multiple designers and a live price-book problem.</p>
+  </section>
+
+  <section>
+    <h2>Top 25 by permit volume</h2>
+    <div class="brow" title="Hillsborough 351 · Pasco 222 · Tampa 11">
+      <div class="bname">Tampa Bay Pools On The Gulf LLC</div>
+      <div class="btrack"><div class="bfill" style="width:100.0%"></div>
+      <span class="bval">584</span></div></div>
+<div class="brow" title="Pasco 197 · Hillsborough 42 · Pinellas Co 13 · Tampa 6 · Clearwater 3">
+      <div class="bname">Gulfstream Pools &amp; Spas Inc</div>
+      <div class="btrack"><div class="bfill" style="width:44.7%"></div>
+      <span class="bval">261</span></div></div>
+<div class="brow" title="Tampa 126 · Hillsborough 53 · Pasco 28">
+      <div class="bname">Trendsetter Pools LLC</div>
+      <div class="btrack"><div class="bfill" style="width:35.4%"></div>
+      <span class="bval">207</span></div></div>
+<div class="brow" title="Hillsborough 56 · Pasco 55 · Pinellas Co 34 · Tampa 30 · Clearwater 18">
+      <div class="bname">Islandway Pools, LLC</div>
+      <div class="btrack"><div class="bfill" style="width:33.0%"></div>
+      <span class="bval">193</span></div></div>
+<div class="brow" title="Hillsborough 65 · Pasco 55 · Pinellas Co 28 · Tampa 13 · Clearwater 6">
+      <div class="bname">Pool Perfection LLC</div>
+      <div class="btrack"><div class="bfill" style="width:28.6%"></div>
+      <span class="bval">167</span></div></div>
+<div class="brow" title="Pasco 65 · Hillsborough 52 · Tampa 23 · Pinellas Co 6 · Clearwater 4">
+      <div class="bname">Cody Pools Inc</div>
+      <div class="btrack"><div class="bfill" style="width:25.7%"></div>
+      <span class="bval">150</span></div></div>
+<div class="brow" title="Hillsborough 64 · Pasco 30 · Pinellas Co 21 · Tampa 7 · Clearwater 5">
+      <div class="bname">Premier Pools &amp; Spas Of Tampa LLC</div>
+      <div class="btrack"><div class="bfill" style="width:21.7%"></div>
+      <span class="bval">127</span></div></div>
+<div class="brow" title="Hillsborough 54 · Pasco 43 · Tampa 12 · Pinellas Co 4 · Clearwater 1">
+      <div class="bname">Dynasty Pools And Spas Corp</div>
+      <div class="btrack"><div class="bfill" style="width:19.5%"></div>
+      <span class="bval">114</span></div></div>
+<div class="brow" title="Hillsborough 109 · Tampa 1">
+      <div class="bname">Bella Differenza Construction</div>
+      <div class="btrack"><div class="bfill" style="width:18.8%"></div>
+      <span class="bval">110</span></div></div>
+<div class="brow" title="Tampa 43 · Pasco 33 · Hillsborough 28">
+      <div class="bname">Natural Springs Pools Inc</div>
+      <div class="btrack"><div class="bfill" style="width:17.8%"></div>
+      <span class="bval">104</span></div></div>
+<div class="brow" title="Pasco 29 · Pinellas Co 25 · Hillsborough 19 · Tampa 10 · Clearwater 5">
+      <div class="bname">Tropical Pools And Pavers LLC</div>
+      <div class="btrack"><div class="bfill" style="width:15.1%"></div>
+      <span class="bval">88</span></div></div>
+<div class="brow" title="Pasco 44 · Hillsborough 26 · Tampa 10">
+      <div class="bname">Patio Pools Inc</div>
+      <div class="btrack"><div class="bfill" style="width:13.7%"></div>
+      <span class="bval">80</span></div></div>
+<div class="brow" title="Tampa 53 · Pasco 23 · Hillsborough 3">
+      <div class="bname">Blue Sky Pools</div>
+      <div class="btrack"><div class="bfill" style="width:13.5%"></div>
+      <span class="bval">79</span></div></div>
+<div class="brow" title="Pasco 71 · Hillsborough 7">
+      <div class="bname">Totally Blu Builders Inc</div>
+      <div class="btrack"><div class="bfill" style="width:13.4%"></div>
+      <span class="bval">78</span></div></div>
+<div class="brow" title="Pasco 27 · Hillsborough 26 · Tampa 14 · Pinellas Co 7 · Clearwater 1">
+      <div class="bname">Larsens Pool &amp; Spa LLC</div>
+      <div class="btrack"><div class="bfill" style="width:12.8%"></div>
+      <span class="bval">75</span></div></div>
+<div class="brow" title="Hillsborough 57 · Tampa 10 · Pasco 7">
+      <div class="bname">Wahoo Pools Group Inc</div>
+      <div class="btrack"><div class="bfill" style="width:12.7%"></div>
+      <span class="bval">74</span></div></div>
+<div class="brow" title="Hillsborough 36 · Pasco 21 · Pinellas Co 9 · Clearwater 3">
+      <div class="bname">Mandalay Pools And Spas</div>
+      <div class="btrack"><div class="bfill" style="width:11.8%"></div>
+      <span class="bval">69</span></div></div>
+<div class="brow" title="Pinellas Co 22 · Tampa 13 · Hillsborough 12 · Pasco 12 · Clearwater 1">
+      <div class="bname">Pcs Pools LLC</div>
+      <div class="btrack"><div class="bfill" style="width:10.3%"></div>
+      <span class="bval">60</span></div></div>
+<div class="brow" title="Tampa 20 · Pasco 16 · Hillsborough 8 · Pinellas Co 8 · Clearwater 6">
+      <div class="bname">Landmark Pools Inc</div>
+      <div class="btrack"><div class="bfill" style="width:9.9%"></div>
+      <span class="bval">58</span></div></div>
+<div class="brow" title="Hillsborough 26 · Pasco 24 · Tampa 6 · Pinellas Co 1">
+      <div class="bname">Paradise Pools Of Tampa Bay</div>
+      <div class="btrack"><div class="bfill" style="width:9.8%"></div>
+      <span class="bval">57</span></div></div>
+<div class="brow" title="Pasco 24 · Hillsborough 16 · Tampa 15 · Clearwater 1">
+      <div class="bname">A Better Pool &amp; Spa Service LLC</div>
+      <div class="btrack"><div class="bfill" style="width:9.6%"></div>
+      <span class="bval">56</span></div></div>
+<div class="brow" title="Pasco 36 · Hillsborough 6 · Pinellas Co 3 · Clearwater 3">
+      <div class="bname">Hawaiian Island Pools</div>
+      <div class="btrack"><div class="bfill" style="width:8.2%"></div>
+      <span class="bval">48</span></div></div>
+<div class="brow" title="Pasco 35 · Hillsborough 8 · Pinellas Co 4 · Tampa 1">
+      <div class="bname">Pettit Fiberglass Pools</div>
+      <div class="btrack"><div class="bfill" style="width:8.2%"></div>
+      <span class="bval">48</span></div></div>
+<div class="brow" title="Hillsborough 25 · Pasco 20">
+      <div class="bname">Coast To Coast Pools</div>
+      <div class="btrack"><div class="bfill" style="width:7.7%"></div>
+      <span class="bval">45</span></div></div>
+<div class="brow" title="Hillsborough 16 · Tampa 16 · Pasco 8 · Pinellas Co 2 · Clearwater 1">
+      <div class="bname">Hive Outdoor Living LLC</div>
+      <div class="btrack"><div class="bfill" style="width:7.4%"></div>
+      <span class="bval">43</span></div></div>
+
+  </section>
+
+  <section>
+    <h2>Where the permits are · attributed volume by jurisdiction</h2>
+    <div class="jrow"><div class="jname">Hillsborough</div>
+      <div class="btrack"><div class="bfill" style="width:100.0%"></div>
+      <span class="bval">1852</span></div></div>
+<div class="jrow"><div class="jname">Pasco</div>
+      <div class="btrack"><div class="bfill" style="width:87.2%"></div>
+      <span class="bval">1615</span></div></div>
+<div class="jrow"><div class="jname">Tampa</div>
+      <div class="btrack"><div class="bfill" style="width:42.9%"></div>
+      <span class="bval">795</span></div></div>
+<div class="jrow"><div class="jname">Pinellas Co</div>
+      <div class="btrack"><div class="bfill" style="width:28.2%"></div>
+      <span class="bval">523</span></div></div>
+<div class="jrow"><div class="jname">Clearwater</div>
+      <div class="btrack"><div class="bfill" style="width:6.7%"></div>
+      <span class="bval">125</span></div></div>
+
+    <p class="note" style="margin-top:14px">Another 1,473 permits have no machine-readable contractor:
+    St. Petersburg (777) gates its records behind a login, and the smaller Pinellas cities
+    (Largo, Dunedin, the beach towns) have no public detail pages. Their permits are counted
+    above; their builders are undercounted in the rankings, mostly affecting Pinellas-only shops.</p>
+  </section>
+
+  <section>
+    <h2>The call list · top 50</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>#</th><th>Contractor</th><th>Permits</th><th>Footprint</th><th>License</th></tr></thead>
+      <tbody><tr><td class="mono rk">1</td><td class="nm">Tampa Bay Pools On The Gulf LLC</td>
+      <td class="pv"><span class="mono">584</span><div class="tbar"><div style="width:100.0%"></div></div></td>
+      <td class="jr">Hillsborough 351 · Pasco 222 · Tampa 11</td><td class="mono lc">CPC1460499</td></tr>
+<tr><td class="mono rk">2</td><td class="nm">Gulfstream Pools &amp; Spas Inc</td>
+      <td class="pv"><span class="mono">261</span><div class="tbar"><div style="width:44.7%"></div></div></td>
+      <td class="jr">Pasco 197 · Hillsborough 42 · Pinellas Co 13 · Tampa 6 · Clearwater 3</td><td class="mono lc">CPC1458745</td></tr>
+<tr><td class="mono rk">3</td><td class="nm">Trendsetter Pools LLC</td>
+      <td class="pv"><span class="mono">207</span><div class="tbar"><div style="width:35.4%"></div></div></td>
+      <td class="jr">Tampa 126 · Hillsborough 53 · Pasco 28</td><td class="mono lc">CPC1456591 CPC1457950</td></tr>
+<tr><td class="mono rk">4</td><td class="nm">Islandway Pools, LLC</td>
+      <td class="pv"><span class="mono">193</span><div class="tbar"><div style="width:33.0%"></div></div></td>
+      <td class="jr">Hillsborough 56 · Pasco 55 · Pinellas Co 34 · Tampa 30 · Clearwater 18</td><td class="mono lc">CPC1459475</td></tr>
+<tr><td class="mono rk">5</td><td class="nm">Pool Perfection LLC</td>
+      <td class="pv"><span class="mono">167</span><div class="tbar"><div style="width:28.6%"></div></div></td>
+      <td class="jr">Hillsborough 65 · Pasco 55 · Pinellas Co 28 · Tampa 13 · Clearwater 6</td><td class="mono lc">CPC1459557 CPC1461120</td></tr>
+<tr><td class="mono rk">6</td><td class="nm">Cody Pools Inc</td>
+      <td class="pv"><span class="mono">150</span><div class="tbar"><div style="width:25.7%"></div></div></td>
+      <td class="jr">Pasco 65 · Hillsborough 52 · Tampa 23 · Pinellas Co 6 · Clearwater 4</td><td class="mono lc">CPC1460475</td></tr>
+<tr><td class="mono rk">7</td><td class="nm">Premier Pools &amp; Spas Of Tampa LLC</td>
+      <td class="pv"><span class="mono">127</span><div class="tbar"><div style="width:21.7%"></div></div></td>
+      <td class="jr">Hillsborough 64 · Pasco 30 · Pinellas Co 21 · Tampa 7 · Clearwater 5</td><td class="mono lc">CPC1457370 CPC1459471</td></tr>
+<tr><td class="mono rk">8</td><td class="nm">Dynasty Pools And Spas Corp</td>
+      <td class="pv"><span class="mono">114</span><div class="tbar"><div style="width:19.5%"></div></div></td>
+      <td class="jr">Hillsborough 54 · Pasco 43 · Tampa 12 · Pinellas Co 4 · Clearwater 1</td><td class="mono lc">CPC1459886</td></tr>
+<tr><td class="mono rk">9</td><td class="nm">Bella Differenza Construction</td>
+      <td class="pv"><span class="mono">110</span><div class="tbar"><div style="width:18.8%"></div></div></td>
+      <td class="jr">Hillsborough 109 · Tampa 1</td><td class="mono lc">CPC1459962 CPC1461463</td></tr>
+<tr><td class="mono rk">10</td><td class="nm">Natural Springs Pools Inc</td>
+      <td class="pv"><span class="mono">104</span><div class="tbar"><div style="width:17.8%"></div></div></td>
+      <td class="jr">Tampa 43 · Pasco 33 · Hillsborough 28</td><td class="mono lc">CPC057112</td></tr>
+<tr><td class="mono rk">11</td><td class="nm">Tropical Pools And Pavers LLC</td>
+      <td class="pv"><span class="mono">88</span><div class="tbar"><div style="width:15.1%"></div></div></td>
+      <td class="jr">Pasco 29 · Pinellas Co 25 · Hillsborough 19 · Tampa 10 · Clearwater 5</td><td class="mono lc">CPC057338</td></tr>
+<tr><td class="mono rk">12</td><td class="nm">Patio Pools Inc</td>
+      <td class="pv"><span class="mono">80</span><div class="tbar"><div style="width:13.7%"></div></div></td>
+      <td class="jr">Pasco 44 · Hillsborough 26 · Tampa 10</td><td class="mono lc">CPC1458992</td></tr>
+<tr><td class="mono rk">13</td><td class="nm">Blue Sky Pools</td>
+      <td class="pv"><span class="mono">79</span><div class="tbar"><div style="width:13.5%"></div></div></td>
+      <td class="jr">Tampa 53 · Pasco 23 · Hillsborough 3</td><td class="mono lc">CPC056999</td></tr>
+<tr><td class="mono rk">14</td><td class="nm">Totally Blu Builders Inc</td>
+      <td class="pv"><span class="mono">78</span><div class="tbar"><div style="width:13.4%"></div></div></td>
+      <td class="jr">Pasco 71 · Hillsborough 7</td><td class="mono lc">CPC1460835 CPC1460353</td></tr>
+<tr><td class="mono rk">15</td><td class="nm">Larsens Pool &amp; Spa LLC</td>
+      <td class="pv"><span class="mono">75</span><div class="tbar"><div style="width:12.8%"></div></div></td>
+      <td class="jr">Pasco 27 · Hillsborough 26 · Tampa 14 · Pinellas Co 7 · Clearwater 1</td><td class="mono lc">CPC1457680</td></tr>
+<tr><td class="mono rk">16</td><td class="nm">Wahoo Pools Group Inc</td>
+      <td class="pv"><span class="mono">74</span><div class="tbar"><div style="width:12.7%"></div></div></td>
+      <td class="jr">Hillsborough 57 · Tampa 10 · Pasco 7</td><td class="mono lc">CPC1458680</td></tr>
+<tr><td class="mono rk">17</td><td class="nm">Mandalay Pools And Spas</td>
+      <td class="pv"><span class="mono">69</span><div class="tbar"><div style="width:11.8%"></div></div></td>
+      <td class="jr">Hillsborough 36 · Pasco 21 · Pinellas Co 9 · Clearwater 3</td><td class="mono lc">CPC1460451</td></tr>
+<tr><td class="mono rk">18</td><td class="nm">Pcs Pools LLC</td>
+      <td class="pv"><span class="mono">60</span><div class="tbar"><div style="width:10.3%"></div></div></td>
+      <td class="jr">Pinellas Co 22 · Tampa 13 · Hillsborough 12 · Pasco 12 · Clearwater 1</td><td class="mono lc">CPC1460402</td></tr>
+<tr><td class="mono rk">19</td><td class="nm">Landmark Pools Inc</td>
+      <td class="pv"><span class="mono">58</span><div class="tbar"><div style="width:9.9%"></div></div></td>
+      <td class="jr">Tampa 20 · Pasco 16 · Hillsborough 8 · Pinellas Co 8 · Clearwater 6</td><td class="mono lc">CPC1459121</td></tr>
+<tr><td class="mono rk">20</td><td class="nm">Paradise Pools Of Tampa Bay</td>
+      <td class="pv"><span class="mono">57</span><div class="tbar"><div style="width:9.8%"></div></div></td>
+      <td class="jr">Hillsborough 26 · Pasco 24 · Tampa 6 · Pinellas Co 1</td><td class="mono lc">CPC1459732</td></tr>
+<tr><td class="mono rk">21</td><td class="nm">A Better Pool &amp; Spa Service LLC</td>
+      <td class="pv"><span class="mono">56</span><div class="tbar"><div style="width:9.6%"></div></div></td>
+      <td class="jr">Pasco 24 · Hillsborough 16 · Tampa 15 · Clearwater 1</td><td class="mono lc">CPC1456781</td></tr>
+<tr><td class="mono rk">22</td><td class="nm">Hawaiian Island Pools</td>
+      <td class="pv"><span class="mono">48</span><div class="tbar"><div style="width:8.2%"></div></div></td>
+      <td class="jr">Pasco 36 · Hillsborough 6 · Pinellas Co 3 · Clearwater 3</td><td class="mono lc">CPC1461196 RP0066899</td></tr>
+<tr><td class="mono rk">23</td><td class="nm">Pettit Fiberglass Pools</td>
+      <td class="pv"><span class="mono">48</span><div class="tbar"><div style="width:8.2%"></div></div></td>
+      <td class="jr">Pasco 35 · Hillsborough 8 · Pinellas Co 4 · Tampa 1</td><td class="mono lc">CPC1459625</td></tr>
+<tr><td class="mono rk">24</td><td class="nm">Coast To Coast Pools</td>
+      <td class="pv"><span class="mono">45</span><div class="tbar"><div style="width:7.7%"></div></div></td>
+      <td class="jr">Hillsborough 25 · Pasco 20</td><td class="mono lc">CPC1457311</td></tr>
+<tr><td class="mono rk">25</td><td class="nm">Hive Outdoor Living LLC</td>
+      <td class="pv"><span class="mono">43</span><div class="tbar"><div style="width:7.4%"></div></div></td>
+      <td class="jr">Hillsborough 16 · Tampa 16 · Pasco 8 · Pinellas Co 2 · Clearwater 1</td><td class="mono lc">CPC1458419</td></tr>
+<tr><td class="mono rk">26</td><td class="nm">J&amp;C Fiberglass Pools Inc</td>
+      <td class="pv"><span class="mono">43</span><div class="tbar"><div style="width:7.4%"></div></div></td>
+      <td class="jr">Hillsborough 17 · Pasco 16 · Tampa 5 · Pinellas Co 4 · Clearwater 1</td><td class="mono lc">CPC1460418</td></tr>
+<tr><td class="mono rk">27</td><td class="nm">Payne Pool Professionals LLC</td>
+      <td class="pv"><span class="mono">43</span><div class="tbar"><div style="width:7.4%"></div></div></td>
+      <td class="jr">Hillsborough 18 · Pasco 18 · Tampa 4 · Pinellas Co 2 · Clearwater 1</td><td class="mono lc">CPC1459092</td></tr>
+<tr><td class="mono rk">28</td><td class="nm">Tropical Escapes Pool &amp; Spa Construction Inc</td>
+      <td class="pv"><span class="mono">42</span><div class="tbar"><div style="width:7.2%"></div></div></td>
+      <td class="jr">Pasco 28 · Hillsborough 12 · Tampa 2</td><td class="mono lc">CPC1459158</td></tr>
+<tr><td class="mono rk">29</td><td class="nm">Southern Serenity Pools LLC</td>
+      <td class="pv"><span class="mono">40</span><div class="tbar"><div style="width:6.8%"></div></div></td>
+      <td class="jr">Pasco 34 · Hillsborough 4 · Pinellas Co 2</td><td class="mono lc">CPC1460191</td></tr>
+<tr><td class="mono rk">30</td><td class="nm">Splash City Pools LLC</td>
+      <td class="pv"><span class="mono">39</span><div class="tbar"><div style="width:6.7%"></div></div></td>
+      <td class="jr">Hillsborough 21 · Pasco 9 · Tampa 6 · Pinellas Co 3</td><td class="mono lc">CPC1460097 CGC1534434</td></tr>
+<tr><td class="mono rk">31</td><td class="nm">Liv Pools</td>
+      <td class="pv"><span class="mono">37</span><div class="tbar"><div style="width:6.3%"></div></div></td>
+      <td class="jr">Tampa 29 · Hillsborough 6 · Pasco 1 · Pinellas Co 1</td><td class="mono lc">CPC1459998 EC13011994</td></tr>
+<tr><td class="mono rk">32</td><td class="nm">Cool Water Pools &amp; Spas Inc</td>
+      <td class="pv"><span class="mono">34</span><div class="tbar"><div style="width:5.8%"></div></div></td>
+      <td class="jr">Pasco 27 · Hillsborough 3 · Clearwater 2 · Pinellas Co 1 · Tampa 1</td><td class="mono lc">CPC057246</td></tr>
+<tr><td class="mono rk">33</td><td class="nm">Integrity Pools</td>
+      <td class="pv"><span class="mono">32</span><div class="tbar"><div style="width:5.5%"></div></div></td>
+      <td class="jr">Hillsborough 32</td><td class="mono lc">CPC049399</td></tr>
+<tr><td class="mono rk">34</td><td class="nm">Sharper Image Pool Service Inc</td>
+      <td class="pv"><span class="mono">30</span><div class="tbar"><div style="width:5.1%"></div></div></td>
+      <td class="jr">Tampa 18 · Pasco 5 · Pinellas Co 4 · Hillsborough 3</td><td class="mono lc">CPC1457590 CPC056903</td></tr>
+<tr><td class="mono rk">35</td><td class="nm">Tilney Pools</td>
+      <td class="pv"><span class="mono">29</span><div class="tbar"><div style="width:5.0%"></div></div></td>
+      <td class="jr">Pinellas Co 17 · Clearwater 5 · Pasco 3 · Hillsborough 2 · Tampa 2</td><td class="mono lc">CPC1457980 CPC1457443</td></tr>
+<tr><td class="mono rk">36</td><td class="nm">Dig It Pools LLC</td>
+      <td class="pv"><span class="mono">28</span><div class="tbar"><div style="width:4.8%"></div></div></td>
+      <td class="jr">Pinellas Co 13 · Pasco 9 · Clearwater 3 · Hillsborough 2 · Tampa 1</td><td class="mono lc">CPC1458723</td></tr>
+<tr><td class="mono rk">37</td><td class="nm">Grand Vista Pools LLC</td>
+      <td class="pv"><span class="mono">26</span><div class="tbar"><div style="width:4.5%"></div></div></td>
+      <td class="jr">Hillsborough 12 · Pasco 11 · Pinellas Co 3</td><td class="mono lc">CBC1255688 CPC1456691</td></tr>
+<tr><td class="mono rk">38</td><td class="nm">Lee Custom Pools</td>
+      <td class="pv"><span class="mono">25</span><div class="tbar"><div style="width:4.3%"></div></div></td>
+      <td class="jr">Hillsborough 23 · Pasco 2</td><td class="mono lc">CPC1459601</td></tr>
+<tr><td class="mono rk">39</td><td class="nm">Flagstone Pools &amp; Pavers Inc.</td>
+      <td class="pv"><span class="mono">24</span><div class="tbar"><div style="width:4.1%"></div></div></td>
+      <td class="jr">Hillsborough 11 · Pasco 8 · Clearwater 3 · Pinellas Co 2</td><td class="mono lc">CPC1457668</td></tr>
+<tr><td class="mono rk">40</td><td class="nm">Pools By Mike Inc</td>
+      <td class="pv"><span class="mono">23</span><div class="tbar"><div style="width:3.9%"></div></div></td>
+      <td class="jr">Tampa 20 · Hillsborough 3</td><td class="mono lc">CPC1459395</td></tr>
+<tr><td class="mono rk">41</td><td class="nm">Aqua Scape Pools &amp; Spas Inc</td>
+      <td class="pv"><span class="mono">22</span><div class="tbar"><div style="width:3.8%"></div></div></td>
+      <td class="jr">Pasco 10 · Pinellas Co 8 · Hillsborough 2 · Clearwater 2</td><td class="mono lc">CPC1456680</td></tr>
+<tr><td class="mono rk">42</td><td class="nm">Freestyle Pools &amp; Spas Inc</td>
+      <td class="pv"><span class="mono">22</span><div class="tbar"><div style="width:3.8%"></div></div></td>
+      <td class="jr">Pinellas Co 8 · Tampa 7 · Clearwater 5 · Hillsborough 2</td><td class="mono lc">CPC035658</td></tr>
+<tr><td class="mono rk">43</td><td class="nm">Sunsation Pools &amp; Spas Inc</td>
+      <td class="pv"><span class="mono">22</span><div class="tbar"><div style="width:3.8%"></div></div></td>
+      <td class="jr">Pinellas Co 22</td><td class="mono lc">CPC1456710</td></tr>
+<tr><td class="mono rk">44</td><td class="nm">U S Pools</td>
+      <td class="pv"><span class="mono">22</span><div class="tbar"><div style="width:3.8%"></div></div></td>
+      <td class="jr">Pinellas Co 14 · Tampa 5 · Hillsborough 2 · Clearwater 1</td><td class="mono lc">CPC1457799</td></tr>
+<tr><td class="mono rk">45</td><td class="nm">Lifestyle Pool And Spa</td>
+      <td class="pv"><span class="mono">21</span><div class="tbar"><div style="width:3.6%"></div></div></td>
+      <td class="jr">Pasco 14 · Hillsborough 6 · Tampa 1</td><td class="mono lc">CPC1460980</td></tr>
+<tr><td class="mono rk">46</td><td class="nm">Jose L Gomez</td>
+      <td class="pv"><span class="mono">19</span><div class="tbar"><div style="width:3.3%"></div></div></td>
+      <td class="jr">Hillsborough 13 · Pasco 2 · Pinellas Co 2 · Tampa 2</td><td class="mono lc">CPC1460544</td></tr>
+<tr><td class="mono rk">47</td><td class="nm">Apollo Pools</td>
+      <td class="pv"><span class="mono">18</span><div class="tbar"><div style="width:3.1%"></div></div></td>
+      <td class="jr">Hillsborough 17 · Tampa 1</td><td class="mono lc">CPC1457589</td></tr>
+<tr><td class="mono rk">48</td><td class="nm">Holloway Pools, Inc.</td>
+      <td class="pv"><span class="mono">18</span><div class="tbar"><div style="width:3.1%"></div></div></td>
+      <td class="jr">Tampa 16 · Hillsborough 2</td><td class="mono lc">CPC037062</td></tr>
+<tr><td class="mono rk">49</td><td class="nm">Marquez Builders Group, LLC</td>
+      <td class="pv"><span class="mono">18</span><div class="tbar"><div style="width:3.1%"></div></div></td>
+      <td class="jr">Hillsborough 9 · Tampa 5 · Pasco 3 · Pinellas Co 1</td><td class="mono lc">CGC1532624 CPC1460344</td></tr>
+<tr><td class="mono rk">50</td><td class="nm">Ryan Hughes Design Inc</td>
+      <td class="pv"><span class="mono">17</span><div class="tbar"><div style="width:2.9%"></div></div></td>
+      <td class="jr">Pinellas Co 6 · Tampa 5 · Hillsborough 4 · Clearwater 2</td><td class="mono lc">CPC1458355</td></tr>
+</tbody>
+    </table></div>
+    <p class="note" style="margin-top:12px">Full ranked list of all 440 contractors:
+    <span class="mono">research/permit-census/out/contractor-census.csv</span> in the repo.</p>
+  </section>
+
+  <section>
+    <h2>Method and caveats</h2>
+    <ul class="note">
+      <li><strong>Sources.</strong> Hillsborough County ArcGIS issued-permit layer + HillsGovHub detail pages;
+      City of Tampa Accela (pool record type from Mar 2026, description-classified Miscellaneous records before);
+      Pasco Accela RESPOOL records; Pinellas property appraiser countywide permit dump + Accela detail pages
+      for County and Clearwater. One detail-page fetch per permit recovered the contractor and license.</li>
+      <li><strong>Dedupe.</strong> Name normalization (suffixes, DBA, qualifier names) plus state license number,
+      merged with union-find. 133 owner-builder permits excluded from company counts.</li>
+      <li><strong>Dates.</strong> Hillsborough and Pinellas filter on true issue dates; Tampa and Pasco public
+      search filters on application date, so edge months differ slightly and some in-review applications are included.</li>
+      <li><strong>Not covered.</strong> Plant City, Temple Terrace, and Pasco's incorporated cities
+      (New Port Richey, Zephyrhills, Dade City) run their own systems with no public feed; their volume is small
+      and suburban unincorporated volume dominates new construction.</li>
+    </ul>
+  </section>
+
+  <footer>Generated 2026-08-31 · pipeline: research/permit-census/ (resumable; rerun fetch scripts + convert.py + census.mjs)</footer>
+</main>
