@@ -54,11 +54,27 @@ final class FrameRecorder {
     private var frameBytes = 0
     private var poseLines: [String] = []
     private var depthEntries: [DepthChunkEntry] = []
+    private var depthBytes = 0
+    private var depthFrames = 0
+
+    /// Set once the depth branch has proved it cannot produce contract-shaped
+    /// buffers on this device; stops us retrying 60 times a second and stops
+    /// half-valid depth reaching the cloud.
+    private var depthDisabled = false
 
     /// Called on the recorder queue with each finished chunk file.
     var onChunkReady: ((QueuedChunk) -> Void)?
     /// Called on the main queue with the running recorded-frame count.
     var onFrameRecorded: ((Int) -> Void)?
+    /// Called on the main queue with the running recorded depth-frame count.
+    /// Zero on a device without LiDAR; on a Pro device this is the fastest
+    /// on-site confirmation that the depth branch is actually running.
+    var onDepthRecorded: ((Int) -> Void)?
+    /// Called on the main queue, at most once per distinct message, with a
+    /// short human sentence about something the recorder had to give up on.
+    var onIssue: ((String) -> Void)?
+
+    private var reportedIssues = Set<String>()
 
     init(sessionId: String) throws {
         self.sessionId = sessionId
@@ -105,6 +121,9 @@ final class FrameRecorder {
 
         let idx = frameIndex
         frameIndex += 1
+        // Snapshot the counter here: frameIndex belongs to the delegate thread,
+        // and reading it from the io queue was a data race.
+        let recordedCount = Int(frameIndex)
         let pixelBuffer = frame.capturedImage
         let camera = frame.camera
         let transform = Self.columnMajor16(camera.transform)
@@ -120,7 +139,13 @@ final class FrameRecorder {
         } else {
             gravity = [0, 0, -1]
         }
-        let depth = frame.sceneDepth
+        // Depth is unpacked HERE, on the session delegate's thread, not on the
+        // io queue. ARKit hands out sceneDepth buffers from a small recycled
+        // pool; carrying an ARDepthData across an async hop keeps those buffers
+        // out of the pool for as long as compression takes and can stall the
+        // session. Copying 240 KB synchronously costs microseconds, and after
+        // it we hold plain Data that belongs to nobody but us.
+        let depthPlanes = extractDepth(frame)
 
         io.async { [self] in
             guard let jpeg = encodeJPEG(pixelBuffer) else { return }
@@ -134,14 +159,19 @@ final class FrameRecorder {
                 poseLines.append(text)
             }
 
-            if let depth {
-                appendDepth(depth, frameIndex: idx, timestamp: now)
+            if let depthPlanes {
+                appendDepth(depthPlanes, frameIndex: idx, timestamp: now)
             }
 
-            let count = Int(frameIndex)
-            DispatchQueue.main.async { self.onFrameRecorded?(count) }
+            let depthCount = depthFrames
+            DispatchQueue.main.async {
+                self.onFrameRecorded?(recordedCount)
+                self.onDepthRecorded?(depthCount)
+            }
 
-            if frameBytes >= Self.rollBytes || frameEntries.count >= Self.rollFrames {
+            if frameBytes >= Self.rollBytes
+                || depthBytes >= Self.rollBytes
+                || frameEntries.count >= Self.rollFrames {
                 rollAll()
             }
         }
@@ -161,39 +191,56 @@ final class FrameRecorder {
     private func rollAll() {
         if !frameEntries.isEmpty {
             let data = ChunkCodec.encodeFrames(frameEntries)
-            emitChunk(seq: takeSeq(), kind: .frames, data: data)
+            emitRolledChunk(kind: .frames, data: data)
             frameEntries.removeAll()
             frameBytes = 0
         }
         if !poseLines.isEmpty {
             let data = Data((poseLines.joined(separator: "\n") + "\n").utf8)
-            emitChunk(seq: takeSeq(), kind: .poses, data: data)
+            emitRolledChunk(kind: .poses, data: data)
             poseLines.removeAll()
         }
         if !depthEntries.isEmpty {
             let data = ChunkCodec.encodeDepth(depthEntries)
-            emitChunk(seq: takeSeq(), kind: .depth, data: data)
+            emitRolledChunk(kind: .depth, data: data)
             depthEntries.removeAll()
+            depthBytes = 0
         }
     }
 
-    private func takeSeq() -> Int {
-        let seq = nextSeq
-        nextSeq += 1
-        return seq
+    /// The seq is only consumed when the file actually lands on disk. Burning a
+    /// seq on a failed write leaves a permanent hole in the manifest, and
+    /// finalize then 409s forever on a bundle that can never be completed.
+    private func emitRolledChunk(kind: ChunkKind, data: Data) {
+        if emitChunk(seq: nextSeq, kind: kind, data: data) {
+            nextSeq += 1
+        }
     }
 
-    private func emitChunk(seq: Int, kind: ChunkKind, data: Data) {
+    @discardableResult
+    private func emitChunk(seq: Int, kind: ChunkKind, data: Data) -> Bool {
         let url = directory.appendingPathComponent("\(seq)-\(kind.rawValue).bin")
         do {
             try data.write(to: url, options: .atomic)
         } catch {
-            return
+            report("A \(kind.rawValue) chunk could not be written to this phone. Check free storage.")
+            return false
         }
         let chunk = QueuedChunk(sessionId: sessionId, seq: seq, kind: kind,
                                 bytes: data.count, sha256: Hashing.sha256Hex(data),
                                 filePath: url.path)
         onChunkReady?(chunk)
+        return true
+    }
+
+    /// Deduped on the main queue, because callers live on both the ARSession
+    /// delegate queue and the recorder's io queue.
+    private func report(_ message: String) {
+        DispatchQueue.main.async {
+            guard !self.reportedIssues.contains(message) else { return }
+            self.reportedIssues.insert(message)
+            self.onIssue?(message)
+        }
     }
 
     private func encodeJPEG(_ pixelBuffer: CVPixelBuffer) -> Data? {
@@ -204,28 +251,49 @@ final class FrameRecorder {
                                             options: [qualityKey: jpegQuality])
     }
 
-    private func appendDepth(_ depth: ARDepthData, frameIndex: UInt32, timestamp: TimeInterval) {
-        let depthBytes = Self.pixelBufferBytes(depth.depthMap, bytesPerPixel: 4)
-        guard let confidenceMap = depth.confidenceMap else { return }
-        let confBytes = Self.pixelBufferBytes(confidenceMap, bytesPerPixel: 1)
-        guard let depthZ = try? Zlib.compress(depthBytes),
-              let confZ = try? Zlib.compress(confBytes) else { return }
-        depthEntries.append(DepthChunkEntry(frameIndex: frameIndex, timestampS: timestamp,
-                                            depthZlib: depthZ, confZlib: confZ))
+    /// Raw, uncompressed, contract-shaped depth planes for one frame. Runs on
+    /// the ARSession delegate queue so no ARKit-owned buffer is retained past
+    /// the callback.
+    struct DepthPlanes {
+        let depth: Data
+        let confidence: Data
     }
 
-    static func pixelBufferBytes(_ pb: CVPixelBuffer, bytesPerPixel: Int) -> Data {
-        CVPixelBufferLockBaseAddress(pb, .readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(pb, .readOnly) }
-        guard let base = CVPixelBufferGetBaseAddress(pb) else { return Data() }
-        let width = CVPixelBufferGetWidth(pb)
-        let height = CVPixelBufferGetHeight(pb)
-        let rowBytes = CVPixelBufferGetBytesPerRow(pb)
-        var out = Data(capacity: width * height * bytesPerPixel)
-        for row in 0..<height {
-            out.append(Data(bytes: base + row * rowBytes, count: width * bytesPerPixel))
+    private func extractDepth(_ frame: ARFrame) -> DepthPlanes? {
+        guard !depthDisabled, let sceneDepth = frame.sceneDepth else { return nil }
+        // Confidence is checked first: without it the PFD1 record cannot be
+        // written at all, so unpacking depth would be wasted work.
+        guard let confidenceMap = sceneDepth.confidenceMap else {
+            report("Depth confidence was missing, so depth is not being recorded.")
+            return nil
         }
-        return out
+        do {
+            let depth = try DepthPacker.packDepth(sceneDepth.depthMap)
+            let confidence = try DepthPacker.packConfidence(confidenceMap)
+            return DepthPlanes(depth: depth, confidence: confidence)
+        } catch let failure as DepthPacker.Failure {
+            // The chunk format pins 256x192; anything else cannot be described,
+            // so stop rather than ship bytes the cloud will misread.
+            depthDisabled = true
+            report("Depth is off for this walk: \(failure.description). RGB and poses are unaffected.")
+            return nil
+        } catch {
+            depthDisabled = true
+            report("Depth is off for this walk. RGB and poses are unaffected.")
+            return nil
+        }
+    }
+
+    private func appendDepth(_ planes: DepthPlanes, frameIndex: UInt32, timestamp: TimeInterval) {
+        guard let depthZ = try? Zlib.compress(planes.depth),
+              let confZ = try? Zlib.compress(planes.confidence) else {
+            report("A depth frame could not be compressed and was skipped.")
+            return
+        }
+        depthEntries.append(DepthChunkEntry(frameIndex: frameIndex, timestampS: timestamp,
+                                            depthZlib: depthZ, confZlib: confZ))
+        depthBytes += depthZ.count + confZ.count + 20
+        depthFrames += 1
     }
 
     static func columnMajor16(_ m: simd_float4x4) -> [Float] {

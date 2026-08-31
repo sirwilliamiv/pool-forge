@@ -210,12 +210,28 @@ enum Zlib {
         return Data(dst.prefix(written))
     }
 
+    /// Standard deferred-modulo adler32. A depth frame is 240 KB and arrives
+    /// twice a second, so the naive per-byte double modulo over a `Data`
+    /// sequence was the most expensive thing on the recorder queue. NMAX is the
+    /// largest run that cannot overflow UInt32, so the result is identical.
     static func adler32(_ data: Data) -> UInt32 {
+        let nmax = 5552
         var a: UInt32 = 1
         var b: UInt32 = 0
-        for byte in data {
-            a = (a + UInt32(byte)) % 65521
-            b = (b + a) % 65521
+        data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            guard let base = raw.bindMemory(to: UInt8.self).baseAddress else { return }
+            var offset = 0
+            let count = raw.count
+            while offset < count {
+                let end = min(offset + nmax, count)
+                for i in offset..<end {
+                    a &+= UInt32(base[i])
+                    b &+= a
+                }
+                a %= 65521
+                b %= 65521
+                offset = end
+            }
         }
         return (b << 16) | a
     }

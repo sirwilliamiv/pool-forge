@@ -41,6 +41,7 @@ struct CaptureView: View {
     @State private var starting = true
     @State private var startError: String?
     @State private var ending = false
+    @State private var recorderNote: String?
 
     var body: some View {
         Group {
@@ -83,11 +84,24 @@ struct CaptureView: View {
             ARViewContainer(controller: controller)
                 .ignoresSafeArea()
 
+            // Trailing edge, vertically centred: the middle of the viewfinder
+            // is what the walker is composing and must stay clear.
+            HStack {
+                Spacer()
+                TiltGaugeView(downTiltDegrees: controller.tiltDownDegrees,
+                              state: controller.tiltState)
+                    .padding(.trailing, 12)
+            }
+
             VStack {
                 VStack(spacing: 6) {
                     Text(controller.status)
                         .font(.subheadline.weight(.medium))
                         .multilineTextAlignment(.center)
+                    if let direction = controller.nextDirection {
+                        Label(direction.onScreen, systemImage: directionSymbol(direction))
+                            .font(.footnote.weight(.semibold))
+                    }
                     if let hint = controller.hint {
                         Text(hint)
                             .font(.footnote)
@@ -98,21 +112,46 @@ struct CaptureView: View {
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(.orange)
                     }
+                    if let note = recorderNote {
+                        Text(note)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.orange)
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .padding()
+                .padding(.horizontal)
+                .padding(.top)
+                // Leave the gauge its lane.
+                .padding(.trailing, 56)
 
                 Spacer()
 
-                HStack {
+                HStack(spacing: 12) {
                     if controller.recording {
-                        Label("\(controller.recordedFrames) frames", systemImage: "record.circle")
-                            .font(.footnote.monospacedDigit())
-                            .foregroundStyle(.red)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("\(controller.recordedFrames) frames", systemImage: "record.circle")
+                                .font(.footnote.monospacedDigit())
+                                .foregroundStyle(.red)
+                            if CaptureController.lidarAvailable {
+                                Text("\(controller.recordedDepthFrames) depth")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                     Spacer()
+                    Button {
+                        settings.voiceGuidanceEnabled.toggle()
+                    } label: {
+                        Image(systemName: settings.voiceGuidanceEnabled
+                              ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(settings.voiceGuidanceEnabled
+                                        ? "Mute voice guidance" : "Unmute voice guidance")
                     if controller.recording {
                         Button {
                             endCapture()
@@ -133,6 +172,18 @@ struct CaptureView: View {
                     .padding(20)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
+        }
+        .onChange(of: settings.voiceGuidanceEnabled) { _, enabled in
+            controller.voiceEnabled = enabled
+        }
+    }
+
+    private func directionSymbol(_ direction: GuidanceMath.RelativeDirection) -> String {
+        switch direction {
+        case .ahead: return "arrow.up"
+        case .left: return "arrow.turn.up.left"
+        case .right: return "arrow.turn.up.right"
+        case .behind: return "arrow.uturn.down"
         }
     }
 
@@ -175,12 +226,19 @@ struct CaptureView: View {
             rec.onFrameRecorded = { count in
                 controller.recordedFrames = count
             }
+            rec.onDepthRecorded = { count in
+                controller.recordedDepthFrames = count
+            }
+            rec.onIssue = { message in
+                recorderNote = message
+            }
             rec.writeMeta(address: place.address, lat: place.lat, lng: place.lng,
                           footprint: footprint, plan: model.lapPlan, device: device)
             UploadManager.shared.startSession(id: id, address: place.address)
             sessionId = id
             recorder = rec
-            controller.start(plan: model.lapPlan, recorder: rec)
+            controller.start(plan: model.lapPlan, recorder: rec,
+                             voiceEnabled: settings.voiceGuidanceEnabled)
             starting = false
         } catch {
             starting = false
