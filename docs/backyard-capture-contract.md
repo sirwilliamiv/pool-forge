@@ -72,10 +72,23 @@ routes). Every route replicates the audit-write pattern used by
 | `GET  /api/mobile/site/autocomplete?q=&session=` | Proxy of Places Autocomplete (reuses `src/modules/site/geo/google.ts`) |
 | `GET  /api/mobile/site/place?placeId=&session=` | Place lat/lng + `buildingInsights` footprint + static map URL |
 | `GET  /api/mobile/site/reverse?lat=&lng=` | Reverse geocode current location to an address (new helper in `geo/google.ts`) |
+| `GET  /api/mobile/site/staticmap?lat=&lng=&zoom=&w=&h=` | Authenticated satellite image proxy (the actual bitmap) |
 | `POST /api/mobile/capture/sessions` | Open a capture session |
 | `POST /api/mobile/capture/sessions/:id/chunks` | Register a chunk, get a GCS resumable upload URI |
-| `POST /api/mobile/capture/sessions/:id/chunks/:seq/complete` | Server verifies the object (size + crc32c/md5), marks verified; the ack tells the phone it may delete |
+| `POST /api/mobile/capture/sessions/:id/chunks/:seq/complete` | Server verifies the object (existence + exact size), marks verified; the ack tells the phone it may delete |
 | `POST /api/mobile/capture/sessions/:id/finalize` | Declare the manifest; server checks contiguity and closes the session |
+
+The `staticMapUrl` that `site/place` returns is a **relative path** to
+`/api/mobile/site/staticmap` (fetched with the same bearer), never Google's
+own Static Maps URL: that URL embeds the server's API key, and the standing
+rule in `src/modules/site/geo/google.ts` is that it never reaches a client.
+
+Audit: the mutating routes (`tokens`, `sessions`, `chunks`, `complete`,
+`finalize`) each write the same `CommandAuditLog` row shape the heightfield
+route writes (source `API`; the minted token itself never appears in a row).
+The read-only site proxies do not audit - the audited action is the capture
+session a person opens, not every autocomplete keystroke on the way there,
+matching the web app where `/api/site/autocomplete` is not a command either.
 
 ### Session create
 
@@ -111,6 +124,36 @@ returns a fresh URI (retry); after verification it returns 409.
 
 Object path: `captures/<orgId>/<sessionId>/<seq>-<kind>.bin` in the
 `CAPTURE_BUNDLE_BUCKET` bucket (same GCP project as Pool Forge).
+
+The meta chunk's placement is enforced at register time as well as at
+finalize: registering seq 0 with any other kind, or `meta` at any other seq,
+is a 400 - a broken recorder should hear about it while the walk is still
+happening.
+
+### Chunk complete
+
+The ack checks **existence and exact size** against the registered
+declaration. It does not re-hash content: the object is not downloaded, and
+GCS's crc32c/md5 describe what GCS received with nothing client-declared to
+compare against. The declared sha256 lives in the ledger (and as object
+metadata), and the reconstruction worker - the first thing that reads the
+bytes - verifies content against it before trusting a frame. `ok: true,
+verified: true` is the phone's licence to delete its local copy.
+
+### Finalize
+
+```jsonc
+// request - the manifest is one number, because seq is global and contiguous
+{ "contractVersion": 1, "maxSeq": 41 }
+// response, whole
+{ "ok": true, "sessionId": "bcs_...", "chunkCount": 42, "finalizedAt": "..." }
+// response, not whole (409)
+{ "ok": false, "error": "The bundle is missing 2 chunks. ...", "missingSeqs": [7, 30] }
+```
+
+Caps, from `src/modules/capture-bundle/contract.ts`: a registered chunk
+declares at most 28MB (`MAX_CHUNK_BYTES`, the ~24MB target plus one frame of
+margin), and a session holds at most 512 chunks (`MAX_CHUNKS_PER_SESSION`).
 
 ## 5. Chunk formats
 

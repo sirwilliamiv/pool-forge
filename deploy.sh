@@ -24,6 +24,7 @@ BUILD_SA="pool-forge-build@${PROJECT_ID}.iam.gserviceaccount.com"
 REPO="pool-forge"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/web"
 BUCKET="${BUCKET:-${PROJECT_ID}-blobs}"
+CAPTURE_BUCKET="${CAPTURE_BUCKET:-${PROJECT_ID}-captures}"
 RELAY_SERVICE="${RELAY_SERVICE:-pool-forge-voice-relay}"
 RELAY_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/voice-relay"
 
@@ -132,6 +133,15 @@ if ! exists gcloud storage buckets describe "gs://${BUCKET}" --project "$PROJECT
     --project "$PROJECT_ID" --location "$REGION" --uniform-bucket-level-access
 fi
 
+if ! exists gcloud storage buckets describe "gs://${CAPTURE_BUCKET}" --project "$PROJECT_ID"; then
+  say "Creating the capture bundle bucket"
+  # Backyard capture chunks (docs/backyard-capture-contract.md). Same posture
+  # as the blob bucket: uniform access, no public reads. The phone writes via
+  # resumable-session URIs the server initiates; nothing reads without auth.
+  run gcloud storage buckets create "gs://${CAPTURE_BUCKET}" \
+    --project "$PROJECT_ID" --location "$REGION" --uniform-bucket-level-access
+fi
+
 # ---------------------------------------------------------------- secrets
 # Required. The deploy stops rather than starting a service that cannot work.
 REQUIRED_SECRETS=(
@@ -148,6 +158,12 @@ OPTIONAL_SECRETS=(
   "MONITORING_ALERT_WEBHOOK_URL=pool-forge-monitoring-webhook"
   "GOOGLE_CLIENT_ID=pool-forge-google-client-id"
   "GOOGLE_CLIENT_SECRET=pool-forge-google-client-secret"
+  "MAPS_API_KEY=pool-forge-maps-api-key"
+  # Backyard capture ledger (Turso). Absent, the mobile capture routes fall
+  # back to a file: ledger on the instance's disk, which does not survive a
+  # cold start - fine for a smoke test, wrong for real walks.
+  "TURSO_DATABASE_URL=pool-forge-turso-database-url"
+  "TURSO_AUTH_TOKEN=pool-forge-turso-auth-token"
 )
 
 say "Checking secrets"
@@ -297,7 +313,7 @@ run gcloud run deploy "$SERVICE" \
   --cpu 1 --memory 1Gi \
   --min-instances 0 --max-instances 4 \
   --set-secrets "$SECRETS" \
-  --set-env-vars "NODE_ENV=production,APP_URL=${PUBLIC_URL},AUTH_URL=${PUBLIC_URL},AUTH_TRUST_HOST=true,GCP_PROJECT_ID=${PROJECT_ID},VERTEX_LOCATION=global,VERTEX_LIVE=1,BLOB_STORE_DRIVER=gcs,BLOB_STORE_BUCKET=${BUCKET},MONITORING_ENV=production${VOICE_ENV:-}"
+  --set-env-vars "NODE_ENV=production,APP_URL=${PUBLIC_URL},AUTH_URL=${PUBLIC_URL},AUTH_TRUST_HOST=true,GCP_PROJECT_ID=${PROJECT_ID},VERTEX_LOCATION=global,VERTEX_LIVE=1,BLOB_STORE_DRIVER=gcs,BLOB_STORE_BUCKET=${BUCKET},CAPTURE_BUNDLE_BUCKET=${CAPTURE_BUCKET},MONITORING_ENV=production${VOICE_ENV:-}"
 
 say "Applying database migrations"
 # Run as a job rather than at container start: every instance starting would
