@@ -282,3 +282,127 @@ generation and scan pipelines beat.
 - TurboSquid license: <https://www.turbosquid.com/licensing> · CGTrader RF
   license: <https://help.cgtrader.com/hc/en-us/articles/360015124437-Royalty-Free-License>
 - Useful-article doctrine: <https://www.wardandsmith.com/articles/applying-copyright-law-to-useful-articles>
+
+---
+
+## Addendum: terrain data and capture accuracy (2026-08-31)
+
+Findings from the first real field test and the follow-up research. These
+change the Track 3 recommendation, so read them before building on it.
+
+### Free public terrain does not work on flat Tampa lots
+
+Verified directly against 3014 W Ballast Point Blvd (lat 27.8896652,
+lng -82.4927657) using the live services, not documentation:
+
+- **USGS 3DEP has no 1 m data at this address.** The raster catalog
+  (`elevation.nationalmap.gov/.../3DEPElevation/ImageServer/query`) returns
+  three real datasets, all 1/9 arc-second (3.44 m cells):
+  `ned19_..._fl_hillsborough_east_2007`, `..._nrthrnhillsbourough_2011`, and
+  `..._hillsboroughmanatee_2010`. Nearby markets do better (Clearwater, Lutz,
+  Sarasota, Orlando have 1 m from 2018; Miami 2024), and FY24 QL1 updates for
+  Hillsborough and Pinellas are reported underway.
+- **A 441-point grid over a 50 m block** gives best-fit slope 0.48% (0.6 in
+  per 10 ft), total fall 9.4 in, residual roughness 4.4 in. The whole
+  elevation signal is about twice the data's own scatter.
+- **Hillsborough County publishes 2 ft contours**
+  (`maps.hillsboroughcounty.org/arcgis/rest/services/InfoLayers/Contours_2ft`).
+  Across a 120 m box centred on the house there are exactly two distinct
+  contour elevations, 10 ft and 12 ft. A lot that falls 9 in cannot be
+  described by a 2 ft interval.
+
+Conclusion: on flat Florida lots the free public terrain says "it is flat" and
+nothing more. Keep it for a sanity check against a wild capture and for rough
+drainage direction; do not let it reduce what the phone must measure.
+
+Watch the Web Mercator trap: requesting by pixel size in EPSG:3857 at Tampa's
+latitude under-delivers by 1/cos(27.9 deg) = 1.13x. Request by bbox plus an
+explicit `size`, or use UTM 17N.
+
+### The phone's strong axis is vertical
+
+Krausova et al., *Sensors* 2025, 25, 6141 (iPhone 14 Pro, outdoor terrain,
+total-station ground truth), DOI 10.3390/s25196141:
+
+- **Freehand whole-area scanning failed outright** and was excluded from the
+  results: "significant positional deviations, ranging from tens of
+  centimetres to metres". A continuous free walk over a yard is the documented
+  failure mode.
+- Vertical error is consistently far smaller than horizontal, because
+  time-of-flight measures depth directly while horizontal accumulates SLAM
+  drift. Sectional scanning in ~20 m segments, each tied to its own control:
+  **vertical RMSE 0.16 m**; short controlled segments reached 0.12 m.
+- A 180 m walk controlled only at the start: horizontal RMSE 0.845 m.
+- Loop closure materially improves medium outdoor areas (ISPRS
+  XLVIII-2/W8-2024 p.431).
+
+So: lean on vertical, tie horizontal to tapped features rather than trusting
+SLAM across the yard, and take a control tie roughly every 20 m of walking.
+One benchmark per capture is not enough.
+
+**Correction to an earlier claim in this document:** the assertion that
+iPhone LiDAR is unusable in direct sun could not be verified in any
+peer-reviewed or first-party source. Apple documents only that it "works both
+indoors and outdoors" to 5 m. Treat sun failure as plausible trade-press
+report, not established fact.
+
+### Prior art and positioning
+
+- **Aurora Solar is the precedent.** NREL validated average edge-length error
+  0.52 ft and slope error 1.54 deg, 98% compliance against Aurora's published
+  thresholds of 1.5 ft and 5 deg. Their Terms carry the load-bearing sentence:
+  the service "shall not be deemed a substitute for an actual in-person
+  analysis conducted at a given site", while marketing says "no truck roll".
+- **Structure Studios already ships auto-terrain** at roughly $10-12 per
+  address from commercial imagery, landing inside their hand-editing slope
+  tool rather than as a locked layer. Auto-terrain is not the differentiator;
+  copy the baseline-then-refine interaction model.
+- Their inline caveat is the phrase to borrow: **"planning grade, not survey
+  grade"**, placed where the number is used rather than in a footer.
+- **Lead with provenance, not disclaimers.** Aurora shows dataset, capture
+  date and point density with a plain-language scale. Staleness, not
+  resolution, is what every vendor critiques in public lidar.
+- **Canvas.io / Occipital (now Twindo) refuses this use case outright**: they
+  will "reject such scans" of "landscaping, topography, and other natural,
+  non-structural elements". The most experienced iPhone-LiDAR capture vendor
+  declines backyard topography.
+- **RTK is the productized path to real accuracy.** Pix4Dcatch with an Emlid
+  Reach RX2 or Trimble Catalyst rover geotags frames at capture instead of
+  registering afterwards: <10 cm typical, <5 cm best case, hardware ~$2-3k.
+  This is a natural pro tier, not an engineering problem to solve.
+
+### Two constraints that scope the product
+
+1. **Google Solar API is licensed only for energy systems.** Maps Service
+   Terms 20.1 permits use "only (a) to determine the feasibility of installing
+   energy systems... (b) to design or install an energy system, or (c) for a
+   Downstream Transaction", with a 30-day caching cap. Pool siting is outside
+   the grant, and `buildingInsights` is currently how both the web app
+   (`site-geo.ts`, import the building footprint) and the capture app obtain
+   footprints. Needs replacing: Microsoft Building Footprints (ODbL), OSM, or
+   county parcel services. Google's DSM is photogrammetry and ML, never lidar,
+   referenced to a global geoid rather than NAVD88, with documented
+   foreshortening near sharp edges "of a magnitude of perhaps 1-2 feet".
+2. **Florida pool permits require a grading and drainage plan with existing
+   elevations sealed by a licensed surveyor.** This product serves design,
+   feasibility and estimating, never the permit set. That is a hard boundary
+   to state in the UI, and it also removes most of the liability weight from
+   the accuracy numbers, because nothing produced here is the document of
+   record.
+
+### Where Track 3 lands
+
+Phone-only dense scanning of a yard is the documented failure mode, and UX
+cannot fix it. But the phone measures height to roughly 5-6 in when it gets
+periodic control, and height is the number a pool needs.
+
+- **Consumer tier: phone only, guided sparse measurement.** Vertical-led,
+  horizontal tied to tapped features, loop closure kept, photos still captured
+  for the photoreal backdrop. Positioned as Aurora positions theirs.
+- **Pro tier: the same app plus an RTK rover**, for sub-4-inch work.
+
+Open item: Hillsborough County's licensing position on their GIS layers has
+not been confirmed in writing. USGS data is public domain with no
+restrictions; Mapbox forbids caching elevation, and Google's Elevation API
+forbids building terrain models, so going direct to USGS and the county is
+the only clean path.
