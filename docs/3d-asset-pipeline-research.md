@@ -290,10 +290,87 @@ generation and scan pipelines beat.
 Findings from the first real field test and the follow-up research. These
 change the Track 3 recommendation, so read them before building on it.
 
-### Free public terrain does not work on flat Tampa lots
+### Free public terrain: what is actually available
 
-Verified directly against 3014 W Ballast Point Blvd (lat 27.8896652,
-lng -82.4927657) using the live services, not documentation:
+**Correction (same day).** An earlier version of this section concluded that
+free public terrain is useless here. That was wrong, because it was written
+before finding the county's own DEM. Hillsborough publishes a **2017 bare-earth
+lidar DEM at 2.5 ft (0.762 m) cells**, enforced with 3D breaklines, F32,
+NAVD88:
+
+- `maps.hillsboroughcounty.org/arcgis/rest/services/initial_install/n767demmosaic/ImageServer`
+  (native, 2.5 ft cells, wkid 6443, NAD83(2011) Florida West ftUS)
+- `.../ESRITest/n767demmosaic_WGS84_m/ImageServer` and
+  `.../InitialInstall/n767demmosaic_WGS84_m/ImageServer` (same data reprojected
+  to Web Mercator, values in metres — easier to sample with lat/lng input)
+
+**Use the native feet service as authoritative.** Vertical CRS is EPSG:6360,
+NAVD88 in US survey feet, GEOID12B. The metres twins are a reprojection
+resample and disagree with the native raster by roughly 5 cm, worst at grade
+breaks, so treat them as a convenience layer and never as a second opinion.
+`identify` at the test address returns **14.6339 ft** from the native service.
+
+Provenance: the raster is **SWFWMD** data (flown by Dewberry) that the county
+republishes; `copyrightText` names the district, not the county. SWFWMD's own
+host was unreachable on every attempt, so the county mirror is the working
+endpoint. Collection metadata, including the accuracy figures below, is at
+`noaa-nos-coastal-lidar-pds.s3.us-east-1.amazonaws.com/dem/FL_Hills_DEM_2017_9457/fl2017_hills_dem_m9457_met.xml`.
+
+**Do not mix sources in one number.** At the test address the county reads
+14.63 ft while 3DEP's point service reads 11.97 ft, a 2.7 ft gap driven by
+epoch, cell size and how each treats the house pad. Pick one source to own the
+datum and stay on it.
+
+It is keyless, no auth, open CORS, and `getSamples` with a 441-point
+multipoint returns in a couple of seconds. Note the folder names: `ESRITest`
+and `initial_install` are install/test folders, not a production namespace,
+which is a real availability risk to design around (cache derived results;
+have the 3DEP fallback wired). This is also why the first pass missed it: the
+folder listing has no elevation/lidar/topo folder, and the service is only
+findable by enumerating ImageServers across every folder.
+
+Reported accuracy from the collection's NOAA metadata: **NVA RMSEz 0.12 ft
+(3.6 cm)** non-vegetated, **VVA ±0.50 ft (15.2 cm) at the 95th percentile**
+vegetated. A grass backyard is the vegetated case, so plan around ~6 in at
+95%, not 1.4 in.
+
+Measured head-to-head over open yard at the test address, 20 m x 20 m north of
+the house, county at 1 m sampling vs 3DEP at 2 m:
+
+| | slope | micro-relief (residual) | range |
+|---|---|---|---|
+| County 2.5 ft | 1.56% | 2.6 in | 19.5 in |
+| USGS 3DEP 3.4 m | 1.65% | 2.1 in | 14.5 in |
+
+The two agree on slope to within 0.1%, which is the useful result: **the open
+yard really does fall about 1.6%, roughly 12.6 in across 20 m.** That is real,
+usable grade. An earlier 50 m block centred on the house averaged out to 0.48%
+only because it swallowed the house pad and both yards. Over a second patch
+south of the house the two disagree sharply (county 0.32% vs 3DEP 1.50%, with
+county showing 6.1 in of relief against 3DEP's 2.0 in), which is the county
+data resolving built structure that 3DEP smooths flat.
+
+### Why the DEM still matters even though it is stale
+
+The corrected framing, which inverts the earlier "the DEM cannot reduce what
+the phone must measure":
+
+**The DEM owns the absolute datum; the phone cannot.** An ARKit session origin
+is arbitrary, and `CLLocation.altitude` is orthometric against a global geoid
+with roughly ±10 m of GPS error, so a phone capture has no absolute vertical
+reference at all — that is exactly why the capture contract requires a
+benchmark tap. The county DEM is NAVD88 with published accuracy. So the DEM
+supplies absolute elevation and whole-lot slope; the phone supplies currency,
+short-range detail, and relative geometry. They are complementary on different
+axes rather than competing on the same one.
+
+The DEM's real weakness is **staleness, not resolution**: 2017 is nine years
+old, and it cannot see a patio, pool, added fill, retaining wall, or regrade
+done since. That is what the phone is for, and it is also why a 2017-vs-2025
+aerial diff is high leverage — both aerial services are live on the same
+county server.
+
+Original 3DEP findings, still accurate as far as they go:
 
 - **USGS 3DEP has no 1 m data at this address.** The raster catalog
   (`elevation.nationalmap.gov/.../3DEPElevation/ImageServer/query`) returns
@@ -396,13 +473,41 @@ Phone-only dense scanning of a yard is the documented failure mode, and UX
 cannot fix it. But the phone measures height to roughly 5-6 in when it gets
 periodic control, and height is the number a pool needs.
 
-- **Consumer tier: phone only, guided sparse measurement.** Vertical-led,
-  horizontal tied to tapped features, loop closure kept, photos still captured
-  for the photoreal backdrop. Positioned as Aurora positions theirs.
+- **Baseline, before anyone walks anything: the SWFWMD/county DEM.** Free,
+  instant, NAVD88, 2.5 ft cells. It owns the absolute datum and the whole-lot
+  slope, and it is the thing a phone fundamentally cannot supply.
+- **Consumer tier: phone only, guided sparse measurement**, refining that
+  baseline. Vertical-led, horizontal tied to tapped features, loop closure
+  kept, photos still captured for the photoreal backdrop. Positioned as Aurora
+  positions theirs.
 - **Pro tier: the same app plus an RTK rover**, for sub-4-inch work.
 
-Open item: Hillsborough County's licensing position on their GIS layers has
-not been confirmed in writing. USGS data is public domain with no
-restrictions; Mapbox forbids caching elevation, and Google's Elevation API
-forbids building terrain models, so going direct to USGS and the county is
-the only clean path.
+Do not sell this as "coarse data, then the phone refines it": a builder will
+read that as the DEM being the weak input, when on absolute elevation it is
+the strong one. The honest framing is that the DEM is current as of 2017 and
+authoritative on datum, and the scan is current as of today and authoritative
+on local detail. Follow the category's convention and lead with provenance
+(dataset, capture date, accuracy) rather than a disclaimer.
+
+Why go direct rather than through a reseller. Google's Elevation API is barred
+by Maps Platform Terms 3.2.3(c), which forbids building "terrain models based
+on elevation values from the Elevation API", plus separate no-bulk-download and
+no-caching clauses. Mapbox Terrain-DEM is disqualified on its own
+documentation: it tops out around 8.4 m of ground resolution at Tampa's
+latitude, and Mapbox states its tiles mix vertical datums (NAVD88, EGM96,
+Ordnance Datum Newlyn) and warns that normalising them "may lead to
+inaccuracies" - which defeats the entire point, since tying to NAVD88 is the
+job. USGS is public domain with no restrictions.
+
+**Open items, both unverified and both worth closing before they matter:**
+
+1. **SWFWMD's and the county's licensing position, in writing.** Everything
+   technical works today; this is the only unverified dependency in the data
+   path. Note the service lives in install/test folders, so availability is a
+   second risk on the same source.
+2. Two claims that shape scope and positioning rather than architecture, taken
+   from secondary sources and not verified first-hand: that Structure Studios
+   ships auto-terrain at roughly $10-12 per address, and that Florida pool
+   permits require existing elevations sealed by a licensed surveyor. The
+   second is the one that decides whether this product can ever touch the
+   permit set.
