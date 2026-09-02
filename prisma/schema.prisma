@@ -222,6 +222,15 @@ model Project {
   // Printed on the permit set, which is rejected without them.
   jurisdiction         String?
   parcelId             String?
+  // Where the pool is going, geocoded through Places. The formatted string is
+  // what documents print; the coordinates are what the editor's satellite
+  // import consumes. Customer.address remains only as a billing address, and
+  // only when it differs from this one. Column names match the
+  // 20260830221714_site_location migration.
+  siteAddress          String?
+  sitePlaceId          String?
+  latitude             Float?
+  longitude            Float?
   proposalExpiresAt    DateTime?
   internalNotes        String?
   poolFields           Json          @default("{}")

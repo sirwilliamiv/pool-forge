@@ -286,3 +286,210 @@ register({
     }
   },
 })
+
+/**
+ * Everything the project page can edit, as one write.
+ *
+ * The detail page autosaves the whole form (as ProjectForm always has) rather
+ * than patching field by field: the last write wins wholesale, which is the
+ * same behaviour the page had as a server action, now with an audit row behind
+ * it. Status is deliberately absent — it is set in exactly one place, through
+ * `project.status.set`, because some transitions change what the customer can
+ * see and deserve their own confirmation.
+ */
+const projectUpdateFieldsSchema = z.object({
+  name: z.string().min(1),
+  salesperson: z.string(),
+  designer: z.string(),
+  proposalExpiresAt: z.string(),
+  internalNotes: z.string(),
+  jurisdiction: z.string(),
+  parcelId: z.string(),
+  // Where the pool is going. The formatted string prints on documents; the
+  // coordinates feed the editor's satellite import. Null coordinates mean the
+  // address was typed rather than picked from autocomplete.
+  siteAddress: z.string(),
+  sitePlaceId: z.string().nullable(),
+  latitude: z.number().min(-85).max(85).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+  customerName: z.string(),
+  customerEmail: z.string(),
+  customerPhone: z.string(),
+  /** Only when it differs from the site address; '' means "same as site". */
+  billingAddress: z.string(),
+  customerNotes: z.string(),
+  poolType: z.string(),
+  interiorFinish: z.string(),
+  equipmentPackage: z.string(),
+  sanitizationPackage: z.string(),
+  heaterSelection: z.string(),
+  lightingSelection: z.string(),
+  deckMaterial: z.string(),
+  copingMaterial: z.string(),
+  screenOption: z.string(),
+  heaterSelected: z.boolean(),
+  saltSystemSelected: z.boolean(),
+  screenSelected: z.boolean(),
+  lightingQuantity: z.number().int().min(0),
+})
+
+export type ProjectUpdateFields = z.infer<typeof projectUpdateFieldsSchema>
+
+/**
+ * Invalidate the cached pages a project write makes stale.
+ *
+ * Best-effort: inside a route handler this reaches Next's cache; from an
+ * integration test there is no request store, and a cache that does not exist
+ * needs no invalidating.
+ */
+async function revalidateProjectPaths(projectId: string): Promise<void> {
+  try {
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/dashboard')
+    revalidatePath(`/projects/${projectId}`)
+  } catch {
+    // No request context (tests, scripts): nothing is cached.
+  }
+}
+
+register({
+  id: 'project.update',
+  label: 'Update project details',
+  description:
+    'Save the project page: site address, customer, permit facts, pool specs, and equipment selections.',
+  category: 'project',
+  inputSchema: z.object({
+    projectId: z.string().min(1),
+    fields: projectUpdateFieldsSchema,
+  }),
+  outputSchema: z.object({
+    savedAt: z.string(),
+  }),
+  voiceExamples: [
+    'Set the salesperson to Ray Delgado.',
+    'The customer email is dana@example.com.',
+  ],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+    const { fields } = input
+
+    const { db } = await import('@/lib/db')
+    const { poolFieldsSchema } = await import('@/modules/projects/pool-fields')
+
+    const project = await db.project.findFirst({
+      where: { id: input.projectId, orgId },
+      select: { id: true, customerId: true },
+    })
+    if (!project) return { ok: false, error: 'Project not found' }
+
+    const poolFields = poolFieldsSchema.parse({
+      poolType: fields.poolType,
+      interiorFinish: fields.interiorFinish,
+      equipmentPackage: fields.equipmentPackage,
+      sanitizationPackage: fields.sanitizationPackage,
+      heaterSelection: fields.heaterSelection,
+      lightingSelection: fields.lightingSelection,
+      deckMaterial: fields.deckMaterial,
+      copingMaterial: fields.copingMaterial,
+      screenOption: fields.screenOption,
+      heaterSelected: fields.heaterSelected,
+      saltSystemSelected: fields.saltSystemSelected,
+      screenSelected: fields.screenSelected,
+      lightingQuantity: fields.lightingQuantity,
+    })
+
+    await db.$transaction(async tx => {
+      let customerId = project.customerId
+      if (fields.customerName.trim()) {
+        const customerData = {
+          name: fields.customerName.trim(),
+          email: fields.customerEmail || null,
+          phone: fields.customerPhone || null,
+          // The billing address, kept only when it differs from the site
+          // address. The site address is the project's own column now, so an
+          // empty billing box means "bill the site" and stores nothing.
+          address: fields.billingAddress.trim() || null,
+          notes: fields.customerNotes || null,
+        }
+        if (customerId) {
+          await tx.customer.update({ where: { id: customerId }, data: customerData })
+        } else {
+          const created = await tx.customer.create({ data: { orgId, ...customerData } })
+          customerId = created.id
+        }
+      }
+      await tx.project.update({
+        where: { id: project.id },
+        data: {
+          name: fields.name,
+          salesperson: fields.salesperson || null,
+          designer: fields.designer || null,
+          proposalExpiresAt: fields.proposalExpiresAt ? new Date(fields.proposalExpiresAt) : null,
+          internalNotes: fields.internalNotes || null,
+          jurisdiction: fields.jurisdiction.trim() || null,
+          parcelId: fields.parcelId.trim() || null,
+          siteAddress: fields.siteAddress.trim() || null,
+          sitePlaceId: fields.sitePlaceId,
+          latitude: fields.latitude,
+          longitude: fields.longitude,
+          poolFields: poolFields as never,
+          ...(customerId ? { customerId } : {}),
+        },
+      })
+    })
+
+    // Without this the dashboard and the project's own header keep serving a
+    // cached name. It happens to look fine in dev, where there is no full
+    // route cache, and would be stale in production.
+    await revalidateProjectPaths(project.id)
+
+    return { ok: true, data: { savedAt: new Date().toISOString() } }
+  },
+})
+
+register({
+  id: 'project.status.set',
+  label: 'Set project status',
+  description:
+    'Move a project along the pipeline: Draft, Ready for review, Proposal sent, Approved, Construction ready, or Archived.',
+  category: 'project',
+  inputSchema: z.object({
+    projectId: z.string().min(1),
+    status: ProjectStatusSchema,
+  }),
+  outputSchema: z.object({
+    projectId: z.string(),
+    status: ProjectStatusSchema,
+    previousStatus: ProjectStatusSchema,
+  }),
+  voiceExamples: [
+    'Mark this project approved.',
+    'Set the status to proposal sent.',
+  ],
+  execute: async (input, ctx) => {
+    if (!ctx.orgId || ctx.orgId === 'anonymous') return { ok: false, error: 'Not authenticated' }
+    const orgId = ctx.orgId
+
+    const { db } = await import('@/lib/db')
+
+    const project = await db.project.findFirst({
+      where: { id: input.projectId, orgId },
+      select: { id: true, status: true },
+    })
+    if (!project) return { ok: false, error: 'Project not found' }
+
+    // updateMany keeps the org filter on the write, not only on the read.
+    await db.project.updateMany({
+      where: { id: project.id, orgId },
+      data: { status: input.status },
+    })
+
+    await revalidateProjectPaths(project.id)
+
+    return {
+      ok: true,
+      data: { projectId: project.id, status: input.status, previousStatus: project.status },
+    }
+  },
+})

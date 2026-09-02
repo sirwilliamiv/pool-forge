@@ -40,19 +40,26 @@ test('a builder makes a project, draws a pool, and gets a price', async ({ page 
   await page.locator('input').first().fill(name)
   await page.getByRole('button', { name: /^create/i }).click()
 
-  // Findable afterwards, which is a different claim from the create returning ok.
-  await expect(page.getByText(name).first()).toBeVisible({ timeout: 60_000 })
-  await page.getByText(name).first().click()
+  // Creation lands on the project page, where the name is the header's
+  // inline-editable input rather than page text. Reading it back is the claim
+  // that the project exists with the typed name, not just that create said ok.
   await page.waitForURL(/\/projects\/[a-z0-9]+/i, { timeout: 60_000 })
+  await expect(page.getByLabel('Project name')).toHaveValue(name, { timeout: 60_000 })
   const projectUrl = new URL(page.url()).pathname
 
   // ---- the form saves without pressing Save ----
+  // A new project with no site address opens in the focused address state
+  // (address-first); Skip for now expands the full page.
+  await page.getByRole('button', { name: /skip for now/i }).click()
   // Typing and navigating away used to lose the value, which reads as the save
   // being broken when it was never asked to run.
   const salesperson = page.locator('div:has(> label:text-is("Salesperson")) input').first()
   await salesperson.fill(`Ray ${RUN}`)
   await expect(page.getByText(/^Saved$/)).toBeVisible({ timeout: 30_000 })
   await page.reload()
+  // Still no address on this project, so the reload lands in the focused
+  // state again; skip back into the full layout to read the field.
+  await page.getByRole('button', { name: /skip for now/i }).click()
   await expect(
     page.locator('div:has(> label:text-is("Salesperson")) input').first(),
   ).toHaveValue(`Ray ${RUN}`, { timeout: 30_000 })

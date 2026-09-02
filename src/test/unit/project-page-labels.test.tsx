@@ -2,42 +2,56 @@
 
 // Every control on the project page has a name a person and a machine can read.
 //
-// It did not. All 26 inputs and selects reported `id=""`, `name=""` and
-// `aria-label=null`, with no `<label for>` anywhere: clicking a label focused
-// nothing, a screen reader announced nothing, and the browser could not
-// autofill the customer name/email/phone/address block. The login page next
-// door got this right, so it was inconsistency rather than ignorance.
-//
-// This sweeps the whole page rather than checking a sample, because the failure
-// mode is a new field added without a label, not the existing ones regressing.
+// The page once shipped with 26 inputs reporting `id=""`, `name=""` and
+// `aria-label=null`: clicking a label focused nothing, a screen reader
+// announced nothing, and the browser could not autofill the customer block.
+// This sweeps the whole editable surface rather than checking a sample,
+// because the failure mode is a new field added without a label, not the
+// existing ones regressing. The redesign's sections are shared by every
+// `?layout=` variant, so one sweep covers them all.
 
+import * as React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { ProjectForm } from '@/components/project/ProjectForm'
-import { ShareProposalCard } from '@/components/project/ShareProposalCard'
+import {
+  EquipmentSection,
+  PoolSection,
+  ProjectSection,
+  SiteCustomerSection,
+} from '@/components/project/detail/FormSections'
+import { ShareLinkControl } from '@/components/project/detail/ShareLinkControl'
+import { useProjectSave } from '@/components/project/detail/useProjectSave'
+import type { ProjectDetailFields } from '@/components/project/detail/types'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('@/lib/commands/dispatch', () => ({
+  dispatch: vi.fn(async () => ({ ok: true, data: { savedAt: 'now' } })),
+}))
 vi.mock('@/modules/projects/share', () => ({
   shareProject: vi.fn(async () => ({ ok: true, token: 'tok' })),
   unshareProject: vi.fn(async () => ({ ok: true })),
 }))
 
-const initial = {
+const initial: ProjectDetailFields = {
   name: 'Riverside',
   salesperson: '',
   designer: '',
-  status: 'DRAFT' as const,
   proposalExpiresAt: '',
   internalNotes: '',
   jurisdiction: '',
   parcelId: '',
+  siteAddress: '',
+  sitePlaceId: null,
+  latitude: null,
+  longitude: null,
   customerName: '',
   customerEmail: '',
   customerPhone: '',
-  customerAddress: '',
+  // Non-empty so the billing field renders and gets swept too.
+  billingAddress: 'PO Box 12, Tampa, FL',
   customerNotes: '',
   poolType: '',
   interiorFinish: '',
@@ -54,18 +68,22 @@ const initial = {
   lightingQuantity: 2,
 }
 
-function renderPage() {
-  return render(
+/** The whole editable surface, as every layout composes it. */
+function Page() {
+  const save = useProjectSave('p1', initial, 'auto')
+  return (
     <>
-      <ShareProposalCard projectId="p1" initialToken="tok" accepted={null} />
-      <ProjectForm
-        projectId="p1"
-        initial={initial}
-        depth={{ shallowFt: 3, deepFt: 5 }}
-        saveAction={vi.fn(async () => ({ ok: true }))}
-      />
-    </>,
+      <SiteCustomerSection save={save} mapsEnabled={false} />
+      <ProjectSection save={save} memberNames={['Ray Delgado', 'Sam Whittaker']} />
+      <PoolSection save={save} depth={{ shallowFt: 3, deepFt: 5 }} projectId="p1" />
+      <EquipmentSection save={save} />
+      <ShareLinkControl projectId="p1" initialToken="tok" accepted={null} />
+    </>
   )
+}
+
+function renderPage() {
+  return render(<Page />)
 }
 
 /**
@@ -143,14 +161,15 @@ describe('project page form controls', () => {
 
   it('lets the browser fill the customer block', () => {
     renderPage()
-    // The four fields an address book knows about, with the tokens it looks for.
-    expect(screen.getByLabelText('Name', { selector: '#customer-name' })).toHaveAttribute(
-      'autocomplete',
-      'name',
-    )
+    // The fields an address book knows about, with the tokens it looks for.
+    expect(screen.getByLabelText('Customer name')).toHaveAttribute('autocomplete', 'name')
     expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'email')
     expect(screen.getByLabelText('Phone')).toHaveAttribute('autocomplete', 'tel')
-    expect(screen.getByLabelText('Job address')).toHaveAttribute('autocomplete', 'street-address')
+    expect(screen.getByLabelText('Site address')).toHaveAttribute('autocomplete', 'street-address')
+    expect(screen.getByLabelText('Billing address')).toHaveAttribute(
+      'autocomplete',
+      'billing street-address',
+    )
   })
 
   it('focuses the field when its label is clicked', async () => {
