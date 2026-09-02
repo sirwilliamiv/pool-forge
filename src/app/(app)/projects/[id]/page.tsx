@@ -2,11 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { ProjectDetail } from '@/components/project/detail/ProjectDetail'
-import {
-  LAYOUTS,
-  type LayoutId,
-  type ProjectDetailData,
-} from '@/components/project/detail/types'
+import type { ProjectDetailData } from '@/components/project/detail/types'
 import type {
   PriceBookChoice,
   ProjectLineItemView,
@@ -18,29 +14,13 @@ import { loadProjectQuote } from '@/modules/projects/snapshot'
 import { mapsEnabled } from '@/modules/site/geo/google'
 import type { Shape } from '@/modules/editor/state/shapes'
 
-/**
- * The layout under comparison. Anything unrecognised is layout 1, so a shared
- * or stale link never 404s over a prototype flag.
- */
-function parseLayout(raw: string | string[] | undefined): LayoutId {
-  const n = Number(Array.isArray(raw) ? raw[0] : raw)
-  return n in LAYOUTS ? (n as LayoutId) : 1
-}
-
-export default async function ProjectPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{ layout?: string | string[] }>
-}) {
+export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) redirect('/login')
   const orgId = session.user.orgId
   if (!orgId) redirect('/login')
 
   const { id } = await params
-  const layout = parseLayout((await searchParams).layout)
 
   const project = await db.project.findUnique({
     where: { id },
@@ -185,5 +165,5 @@ export default async function ProjectPage({
     mapsEnabled: mapsEnabled(),
   }
 
-  return <ProjectDetail data={data} layout={layout} />
+  return <ProjectDetail data={data} />
 }

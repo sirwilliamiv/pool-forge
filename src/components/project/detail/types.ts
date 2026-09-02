@@ -22,7 +22,6 @@ export interface ProjectDetailData {
   jobNumber: number | null
   status: ProjectStatus
   initial: ProjectDetailFields
-  /** Coordinates when the stored address was geocoded; null when typed. */
   depth: { shallowFt: number; deepFt: number } | null
   hasShapes: boolean
   hasPool: boolean
@@ -42,34 +41,4 @@ export interface ProjectDetailData {
   }
   /** False when MAPS_API_KEY is absent: the address field degrades to text. */
   mapsEnabled: boolean
-}
-
-/**
- * The layout variants under comparison, one per `?layout=` value.
- *
- * 1 — sticky header + long page, autosave, docs in header group + full card
- * 2 — two columns with a summary rail, autosave, docs popover, designs strip
- * 3 — tabs, autosave including status (undo toast), docs popover
- * 4 — designs hero under the header, autosave, docs group + card
- * 5 — long page, explicit Save in header, docs card collapsed until priced
- */
-export type LayoutId = 1 | 2 | 3 | 4 | 5
-
-export const LAYOUT_IDS: readonly LayoutId[] = [1, 2, 3, 4, 5]
-
-export interface LayoutSpec {
-  shape: 'long' | 'rail' | 'tabs' | 'hero'
-  save: 'auto' | 'manual'
-  /** How a status change applies: confirm side-effectful moves, or undo toast. */
-  statusModel: 'confirm' | 'undo'
-  docs: 'group-and-card' | 'popover' | 'collapsed-card'
-  designs: 'card' | 'strip' | 'hero'
-}
-
-export const LAYOUTS: Record<LayoutId, LayoutSpec> = {
-  1: { shape: 'long', save: 'auto', statusModel: 'confirm', docs: 'group-and-card', designs: 'card' },
-  2: { shape: 'rail', save: 'auto', statusModel: 'confirm', docs: 'popover', designs: 'strip' },
-  3: { shape: 'tabs', save: 'auto', statusModel: 'undo', docs: 'popover', designs: 'card' },
-  4: { shape: 'hero', save: 'auto', statusModel: 'confirm', docs: 'group-and-card', designs: 'hero' },
-  5: { shape: 'long', save: 'manual', statusModel: 'confirm', docs: 'collapsed-card', designs: 'strip' },
 }

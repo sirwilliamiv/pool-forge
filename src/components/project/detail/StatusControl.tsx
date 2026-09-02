@@ -71,24 +71,17 @@ const CONFIRM_COPY: Partial<Record<ProjectStatus, string>> = {
     'This takes the job off the active pipeline. It stays searchable, and can be unarchived by choosing another status.',
 }
 
-/** How long the undo toast in the saveless model stays actionable. */
-const UNDO_WINDOW_MS = 6000
-
 /**
- * The one place status is set.
- *
- * `model: 'confirm'` (B1): moves with side effects get a confirmation first,
- * because they change what the customer can see. `model: 'undo'` (B2): every
- * move applies immediately and a toast offers six seconds of undo.
+ * The one place status is set. Moves with side effects get a confirmation
+ * first, because they change what the customer can see; the rest apply
+ * immediately.
  */
 export function StatusControl({
   projectId,
   status,
-  model,
 }: {
   projectId: string
   status: ProjectStatus
-  model: 'confirm' | 'undo'
 }) {
   const router = useRouter()
   const [current, setCurrent] = React.useState(status)
@@ -98,7 +91,7 @@ export function StatusControl({
   React.useEffect(() => setCurrent(status), [status])
 
   const apply = React.useCallback(
-    async (next: ProjectStatus, announceUndo: boolean) => {
+    async (next: ProjectStatus) => {
       const previous = current
       setPending(true)
       setCurrent(next)
@@ -113,38 +106,18 @@ export function StatusControl({
         return
       }
       router.refresh()
-      if (announceUndo) {
-        toast(`Status: ${STATUS_LABELS[next]}`, {
-          duration: UNDO_WINDOW_MS,
-          action: {
-            label: 'Undo',
-            onClick: () => {
-              void dispatch('project.status.set', { projectId, status: previous }).then((undone) => {
-                if (undone.ok) {
-                  setCurrent(previous)
-                  router.refresh()
-                  toast(`Back to ${STATUS_LABELS[previous]}`)
-                } else {
-                  toast.error(undone.error)
-                }
-              })
-            },
-          },
-        })
-      } else {
-        toast.success(`Status: ${STATUS_LABELS[next]}`)
-      }
+      toast.success(`Status: ${STATUS_LABELS[next]}`)
     },
     [current, projectId, router],
   )
 
   function choose(next: ProjectStatus) {
     if (next === current) return
-    if (model === 'confirm' && SIDE_EFFECTFUL.has(next)) {
+    if (SIDE_EFFECTFUL.has(next)) {
       setConfirming(next)
       return
     }
-    void apply(next, model === 'undo')
+    void apply(next)
   }
 
   return (
@@ -195,7 +168,7 @@ export function StatusControl({
               onClick={() => {
                 const next = confirming
                 setConfirming(null)
-                if (next) void apply(next, false)
+                if (next) void apply(next)
               }}
             >
               {confirming ? STATUS_LABELS[confirming] : 'Confirm'}
