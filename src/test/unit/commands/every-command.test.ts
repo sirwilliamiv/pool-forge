@@ -340,6 +340,14 @@ const EXERCISES: Record<string, Exercise> = {
   },
   'open.project': { kind: 'stub' },
   'save.project': { kind: 'stub' },
+  'project.update': {
+    kind: 'server',
+    why: 'Writes the project row, the customer row and poolFields through Prisma, org-scoped. Covered by projects/project-update.test.ts against the real DB.',
+  },
+  'project.status.set': {
+    kind: 'server',
+    why: 'Moves ProjectStatus through Prisma, org-scoped. Covered by projects/project-update.test.ts against the real DB, including the previousStatus echo the undo toast replays.',
+  },
   'project.proposal.accept': {
     kind: 'server',
     why: 'Advances ProjectStatus and stamps the signature through Prisma, org-scoped. Covered by projects/proposal-acceptance.test.ts against the real DB, including the public share route that dispatches it with no session.',

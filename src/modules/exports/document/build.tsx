@@ -195,7 +195,9 @@ async function buildConstructionPacket(
               name: project.customer.name,
               email: project.customer.email,
               phone: project.customer.phone,
-              address: project.customer.address,
+              // The geocoded site address is canonical; the customer's
+              // free-text address is a billing fact, not a location.
+              address: project.siteAddress ?? project.customer.address,
             }
           : null
       }
@@ -260,7 +262,9 @@ async function buildSitePlan(projectId: string, orgId: string): Promise<BuiltDoc
               name: project.customer.name,
               email: project.customer.email,
               phone: project.customer.phone,
-              address: project.customer.address,
+              // The geocoded site address is canonical; the customer's
+              // free-text address is a billing fact, not a location.
+              address: project.siteAddress ?? project.customer.address,
             }
           : null
       }
@@ -320,7 +324,9 @@ async function buildScreenEnclosureQuote(
               name: project.customer.name,
               email: project.customer.email,
               phone: project.customer.phone,
-              address: project.customer.address,
+              // The geocoded site address is canonical; the customer's
+              // free-text address is a billing fact, not a location.
+              address: project.siteAddress ?? project.customer.address,
             }
           : null
       }

@@ -85,6 +85,7 @@ export async function loadProjectSnapshot(
       name: true,
       poolFields: true,
       proposalExpiresAt: true,
+      siteAddress: true,
       drawing: { select: { rootJson: true } },
       org: { select: { taxRatePct: true } },
       customer: { select: { name: true, address: true } },
@@ -152,7 +153,10 @@ export async function loadProjectSnapshot(
     validationProject: {
       name: project.name,
       customerName: project.customer?.name ?? null,
-      address: project.customer?.address ?? null,
+      // The geocoded site address is canonical; the customer's free-text
+      // address survives only as a billing address and falls back here just
+      // for rows the lazy migration has not touched yet.
+      address: project.siteAddress ?? project.customer?.address ?? null,
       // The merged fields, so the "select an interior finish" warning clears
       // when the finish was chosen on the drawing rather than typed on the form.
       poolFields: poolFieldsWithFinishes(project.poolFields, finishes) as unknown as Record<
