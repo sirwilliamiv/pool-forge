@@ -7,8 +7,7 @@
 // announced nothing, and the browser could not autofill the customer block.
 // This sweeps the whole editable surface rather than checking a sample,
 // because the failure mode is a new field added without a label, not the
-// existing ones regressing. The redesign's sections are shared by every
-// `?layout=` variant, so one sweep covers them all.
+// existing ones regressing.
 
 import * as React from 'react'
 import { render, screen } from '@testing-library/react'
@@ -68,9 +67,9 @@ const initial: ProjectDetailFields = {
   lightingQuantity: 2,
 }
 
-/** The whole editable surface, as every layout composes it. */
+/** The whole editable surface, as the page composes it. */
 function Page() {
-  const save = useProjectSave('p1', initial, 'auto')
+  const save = useProjectSave('p1', initial)
   return (
     <>
       <SiteCustomerSection save={save} mapsEnabled={false} />

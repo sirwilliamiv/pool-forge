@@ -1,14 +1,16 @@
-# Project page redesign: the five layouts
+# Project page redesign
 
-Route: `/projects/:id?layout=1..5` (no param = layout 1). All five are working
-prototypes against the real data model, sharing one implementation
-(`src/components/project/detail/`): the sections, the sticky header, the
-focused address state and the save hook are the same instances everywhere, so
-a fix lands in all of them. A small switcher pinned bottom-left hops between
-them on any project.
+**Decided: layout 1 shipped.** `/projects/:id` is now the address-first,
+workflow-ordered, autosaving page described below as option 1. The
+comparison chrome (the `?layout=` param, the bottom-left switcher, and the
+variant compositions: summary rail, tabs, designs hero, explicit save) was
+removed once the decision landed; this document and the screenshots stay as
+the record of what was compared and why.
 
-**Billy's pick: layout 1.** It is the default; the others stay behind the
-query param until we decide to strip them.
+All five options were working prototypes against the real data model,
+sharing one implementation (`src/components/project/detail/`): the sections,
+the sticky header, the focused address state and the save hook were the same
+instances everywhere.
 
 ## What every option shares (the fixed decisions)
 
@@ -39,7 +41,7 @@ query param until we decide to strip them.
 
 | # | Shape | Save | Documents | Designs | Feel |
 |---|---|---|---|---|---|
-| 1 | Long page + jump nav (A1) | Autosave, status confirms side-effectful moves (B1) | Header group + full card at end (C1) | Card in workflow position (D1) | Closest to today, everything visible, least surprising. **Default.** |
+| 1 | Long page + jump nav (A1) | Autosave, status confirms side-effectful moves (B1) | Header group + full card at end (C1) | Card in workflow position (D1) | Closest to today, everything visible, least surprising. **Chosen.** |
 | 2 | Two columns + summary rail (A2) | B1 | Header popover, no card (C2) | Compact strip (D3) | The rail keeps map/price/docs/share on screen while editing. Densest. |
 | 3 | Tabs: Overview · Design · Specs (A3) | Autosave incl. status with 6s undo toast (B2) | Header popover (C2) | Card (D1) | Shortest pages. Documents tab dropped since C2 makes it redundant (substitution from the brief's pairing). |
 | 4 | Designs hero + two-column forms (A4) | B1 | Group + card (C1) | Full-width rack under header (D2) | The drawing is the product; forms are secondary. |
@@ -85,12 +87,8 @@ edit, not per keystroke. Exports and validation read
   in exactly the shape that import consumes.
 - Dark mode: tokens carry dark values but the app has no theme toggle, so
   parity is untested, same as the rest of the app.
-- B3's navigation guard is `beforeunload` only; in-app `<Link>` navigations
-  flush the pending save instead of prompting (autosave-on-leave, which is
-  arguably better than a dialog).
-- The layout switcher and the `?layout=` param are comparison chrome; once a
-  winner is final, delete `LayoutSwitcher`, collapse `LAYOUTS` to the chosen
-  spec, and the rest of the code is the production page.
+- In-app navigations flush any pending autosave on unmount rather than
+  prompting; closing the tab mid-debounce relies on the same flush.
 
 ## Screenshots (`shots/`)
 

@@ -18,18 +18,15 @@ export type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 const AUTOSAVE_DELAY_MS = 800
 
 export interface ProjectSave {
-  mode: 'auto' | 'manual'
   form: ProjectDetailFields
-  /** A text edit: saves on a debounce (auto mode) or marks dirty (manual). */
+  /** A text edit: saves on a debounce. */
   update: <K extends keyof ProjectDetailFields>(key: K, value: ProjectDetailFields[K]) => void
   /** Several fields changed by one keystroke, still on the typing debounce. */
   updatePatch: (patch: Partial<ProjectDetailFields>) => void
-  /** A discrete choice (select, checkbox): saves immediately in auto mode. */
+  /** A discrete choice (select, checkbox): saves immediately. */
   updateNow: (patch: Partial<ProjectDetailFields>) => void
   saveState: SaveState
-  /** Fields changed since the last successful save. Drives the manual Save button. */
-  dirtyCount: number
-  /** Save now: the manual Save button, Cmd/Ctrl+S, and the error Retry. */
+  /** Save now: the header's error Retry. */
   flush: () => void
 }
 
@@ -42,25 +39,18 @@ function countDirty(a: ProjectDetailFields, b: ProjectDetailFields): number {
 }
 
 /**
- * One form state for every section on the project page, and one save path.
- *
- * `mode: 'auto'` is the B1 model: text on a debounce, discrete controls on
- * change, state announced in the header. `mode: 'manual'` is the B3 model:
- * nothing writes until `flush()`, the header button carries the dirty count,
- * Cmd/Ctrl+S saves, and leaving with unsaved changes warns.
+ * One form state for every section on the project page, and one save path:
+ * text on a debounce, discrete controls on change, everything written through
+ * the `project.update` command, state announced in the header.
  */
-export function useProjectSave(
-  projectId: string,
-  initial: ProjectDetailFields,
-  mode: 'auto' | 'manual',
-): ProjectSave {
+export function useProjectSave(projectId: string, initial: ProjectDetailFields): ProjectSave {
   const router = useRouter()
   const [form, setForm] = React.useState(initial)
   const [saveState, setSaveState] = React.useState<SaveState>('idle')
   const [lastSaved, setLastSaved] = React.useState(initial)
 
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  /** The freshest values, so unmount and keyboard handlers never save stale state. */
+  /** The freshest values, so unmount and timers never save stale state. */
   const formRef = React.useRef(form)
   formRef.current = form
   const lastSavedRef = React.useRef(lastSaved)
@@ -95,20 +85,14 @@ export function useProjectSave(
    */
   const pendingDelay = React.useRef<number | null>(null)
 
-  const applyPatch = React.useCallback(
-    (patch: Partial<ProjectDetailFields>, immediate: boolean) => {
-      dirty.current = true
-      if (mode === 'auto') {
-        const delay = immediate ? 0 : AUTOSAVE_DELAY_MS
-        pendingDelay.current = Math.min(pendingDelay.current ?? Number.POSITIVE_INFINITY, delay)
-      }
-      setForm((prev) => ({ ...prev, ...patch }))
-    },
-    [mode],
-  )
+  const applyPatch = React.useCallback((patch: Partial<ProjectDetailFields>, immediate: boolean) => {
+    dirty.current = true
+    const delay = immediate ? 0 : AUTOSAVE_DELAY_MS
+    pendingDelay.current = Math.min(pendingDelay.current ?? Number.POSITIVE_INFINITY, delay)
+    setForm((prev) => ({ ...prev, ...patch }))
+  }, [])
 
   React.useEffect(() => {
-    if (mode !== 'auto') return
     const delay = pendingDelay.current
     if (delay === null) return
     pendingDelay.current = null
@@ -120,7 +104,7 @@ export function useProjectSave(
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [form, mode, save])
+  }, [form, save])
 
   const update = React.useCallback(
     <K extends keyof ProjectDetailFields>(key: K, value: ProjectDetailFields[K]) => {
@@ -157,36 +141,12 @@ export function useProjectSave(
     }
   }, [projectId])
 
-  // Manual mode: Cmd/Ctrl+S saves, and closing the tab with unsaved changes warns.
-  React.useEffect(() => {
-    if (mode !== 'manual') return
-
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault()
-        void save(formRef.current)
-      }
-    }
-    function onBeforeUnload(e: BeforeUnloadEvent) {
-      if (countDirty(formRef.current, lastSavedRef.current) === 0) return
-      e.preventDefault()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('beforeunload', onBeforeUnload)
-    }
-  }, [mode, save])
-
   return {
-    mode,
     form,
     update,
     updatePatch,
     updateNow,
     saveState,
-    dirtyCount: dirty.current ? countDirty(form, lastSaved) : 0,
     flush,
   }
 }

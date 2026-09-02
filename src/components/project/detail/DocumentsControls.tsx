@@ -122,22 +122,20 @@ export function DocumentsList({ projectId, prereqs }: { projectId: string; prere
 
 /**
  * The header's document affordance. On wide screens a button group; below
- * that, one "Documents" popover trigger. `variant: 'popover'` forces the
- * popover at every width (the C2 model, where there is no card on the page).
+ * that, one "Documents" popover trigger carrying the same rows plus the
+ * share link.
  */
 export function DocumentsHeader({
   projectId,
   prereqs,
-  variant,
   share,
 }: {
   projectId: string
   prereqs: DocPrereqs
-  variant: 'group' | 'popover'
   share: { token: string | null; accepted: { name: string; at: string } | null } | null
 }) {
   const group = (
-    <div className={variant === 'group' ? 'hidden xl:flex xl:items-center xl:gap-1' : 'hidden'}>
+    <div className="hidden xl:flex xl:items-center xl:gap-1">
       {DOCS.map((doc) => {
         const reason = reasonLine(prereqs[doc.key])
         return (
@@ -163,7 +161,7 @@ export function DocumentsHeader({
   )
 
   const popover = (
-    <div className={variant === 'group' ? 'xl:hidden' : ''}>
+    <div className="xl:hidden">
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="h-8">
@@ -198,51 +196,18 @@ export function DocumentsHeader({
   )
 }
 
-/**
- * The full Documents & share card for the end of the page (C1), or the
- * collapsed-until-priced variant near the top (C3).
- */
+/** The full Documents & share card at the end of the page. */
 export function DocumentsCard({
   projectId,
   prereqs,
   share,
-  variant,
-  priced,
 }: {
   projectId: string
   prereqs: DocPrereqs
   share: { token: string | null; accepted: { name: string; at: string } | null }
-  variant: 'full' | 'collapsed-until-priced'
-  priced: boolean
 }) {
-  const [expanded, setExpanded] = React.useState(variant === 'full' || priced)
-  React.useEffect(() => {
-    if (priced) setExpanded(true)
-  }, [priced])
-
-  if (variant === 'collapsed-until-priced' && !expanded) {
-    return (
-      <Card id="documents">
-        <CardContent className="flex items-center justify-between gap-3 p-4">
-          <p className="text-bodyS text-theme-muted">
-            <span className="mr-2 font-brandMono text-badge uppercase text-theme-muted">Documents</span>
-            Four documents unlock as the job is priced.
-          </p>
-          <button
-            type="button"
-            className="flex items-center gap-1 text-bodyS text-theme-muted transition-colors duration-brand ease-brand hover:text-theme-fg"
-            onClick={() => setExpanded(true)}
-          >
-            Show anyway
-            <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <Card id="documents">
+    <Card id="documents" className="scroll-mt-24">
       <CardHeader>
         <CardTitle>Documents &amp; share</CardTitle>
         <CardDescription>

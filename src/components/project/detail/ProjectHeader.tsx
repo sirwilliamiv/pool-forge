@@ -49,16 +49,12 @@ export function ProjectHeader({
   projectId,
   save,
   status,
-  statusModel,
-  docsVariant,
   prereqs,
   share,
 }: {
   projectId: string
   save: ProjectSave
   status: ProjectStatus
-  statusModel: 'confirm' | 'undo'
-  docsVariant: 'group' | 'popover'
   prereqs: DocPrereqs
   share: { token: string | null; accepted: { name: string; at: string } | null } | null
 }) {
@@ -124,7 +120,7 @@ export function ProjectHeader({
           className="w-full min-w-0 max-w-[14rem] shrink truncate rounded-brand border border-transparent bg-transparent px-1.5 py-1 text-bodyXL font-medium text-theme-fg outline-none transition-colors duration-brand ease-brand hover:border-theme-lineSoft focus:border-theme-line"
         />
 
-        <StatusControl projectId={projectId} status={status} model={statusModel} />
+        <StatusControl projectId={projectId} status={status} />
 
         <div className="hidden min-w-0 flex-1 items-baseline gap-3 lg:flex">
           <span className="truncate font-brandMono text-badge text-theme-muted">
@@ -138,12 +134,7 @@ export function ProjectHeader({
 
         <SaveIndicator save={save} />
 
-        <DocumentsHeader
-          projectId={projectId}
-          prereqs={prereqs}
-          variant={docsVariant}
-          share={share}
-        />
+        <DocumentsHeader projectId={projectId} prereqs={prereqs} share={share} />
 
         <Button asChild size="sm" className="h-8 shrink-0">
           <Link href={`/projects/${projectId}/editor`}>
@@ -226,36 +217,11 @@ function QuoteLabel() {
 }
 
 /**
- * Whether the last change persisted, said out loud.
- *
- * Autosave mode announces Saving… / Saved / a retry. Manual mode is the Save
- * button itself: solid with a count while dirty, quiet when clean, Cmd/Ctrl+S
- * as the shortcut.
+ * Whether the last change persisted, said out loud: Saving… / Saved / a
+ * retry when a write failed. An autosaving page that shows nothing leaves
+ * the user unsure whether their typing went anywhere.
  */
 export function SaveIndicator({ save }: { save: ProjectSave }) {
-  if (save.mode === 'manual') {
-    return (
-      <span aria-live="polite" className="flex shrink-0 items-center">
-        <Button
-          size="sm"
-          variant={save.dirtyCount > 0 ? 'default' : 'outline'}
-          className="h-8"
-          disabled={save.saveState === 'saving' || (save.dirtyCount === 0 && save.saveState !== 'error')}
-          onClick={save.flush}
-          title="Cmd/Ctrl+S"
-        >
-          {save.saveState === 'saving'
-            ? 'Saving…'
-            : save.saveState === 'error'
-              ? 'Retry save'
-              : save.dirtyCount > 0
-                ? `Save · ${save.dirtyCount}`
-                : 'Saved'}
-        </Button>
-      </span>
-    )
-  }
-
   return (
     <span aria-live="polite" className="flex shrink-0 items-center font-brandMono text-badge text-theme-muted">
       {save.saveState === 'saving' && 'Saving…'}

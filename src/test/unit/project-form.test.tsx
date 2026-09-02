@@ -5,9 +5,7 @@
 // The old ProjectForm carried these contracts and the detail redesign keeps
 // them: autosave through the `project.update` command with a debounce, no
 // write on hydration, a pending edit flushed on unmount, and each equipment
-// question asked exactly once. These assert the behaviour, not the layout, so
-// they hold across every `?layout=` variant — the sections and the save hook
-// are the same instances everywhere.
+// question asked exactly once. These assert the behaviour, not the layout.
 
 import * as React from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -69,7 +67,7 @@ function Harness({
   values: ProjectDetailFields
   depth: { shallowFt: number; deepFt: number } | null
 }) {
-  const save = useProjectSave('p1', values, 'auto')
+  const save = useProjectSave('p1', values)
   return (
     <>
       <TextField id="project-name" label="Name" value={save.form.name} onChange={(v) => save.update('name', v)} />
