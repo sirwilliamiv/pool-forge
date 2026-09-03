@@ -1,25 +1,26 @@
-// Reading an unauthenticated multipart body without letting it decide how much
-// memory the process uses.
+// Reading the intake route's unauthenticated multipart body.
 //
-// The naive version of this route calls `req.formData()` and checks sizes
-// afterwards, which means a stranger picks the allocation size and the check
-// runs after the damage. Two gates instead, in this order:
-//
-//   1. `Content-Length`, before the body is touched at all. A declared length
-//      over the ceiling is refused without reading a byte, and an absent
-//      length is refused outright: this endpoint has no reason to accept a
-//      chunked upload of unknown size.
-//   2. A running total while the stream is drained. A `Content-Length` is a
-//      claim, not a fact, so the reader aborts the moment the actual bytes
-//      exceed the ceiling regardless of what the header said.
-//
-// Only after both gates does the buffer get handed to the standard multipart
-// parser, which is now operating on input of known, bounded size.
+// The two-gate reader (Content-Length refused before a byte is read, then a
+// running total while the stream drains) lives in `src/lib/http/capped-body.ts`
+// so every public endpoint shares one implementation. This wrapper maps its
+// refusal reasons into the intake error vocabulary, and only after both gates
+// does the buffer get handed to the standard multipart parser, which is then
+// operating on input of known, bounded size.
+
+import { readBodyCapped, type CappedBodyRefusal } from '@/lib/http/capped-body'
 
 import { IntakeError } from './errors'
 
 export interface CappedBodyOptions {
   maxBytes: number
+}
+
+const REFUSAL_TO_INTAKE: Record<CappedBodyRefusal, ConstructorParameters<typeof IntakeError>[0]> = {
+  missing_length: 'invalid_request',
+  invalid_length: 'invalid_request',
+  no_body: 'invalid_request',
+  too_large: 'too_large',
+  empty: 'empty',
 }
 
 /**
@@ -30,41 +31,9 @@ export async function readCappedBody(
   req: Request,
   options: CappedBodyOptions,
 ): Promise<Buffer> {
-  const declared = req.headers.get('content-length')
-  if (declared === null) throw new IntakeError('invalid_request')
-
-  const declaredBytes = Number(declared)
-  if (!Number.isInteger(declaredBytes) || declaredBytes < 0) {
-    throw new IntakeError('invalid_request')
-  }
-  // Gate 1: refuse before the body is read.
-  if (declaredBytes > options.maxBytes) throw new IntakeError('too_large')
-  if (declaredBytes === 0) throw new IntakeError('empty')
-
-  const body = req.body
-  if (body === null) throw new IntakeError('invalid_request')
-
-  const reader = body.getReader()
-  const chunks: Uint8Array[] = []
-  let total = 0
-  try {
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      if (value === undefined) continue
-      total += value.byteLength
-      // Gate 2: the header was a claim; these are the actual bytes.
-      if (total > options.maxBytes) throw new IntakeError('too_large')
-      chunks.push(value)
-    }
-  } finally {
-    reader.releaseLock()
-    // Stop the peer from continuing to send once we have decided to refuse.
-    void body.cancel().catch(() => undefined)
-  }
-
-  if (total === 0) throw new IntakeError('empty')
-  return Buffer.concat(chunks, total)
+  const result = await readBodyCapped(req, options.maxBytes)
+  if (!result.ok) throw new IntakeError(REFUSAL_TO_INTAKE[result.reason])
+  return result.buffer
 }
 
 /**

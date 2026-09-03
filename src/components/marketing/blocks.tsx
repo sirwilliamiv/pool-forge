@@ -206,9 +206,6 @@ export function Footer() {
 
         <div className="mk-footer__fine">
           <span className="mk-label">Invite only · 2026</span>
-          <span className="mk-label">
-            Every claim on these pages is something the app does today
-          </span>
         </div>
       </div>
     </footer>

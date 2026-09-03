@@ -273,9 +273,9 @@ async function createProject(page: Page, name: string): Promise<string> {
   await page.getByRole('button', { name: /new project/i }).first().click()
   await page.locator('input').first().fill(name)
   await page.getByRole('button', { name: /^create/i }).click()
-  await expect(page.getByText(name).first()).toBeVisible({ timeout: 60_000 })
-  await page.getByText(name).first().click()
+  // Creation lands on the project page; the name is the header inline input.
   await page.waitForURL(/\/projects\/[a-z0-9]+/i, { timeout: 60_000 })
+  await expect(page.getByLabel('Project name')).toHaveValue(name, { timeout: 60_000 })
   return new URL(page.url()).pathname
 }
 

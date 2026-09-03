@@ -32,9 +32,9 @@ test('a builder leaves a note, it survives a reload, and no customer ever sees i
   await page.getByRole('button', { name: /new project/i }).first().click()
   await page.locator('input').first().fill(name)
   await page.getByRole('button', { name: /^create/i }).click()
-  await expect(page.getByText(name).first()).toBeVisible({ timeout: 60_000 })
-  await page.getByText(name).first().click()
+  // Creation lands on the project page; the name is the header inline input.
   await page.waitForURL(/\/projects\/[a-z0-9]+/i, { timeout: 60_000 })
+  await expect(page.getByLabel('Project name')).toHaveValue(name, { timeout: 60_000 })
   const projectUrl = new URL(page.url()).pathname
 
   await page.goto(`${projectUrl}/editor`)

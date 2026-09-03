@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server'
 
+import { readBodyCapped } from '@/lib/http/capped-body'
 import { authClientIpBucket } from '@/modules/auth/request-ip'
 import { handleWaitlistSubmission } from '@/modules/waitlist/handler'
 import { WAITLIST_MESSAGES } from '@/modules/waitlist/errors'
@@ -30,10 +31,28 @@ function respond(status: number, body: unknown, extra: Record<string, string> = 
   return NextResponse.json(body, { status, headers: { ...BASE_HEADERS, ...extra } })
 }
 
+/**
+ * Ceiling on the whole JSON body, refused from `Content-Length` before a byte
+ * is read and again while the stream drains. The form posts a name, an email
+ * and a note; anything past a few KB is not a waitlist submission, and
+ * `req.json()` would have let the caller pick the allocation size.
+ */
+const WAITLIST_MAX_BODY_BYTES = 16 * 1024
+
 export async function POST(req: Request): Promise<Response> {
+  const body = await readBodyCapped(req, WAITLIST_MAX_BODY_BYTES)
+  if (!body.ok) {
+    // An oversize body gets its own status; every other refusal is the same
+    // invalid-submission answer the form already understands.
+    if (body.reason === 'too_large') {
+      return respond(413, { ok: false, error: WAITLIST_MESSAGES.invalid })
+    }
+    return respond(400, { ok: false, error: WAITLIST_MESSAGES.invalid })
+  }
+
   let payload: unknown
   try {
-    payload = await req.json()
+    payload = JSON.parse(body.buffer.toString('utf8'))
   } catch {
     // Malformed JSON never reaches the handler, so it never spends a bucket.
     // It also cannot have come from the form on the page.

@@ -28,7 +28,29 @@ import type { ProjectDetailData } from './types'
  */
 export function ProjectDetail({ data }: { data: ProjectDetailData }) {
   const save = useProjectSave(data.projectId, data.initial)
+  const skipKey = `pf.project.${data.projectId}.address-skipped`
   const [focused, setFocused] = React.useState(data.initial.siteAddress.trim() === '')
+
+  // A project with no address opens focused, but only until the user skips.
+  // Remembering that per project means a reload does not shove someone who
+  // chose to fill the rest of the job first back into the address card.
+  React.useEffect(() => {
+    if (data.initial.siteAddress.trim() !== '') return
+    try {
+      if (window.localStorage.getItem(skipKey) === '1') setFocused(false)
+    } catch {
+      // Private mode or blocked storage: the focused state simply stays.
+    }
+  }, [data.initial.siteAddress, skipKey])
+
+  function leaveFocused() {
+    try {
+      window.localStorage.setItem(skipKey, '1')
+    } catch {
+      // Non-fatal: the state still expands for this view.
+    }
+    setFocused(false)
+  }
 
   const priced = data.quote.status === 'PRICED'
   const prereqs = computeDocPrereqs({
@@ -56,8 +78,8 @@ export function ProjectDetail({ data }: { data: ProjectDetailData }) {
             <FocusedAddress
               save={save}
               mapsEnabled={data.mapsEnabled}
-              onDone={() => setFocused(false)}
-              onSkip={() => setFocused(false)}
+              onDone={leaveFocused}
+              onSkip={leaveFocused}
             />
           </div>
         ) : (

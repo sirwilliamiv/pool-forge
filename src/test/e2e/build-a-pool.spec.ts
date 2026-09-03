@@ -57,9 +57,8 @@ test('a builder makes a project, draws a pool, and gets a price', async ({ page 
   await salesperson.fill(`Ray ${RUN}`)
   await expect(page.getByText(/^Saved$/)).toBeVisible({ timeout: 30_000 })
   await page.reload()
-  // Still no address on this project, so the reload lands in the focused
-  // state again; skip back into the full layout to read the field.
-  await page.getByRole('button', { name: /skip for now/i }).click()
+  // The skip is remembered per project, so the reload comes back to the full
+  // page rather than the address card, and the saved value is there to read.
   await expect(
     page.locator('div:has(> label:text-is("Salesperson")) input').first(),
   ).toHaveValue(`Ray ${RUN}`, { timeout: 30_000 })
