@@ -36,9 +36,12 @@ async function newProject(page: Page, label: string): Promise<string> {
   await page.getByRole('button', { name: /new project/i }).first().click()
   await page.locator('input').first().fill(name)
   await page.getByRole('button', { name: /^create/i }).click()
-  await page.getByText(name).first().waitFor({ timeout: 60_000 })
-  await page.getByText(name).first().click()
+  // Creation lands on the project page; the name is the header's inline input.
   await page.waitForURL(/\/projects\/[a-z0-9]+/i, { timeout: 60_000 })
+  await expect(page.getByLabel('Project name')).toHaveValue(name, { timeout: 60_000 })
+  // A new project has no address, so it opens in the focused address state;
+  // skip into the full page where the sections live.
+  await page.getByRole('button', { name: /skip for now/i }).click()
   return new URL(page.url()).pathname
 }
 

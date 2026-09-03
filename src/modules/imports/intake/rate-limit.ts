@@ -1,4 +1,9 @@
-// Atomic, cross-instance rate limiting for the public intake route.
+// Atomic, cross-instance rate limiting for the public routes.
+//
+// Written for the intake route and shared from here: the counter table and the
+// single-statement consume are the same whatever the endpoint, so a second
+// public surface (proposal acceptance) adds a scope rather than a second
+// limiter that would drift from this one.
 //
 // An in-memory token bucket is per-process. N instances of the app each hold
 // their own bucket, so a limit of 20 becomes a limit of 20N and the ceiling
@@ -31,7 +36,7 @@ import {
   INTAKE_RATE_WINDOW_MS,
 } from './constants'
 
-export type RateLimitScope = 'ip' | 'token'
+export type RateLimitScope = 'ip' | 'token' | 'share-accept-ip'
 
 export interface RateLimitDecision {
   allowed: boolean
@@ -133,6 +138,31 @@ export async function consumeLinkBudget(
     scope: 'token',
     bucketKey: linkId,
     ceiling: INTAKE_RATE_LIMIT_PER_TOKEN,
+  }
+  if (now !== undefined) options.now = now
+  if (windowMs !== undefined) options.windowMs = windowMs
+  return consumeRateLimit(options)
+}
+
+/**
+ * The per-address ceiling on public proposal acceptance.
+ *
+ * Acceptance is idempotent, but each attempt costs a document store and a
+ * command dispatch, and the endpoint is public behind an unguessable link:
+ * one address gets a handful of tries per window, which is more than any
+ * customer signing their own proposal will ever use.
+ */
+export const SHARE_ACCEPT_RATE_LIMIT_PER_IP = 10
+
+export async function consumeShareAcceptBudget(
+  ipBucket: string,
+  now?: Date,
+  windowMs?: number,
+): Promise<RateLimitDecision> {
+  const options: ConsumeOptions = {
+    scope: 'share-accept-ip',
+    bucketKey: ipBucket,
+    ceiling: SHARE_ACCEPT_RATE_LIMIT_PER_IP,
   }
   if (now !== undefined) options.now = now
   if (windowMs !== undefined) options.windowMs = windowMs

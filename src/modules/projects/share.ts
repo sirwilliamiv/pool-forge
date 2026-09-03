@@ -127,6 +127,32 @@ export async function acceptProposal(
   if (!t) return { ok: false, error: 'Invalid link' }
   if (!acceptedName) return { ok: false, error: 'Please enter your name to accept' }
 
+  // This action is public: the link is the capability and there is no session
+  // behind the caller. Same treatment as the intake route, and in the same
+  // order — the address budget is spent before the token is even looked up,
+  // so an address enumerating tokens is stopped without its traffic reaching
+  // the Project table. The counter is the shared Postgres one, so the ceiling
+  // holds across every instance.
+  const { headers } = await import('next/headers')
+  const { clientIpBucket } = await import('@/modules/imports/intake/client-ip')
+  const { consumeShareAcceptBudget } = await import('@/modules/imports/intake/rate-limit')
+  // `headers()` exists only inside a request scope, and throws synchronously
+  // outside one. Every HTTP caller has a scope, so the budget always applies
+  // to a stranger; a direct call from a test or a script has no address to
+  // bucket and nothing to rate limit.
+  let requestHeaders: Awaited<ReturnType<typeof headers>> | null = null
+  try {
+    requestHeaders = await headers()
+  } catch {
+    requestHeaders = null
+  }
+  if (requestHeaders !== null) {
+    const budget = await consumeShareAcceptBudget(clientIpBucket(requestHeaders))
+    if (!budget.allowed) {
+      return { ok: false, error: 'Too many attempts from this connection. Try again in a little while.' }
+    }
+  }
+
   const project = await db.project.findUnique({
     where: { shareToken: t },
     select: { id: true, orgId: true, proposalAcceptedAt: true },
