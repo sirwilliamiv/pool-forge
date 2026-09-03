@@ -36,7 +36,7 @@ import {
   INTAKE_RATE_WINDOW_MS,
 } from './constants'
 
-export type RateLimitScope = 'ip' | 'token' | 'share-accept-ip'
+export type RateLimitScope = 'ip' | 'token' | 'share-accept-ip' | 'maps-proxy-ip'
 
 export interface RateLimitDecision {
   allowed: boolean
@@ -163,6 +163,37 @@ export async function consumeShareAcceptBudget(
     scope: 'share-accept-ip',
     bucketKey: ipBucket,
     ceiling: SHARE_ACCEPT_RATE_LIMIT_PER_IP,
+  }
+  if (now !== undefined) options.now = now
+  if (windowMs !== undefined) options.windowMs = windowMs
+  return consumeRateLimit(options)
+}
+
+/**
+ * The per-address ceiling on the Google Maps proxy routes.
+ *
+ * `/api/site/{autocomplete,place,staticmap}` (and the mobile twins) call
+ * Google on every request, and every Google call is billed. Session or bearer
+ * auth stops a stranger, but a single logged-in caller (or a stolen session)
+ * could otherwise loop these with varying coordinates and drive unbounded
+ * spend, with every call logging as individually valid. This bounds one
+ * address bucket to a generous interactive volume: a person typing addresses
+ * and viewing lots does not approach it, a script does immediately.
+ *
+ * Counted per address rather than per org so one abuser cannot exhaust a whole
+ * organisation's ability to look up an address.
+ */
+export const MAPS_PROXY_RATE_LIMIT_PER_IP = 500
+
+export async function consumeMapsProxyBudget(
+  ipBucket: string,
+  now?: Date,
+  windowMs?: number,
+): Promise<RateLimitDecision> {
+  const options: ConsumeOptions = {
+    scope: 'maps-proxy-ip',
+    bucketKey: ipBucket,
+    ceiling: MAPS_PROXY_RATE_LIMIT_PER_IP,
   }
   if (now !== undefined) options.now = now
   if (windowMs !== undefined) options.windowMs = windowMs

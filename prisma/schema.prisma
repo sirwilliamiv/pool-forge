@@ -530,6 +530,9 @@ model PriceBook {
 
   @@unique([orgId, name, version])
   @@index([orgId])
+  // The active-book lookup on the project-page hot path: filter orgId +
+  // isActive, take the highest version.
+  @@index([orgId, isActive, version])
 }
 
 enum PriceCategory {

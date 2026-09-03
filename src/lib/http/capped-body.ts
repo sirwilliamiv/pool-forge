@@ -23,18 +23,40 @@ export type CappedBodyResult =
   | { ok: true; buffer: Buffer }
   | { ok: false; reason: CappedBodyRefusal }
 
-/** Drain a request body into a Buffer, refusing past `maxBytes`. */
-export async function readBodyCapped(req: Request, maxBytes: number): Promise<CappedBodyResult> {
-  const declared = req.headers.get('content-length')
-  if (declared === null) return { ok: false, reason: 'missing_length' }
+export interface ReadBodyOptions {
+  /**
+   * Require a `Content-Length` header (default true).
+   *
+   * True is right for an upload endpoint, which has no reason to accept a
+   * chunked body of unknown size. Set false for a reporter that must tolerate
+   * `keepalive`/beacon POSTs, which routinely omit the header: gate 1 is
+   * skipped, but gate 2 (the running total) still aborts an oversize stream,
+   * so the body is bounded either way.
+   */
+  requireContentLength?: boolean
+}
 
-  const declaredBytes = Number(declared)
-  if (!Number.isInteger(declaredBytes) || declaredBytes < 0) {
-    return { ok: false, reason: 'invalid_length' }
+/** Drain a request body into a Buffer, refusing past `maxBytes`. */
+export async function readBodyCapped(
+  req: Request,
+  maxBytes: number,
+  options: ReadBodyOptions = {},
+): Promise<CappedBodyResult> {
+  const requireLength = options.requireContentLength ?? true
+  const declared = req.headers.get('content-length')
+
+  if (declared !== null) {
+    const declaredBytes = Number(declared)
+    if (!Number.isInteger(declaredBytes) || declaredBytes < 0) {
+      if (requireLength) return { ok: false, reason: 'invalid_length' }
+    } else {
+      // Gate 1: refuse before the body is read.
+      if (declaredBytes > maxBytes) return { ok: false, reason: 'too_large' }
+      if (declaredBytes === 0) return { ok: false, reason: 'empty' }
+    }
+  } else if (requireLength) {
+    return { ok: false, reason: 'missing_length' }
   }
-  // Gate 1: refuse before the body is read.
-  if (declaredBytes > maxBytes) return { ok: false, reason: 'too_large' }
-  if (declaredBytes === 0) return { ok: false, reason: 'empty' }
 
   const body = req.body
   if (body === null) return { ok: false, reason: 'no_body' }

@@ -22,20 +22,31 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
   const { id } = await params
 
-  const project = await db.project.findUnique({
-    where: { id },
+  // Org-scoped in the query, not fetched-then-checked: a project from another
+  // organisation is not found rather than found and refused.
+  const project = await db.project.findFirst({
+    where: { id, orgId },
     include: { customer: true },
   })
-  if (!project || project.orgId !== orgId) notFound()
+  if (!project) notFound()
 
   const pool = readPoolFields(project.poolFields)
 
-  // The one priced view of the project: shapes, measurements and the quote all
-  // come from the same loader every export reads, so the header's figure is
-  // the proposal's figure.
-  const quote = await loadProjectQuote(project.id, orgId)
-  const shapes: Shape[] = quote?.shapes ?? []
+  // Everything else this page needs is independent of the project row, so the
+  // reads run together rather than in a serial chain: the priced view (shapes,
+  // measurements, quote, line items, price book — the same loader every export
+  // reads, so the header figure is the proposal figure), the design summaries,
+  // and the team roster for the salesperson/designer pickers. The version
+  // drawings are no longer loaded here; the rack fetches each as it scrolls to
+  // it, so first paint does not ship up to forty full drawings.
+  const [quote, versionRows, members] = await Promise.all([
+    loadProjectQuote(project.id, orgId),
+    listVersions(orgId, project.id),
+    listMembers(orgId),
+  ])
+
   const measurements = quote?.measurements ?? null
+  const shapes: Shape[] = quote?.shapes ?? []
   const depth =
     measurements &&
     measurements.hasPool &&
@@ -44,24 +55,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       ? { shallowFt: measurements.poolDepthShallow, deepFt: measurements.poolDepthDeep }
       : null
 
-  // The designs tried on this job. Shapes come out of each version's own
-  // payload so a card draws the design it names, rather than a thumbnail that
-  // was accurate the day it was rendered.
-  const versionRows = await listVersions(orgId, project.id)
-  const versionPayloads = await db.designVersion.findMany({
-    where: { projectId: project.id, orgId },
-    select: { id: true, rootJson: true },
-  })
-  const shapesByVersion = new Map(
-    versionPayloads.map(row => [
-      row.id,
-      ((row.rootJson as { shapes?: unknown } | null)?.shapes ?? []) as Shape[],
-    ]),
-  )
   const versions = versionRows.map(row => ({
     ...row,
     createdAt: row.createdAt.toISOString(),
-    shapes: shapesByVersion.get(row.id) ?? [],
   }))
 
   // Amounts put on this job by hand, already loaded by the quote; the price
@@ -87,8 +83,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       (a, b) =>
         a.category.localeCompare(b.category) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
     )
-
-  const members = await listMembers(orgId)
 
   // Fixed decision 2, applied lazily at read time: the geocoded site address
   // is canonical, and the customer's free-text address survives only as a

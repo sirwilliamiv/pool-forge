@@ -12,6 +12,7 @@ import { z } from 'zod'
 
 import { bearerAuth, json, unauthorized } from '@/modules/capture-bundle/http'
 import { buildingInsights, mapsEnabled, placeLocation } from '@/modules/site/geo/google'
+import { checkMapsProxyBudget } from '@/modules/site/geo/proxy-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -40,6 +41,13 @@ export async function GET(req: Request): Promise<Response> {
 
   if (!mapsEnabled()) {
     return json({ ok: false, error: 'Address lookup is not configured' }, 503)
+  }
+
+  const budget = await checkMapsProxyBudget(req.headers)
+  if (!budget.allowed) {
+    const res = json({ ok: false, error: 'Too many address lookups. Try again shortly.' }, 429)
+    res.headers.set('Retry-After', String(budget.retryAfterSeconds))
+    return res
   }
 
   const location = await placeLocation(parsed.data.placeId, parsed.data.session)
