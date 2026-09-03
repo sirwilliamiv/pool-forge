@@ -413,7 +413,11 @@ register({
           notes: fields.customerNotes || null,
         }
         if (customerId) {
-          await tx.customer.update({ where: { id: customerId }, data: customerData })
+          // orgId in the WHERE, not only implied by the project: the repo rule
+          // is that every write carries its org so a mis-linked row can never
+          // be updated across organisations. updateMany keeps the filter on the
+          // write itself.
+          await tx.customer.updateMany({ where: { id: customerId, orgId }, data: customerData })
         } else {
           const created = await tx.customer.create({ data: { orgId, ...customerData } })
           customerId = created.id

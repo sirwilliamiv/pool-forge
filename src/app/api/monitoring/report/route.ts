@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
+import { readBodyCapped } from '@/lib/http/capped-body'
 import { clientIpBucket } from '@/modules/imports/intake/client-ip'
 import { captureError } from '@/modules/monitoring/report'
 import { consumeReportBudget } from '@/modules/monitoring/report-limit'
@@ -49,24 +50,19 @@ export async function POST(req: Request): Promise<Response> {
     return response
   }
 
-  const declared = Number(req.headers.get('content-length') ?? '0')
-  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
-    return noStore({ ok: false }, 413)
+  // Streamed cap rather than buffer-then-check: a missing or lying
+  // Content-Length is the normal case for `keepalive`/beacon reports, so the
+  // reader tolerates the absent header (gate 1 off) but still aborts the
+  // stream the moment the running total passes the ceiling (gate 2 on). The
+  // old code did `req.text()` first, buffering the whole body before checking.
+  const body = await readBodyCapped(req, MAX_BODY_BYTES, { requireContentLength: false })
+  if (!body.ok) {
+    return noStore({ ok: false }, body.reason === 'too_large' ? 413 : 400)
   }
-
-  let raw: string
-  try {
-    raw = await req.text()
-  } catch {
-    return noStore({ ok: false }, 400)
-  }
-  // A missing or lying Content-Length is the normal case for `keepalive`
-  // fetches, so the real check is on the bytes that arrived.
-  if (raw.length > MAX_BODY_BYTES) return noStore({ ok: false }, 413)
 
   let parsedJson: unknown
   try {
-    parsedJson = JSON.parse(raw)
+    parsedJson = JSON.parse(body.buffer.toString('utf8'))
   } catch {
     return noStore({ ok: false }, 400)
   }

@@ -17,6 +17,13 @@ export type SaveState = 'idle' | 'saving' | 'saved' | 'error'
  */
 const AUTOSAVE_DELAY_MS = 800
 
+/**
+ * How long after the last save settles before re-running the server component
+ * to refresh server-derived display (the header quote total). Longer than the
+ * autosave debounce so a run of edits refreshes once at the end, not per save.
+ */
+const REFRESH_DELAY_MS = 1500
+
 export interface ProjectSave {
   form: ProjectDetailFields
   /** A text edit: saves on a debounce. */
@@ -58,6 +65,21 @@ export function useProjectSave(projectId: string, initial: ProjectDetailFields):
   /** Nothing has been edited yet, so hydration must not trigger a write. */
   const dirty = React.useRef(false)
 
+  // A refresh re-runs the whole server component, so it is coalesced rather
+  // than fired per save: a burst of edits schedules one trailing refresh once
+  // the typing settles. It exists so server-derived display (the header's quote
+  // total, which equipment selections move) catches up; the fields themselves
+  // already show what was typed, straight from `form`, so nothing on screen
+  // waits on it.
+  const refreshTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleRefresh = React.useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current)
+    refreshTimer.current = setTimeout(() => {
+      refreshTimer.current = null
+      router.refresh()
+    }, REFRESH_DELAY_MS)
+  }, [router])
+
   const save = React.useCallback(
     async (values: ProjectDetailFields) => {
       if (countDirty(values, lastSavedRef.current) === 0) return
@@ -69,11 +91,9 @@ export function useProjectSave(projectId: string, initial: ProjectDetailFields):
       }
       setLastSaved(values)
       setSaveState('saved')
-      // So the header, the dashboard and anything else reading the name agree
-      // with the field the user just typed into.
-      router.refresh()
+      scheduleRefresh()
     },
-    [projectId, router],
+    [projectId, scheduleRefresh],
   )
 
   /**
@@ -135,8 +155,13 @@ export function useProjectSave(projectId: string, initial: ProjectDetailFields):
   // window is exactly when someone types a name and immediately clicks away.
   React.useEffect(() => {
     return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current)
       if (!timer.current) return
       clearTimeout(timer.current)
+      // Only when there is actually an unsaved change: a scheduled timer whose
+      // values already equal the last save (a field typed back to its original)
+      // must not write a no-op row on the way out.
+      if (countDirty(formRef.current, lastSavedRef.current) === 0) return
       void dispatch('project.update', { projectId, fields: formRef.current })
     }
   }, [projectId])

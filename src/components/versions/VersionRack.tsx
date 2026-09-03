@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Trash2, User, Wrench } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -8,6 +8,7 @@ import { DrawingSvg } from '@/components/exports/DrawingSvg'
 import { dispatch } from '@/lib/commands/dispatch'
 import { cn } from '@/lib/utils'
 import type { Shape } from '@/modules/editor/state/shapes'
+import { loadVersionShapes } from '@/modules/versions/shapes-action'
 
 export interface RackVersion {
   id: string
@@ -18,7 +19,6 @@ export interface RackVersion {
   totalCents: number | null
   isActive: boolean
   createdAt: string
-  shapes: Shape[]
 }
 
 interface Props {
@@ -53,12 +53,42 @@ export function VersionRack({ projectId, versions, onOpened }: Props) {
   const [busy, setBusy] = useState(false)
   const railRef = useRef<HTMLDivElement>(null)
 
+  // The drawing behind each card, fetched as the rack scrolls to it rather
+  // than shipped for all forty on first paint. A value of `undefined` means
+  // "not fetched yet" (show a skeleton); an array (possibly empty) means the
+  // fetch resolved.
+  const [shapesById, setShapesById] = useState<Record<string, Shape[]>>({})
+  const requested = useRef<Set<string>>(new Set())
+
+  const ensureShapes = useCallback(
+    (versionId: string) => {
+      if (requested.current.has(versionId)) return
+      requested.current.add(versionId)
+      void loadVersionShapes(projectId, versionId)
+        .then(shapes => setShapesById(prev => ({ ...prev, [versionId]: shapes })))
+        .catch(() => {
+          // Let a failed fetch be retried the next time the card comes round.
+          requested.current.delete(versionId)
+        })
+    },
+    [projectId],
+  )
+
   // Follow the open design when the set changes, so opening one from elsewhere
   // does not leave the rack pointing at a card nobody is looking at.
   useEffect(() => {
     const active = versions.findIndex(version => version.isActive)
     setIndex(active >= 0 ? active : 0)
   }, [versions])
+
+  // Fetch the drawings for the cards within the visible spread of the centre,
+  // and prefetch one past the edge so a scroll does not flash a skeleton.
+  useEffect(() => {
+    for (let i = index - VISIBLE_SPREAD - 1; i <= index + VISIBLE_SPREAD + 1; i += 1) {
+      const version = versions[i]
+      if (version) ensureShapes(version.id)
+    }
+  }, [index, versions, ensureShapes])
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -153,12 +183,16 @@ export function VersionRack({ projectId, versions, onOpened }: Props) {
             >
               <div className="pointer-events-none flex h-full flex-col">
                 <div className="flex-1 overflow-hidden rounded-t-pfSm bg-white">
-                  <DrawingSvg
-                    shapes={version.shapes}
-                    widthPx={336}
-                    heightPx={212}
-                    showLabels={false}
-                  />
+                  {shapesById[version.id] ? (
+                    <DrawingSvg
+                      shapes={shapesById[version.id] ?? []}
+                      widthPx={336}
+                      heightPx={212}
+                      showLabels={false}
+                    />
+                  ) : (
+                    <div className="h-full w-full animate-pulse bg-rowHover" aria-hidden />
+                  )}
                 </div>
                 <div className="flex items-center justify-between gap-2 border-t border-borderLight px-2.5 py-1.5">
                   <span className="truncate text-[12px] font-medium text-foreground">

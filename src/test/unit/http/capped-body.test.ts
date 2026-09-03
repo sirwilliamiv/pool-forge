@@ -105,6 +105,41 @@ describe('readBodyCapped', () => {
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.buffer.toString('utf8')).toBe('{"a":1}')
   })
+
+  it('with requireContentLength:false, accepts a missing length but still stream-caps', async () => {
+    // The monitoring reporter's mode: keepalive/beacon POSTs omit the header.
+    const small = new TextEncoder().encode('{"ok":true}')
+    const noLenSmall = new Request('http://test.local/', {
+      method: 'POST',
+      body: new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(small)
+          c.close()
+        },
+      }),
+      duplex: 'half',
+    } as RequestInit)
+    noLenSmall.headers.delete('content-length')
+    const ok = await readBodyCapped(noLenSmall, 1_000, { requireContentLength: false })
+    expect(ok.ok).toBe(true)
+    if (ok.ok) expect(ok.buffer.toString('utf8')).toBe('{"ok":true}')
+
+    // A no-length body over the ceiling is still aborted by gate 2.
+    const big = new TextEncoder().encode('x'.repeat(2_000))
+    const noLenBig = new Request('http://test.local/', {
+      method: 'POST',
+      body: new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(big)
+          c.close()
+        },
+      }),
+      duplex: 'half',
+    } as RequestInit)
+    noLenBig.headers.delete('content-length')
+    const refused = await readBodyCapped(noLenBig, 1_000, { requireContentLength: false })
+    expect(refused).toEqual({ ok: false, reason: 'too_large' })
+  })
 })
 
 describe('the waitlist route stands behind the reader', () => {

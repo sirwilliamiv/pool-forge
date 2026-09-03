@@ -11,6 +11,7 @@ import { z } from 'zod'
 
 import { getOrgId, getSession } from '@/modules/auth/session'
 import { autocompleteAddress, mapsEnabled } from '@/modules/site/geo/google'
+import { checkMapsProxyBudget } from '@/modules/site/geo/proxy-rate-limit'
 import type { AddressSuggestion } from '@/modules/site/geo/types'
 
 export const runtime = 'nodejs'
@@ -41,6 +42,15 @@ export async function GET(req: Request): Promise<Response> {
 
   if (!mapsEnabled()) {
     return NextResponse.json({ suggestions: [] satisfies AddressSuggestion[] }, { status: 503 })
+  }
+
+  // Billed per call: bound one caller before reaching Google.
+  const budget = await checkMapsProxyBudget(req.headers)
+  if (!budget.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'Too many address lookups. Try again shortly.', suggestions: [] },
+      { status: 429, headers: { 'retry-after': String(budget.retryAfterSeconds) } },
+    )
   }
 
   const suggestions = await autocompleteAddress(parsed.data.q, parsed.data.session)

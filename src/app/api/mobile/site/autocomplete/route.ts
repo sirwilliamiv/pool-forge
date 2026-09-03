@@ -12,6 +12,7 @@ import { z } from 'zod'
 
 import { bearerAuth, json, unauthorized } from '@/modules/capture-bundle/http'
 import { autocompleteAddress, mapsEnabled } from '@/modules/site/geo/google'
+import { checkMapsProxyBudget } from '@/modules/site/geo/proxy-rate-limit'
 import type { AddressSuggestion } from '@/modules/site/geo/types'
 
 export const runtime = 'nodejs'
@@ -39,6 +40,13 @@ export async function GET(req: Request): Promise<Response> {
 
   if (!mapsEnabled()) {
     return json({ suggestions: [] satisfies AddressSuggestion[] }, 503)
+  }
+
+  const budget = await checkMapsProxyBudget(req.headers)
+  if (!budget.allowed) {
+    const res = json({ ok: false, error: 'Too many address lookups. Try again shortly.', suggestions: [] }, 429)
+    res.headers.set('Retry-After', String(budget.retryAfterSeconds))
+    return res
   }
 
   const suggestions = await autocompleteAddress(parsed.data.q, parsed.data.session)

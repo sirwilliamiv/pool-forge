@@ -12,6 +12,7 @@ import { z } from 'zod'
 import { getOrgId, getSession } from '@/modules/auth/session'
 import { logGeoFailure } from '@/modules/site/geo/errors'
 import { mapsEnabled, staticMapUrl } from '@/modules/site/geo/google'
+import { checkMapsProxyBudget } from '@/modules/site/geo/proxy-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,6 +46,15 @@ export async function GET(req: Request): Promise<Response> {
 
   if (!mapsEnabled()) {
     return NextResponse.json({ ok: false, error: 'Satellite imagery is not configured' }, { status: 503 })
+  }
+
+  // Billed per call: bound one caller before reaching Google.
+  const budget = await checkMapsProxyBudget(req.headers)
+  if (!budget.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'Too many map requests. Try again shortly.' },
+      { status: 429, headers: { 'retry-after': String(budget.retryAfterSeconds) } },
+    )
   }
 
   const upstreamUrl = staticMapUrl({
