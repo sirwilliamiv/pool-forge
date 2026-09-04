@@ -57,12 +57,6 @@ const CUT_INTO_DECK = new Set<ShapeKind>([
   ShapeKind.SPA,
 ])
 
-const DECK_KINDS = new Set<ShapeKind>([
-  ShapeKind.CONCRETE_DECK,
-  ShapeKind.PAVER_DECK,
-  ShapeKind.GRASS_AREA,
-])
-
 interface DeckCutout {
   kind: 'rect' | 'circle'
   x: number
@@ -242,20 +236,6 @@ function renderStencilShape(shape: Shape) {
   return <GenericStencil shape={shape} />
 }
 
-/**
- * Changes that alter where a hole goes.
- *
- * `Deck` memoises its geometry on the cutouts array, which is rebuilt every
- * render, so the key has to change when a pool moves or the deck keeps its
- * stale slab.
- */
-function cutoutKey(shapes: Shape[]): string {
-  return shapes
-    .filter(shape => CUT_INTO_DECK.has(shape.kind) && !shape.hidden)
-    .map(shape => `${shape.id}:${shape.x}:${shape.y}:${shape.width}:${shape.height}`)
-    .join('|')
-}
-
 export function SceneRoot() {
   const shapes = useShapesStore((s) => s.shapes)
   const flags = usePresentationFlags()
@@ -291,9 +271,14 @@ export function SceneRoot() {
       {shapes.map((shape) =>
         shape.hidden ? null : (
           <group
-            key={`${shape.id}-${shape.width}-${shape.height}-${shape.rotation ?? 0}-${
-              DECK_KINDS.has(shape.kind) ? cutoutKey(shapes) : ''
-            }`}
+            // Keyed by id alone. Folding width/height/rotation (and, for decks,
+            // the cutout signature) into the key remounted the whole subtree on
+            // every resize/rotate frame — disposing and rebuilding every mesh
+            // 60-120x/sec during a drag. Each object already rebuilds its own
+            // geometry reactively from its dimensions, and the deck refreshes
+            // its cutout from a stable signature inside `Deck`, so nothing needs
+            // a remount to stay current.
+            key={shape.id}
             // Standing on the ground rather than at zero. The height is taken
             // at the object's centre, so a deck on a slope sits at the level of
             // its middle rather than tilting with the lawn — which is what a

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useShapesStore } from '@/modules/editor/state'
 import { computeMeasurements } from '@/modules/measurements/engine'
 
@@ -23,7 +24,9 @@ function Metric({ label, value, unit }: MetricProps) {
 
 export function ComputedMetrics() {
   const shapes = useShapesStore((s) => s.shapes)
-  const m = computeMeasurements(shapes)
+  // Memoised: this ran the whole measurement pass in the render body on every
+  // re-render, and the inspector re-renders on every drag frame.
+  const m = useMemo(() => computeMeasurements(shapes), [shapes])
 
   return (
     <section className="border-b border-borderLight">

@@ -33,6 +33,19 @@ export function Deck({ shape, cutouts = [] }: Props) {
 
   const deckMat = concreteDeck
 
+  // `cutouts` arrives as a fresh array every render (SceneRoot rebuilds it), so
+  // memoising on the array reference rebuilt the extrude geometry (the most
+  // expensive in the scene) on every render even when no hole moved. Key the
+  // memo on the serialized holes instead, so it rebuilds only when a cutout
+  // actually changes.
+  const cutoutSignature = useMemo(
+    () =>
+      cutouts
+        .map(c => `${c.kind}:${c.x}:${c.z}:${c.width ?? ''}:${c.height ?? ''}:${c.radius ?? ''}`)
+        .join('|'),
+    [cutouts],
+  )
+
   const geometry = useMemo(() => {
     const outer = new THREE.Shape()
     outer.moveTo(-w / 2, -h / 2)
@@ -60,7 +73,17 @@ export function Deck({ shape, cutouts = [] }: Props) {
     const geo = new THREE.ExtrudeGeometry(outer, { depth: 0.5, bevelEnabled: false })
     geo.rotateX(-Math.PI / 2)
     return geo
-  }, [w, h, cutouts])
+    // cutoutSignature stands in for the `cutouts` array (a fresh reference every
+    // render) so the geometry rebuilds on a real hole change, not every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [w, h, cutoutSignature])
+
+  // The group no longer remounts on a size/cutout change, so R3F won't dispose
+  // the previous geometry for us. Dispose it when it is replaced (and on
+  // unmount) to keep the extrude meshes from leaking on the GPU.
+  useEffect(() => {
+    return () => geometry.dispose()
+  }, [geometry])
 
   return (
     <group
