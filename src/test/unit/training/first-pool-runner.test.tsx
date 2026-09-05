@@ -1,10 +1,11 @@
 /** @vitest-environment jsdom */
 
 // The runner's whole job is pacing: announce first, act second, never both at
-// once, and always slow enough for a human to follow. These assert that
-// contract — the ordering, that Pause freezes it, that Next skips the wait, and
-// that leaving clears the highlight — against the real script and a mocked
-// dispatch so we can watch exactly which command fired when.
+// once, and hold each caption until Marco has actually finished speaking it.
+// These assert that contract — the ordering, that a step never advances before
+// narration ends, that Pause freezes it, that Next skips, and that leaving
+// clears the highlight — against the real script with dispatch and the narrator
+// mocked, so we control exactly when a line finishes and see which command fired.
 
 import * as React from 'react'
 import { render, screen, act, cleanup } from '@testing-library/react'
@@ -18,24 +19,34 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('@/modules/projects/actions', () => ({ deleteProject: vi.fn(async () => ({ ok: true })) }))
 vi.mock('@/lib/commands/dispatch', () => ({
   dispatch: vi.fn(async (id: string) => {
-    // add.shape must return a shape id so the depth step can reference it.
     if (id === 'add.shape') return { ok: true, data: { shapeId: 'shape_pool_1' } }
     return { ok: true, data: {} }
   }),
 }))
 
+// The narrator is mocked so a line "finishes" exactly when the test says. We
+// capture the latest onEnded callback and the controls for the active line.
+let lastOnEnded: (() => void) | null = null
+const narrationControls = { pause: vi.fn(), resume: vi.fn(), stop: vi.fn() }
+vi.mock('@/components/editor/training/narrator', () => ({
+  narrate: vi.fn((_text: string, onEnded: () => void) => {
+    lastOnEnded = onEnded
+    return narrationControls
+  }),
+}))
+
 import { dispatch } from '@/lib/commands/dispatch'
+import { narrate } from '@/components/editor/training/narrator'
 import { FirstPoolTraining } from '@/components/editor/training/FirstPoolTraining'
 import { FIRST_POOL_SCRIPT } from '@/modules/editor/training/first-pool-script'
 
 const dispatchMock = vi.mocked(dispatch)
+const narrateMock = vi.mocked(narrate)
 
-const ANNOUNCE = 2500
-const SETTLE = 1500
+const ANNOUNCE_MIN = 2200
 
-// Commands the runner issues for narration and framing, not to build the pool:
-// the guide highlights, the view setup on mount, and the reframe after each
-// placement. buildCommands() strips them so we assert on the actual build.
+// Commands the runner issues for narration highlighting, view setup, and
+// reframing — not for building the pool. buildCommands() strips them.
 const NON_BUILD = new Set([
   'guide.point',
   'guide.clear',
@@ -48,24 +59,31 @@ function buildCommands(): string[] {
   return dispatchMock.mock.calls.map(c => c[0] as string).filter(id => !NON_BUILD.has(id))
 }
 
-// One beat transition per flush: a beat's timer fires and updates state, but the
-// NEXT beat's timer is only scheduled after React re-renders. Advancing all the
-// time in one call would fire only the first timer, so pump one beat at a time.
-async function pump(transitions: number): Promise<void> {
-  for (let i = 0; i < transitions; i++) {
-    // Async act flushes the dispatch promise (and its capture .then) as well as
-    // the timer, so a step that depends on an earlier step's result sees it.
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    await act(async () => {
-      vi.advanceTimersByTime(ANNOUNCE + SETTLE + 1000)
-    })
-  }
+// End the current spoken line and let the announce beat advance to its act.
+async function finishAnnounce(): Promise<void> {
+  await act(async () => {
+    lastOnEnded?.()
+  })
+  await act(async () => {
+    vi.advanceTimersByTime(ANNOUNCE_MIN + 100)
+  })
+}
+
+// Elapse the act settle so the beat advances to the next step's announce.
+async function finishAct(): Promise<void> {
+  await act(async () => {
+    vi.advanceTimersByTime(4000)
+  })
 }
 
 beforeEach(() => {
   vi.useFakeTimers()
   dispatchMock.mockClear()
-  // The training only runs when the URL says so.
+  narrateMock.mockClear()
+  narrationControls.pause.mockClear()
+  narrationControls.resume.mockClear()
+  narrationControls.stop.mockClear()
+  lastOnEnded = null
   window.history.replaceState({}, '', '/projects/proj_sandbox/editor?training=first-pool')
 })
 
@@ -78,85 +96,93 @@ describe('the first-pool training runner', () => {
   it('renders nothing when the training flag is absent', () => {
     window.history.replaceState({}, '', '/projects/proj_sandbox/editor')
     render(<FirstPoolTraining />)
-    // The active flag is read in an effect; flush it.
     act(() => {
       vi.advanceTimersByTime(0)
     })
     expect(screen.queryByText(/Marco · step/)).toBeNull()
   })
 
-  it('announces before it acts: no build command fires during the announce hold', () => {
+  it('holds the announce beat until the line finishes: no build fires early', async () => {
     render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    // Skip to step 2's announce beat (step 1 is narration-only): Next moves
-    // announce->act, Next again act->next step's announce. Next skips the waits,
-    // so this is independent of any step's settle time.
+    // Step 1 narration is playing. Even a long time later — short of the safety
+    // cap — nothing should have advanced, because the line has not ended.
     act(() => {
-      screen.getByTitle('Next').click()
-    }) // step 1 announce -> act
-    act(() => {
-      screen.getByTitle('Next').click()
-    }) // step 1 act -> step 2 announce
-    // We are now in step 2's announce hold. The pool must NOT be added yet.
-    expect(buildCommands()).toEqual([])
-    // The announce hold is a fixed constant for every step; let it elapse and
-    // the act beat fires the build.
-    act(() => {
-      vi.advanceTimersByTime(ANNOUNCE)
+      vi.advanceTimersByTime(10000)
     })
+    expect(buildCommands()).toEqual([])
+
+    // Finish step 1's line -> act (narration only, no build). Finish that beat
+    // -> step 2 announce. Still no build until step 2's line ends and its act.
+    await finishAnnounce()
+    await finishAct()
+    expect(buildCommands()).toEqual([])
+    await finishAnnounce()
+    await finishAct()
     expect(buildCommands()).toEqual(['add.shape'])
   })
 
-  it('pauses: no further command fires while paused, and resuming continues', async () => {
+  it('pauses the narration and freezes, then resumes', async () => {
     render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    // Reach step 2's act so the pool is added: s1 announce->act, s1 act->s2
-    // announce, s2 announce->act (fires add.shape) = 3 transitions.
-    await pump(3)
+    await finishAnnounce()
+    await finishAct() // step 2 announce
+    await finishAnnounce()
+    await finishAct() // step 2 built the pool
     expect(buildCommands()).toEqual(['add.shape'])
 
-    // Pause, then let a long time pass: nothing new should fire.
     act(() => {
       screen.getByTitle('Pause').click()
     })
+    expect(narrationControls.pause).toHaveBeenCalled()
     const before = buildCommands().length
     act(() => {
-      vi.advanceTimersByTime(ANNOUNCE * 5)
+      vi.advanceTimersByTime(20000)
+    })
+    // Even ending the line while paused must not advance.
+    act(() => {
+      lastOnEnded?.()
+    })
+    act(() => {
+      vi.advanceTimersByTime(20000)
     })
     expect(buildCommands().length).toBe(before)
 
-    // Resume: the sequence moves again.
     act(() => {
       screen.getByTitle('Resume').click()
     })
-    await pump(3)
+    expect(narrationControls.resume).toHaveBeenCalled()
+    await finishAnnounce()
+    await finishAct()
     expect(buildCommands().length).toBeGreaterThan(before)
   })
 
-  it('Next skips the current wait', () => {
+  it('Next stops the current line and advances', async () => {
     render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    // In step 1's announce hold. Next should jump straight to the act beat
-    // without waiting the full ANNOUNCE, then Next again into step 2's announce.
     act(() => {
       screen.getByTitle('Next').click()
-    }) // -> step 1 act
+    }) // step 1 announce -> act
+    expect(narrationControls.stop).toHaveBeenCalled()
     act(() => {
       screen.getByTitle('Next').click()
-    }) // -> step 2 announce
+    }) // step 1 act -> step 2 announce
     act(() => {
       screen.getByTitle('Next').click()
-    }) // -> step 2 act (fires add.shape), no full holds waited
+    }) // step 2 announce -> act
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    }) // step 2 act fires the build
     expect(buildCommands()).toEqual(['add.shape'])
   })
 
-  it('clears the highlight when the training unmounts', () => {
+  it('clears the highlight and stops narration when the training unmounts', () => {
     const { unmount } = render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
@@ -165,6 +191,7 @@ describe('the first-pool training runner', () => {
     unmount()
     const cleared = dispatchMock.mock.calls.some(c => c[0] === 'guide.clear')
     expect(cleared).toBe(true)
+    expect(narrationControls.stop).toHaveBeenCalled()
   })
 
   it('runs every build step by the end and shows the finish panel', async () => {
@@ -172,10 +199,10 @@ describe('the first-pool training runner', () => {
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    // Walk the whole script: two beats per step, plus slack to reach the end.
-    await pump(FIRST_POOL_SCRIPT.length * 2 + 2)
-    // Every step whose run() returns a real build action (not a view command
-    // the runner also issues for framing) should have dispatched exactly once.
+    for (let i = 0; i < FIRST_POOL_SCRIPT.length; i++) {
+      await finishAnnounce()
+      await finishAct()
+    }
     const expected = FIRST_POOL_SCRIPT.filter(s => {
       const a = s.run?.({ poolId: 'shape_pool_1' })
       return a && !NON_BUILD.has(a.command)

@@ -16,11 +16,20 @@ export interface TrainingContext {
   poolId?: string
 }
 
+import type { CameraView } from '@/modules/editor/state/cameraStore'
+
 export interface TrainingStep {
   /** What Marco says while announcing this step. Kept to a sentence or two. */
   say: string
   /** Controls to ring during the announce beat (guide target ids). */
   point?: string[]
+  /**
+   * The vantage to watch this step from (iso, top, front, ...). Set on the
+   * announce beat and re-asserted after the action, so a top-down site layout
+   * or a side-on depth view holds instead of snapping back to the default.
+   * Omit and the runner just fits everything in the current 3D view.
+   */
+  view?: CameraView
   /**
    * The command to perform in the act beat, built from the running context.
    * Return null for a pure-narration step (an intro, the wrap, calling out the
@@ -58,8 +67,9 @@ export const FIRST_POOL_SCRIPT: readonly TrainingStep[] = [
     settleMs: 2000,
   },
   {
-    say: 'The pool now shows in the Layers list. With it selected, its depth fields sit in the panel on the right — a pool slopes from a shallow end to a deep one, so I set three feet down to eight.',
+    say: 'The pool now shows in the Layers list. With it selected, its depth fields sit in the panel on the right — a pool slopes from a shallow end to a deep one, so I set three feet down to eight. From the side you can watch it drop.',
     point: ['panel.layers'],
+    view: 'front',
     run: ctx =>
       ctx.poolId
         ? { command: 'pool.geometry.update', input: { id: ctx.poolId, shallowDepthFt: 3, deepDepthFt: 8 } }
@@ -85,48 +95,56 @@ export const FIRST_POOL_SCRIPT: readonly TrainingStep[] = [
     settleMs: 2000,
   },
   {
-    say: "Now the surroundings. Search 'house wall' and click — this is the house the pool sits behind.",
+    say: "Now the surroundings, seen from above so the whole lot reads clearly. Search 'house wall' and click — this is the house the pool sits behind.",
     point: ['panel.stencils'],
+    view: 'top',
     run: () => ({ command: 'add.shape', input: { stencilId: 'site.house-wall', x: POOL.x - 80, y: POOL.y - 260 } }),
     settleMs: 2000,
   },
   {
     say: 'Next the lot. Open the Layers panel and drop the property boundary — seventy by a hundred feet — so setbacks have an edge to measure from.',
     point: ['panel.layers'],
+    view: 'top',
     run: () => ({ command: 'site.property.place', input: { widthFt: 70, depthFt: 100 } }),
     settleMs: 2200,
   },
   {
     say: 'From the same panel, set the setbacks your county requires — twenty-five feet at the front, seven and a half at the sides. Anything too close will now flag itself.',
     point: ['panel.layers'],
+    view: 'top',
     run: () => ({ command: 'site.limits.set', input: { frontFt: 25, sideFt: 7.5, rearFt: 15 } }),
     settleMs: 2200,
   },
   {
     say: "Pool code needs a barrier. Back in Stencils, search 'fence' and click to run one around the yard.",
     point: ['panel.stencils'],
+    view: 'top',
     run: () => ({ command: 'add.shape', input: { stencilId: 'deck.fence', x: POOL.x - 120, y: POOL.y + 320 } }),
     settleMs: 2000,
   },
   {
-    say: "The ground is never flat. Open the Grade tab and turn grading on — now the app tracks how the yard falls and the dirt that has to move.",
+    say: "The ground is never flat, and it reads best on an angle. Open the Grade tab and turn grading on — now the app tracks how the yard falls and the dirt that has to move.",
     point: ['panel.grade'],
+    view: 'iso',
     run: () => ({ command: 'grade.enable', input: { enabled: true } }),
     settleMs: 2000,
   },
   {
     say: 'In the Grade tab you drop measured heights. I mark the far corner two feet below the house pad, and the cut-and-fill updates from it.',
     point: ['panel.grade'],
+    view: 'iso',
     run: () => ({ command: 'grade.point.add', input: { surface: 'existing', xFt: 45, yFt: 45, elevationFt: -2, label: 'far corner' } }),
     settleMs: 2200,
   },
   {
     say: "That's the whole job on screen. The Fit button frames everything — and look at the Live Quote up top: it's been adding a line for every piece the whole time.",
     point: ['view.fit'],
+    view: 'iso',
     run: () => ({ command: 'canvas.fit', input: {} }),
     settleMs: 2800,
   },
   {
     say: "A complete job: drawn, measured, priced, ready to send. That's the whole loop, and you do each step exactly the way you just watched. This was a practice project — discard it, or keep it to build on.",
+    view: 'iso',
   },
 ] as const
