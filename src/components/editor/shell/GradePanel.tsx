@@ -1,7 +1,9 @@
 'use client'
 
-import { AlertTriangle, Mountain, Plus, Trash2 } from 'lucide-react'
-import { useMemo } from 'react'
+import { AlertTriangle, Footprints, Mountain, Plus, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useParams } from 'next/navigation'
+import { toast } from 'sonner'
 
 import { dispatch } from '@/lib/commands/dispatch'
 import { cutFillBetween, maxSlope, nextShotPosition, type SiteGrade } from '@/modules/editor/grade/model'
@@ -36,6 +38,32 @@ export function GradePanel() {
 
   const surface = editing === 'finished' ? finished : existing
   const enabled = existing.enabled || finished.enabled
+
+  const params = useParams<{ id: string }>()
+  const [walking, setWalking] = useState(false)
+
+  // Fabricate a walked-site capture and run it through the real ingest, so the
+  // existing ground, coverage and earthwork can be seen without an iPhone. The
+  // ingest writes the drawing server-side, so a reload is what brings the new
+  // terrain into the editor.
+  async function simulateWalk() {
+    const projectId = params?.id
+    if (!projectId) return
+    setWalking(true)
+    const result = await dispatch<
+      { projectId: string },
+      { coverage: { measuredPct: number; headline: string } }
+    >('capture.synthesize', { projectId })
+    setWalking(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(
+      `Simulated a walk · ${Math.round(result.data.coverage.measuredPct)}% covered. Reloading to draw the ground…`,
+    )
+    setTimeout(() => window.location.reload(), 900)
+  }
 
   function addPoint() {
     const spot = nextShotPosition(surface.points.length, bounds)
@@ -72,6 +100,17 @@ export function GradePanel() {
           The site is flat. Turn grading on to record how the ground falls, and what has to move.
         </p>
       )}
+
+      <button
+        type="button"
+        onClick={() => void simulateWalk()}
+        disabled={walking}
+        title="Fabricate a walked-site capture and bring it in through the real pipeline"
+        className="flex w-full items-center justify-center gap-1.5 rounded-pfSm border border-border px-2 py-1.5 text-[11.5px] font-medium text-textMuted transition-colors hover:bg-rowHover hover:text-foreground disabled:opacity-60"
+      >
+        <Footprints className="h-3.5 w-3.5" aria-hidden />
+        {walking ? 'Simulating a walk…' : 'Simulate a site walk'}
+      </button>
 
       {enabled && (
         <>

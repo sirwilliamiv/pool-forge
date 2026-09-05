@@ -1005,6 +1005,12 @@ const EXERCISES: Record<string, Exercise> = {
     kind: 'server',
     why: 'Reads the stored coverage mask through Prisma and reports it over a region of the site.',
   },
+  'capture.synthesize': {
+    kind: 'server',
+    why:
+      'Fabricates a heightfield and runs it through capture.heightfield.ingest, writing the ' +
+      'drawing grade and a SiteCapture row through Prisma. Covered by capture/synthesize.test.ts.',
+  },
 }
 
 /**
