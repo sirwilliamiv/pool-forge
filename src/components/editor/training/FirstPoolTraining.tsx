@@ -8,45 +8,25 @@ import { toast } from 'sonner'
 import { dispatch } from '@/lib/commands/dispatch'
 import { deleteProject } from '@/modules/projects/actions'
 import { FIRST_POOL_SCRIPT, type TrainingContext } from '@/modules/editor/training/first-pool-script'
+import { narrate, type Narration } from '@/components/editor/training/narrator'
+import type { CameraView } from '@/modules/editor/state/cameraStore'
 
 /** The URL flag that turns the editor into the guided training. */
 export const TRAINING_PARAM = 'training'
 export const FIRST_POOL_TRAINING = 'first-pool'
 
-/**
- * Announce before act, with a deliberate pause on each, so a human always sees
- * what and where before it happens. Named here so they are tuned in one place
- * after watching a real person follow it.
- */
-const ANNOUNCE_HOLD_MS = 2500
+// The announce beat holds until Marco has actually finished speaking the line,
+// so nothing is cut off. These only bound that: never advance before MIN (so a
+// very short clip still lingers), and never wait past MAX (so a failed or silent
+// clip can't stall the whole tour).
+const ANNOUNCE_MIN_MS = 2200
+const ANNOUNCE_MAX_MS = 16000
 const ACT_SETTLE_MS = 1500
 
 type Beat = 'announce' | 'act'
 
 /** Commands that move the camera themselves; the runner must not reframe after. */
 const VIEW_COMMANDS = new Set(['canvas.fit', 'camera.set.view', 'view.set.tab', 'canvas.zoom.in', 'canvas.zoom.out', 'canvas.pan', 'camera.frame.selection'])
-
-/**
- * The closest thing the browser has to Marco's low, measured voice. Prefer a
- * named premium male voice, then any male English voice, then the platform
- * defaults that read male, and give up gracefully (default voice) if none match
- * rather than staying silent. Voices load async, so this may return null on the
- * first call and a real voice once `voiceschanged` has fired.
- */
-function pickMarcoVoice(synth: SpeechSynthesis): SpeechSynthesisVoice | null {
-  const voices = synth.getVoices()
-  if (!voices.length) return null
-  const en = voices.filter(v => v.lang?.toLowerCase().startsWith('en'))
-  const pool = en.length ? en : voices
-  // Known steady male voices across macOS / Chrome / Windows, best first.
-  const preferred = ['Google UK English Male', 'Daniel', 'Arthur', 'Aaron', 'Alex', 'Microsoft Guy', 'Microsoft David', 'Rishi', 'Google US English']
-  for (const name of preferred) {
-    const hit = pool.find(v => v.name === name) ?? pool.find(v => v.name.includes(name))
-    if (hit) return hit
-  }
-  // Fall back to anything that names itself male.
-  return pool.find(v => /\bmale\b/i.test(v.name)) ?? pool[0] ?? null
-}
 
 /**
  * Marco builds one complete pool while you watch.
@@ -88,41 +68,33 @@ function TrainingRunner() {
   const acted = useRef<Set<string>>(new Set())
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Narration state, in refs because it is driven by audio 'ended' callbacks
+  // that fire outside React's render, and must read the latest beat/pause.
+  const narration = useRef<Narration | null>(null)
+  const announceEnded = useRef(false)
+  const announceStart = useRef(0)
+  const pausedRef = useRef(paused)
+  const finishedRef = useRef(finished)
+  const beatRef = useRef<Beat>(beat)
+  useEffect(() => { pausedRef.current = paused }, [paused])
+  useEffect(() => { finishedRef.current = finished }, [finished])
+  useEffect(() => { beatRef.current = beat }, [beat])
+
   const step = FIRST_POOL_SCRIPT[index]
 
-  const speak = useCallback((line: string) => {
-    try {
-      const synth = window.speechSynthesis
-      if (!synth) return
-      synth.cancel()
-      const u = new SpeechSynthesisUtterance(line)
-      // Marco is low and measured (the live session uses Gemini's "Charon").
-      // A live session would sound exactly like him; with the mic off we pick
-      // the closest steady male voice the browser has and slow it slightly, so
-      // it reads as Marco rather than the machine's random default.
-      const voice = pickMarcoVoice(synth)
-      if (voice) u.voice = voice
-      u.rate = 0.95
-      u.pitch = 0.9
-      synth.speak(u)
-    } catch {
-      // Speech is a bonus; the caption is the real narration.
-    }
-  }, [])
-
-  // Nudge the camera to keep the whole growing drawing in view during the hold,
-  // so the user actually sees each new object land. Skipped for steps that are
-  // themselves about the camera.
-  const frameAll = useCallback(() => {
-    void dispatch('canvas.fit', {}).catch(() => undefined)
+  // Frame everything after a placement so the growing drawing stays on screen.
+  // Steps that name their own vantage re-assert it instead, so a top-down site
+  // layout or a side-on depth view isn't yanked back to the default angle.
+  const frameFor = useCallback((view: CameraView | undefined) => {
+    if (view) void dispatch('camera.set.view', { view }).catch(() => undefined)
+    else void dispatch('canvas.fit', {}).catch(() => undefined)
   }, [])
 
   // The one place the sequence moves forward: announce -> act, or act -> next
-  // step (or finish). Called by the hold timer and by Next.
+  // step (or finish). Called by the announce narration, the settle timer, Next.
   const advance = useCallback(() => {
     setBeat(prevBeat => {
       if (prevBeat === 'announce') return 'act'
-      // act -> next step
       setIndex(i => {
         const next = i + 1
         if (next >= FIRST_POOL_SCRIPT.length) {
@@ -135,56 +107,87 @@ function TrainingRunner() {
     })
   }, [])
 
-  // Perform the current beat once, then schedule the hold. Re-running on
-  // pause/resume does not repeat the side effect (guarded by `acted`).
+  // Advance out of the announce beat only once Marco has finished the line (so
+  // nothing is cut off) and at least the minimum hold has passed (so a very
+  // short clip still lingers). The safety cap in the effect covers a clip that
+  // never ends.
+  const tryAdvanceAnnounce = useCallback(() => {
+    if (pausedRef.current || finishedRef.current || beatRef.current !== 'announce') return
+    if (!announceEnded.current) return
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = null
+    }
+    const elapsed = Date.now() - announceStart.current
+    if (elapsed >= ANNOUNCE_MIN_MS) advance()
+    else timer.current = setTimeout(advance, ANNOUNCE_MIN_MS - elapsed)
+  }, [advance])
+
+  const onNarrationEnded = useCallback(() => {
+    announceEnded.current = true
+    tryAdvanceAnnounce()
+  }, [tryAdvanceAnnounce])
+
+  // Perform the current beat once, then hold. Announce holds until narration
+  // ends; act holds a fixed settle. Re-running on pause/resume does not repeat
+  // the side effect (guarded by `acted`), it just re-arms timing and audio.
   useEffect(() => {
     if (finished || !step) return
     if (timer.current) {
       clearTimeout(timer.current)
       timer.current = null
     }
-    if (paused) return
+    if (paused) {
+      narration.current?.pause()
+      return
+    }
+    narration.current?.resume()
 
     const key = `${index}:${beat}`
     if (!acted.current.has(key)) {
       acted.current.add(key)
       if (beat === 'announce') {
-        // guide.point requires at least one target; a narration-only step points
-        // at nothing, so clear any leftover highlight instead of pointing.
         if (step.point?.length) {
           void dispatch('guide.point', { targets: step.point }).catch(() => undefined)
         } else {
           void dispatch('guide.clear', {}).catch(() => undefined)
         }
-        speak(step.say)
+        if (step.view) void dispatch('camera.set.view', { view: step.view }).catch(() => undefined)
+        announceEnded.current = false
+        announceStart.current = Date.now()
+        narration.current?.stop()
+        narration.current = narrate(step.say, onNarrationEnded)
       } else if (step.run) {
         const action = step.run(ctx.current)
         if (action) {
           void dispatch(action.command, action.input).then(res => {
             if (res.ok && step.capture) step.capture(ctx.current, res.data)
-            // Reframe after anything that changes the drawing, so the object we
-            // just placed is on screen for the settle hold. Camera/view commands
-            // frame themselves; don't fight them.
-            if (!VIEW_COMMANDS.has(action.command)) frameAll()
+            // Keep the result on screen: reframe unless the command already
+            // moved the camera itself.
+            if (!VIEW_COMMANDS.has(action.command)) frameFor(step.view)
           })
         }
       }
     }
 
-    const hold = beat === 'announce' ? ANNOUNCE_HOLD_MS : step.settleMs ?? ACT_SETTLE_MS
-    timer.current = setTimeout(advance, hold)
+    if (beat === 'announce') {
+      timer.current = setTimeout(advance, ANNOUNCE_MAX_MS)
+      // Narration may have finished while paused; catch that on resume.
+      if (announceEnded.current) tryAdvanceAnnounce()
+    } else {
+      timer.current = setTimeout(advance, step.settleMs ?? ACT_SETTLE_MS)
+    }
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [index, beat, paused, finished, step, speak, advance])
+  }, [index, beat, paused, finished, step, advance, frameFor, onNarrationEnded])
 
-  // Look straight down at the whole sheet before anything is placed, so the
-  // yard fills the view and every object lands where the user is already
-  // looking. Also warm the browser's voice list (it loads async) so Marco's
-  // voice is ready by the first spoken line.
+  // Open on an iso overview of the empty yard, so the first object lands in a
+  // framed 3D view (never the orthographic plan tab, where the view-cube snaps
+  // and Fit are inert). Warm the browser voice list for the fallback path.
   useEffect(() => {
-    void dispatch('view.set.tab', { tab: 'plan' }).catch(() => undefined)
-    void dispatch('camera.set.view', { view: 'top' }).catch(() => undefined)
+    void dispatch('camera.set.view', { view: 'iso' }).catch(() => undefined)
+    void dispatch('canvas.fit', {}).catch(() => undefined)
     try {
       const synth = window.speechSynthesis
       synth?.getVoices()
@@ -200,11 +203,7 @@ function TrainingRunner() {
   useEffect(() => {
     return () => {
       void dispatch('guide.clear', {}).catch(() => undefined)
-      try {
-        window.speechSynthesis?.cancel()
-      } catch {
-        // ignore
-      }
+      narration.current?.stop()
     }
   }, [])
 
@@ -213,10 +212,12 @@ function TrainingRunner() {
       clearTimeout(timer.current)
       timer.current = null
     }
+    narration.current?.stop()
     advance()
   }
 
   function onStop() {
+    narration.current?.stop()
     setFinished(true)
   }
 
