@@ -85,6 +85,10 @@ export async function buildExportDocument(args: {
 }
 
 async function buildProposal(projectId: string, orgId: string): Promise<BuiltDocument | null> {
+  // Priced load (its own project + price book + materials + line-item reads)
+  // started before the project fetch is awaited, so the two overlap instead of
+  // running back to back. Both are awaited below.
+  const pricedPromise = loadProjectQuote(projectId, orgId)
   const project = await db.project.findFirst({
     where: { id: projectId, orgId },
     include: {
@@ -103,10 +107,8 @@ async function buildProposal(projectId: string, orgId: string): Promise<BuiltDoc
       },
     },
   })
-  if (!project) return null
-
-  const priced = await loadProjectQuote(project.id, orgId)
-  if (!priced) return null
+  const priced = await pricedPromise
+  if (!project || !priced) return null
   const { measurements, quote, selections, shapes, poolFields, priceBookId } = priced
 
   const element = (
@@ -167,14 +169,16 @@ async function buildConstructionPacket(
   orgId: string,
   pageSize: ConstructionPageSize,
 ): Promise<BuiltDocument | null> {
+  // Priced load (its own project + price book + materials + line-item reads)
+  // started before the project fetch is awaited, so the two overlap instead of
+  // running back to back. Both are awaited below.
+  const pricedPromise = loadProjectQuote(projectId, orgId)
   const project = await db.project.findFirst({
     where: { id: projectId, orgId },
     include: { customer: true, org: { select: { taxRatePct: true } } },
   })
-  if (!project) return null
-
-  const priced = await loadProjectQuote(project.id, orgId)
-  if (!priced) return null
+  const priced = await pricedPromise
+  if (!project || !priced) return null
   const { shapes, measurements, quote, poolFields, priceBookId } = priced
 
   const element = (
@@ -226,14 +230,16 @@ async function buildConstructionPacket(
 }
 
 async function buildSitePlan(projectId: string, orgId: string): Promise<BuiltDocument | null> {
+  // Priced load (its own project + price book + materials + line-item reads)
+  // started before the project fetch is awaited, so the two overlap instead of
+  // running back to back. Both are awaited below.
+  const pricedPromise = loadProjectQuote(projectId, orgId)
   const project = await db.project.findFirst({
     where: { id: projectId, orgId },
     include: { customer: true },
   })
-  if (!project) return null
-
-  const priced = await loadProjectQuote(project.id, orgId)
-  if (!priced) return null
+  const priced = await pricedPromise
+  if (!project || !priced) return null
   const { shapes, measurements, priceBookId } = priced
 
   // Survey image overlay is still editor-side state; render without an
@@ -298,14 +304,16 @@ async function buildScreenEnclosureQuote(
   orgId: string,
   flags: { showInternalPricing: boolean; showScreenScopeRetail: boolean },
 ): Promise<BuiltDocument | null> {
+  // Priced load (its own project + price book + materials + line-item reads)
+  // started before the project fetch is awaited, so the two overlap instead of
+  // running back to back. Both are awaited below.
+  const pricedPromise = loadProjectQuote(projectId, orgId)
   const project = await db.project.findFirst({
     where: { id: projectId, orgId },
     include: { customer: true, org: { select: { name: true, taxRatePct: true } } },
   })
-  if (!project) return null
-
-  const priced = await loadProjectQuote(project.id, orgId)
-  if (!priced) return null
+  const priced = await pricedPromise
+  if (!project || !priced) return null
   const { shapes, measurements, quote, priceBookId } = priced
 
   const element = (
