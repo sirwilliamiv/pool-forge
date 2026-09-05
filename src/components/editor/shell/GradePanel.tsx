@@ -111,6 +111,27 @@ export function GradePanel() {
             />
           </label>
 
+          {/* How sharply each measured shot dominates the ground around it: low
+              reads as a natural fall, high makes each shot a flat pad. */}
+          <label className="flex items-center justify-between gap-2">
+            <span className="text-textMuted">Blend</span>
+            <input
+              type="range"
+              min={1}
+              max={6}
+              step={0.5}
+              value={surface.falloff}
+              aria-label="Grade blend"
+              onChange={e =>
+                void dispatch('grade.falloff.set', {
+                  surface: editing,
+                  falloff: Number(e.target.value),
+                })
+              }
+              className="w-28 cursor-pointer"
+            />
+          </label>
+
           <div className="flex items-center justify-between">
             <span className="text-textMuted">
               {surface.points.length} elevation{surface.points.length === 1 ? '' : 's'}

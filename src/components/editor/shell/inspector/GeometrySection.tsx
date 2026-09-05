@@ -142,6 +142,20 @@ export function GeometrySection() {
     return true
   }
 
+  /**
+   * Resize the pool to a target surface area, scaling both sides by the square
+   * root of the ratio. Dispatches the command that already does this and was
+   * only reachable by voice.
+   */
+  async function pushTargetArea(targetAreaSqft: number): Promise<boolean> {
+    const result = await dispatch('set.pool.targetArea', { id: shape!.id, targetAreaSqft })
+    if (!result.ok) {
+      toast.error(result.error)
+      return false
+    }
+    return true
+  }
+
   return (
     <Section
       title="Geometry"
@@ -228,6 +242,18 @@ export function GeometrySection() {
             onCommit={(n) => pushGeom({ deepDepthFt: n })}
           />
           <ReadoutField prefix="Sl" suffix=":1" value={slope === 0 ? 0 : 1 / slope} />
+        </div>
+      ) : null}
+      {pool ? (
+        <div className="grid grid-cols-3 gap-1.5 px-3 pb-2">
+          {/* Type a target surface area and the pool scales to hit it. */}
+          <NumberField
+            prefix="A"
+            suffix="ft²"
+            value={lengthFt * widthFt}
+            step={5}
+            onCommit={(n) => pushTargetArea(n)}
+          />
         </div>
       ) : null}
     </Section>

@@ -1,6 +1,6 @@
 'use client'
 
-import { Sun } from 'lucide-react'
+import { Play, Sun } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { dispatch } from '@/lib/commands/dispatch'
 import {
@@ -52,8 +52,19 @@ export function SunDial() {
           <Sun className="h-3 w-3" aria-hidden />
           <span>Sun study</span>
         </div>
-        <div className="font-mono text-[11px] tabular-nums text-foreground">
-          {formatClockTime(minutes)}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            title="Play the sun across the day"
+            aria-label="Play sun study"
+            className="text-textFaint transition-colors hover:text-foreground"
+            onClick={() => void dispatch('sun.run.study', {})}
+          >
+            <Play className="h-3 w-3" aria-hidden />
+          </button>
+          <div className="font-mono text-[11px] tabular-nums text-foreground">
+            {formatClockTime(minutes)}
+          </div>
         </div>
       </div>
 
