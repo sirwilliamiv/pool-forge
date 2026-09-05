@@ -6,6 +6,57 @@ import { PriceCategory, UnitType } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { createBookVersion } from '../actions'
+import type { ImportRow } from '@/modules/pricing/import'
+
+/**
+ * Ask the model which columns of an uploaded price sheet are which, and hand
+ * back a mapping the form can pre-fill.
+ *
+ * The heavy lifting (the prompt, the refusal of any column the model invents,
+ * the reduction to our schema) lives in `pricing/ai-import`; this action only
+ * builds the Vertex-backed client and gates on a session. It never returns
+ * prices or values — only column names — because the model is never asked for
+ * anything else. The customer's sheet goes only to Vertex, never the consumer
+ * Gemini endpoint.
+ */
+const previewSchema = z.object({
+  headers: z.array(z.string()).min(1).max(200),
+  rows: z.array(z.record(z.string(), z.unknown())).max(5000),
+})
+
+export async function autoDetectMapping(rawPreview: unknown): Promise<
+  | { ok: true; detected: Partial<Record<keyof ImportRow, string>>; notes: string[] }
+  | { ok: false; error: string }
+> {
+  const session = await auth()
+  if (!session?.user?.orgId) return { ok: false, error: 'Not authenticated' }
+
+  const parsed = previewSchema.safeParse(rawPreview)
+  if (!parsed.success) return { ok: false, error: 'That sheet could not be read.' }
+
+  const { createVisionClient } = await import('@/modules/imports/vision/client')
+  const { inferMapping, toDetectedMapping } = await import('@/modules/pricing/ai-import')
+
+  try {
+    const client = createVisionClient()
+    const outcome = await inferMapping(client, parsed.data)
+    return {
+      ok: true,
+      detected: toDetectedMapping(outcome.mapping),
+      notes: outcome.mapping.notes,
+    }
+  } catch (err) {
+    // Never surface the model's or the client's raw message; it can quote the
+    // sheet or carry a key fragment. The module's own error is a sentence.
+    return {
+      ok: false,
+      error:
+        err instanceof Error && err.message
+          ? err.message
+          : 'The price list could not be read. Map the columns by hand.',
+    }
+  }
+}
 
 const ImportItemSchema = z.object({
   category: z.nativeEnum(PriceCategory),

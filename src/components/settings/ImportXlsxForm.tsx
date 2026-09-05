@@ -19,7 +19,11 @@ import {
   type ImportRow,
   type RowError,
 } from '@/modules/pricing/import'
-import { importPriceBookItems } from '@/app/(app)/settings/price-book/import/actions'
+import {
+  autoDetectMapping,
+  importPriceBookItems,
+} from '@/app/(app)/settings/price-book/import/actions'
+import { Sparkles } from 'lucide-react'
 
 const FIELDS: { key: keyof ImportRow; label: string; required: boolean }[] = [
   { key: 'category', label: 'Category', required: false },
@@ -62,16 +66,40 @@ export function ImportXlsxForm() {
     }
   }
 
-  function updateMapping(field: keyof ImportRow, header: string | undefined) {
+  const [detecting, setDetecting] = useState(false)
+
+  function applyMapping(next: Partial<Record<keyof ImportRow, string>>) {
     if (!preview) return
-    const next = { ...mapping }
-    if (header) next[field] = header
-    else delete next[field]
     setMapping(next)
     const { items, errors, warnings } = rowsToItems(preview.rows, next)
     setItems(items)
     setErrors(errors)
     setWarnings(warnings)
+  }
+
+  function updateMapping(field: keyof ImportRow, header: string | undefined) {
+    if (!preview) return
+    const next = { ...mapping }
+    if (header) next[field] = header
+    else delete next[field]
+    applyMapping(next)
+  }
+
+  async function handleAutoDetect() {
+    if (!preview) return
+    setDetecting(true)
+    const res = await autoDetectMapping({ headers: preview.headers, rows: preview.rows })
+    setDetecting(false)
+    if (!res.ok) {
+      toast.error(res.error)
+      return
+    }
+    applyMapping(res.detected)
+    if (res.notes.length > 0) {
+      toast.message('Columns auto-mapped', { description: res.notes.join(' ') })
+    } else {
+      toast.success('Columns auto-mapped. Review and import.')
+    }
   }
 
   function handleImport() {
@@ -134,7 +162,19 @@ export function ImportXlsxForm() {
       {preview && (
         <>
           <div className="space-y-3">
-            <h3 className="text-bodyS font-medium text-theme-fg">Column mapping</h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-bodyS font-medium text-theme-fg">Column mapping</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleAutoDetect()}
+                disabled={detecting || pending}
+              >
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                {detecting ? 'Detecting…' : 'Auto-detect columns'}
+              </Button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {FIELDS.map((f) => (
                 <div key={f.key} className="space-y-1.5">
