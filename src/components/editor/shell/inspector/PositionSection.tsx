@@ -79,6 +79,11 @@ export function PositionSection() {
   function commitRotation(deg: number) {
     void dispatch('rotate.shape', { id: shape!.id, degrees: deg })
   }
+  function commitElevation(ft: number) {
+    const bad = feetOutOfRange('Elevation', ft, -MAX_COORD_FT, MAX_COORD_FT)
+    if (bad) { toast.error(bad); return }
+    void dispatch('shape.elevation.set', { id: shape!.id, elevationFt: ft })
+  }
 
   return (
     <Section title="Position" icon={<Crosshair className="h-3 w-3" />}>
@@ -86,6 +91,7 @@ export function PositionSection() {
         <NumberField prefix="X" suffix="ft" value={xFt} onCommit={commitX} />
         <NumberField prefix="Y" suffix="ft" value={yFt} onCommit={commitY} />
         <NumberField prefix="R" suffix="°" value={shape.rotation} onCommit={commitRotation} step={1} />
+        <NumberField prefix="Z" suffix="ft" value={shape.elevationFt ?? 0} onCommit={commitElevation} />
       </div>
       <div className="mx-3 mb-2 space-y-1 border-t border-borderLight pt-2">
         <DerivedRow label="From house" value={houseDistance} />
