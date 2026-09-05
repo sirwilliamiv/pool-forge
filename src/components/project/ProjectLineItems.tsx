@@ -12,9 +12,9 @@
 // through the command registry, which is what puts an audit row behind it and
 // what lets the same thing be done by voice.
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PriceCategory, UnitType } from '@prisma/client'
 import { Button } from '@/components/ui/button'
@@ -84,6 +84,7 @@ function formatQuantity(n: number): string {
 export function ProjectLineItems({ projectId, items, priceBookChoices }: ProjectLineItemsProps) {
   const router = useRouter()
   const [addOpen, setAddOpen] = useState(false)
+  const [editItem, setEditItem] = useState<ProjectLineItemView | null>(null)
   const [pending, startTransition] = useTransition()
 
   const subtotal = useMemo(
@@ -171,16 +172,28 @@ export function ProjectLineItems({ projectId, items, priceBookChoices }: Project
                       {formatUsd(lineTotal(item))}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemove(item)}
-                        disabled={pending}
-                        title={`Remove ${item.name}`}
-                        className="text-theme-muted hover:text-brand-red"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditItem(item)}
+                          disabled={pending}
+                          title={`Edit ${item.name}`}
+                          className="text-theme-muted hover:text-theme-fg"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemove(item)}
+                          disabled={pending}
+                          title={`Remove ${item.name}`}
+                          className="text-theme-muted hover:text-brand-red"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -204,29 +217,38 @@ export function ProjectLineItems({ projectId, items, priceBookChoices }: Project
         )}
       </CardContent>
 
-      <AddLineItemDialog
+      <LineItemDialog
         projectId={projectId}
-        open={addOpen}
-        onOpenChange={setAddOpen}
+        open={addOpen || editItem !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            setAddOpen(false)
+            setEditItem(null)
+          }
+        }}
         priceBookChoices={priceBookChoices}
-        onAdded={() => router.refresh()}
+        editItem={editItem}
+        onSaved={() => router.refresh()}
       />
     </Card>
   )
 }
 
-function AddLineItemDialog({
+function LineItemDialog({
   projectId,
   open,
   onOpenChange,
   priceBookChoices,
-  onAdded,
+  editItem,
+  onSaved,
 }: {
   projectId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   priceBookChoices: PriceBookChoice[]
-  onAdded: () => void
+  /** Set to edit an existing line; null to add a new one. */
+  editItem: ProjectLineItemView | null
+  onSaved: () => void
 }) {
   const [pending, startTransition] = useTransition()
   const [sourceId, setSourceId] = useState<string>(ONE_OFF)
@@ -236,6 +258,20 @@ function AddLineItemDialog({
   const [quantity, setQuantity] = useState('1')
   const [unitPrice, setUnitPrice] = useState('')
   const [note, setNote] = useState('')
+
+  const editing = editItem !== null
+
+  // Fill the form from the row being edited when the dialog opens on it.
+  useEffect(() => {
+    if (!editItem) return
+    setSourceId(ONE_OFF)
+    setCategory(editItem.category)
+    setName(editItem.name)
+    setUnitType(editItem.unitType)
+    setQuantity(String(editItem.quantity))
+    setUnitPrice(String(editItem.unitPrice))
+    setNote(editItem.note ?? '')
+  }, [editItem])
 
   function reset() {
     setSourceId(ONE_OFF)
@@ -286,6 +322,40 @@ function AddLineItemDialog({
 
     // Built up field by field rather than spread: `exactOptionalPropertyTypes`
     // treats a key present and undefined as different from a key that is absent.
+    if (editItem) {
+      const patch: {
+        projectId: string
+        lineItemId: string
+        category: PriceCategory
+        name: string
+        unitType: UnitType
+        quantity: number
+        unitPrice: number
+        note: string | null
+      } = {
+        projectId,
+        lineItemId: editItem.id,
+        category,
+        name: trimmed,
+        unitType,
+        quantity: qty,
+        unitPrice: price,
+        // Null clears the note; the update command accepts a nullable note.
+        note: note.trim() || null,
+      }
+      startTransition(async () => {
+        const result = await dispatch('update.projectLineItem', patch)
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+        toast.success(`Updated ${trimmed}`)
+        handleClose(false)
+        onSaved()
+      })
+      return
+    }
+
     const input: {
       projectId: string
       category: PriceCategory
@@ -314,7 +384,7 @@ function AddLineItemDialog({
       }
       toast.success(`${trimmed} added to this job`)
       handleClose(false)
-      onAdded()
+      onSaved()
     })
   }
 
@@ -329,30 +399,35 @@ function AddLineItemDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="bg-theme-bg border-theme-line sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-title3 font-medium">Add to this job</DialogTitle>
+          <DialogTitle className="text-title3 font-medium">
+            {editing ? 'Edit line item' : 'Add to this job'}
+          </DialogTitle>
           <DialogDescription className="text-bodyL text-theme-muted">
-            Start from a rate in your price book, or type a one-off. Either way it bills on this
-            project only.
+            {editing
+              ? 'Change what this line bills on this project. It updates the quote straight away.'
+              : 'Start from a rate in your price book, or type a one-off. Either way it bills on this project only.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Start from</Label>
-            <Select value={sourceId} onValueChange={handleSource}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ONE_OFF}>A one-off, not in my price book</SelectItem>
-                {priceBookChoices.map((choice) => (
-                  <SelectItem key={choice.id} value={choice.id}>
-                    {choice.name} · {formatUsdCents(choice.retailPrice)} per{' '}
-                    {unitLabel(choice.unitType)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {editing ? null : (
+            <div className="space-y-1.5">
+              <Label>Start from</Label>
+              <Select value={sourceId} onValueChange={handleSource}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ONE_OFF}>A one-off, not in my price book</SelectItem>
+                  {priceBookChoices.map((choice) => (
+                    <SelectItem key={choice.id} value={choice.id}>
+                      {choice.name} · {formatUsdCents(choice.retailPrice)} per{' '}
+                      {unitLabel(choice.unitType)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="pli-name">Name</Label>
@@ -451,7 +526,7 @@ function AddLineItemDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Adding…' : 'Add to job'}
+              {pending ? 'Saving…' : editing ? 'Save changes' : 'Add to job'}
             </Button>
           </DialogFooter>
         </form>

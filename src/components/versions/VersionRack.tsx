@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, Trash2, User, Wrench } from 'lucide-react'
+import { Check, Pencil, Trash2, User, Wrench } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { DrawingSvg } from '@/components/exports/DrawingSvg'
@@ -133,6 +133,22 @@ export function VersionRack({ projectId, versions, onOpened }: Props) {
     onOpened?.(versionId)
   }
 
+  async function rename(versionId: string, currentName: string) {
+    const next = window.prompt('Rename this design', currentName)
+    if (next === null) return
+    const trimmed = next.trim()
+    if (!trimmed || trimmed === currentName) return
+    setBusy(true)
+    const result = await dispatch('version.rename', { versionId, name: trimmed })
+    setBusy(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(`Renamed to ${trimmed}.`)
+    onOpened?.(versionId)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div
@@ -242,6 +258,16 @@ export function VersionRack({ projectId, versions, onOpened }: Props) {
                 Open this design
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => void rename(current.id, current.name)}
+              disabled={busy}
+              title={`Rename ${current.name}`}
+              className="flex h-8 w-8 items-center justify-center rounded-pfSm text-textMuted transition-colors hover:bg-rowHover hover:text-foreground disabled:opacity-60"
+            >
+              <Pencil className="h-4 w-4" aria-hidden />
+              <span className="sr-only">Rename this design</span>
+            </button>
             <button
               type="button"
               onClick={() => void remove(current.id)}
