@@ -13,7 +13,12 @@ import {
   measuredCellCount,
 } from '@/modules/capture/coverage'
 import { decodeCapture } from '@/modules/capture/decode'
-import { CAPTURE_REF_PATTERN, takeStagedCapture } from '@/modules/capture/staging'
+import {
+  CAPTURE_REF_PATTERN,
+  discardStagedCapture,
+  stageCapture,
+  takeStagedCapture,
+} from '@/modules/capture/staging'
 import { packHeightfield, unpackHeightfield } from '@/modules/capture/storage'
 import {
   existingSurfaceFrom,
@@ -394,3 +399,84 @@ function poolBounds(shapes: Shape[]): Bounds | null {
   const pools = shapes.filter(shape => isPool(shape) || isPolygonPool(shape))
   return visibleBounds(pools)
 }
+
+/**
+ * A simulated site walk, so the capture pipeline is usable without a phone.
+ *
+ * Builds a plausible walked yard, stages it exactly as the upload route does,
+ * and runs it through `capture.heightfield.ingest`. Everything downstream (the
+ * existing-grade surface, the coverage report, earthwork, the terrain render)
+ * is the same as a real walk: this only replaces the phone as the source of the
+ * heightfield, so the feature can be demonstrated and QA'd. Intended for a
+ * "simulate a walk" control, not a spoken command, so it is left off the voice
+ * surface.
+ */
+register({
+  id: 'capture.synthesize',
+  runsOn: 'server',
+  label: 'Simulate a walked site capture',
+  description:
+    'Fabricate a plausible walked-site heightfield for this project and take it in through the same pipeline a real capture uses, so the terrain, coverage and earthwork can be seen without an iPhone.',
+  category: 'capture',
+  inputSchema: z.object({
+    projectId: z.string().min(1).max(64),
+    /** Where the benchmark tap lands on the drawing, in feet. */
+    anchorXFt: z.number().finite().min(-100_000).max(100_000).optional(),
+    anchorYFt: z.number().finite().min(-100_000).max(100_000).optional(),
+    /** Fraction of the yard to leave unwalked, so coverage has something to report. */
+    gapFraction: z.number().min(0).max(0.6).optional(),
+  }),
+  outputSchema: z.object({
+    captureId: z.string(),
+    projectId: z.string(),
+    cells: z.number(),
+    measuredCells: z.number(),
+    coverage: coverageOutput,
+  }),
+  execute: async (input, ctx) => {
+    const unauthenticated = notAuthenticated(ctx)
+    if (unauthenticated) return unauthenticated
+
+    const { synthesizeCapture } = await import('@/modules/capture/synthesize')
+    const { dispatchCommand } = await import('@/modules/commands/dispatch')
+
+    const payloadOptions = input.gapFraction === undefined ? {} : { gapFraction: input.gapFraction }
+    const payload = synthesizeCapture(payloadOptions)
+    const captureRef = stageCapture({ payload, orgId: ctx.orgId })
+
+    const ingestInput: {
+      captureRef: string
+      projectId: string
+      anchorXFt?: number
+      anchorYFt?: number
+    } = { captureRef, projectId: input.projectId }
+    if (input.anchorXFt !== undefined) ingestInput.anchorXFt = input.anchorXFt
+    if (input.anchorYFt !== undefined) ingestInput.anchorYFt = input.anchorYFt
+
+    let result
+    try {
+      result = await dispatchCommand<{
+        captureId: string
+        projectId: string
+        cells: number
+        measuredCells: number
+        coverage: z.infer<typeof coverageOutput>
+      }>('capture.heightfield.ingest', ingestInput, ctx)
+    } finally {
+      // The ingest consumes the ref on the paths it reaches; this covers the rest.
+      discardStagedCapture(captureRef)
+    }
+
+    if (!result.ok) return { ok: false, error: result.error }
+    return {
+      ok: true,
+      data: {
+        captureId: result.data.captureId,
+        projectId: result.data.projectId,
+        cells: result.data.cells,
+        measuredCells: result.data.measuredCells,
+        coverage: result.data.coverage,
+      },
+    }
+  },
+})
