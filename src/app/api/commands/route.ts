@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
@@ -33,6 +33,27 @@ const requestSchema = z.object({
    */
   source: z.enum(COMMAND_SOURCES).optional(),
 })
+
+/**
+ * Record one audit row without making the caller wait on it.
+ *
+ * The editor dispatches through this route on every add/move/resize/delete,
+ * and the client applies the visible change only after this POST resolves, so
+ * awaiting the INSERT put a DB round trip in front of every edit. The audit is
+ * best-effort (it already swallows its own failures), so the write is handed to
+ * `after()`: the response returns immediately and the runtime is kept alive to
+ * finish the insert past the response.
+ */
+function recordAudit(args: {
+  userId: string | null
+  orgId: string | null
+  commandId: string
+  input: unknown
+  result: CommandResult | { ok: false; error: string }
+  source: CommandSourceValue
+}): void {
+  after(writeAudit(args))
+}
 
 async function writeAudit(args: {
   userId: string | null
@@ -102,7 +123,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!command) {
     // Two audiences, two messages: the audit row keeps the id that was asked
     // for, the response carries a sentence rather than an internal identifier.
-    await writeAudit({
+    recordAudit({
       userId,
       orgId,
       commandId: id,
@@ -123,7 +144,7 @@ export async function POST(req: Request): Promise<Response> {
     // carries the plain-English half.
     const technical = technicalIssueList(inputParsed.error)
     console.warn(`[commands] ${id} refused its input: ${technical}`)
-    await writeAudit({
+    recordAudit({
       userId,
       orgId,
       commandId: id,
@@ -165,7 +186,7 @@ export async function POST(req: Request): Promise<Response> {
     auditResult = { ok: false, error: `command threw (${report.errorRef}): ${report.name}` }
   }
 
-  await writeAudit({
+  recordAudit({
     userId,
     orgId,
     commandId: id,
