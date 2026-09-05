@@ -4,7 +4,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // Runtime queries go through Neon's connection pooler (pgbouncer) so a
+  // cold Cloud Run instance does not pay a fresh TCP+TLS handshake per request.
   url      = env("DATABASE_URL")
+  // Migrations need a direct (session) connection: pgbouncer transaction
+  // pooling cannot run the advisory locks and DDL a migration takes.
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // ============================================================

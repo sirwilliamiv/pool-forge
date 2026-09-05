@@ -145,7 +145,12 @@ fi
 # ---------------------------------------------------------------- secrets
 # Required. The deploy stops rather than starting a service that cannot work.
 REQUIRED_SECRETS=(
+  # Runtime queries: Neon's -pooler host with ?pgbouncer=true, so a cold
+  # instance does not open a fresh direct connection per request.
   "DATABASE_URL=pool-forge-database-url"
+  # Migrations only (Prisma directUrl): Neon's direct endpoint, since pgbouncer
+  # transaction pooling cannot run migration DDL/advisory locks.
+  "DIRECT_DATABASE_URL=pool-forge-direct-database-url"
   "AUTH_SECRET=pool-forge-auth-secret"
 )
 
@@ -326,7 +331,7 @@ if [ "$DRY" = "0" ]; then
     --project "$PROJECT_ID" --region "$REGION" \
     --image "${IMAGE}-migrate:latest" \
     --service-account "$RUNTIME_SA" \
-    --set-secrets "DATABASE_URL=pool-forge-database-url:latest" \
+    --set-secrets "DATABASE_URL=pool-forge-database-url:latest,DIRECT_DATABASE_URL=pool-forge-direct-database-url:latest" \
     --max-retries 1 --quiet
   gcloud run jobs execute "${SERVICE}-migrate" --region "$REGION" --project "$PROJECT_ID" --wait
 fi
