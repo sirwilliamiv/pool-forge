@@ -23,6 +23,31 @@ const ACT_SETTLE_MS = 1500
 
 type Beat = 'announce' | 'act'
 
+/** Commands that move the camera themselves; the runner must not reframe after. */
+const VIEW_COMMANDS = new Set(['canvas.fit', 'camera.set.view', 'view.set.tab', 'canvas.zoom.in', 'canvas.zoom.out', 'canvas.pan', 'camera.frame.selection'])
+
+/**
+ * The closest thing the browser has to Marco's low, measured voice. Prefer a
+ * named premium male voice, then any male English voice, then the platform
+ * defaults that read male, and give up gracefully (default voice) if none match
+ * rather than staying silent. Voices load async, so this may return null on the
+ * first call and a real voice once `voiceschanged` has fired.
+ */
+function pickMarcoVoice(synth: SpeechSynthesis): SpeechSynthesisVoice | null {
+  const voices = synth.getVoices()
+  if (!voices.length) return null
+  const en = voices.filter(v => v.lang?.toLowerCase().startsWith('en'))
+  const pool = en.length ? en : voices
+  // Known steady male voices across macOS / Chrome / Windows, best first.
+  const preferred = ['Google UK English Male', 'Daniel', 'Arthur', 'Aaron', 'Alex', 'Microsoft Guy', 'Microsoft David', 'Rishi', 'Google US English']
+  for (const name of preferred) {
+    const hit = pool.find(v => v.name === name) ?? pool.find(v => v.name.includes(name))
+    if (hit) return hit
+  }
+  // Fall back to anything that names itself male.
+  return pool.find(v => /\bmale\b/i.test(v.name)) ?? pool[0] ?? null
+}
+
 /**
  * Marco builds one complete pool while you watch.
  *
@@ -71,11 +96,25 @@ function TrainingRunner() {
       if (!synth) return
       synth.cancel()
       const u = new SpeechSynthesisUtterance(line)
-      u.rate = 1
+      // Marco is low and measured (the live session uses Gemini's "Charon").
+      // A live session would sound exactly like him; with the mic off we pick
+      // the closest steady male voice the browser has and slow it slightly, so
+      // it reads as Marco rather than the machine's random default.
+      const voice = pickMarcoVoice(synth)
+      if (voice) u.voice = voice
+      u.rate = 0.95
+      u.pitch = 0.9
       synth.speak(u)
     } catch {
       // Speech is a bonus; the caption is the real narration.
     }
+  }, [])
+
+  // Nudge the camera to keep the whole growing drawing in view during the hold,
+  // so the user actually sees each new object land. Skipped for steps that are
+  // themselves about the camera.
+  const frameAll = useCallback(() => {
+    void dispatch('canvas.fit', {}).catch(() => undefined)
   }, [])
 
   // The one place the sequence moves forward: announce -> act, or act -> next
@@ -123,6 +162,10 @@ function TrainingRunner() {
         if (action) {
           void dispatch(action.command, action.input).then(res => {
             if (res.ok && step.capture) step.capture(ctx.current, res.data)
+            // Reframe after anything that changes the drawing, so the object we
+            // just placed is on screen for the settle hold. Camera/view commands
+            // frame themselves; don't fight them.
+            if (!VIEW_COMMANDS.has(action.command)) frameAll()
           })
         }
       }
@@ -134,6 +177,24 @@ function TrainingRunner() {
       if (timer.current) clearTimeout(timer.current)
     }
   }, [index, beat, paused, finished, step, speak, advance])
+
+  // Look straight down at the whole sheet before anything is placed, so the
+  // yard fills the view and every object lands where the user is already
+  // looking. Also warm the browser's voice list (it loads async) so Marco's
+  // voice is ready by the first spoken line.
+  useEffect(() => {
+    void dispatch('view.set.tab', { tab: 'plan' }).catch(() => undefined)
+    void dispatch('camera.set.view', { view: 'top' }).catch(() => undefined)
+    try {
+      const synth = window.speechSynthesis
+      synth?.getVoices()
+      const warm = () => synth?.getVoices()
+      synth?.addEventListener('voiceschanged', warm)
+      return () => synth?.removeEventListener('voiceschanged', warm)
+    } catch {
+      return undefined
+    }
+  }, [])
 
   // Leaving the training clears the highlight and stops any speech.
   useEffect(() => {

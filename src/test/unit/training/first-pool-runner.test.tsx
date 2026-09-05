@@ -33,11 +33,19 @@ const dispatchMock = vi.mocked(dispatch)
 const ANNOUNCE = 2500
 const SETTLE = 1500
 
-/** Commands the runner issues to point/clear, not to build. */
-const GUIDE = new Set(['guide.point', 'guide.clear'])
+// Commands the runner issues for narration and framing, not to build the pool:
+// the guide highlights, the view setup on mount, and the reframe after each
+// placement. buildCommands() strips them so we assert on the actual build.
+const NON_BUILD = new Set([
+  'guide.point',
+  'guide.clear',
+  'canvas.fit',
+  'camera.set.view',
+  'view.set.tab',
+])
 
 function buildCommands(): string[] {
-  return dispatchMock.mock.calls.map(c => c[0] as string).filter(id => !GUIDE.has(id))
+  return dispatchMock.mock.calls.map(c => c[0] as string).filter(id => !NON_BUILD.has(id))
 }
 
 // One beat transition per flush: a beat's timer fires and updates state, but the
@@ -82,17 +90,19 @@ describe('the first-pool training runner', () => {
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    // Step 1 is narration-only, so advance to step 2 (the first that builds).
-    // Announce beat of step 1 -> act (nothing) -> announce of step 2.
+    // Skip to step 2's announce beat (step 1 is narration-only): Next moves
+    // announce->act, Next again act->next step's announce. Next skips the waits,
+    // so this is independent of any step's settle time.
     act(() => {
-      vi.advanceTimersByTime(ANNOUNCE)
-    }) // step 1 announce done -> act
+      screen.getByTitle('Next').click()
+    }) // step 1 announce -> act
     act(() => {
-      vi.advanceTimersByTime(SETTLE)
-    }) // step 1 act done -> step 2 announce
+      screen.getByTitle('Next').click()
+    }) // step 1 act -> step 2 announce
     // We are now in step 2's announce hold. The pool must NOT be added yet.
     expect(buildCommands()).toEqual([])
-    // Complete the announce hold; now the act fires.
+    // The announce hold is a fixed constant for every step; let it elapse and
+    // the act beat fires the build.
     act(() => {
       vi.advanceTimersByTime(ANNOUNCE)
     })
@@ -164,8 +174,12 @@ describe('the first-pool training runner', () => {
     })
     // Walk the whole script: two beats per step, plus slack to reach the end.
     await pump(FIRST_POOL_SCRIPT.length * 2 + 2)
-    // Every step with a run() that returns an action should have dispatched.
-    const expected = FIRST_POOL_SCRIPT.filter(s => s.run && s.run({ poolId: 'shape_pool_1' })).length
+    // Every step whose run() returns a real build action (not a view command
+    // the runner also issues for framing) should have dispatched exactly once.
+    const expected = FIRST_POOL_SCRIPT.filter(s => {
+      const a = s.run?.({ poolId: 'shape_pool_1' })
+      return a && !NON_BUILD.has(a.command)
+    }).length
     expect(buildCommands().length).toBe(expected)
     expect(screen.getByText(/complete pool/i)).toBeTruthy()
   })

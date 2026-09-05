@@ -44,79 +44,89 @@ function shapeId(data: unknown): string | undefined {
 
 export const FIRST_POOL_SCRIPT: readonly TrainingStep[] = [
   {
-    say: "I'll build one complete pool so you can see how the pieces fit. I'll say each thing before I do it — watch.",
+    say: "I'll build one complete pool so you can see how it's done. Watch the left panel and the drawing — I'll name each thing before I do it, and you'll do them the same way.",
+    settleMs: 2000,
   },
   {
-    say: 'First the pool itself. Every shape you place is measured and priced the moment it lands.',
+    say: 'Start in the Stencils panel on the left. Search for a shape and click it — whatever you click drops into the middle of the drawing. Here comes the pool.',
     point: ['panel.stencils'],
     run: () => ({ command: 'add.shape', input: { stencilId: 'pool.rectangle', x: POOL.x, y: POOL.y } }),
     capture: (ctx, data) => {
       const id = shapeId(data)
       if (id) ctx.poolId = id
     },
+    settleMs: 2000,
   },
   {
-    say: 'Now the deep end. A pool falls from a shallow end to a deep one — here, three feet down to eight.',
+    say: 'The pool now shows in the Layers list. With it selected, its depth fields sit in the panel on the right — a pool slopes from a shallow end to a deep one, so I set three feet down to eight.',
     point: ['panel.layers'],
     run: ctx =>
       ctx.poolId
         ? { command: 'pool.geometry.update', input: { id: ctx.poolId, shallowDepthFt: 3, deepDepthFt: 8 } }
         : null,
+    settleMs: 2000,
   },
   {
-    say: 'A raised spa beside it, spilling into the pool.',
+    say: "Back to Stencils. Search 'spa' and click it — a raised spa lands beside the pool, ready to spill into it.",
     point: ['panel.stencils'],
     run: () => ({ command: 'add.shape', input: { stencilId: 'pool.spa', x: POOL.x + 360, y: POOL.y } }),
+    settleMs: 2000,
   },
   {
-    say: 'Steps into the shallow end.',
+    say: "Same panel, search 'steps'. Click, and steps drop into the shallow end.",
     point: ['panel.stencils'],
     run: () => ({ command: 'add.shape', input: { stencilId: 'pool.standard-steps', x: POOL.x, y: POOL.y + 150 } }),
+    settleMs: 2000,
   },
   {
-    say: 'A main drain on the pool floor.',
+    say: "Search 'main drain' and click to set one on the pool floor. Every piece you add gets measured and priced the moment it lands.",
     point: ['panel.stencils'],
     run: () => ({ command: 'add.shape', input: { stencilId: 'feature.main-drain', x: POOL.x + 150, y: POOL.y + 60 } }),
+    settleMs: 2000,
   },
   {
-    say: 'This is the house the pool sits behind.',
+    say: "Now the surroundings. Search 'house wall' and click — this is the house the pool sits behind.",
     point: ['panel.stencils'],
     run: () => ({ command: 'add.shape', input: { stencilId: 'site.house-wall', x: POOL.x - 80, y: POOL.y - 260 } }),
+    settleMs: 2000,
   },
   {
-    say: 'The lot boundary, so setbacks have something to measure from.',
+    say: 'Next the lot. Open the Layers panel and drop the property boundary — seventy by a hundred feet — so setbacks have an edge to measure from.',
     point: ['panel.layers'],
     run: () => ({ command: 'site.property.place', input: { widthFt: 70, depthFt: 100 } }),
-    settleMs: 1800,
+    settleMs: 2200,
   },
   {
-    say: 'And the setbacks the county requires — twenty-five feet at the front, seven and a half at the sides.',
+    say: 'From the same panel, set the setbacks your county requires — twenty-five feet at the front, seven and a half at the sides. Anything too close will now flag itself.',
     point: ['panel.layers'],
     run: () => ({ command: 'site.limits.set', input: { frontFt: 25, sideFt: 7.5, rearFt: 15 } }),
+    settleMs: 2200,
   },
   {
-    say: 'Pool code needs a barrier — here is the fence.',
+    say: "Pool code needs a barrier. Back in Stencils, search 'fence' and click to run one around the yard.",
     point: ['panel.stencils'],
     run: () => ({ command: 'add.shape', input: { stencilId: 'deck.fence', x: POOL.x - 120, y: POOL.y + 320 } }),
+    settleMs: 2000,
   },
   {
-    say: "The ground isn't flat. Turning on grading records how it falls, and the dirt that has to move.",
+    say: "The ground is never flat. Open the Grade tab and turn grading on — now the app tracks how the yard falls and the dirt that has to move.",
     point: ['panel.grade'],
     run: () => ({ command: 'grade.enable', input: { enabled: true } }),
+    settleMs: 2000,
   },
   {
-    say: 'A couple of measured heights: the far corner sits two feet below the house pad.',
+    say: 'In the Grade tab you drop measured heights. I mark the far corner two feet below the house pad, and the cut-and-fill updates from it.',
     point: ['panel.grade'],
     run: () => ({ command: 'grade.point.add', input: { surface: 'existing', xFt: 45, yFt: 45, elevationFt: -2, label: 'far corner' } }),
-    settleMs: 1800,
+    settleMs: 2200,
   },
   {
-    say: 'Notice the price has been climbing the whole time. Every shape you saw added its own line to the quote.',
+    say: "That's the whole job on screen. The Fit button frames everything — and look at the Live Quote up top: it's been adding a line for every piece the whole time.",
     point: ['view.fit'],
     run: () => ({ command: 'canvas.fit', input: {} }),
-    settleMs: 2500,
+    settleMs: 2800,
   },
   {
-    say: "That's a complete job: drawn, measured, priced, ready to send. This was a practice project — discard it, or keep it to build on.",
+    say: "A complete job: drawn, measured, priced, ready to send. That's the whole loop, and you do each step exactly the way you just watched. This was a practice project — discard it, or keep it to build on.",
   },
 ] as const
