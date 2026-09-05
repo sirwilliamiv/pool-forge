@@ -7,6 +7,7 @@ import { Check, Circle, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { dispatch } from '@/lib/commands/dispatch'
 import type { FirstRunStep } from '@/modules/onboarding/first-run'
+import { StartFirstPoolTraining } from '@/components/onboarding/StartFirstPoolTraining'
 
 // Quiet on purpose.
 //
@@ -95,6 +96,13 @@ export function FirstRunChecklist({ steps }: { steps: readonly FirstRunStep[] })
           </li>
         ))}
       </ul>
+
+      <div className="mt-3 flex items-center gap-2 border-t pt-3">
+        <StartFirstPoolTraining />
+        <span className="text-xs text-muted-foreground">
+          Never built one? Watch it happen end to end in a practice project.
+        </span>
+      </div>
     </section>
   )
 }

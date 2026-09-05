@@ -36,6 +36,8 @@ import type { Suggestion } from '@/lib/commands/suggestions'
 import { EMPTY_FINISH_CATALOG, type FinishCatalog } from '@/modules/materials/catalog'
 import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import { PricingProvider, type PricingInput } from './LiveQuote'
+import { FirstPoolTraining } from '@/components/editor/training/FirstPoolTraining'
+import { EmptyEditorTrainingPrompt } from '@/components/editor/training/EmptyEditorTrainingPrompt'
 
 export interface EditorLayoutProps {
   projectId: string
@@ -129,6 +131,7 @@ export function EditorLayout({
           contextualToolbarSlot={<ContextualToolbar />}
         />
         <LiveSessionBorder />
+        <EmptyEditorTrainingPrompt />
       </main>
 
       <RightPanel
@@ -145,6 +148,7 @@ export function EditorLayout({
       <ClientCommandHandlers />
       <ExportCommandHandlers />
       <CommandPalette suggestions={paletteSuggestions} projectId={projectId} />
+      <FirstPoolTraining />
       </div>
     </PricingProvider>
   )
