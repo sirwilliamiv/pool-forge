@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useShapesStore } from '@/modules/editor/state'
 import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import type { Shape } from '@/modules/editor/state/shapes'
@@ -65,9 +65,31 @@ function quoteFor(
   })
 }
 
+/**
+ * How long the drawing must hold still before the quote reprices.
+ *
+ * `computeQuote` is the heaviest pure function in the editor, and `shapes`
+ * changes on every pointer frame during a drag. A short trailing debounce
+ * collapses a whole drag (~60 frames/sec) into one recompute when the pointer
+ * settles, while staying well under the threshold where a single discrete edit
+ * would feel laggy.
+ */
+const QUOTE_SETTLE_MS = 120
+
+/** The shapes to price: the live array, but only after it stops changing. */
+function useSettledShapes(): Shape[] {
+  const shapes = useShapesStore((s) => s.shapes)
+  const [settled, setSettled] = useState(shapes)
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(shapes), QUOTE_SETTLE_MS)
+    return () => clearTimeout(t)
+  }, [shapes])
+  return settled
+}
+
 /** The quote for what is on the canvas right now. */
 export function useLiveQuote(): QuoteSummary | null {
-  const shapes = useShapesStore((s) => s.shapes)
+  const shapes = useSettledShapes()
   const catalog = useMaterialsStore((s) => s.catalog)
   const input = usePricingInput()
   return useMemo(() => quoteFor(shapes, input, catalog), [shapes, input, catalog])
@@ -85,9 +107,13 @@ export function useShapeContribution(shapeId: string | undefined): {
   withoutTotal: number
   changedLines: Array<{ name: string; delta: number }>
 } | null {
-  const shapes = useShapesStore((s) => s.shapes)
+  const shapes = useSettledShapes()
   const catalog = useMaterialsStore((s) => s.catalog)
   const input = usePricingInput()
+  // This runs the quote engine TWICE (with and without the shape), so it is the
+  // single most expensive thing the inspector does. It reads the same settled
+  // shapes as the live quote, so a drag reprices it once on settle rather than
+  // twice per pointer frame.
   return useMemo(() => {
     if (!input || !shapeId) return null
     const withAll = quoteFor(shapes, input, catalog)
