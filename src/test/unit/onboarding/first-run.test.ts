@@ -142,9 +142,12 @@ describe('against a real organisation', () => {
     const state = await loadFirstRun(orgId)
     expect(state.dismissed).toBe(true)
     expect(state.visible).toBe(false)
-    // The steps are still computed and still true: dismissing hides a card, it
-    // does not claim the work was done.
-    expect(state.remaining).toBe(3)
+    // A dismissed card is hidden without computing the facts at all: the only
+    // consumer gates on `visible` and reads `steps`, and re-deriving the
+    // remaining count on every dashboard render for a card nobody will see is
+    // exactly the work the short-circuit removes.
+    expect(state.steps).toEqual([])
+    expect(state.remaining).toBe(0)
   })
 
   it('is dismissed through the command registry, with an audit row', async () => {

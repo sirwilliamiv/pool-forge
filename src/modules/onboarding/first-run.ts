@@ -120,19 +120,9 @@ function hasText(value: string | null | undefined): boolean {
   return typeof value === 'string' && value.trim() !== ''
 }
 
-interface RootJsonWithShapes {
-  shapes?: unknown
-}
-
-function drawingHasShapes(rootJson: unknown): boolean {
-  if (typeof rootJson !== 'object' || rootJson === null) return false
-  const shapes = (rootJson as RootJsonWithShapes).shapes
-  return Array.isArray(shapes) && shapes.length > 0
-}
-
 /** Read the facts for one organisation. Every query is org scoped. */
 export async function loadFirstRunFacts(orgId: string): Promise<FirstRunFacts> {
-  const [book, org, drawings] = await Promise.all([
+  const [book, org, drawn] = await Promise.all([
     db.priceBook.findFirst({
       where: { orgId, isActive: true },
       orderBy: { version: 'desc' },
@@ -152,14 +142,11 @@ export async function loadFirstRunFacts(orgId: string): Promise<FirstRunFacts> {
       where: { id: orgId },
       select: { address: true, phone: true, licenseNumber: true },
     }),
-    // Only enough to answer "has anybody drawn anything yet". Capped, because
-    // this runs on every render of the projects page.
-    db.drawing.findMany({
-      where: { project: { orgId } },
-      select: { rootJson: true },
-      orderBy: { updatedAt: 'desc' },
-      take: 25,
-    }),
+    // Only the yes/no "has anybody drawn anything yet", answered in the
+    // database. This runs on every render of the projects page, and the old
+    // version pulled up to 25 whole `rootJson` drawings back just to look for a
+    // non-empty shapes array.
+    hasAnyDrawnShapes(orgId),
   ])
 
   const stored = (book?.items ?? []).map((item) => ({
@@ -176,8 +163,28 @@ export async function loadFirstRunFacts(orgId: string): Promise<FirstRunFacts> {
     hasAddress: hasText(org?.address),
     hasPhone: hasText(org?.phone),
     hasLicenseNumber: hasText(org?.licenseNumber),
-    hasDrawnShapes: drawings.some((drawing) => drawingHasShapes(drawing.rootJson)),
+    hasDrawnShapes: drawn,
   }
+}
+
+/**
+ * Whether any drawing in the org holds at least one shape, resolved in one
+ * cheap boolean query instead of transferring whole drawing payloads. Guards
+ * the JSON access so a `rootJson` without a `shapes` array is simply false
+ * rather than a type error.
+ */
+async function hasAnyDrawnShapes(orgId: string): Promise<boolean> {
+  const rows = await db.$queryRaw<Array<{ has: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM "Drawing" d
+      JOIN "Project" p ON p.id = d."projectId"
+      WHERE p."orgId" = ${orgId}
+        AND jsonb_typeof(d."rootJson" -> 'shapes') = 'array'
+        AND jsonb_array_length(d."rootJson" -> 'shapes') > 0
+    ) AS has
+  `
+  return rows[0]?.has ?? false
 }
 
 /** Has this organisation closed the card? */
@@ -199,13 +206,17 @@ export async function isFirstRunDismissed(orgId: string): Promise<boolean> {
  * checklist with nothing left on it is clutter.
  */
 export async function loadFirstRun(orgId: string): Promise<FirstRunState> {
-  const [facts, dismissed] = await Promise.all([
-    loadFirstRunFacts(orgId),
-    isFirstRunDismissed(orgId),
-  ])
+  // Dismissed first, and short-circuit: an org that closed the card still paid
+  // for the whole facts load (the price book, the org, the drawings) on every
+  // dashboard render for a card that will not be shown.
+  const dismissed = await isFirstRunDismissed(orgId)
+  if (dismissed) {
+    return { steps: [], dismissed: true, remaining: 0, visible: false }
+  }
+  const facts = await loadFirstRunFacts(orgId)
   const steps = buildFirstRunSteps(facts)
   const remaining = steps.filter((step) => !step.done).length
-  return { steps, dismissed, remaining, visible: !dismissed && remaining > 0 }
+  return { steps, dismissed, remaining, visible: remaining > 0 }
 }
 
 /** Close the card for this organisation. Reached through the command registry. */
