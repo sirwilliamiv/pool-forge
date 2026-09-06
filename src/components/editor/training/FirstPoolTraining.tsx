@@ -15,12 +15,10 @@ import type { CameraView } from '@/modules/editor/state/cameraStore'
 export const TRAINING_PARAM = 'training'
 export const FIRST_POOL_TRAINING = 'first-pool'
 
-// The tour is click-through: it never auto-jumps off a card, so a line is never
-// cut off mid-sentence. The object for a card lands a beat after the card opens
-// (so the words land first), and the user reads and clicks Next when ready.
-// Auto-advance is an opt-in that fires only when Marco has actually finished
-// speaking (the audio's own `ended`), never a guessed timer.
-const ACT_DELAY_MS = 900
+// The object for a card drops shortly after the card opens, so Marco names it
+// first and you watch it land while he's still talking. Advancing is driven by
+// his audio's own `ended`, so a line is never cut off and it never drags.
+const ACT_DROP_MS = 700
 
 /** Commands that move the camera themselves; the runner must not reframe after. */
 const VIEW_COMMANDS = new Set(['canvas.fit', 'camera.set.view', 'view.set.tab', 'canvas.zoom.in', 'canvas.zoom.out', 'canvas.pan', 'camera.frame.selection'])
@@ -56,25 +54,25 @@ function TrainingRunner() {
   const router = useRouter()
   const projectId = params?.id
 
+  // `started` gates on a real click, which is what lets Marco's audio actually
+  // play — without a user gesture the browser blocks it and we drop to the
+  // generic fallback voice, which is exactly the "random voice" problem.
+  const [started, setStarted] = useState(false)
   const [index, setIndex] = useState(0)
   const [finished, setFinished] = useState(false)
-  const [auto, setAuto] = useState(false)
+  const [paused, setPaused] = useState(false)
 
   const ctx = useRef<TrainingContext>({})
   const acted = useRef<Set<number>>(new Set())
-  const actTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dropTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const narration = useRef<Narration | null>(null)
-  // Auto-advance is read inside the audio 'ended' callback, which fires outside
-  // React's render, so it must come from a ref.
-  const autoRef = useRef(auto)
-  useEffect(() => { autoRef.current = auto }, [auto])
+  const pausedRef = useRef(paused)
+  useEffect(() => { pausedRef.current = paused }, [paused])
 
   const step = FIRST_POOL_SCRIPT[index]
-  const isLast = index >= FIRST_POOL_SCRIPT.length - 1
 
   // Frame everything after a placement so the growing drawing stays on screen.
-  // Steps that name their own vantage re-assert it instead, so a top-down site
-  // layout or a side-on depth view isn't yanked back to the default angle.
+  // Steps that name their own vantage re-assert it instead.
   const frameFor = useCallback((view: CameraView | undefined) => {
     if (view) void dispatch('camera.set.view', { view }).catch(() => undefined)
     else void dispatch('canvas.fit', {}).catch(() => undefined)
@@ -94,33 +92,31 @@ function TrainingRunner() {
     })
   }, [frameFor])
 
-  // Move on: make sure the current card's action has run (even if the user
-  // clicked before it auto-fired), stop the current line, then next card or the
-  // end card. Never fires on its own timer.
-  const goNext = useCallback(() => {
-    if (actTimer.current) {
-      clearTimeout(actTimer.current)
-      actTimer.current = null
-    }
-    performAction(index)
-    narration.current?.stop()
-    if (isLast) setFinished(true)
-    else setIndex(i => i + 1)
-  }, [index, isLast, performAction])
-
-  const goBack = useCallback(() => {
-    if (actTimer.current) {
-      clearTimeout(actTimer.current)
-      actTimer.current = null
+  const advanceTo = useCallback((next: number) => {
+    if (dropTimer.current) {
+      clearTimeout(dropTimer.current)
+      dropTimer.current = null
     }
     narration.current?.stop()
-    setIndex(i => (i > 0 ? i - 1 : i))
+    if (next >= FIRST_POOL_SCRIPT.length) setFinished(true)
+    else setIndex(next < 0 ? 0 : next)
   }, [])
 
-  // Enter a card: highlight, snap to its vantage, speak it, and drop its object
-  // a beat later. Nothing here advances the tour; the buttons do.
+  // Advance keeps the current card's object (it may have already been placed on
+  // the drop timer; performAction is idempotent) and moves on.
+  const goNext = useCallback(() => {
+    performAction(index)
+    advanceTo(index + 1)
+  }, [index, performAction, advanceTo])
+
+  const goBack = useCallback(() => advanceTo(index - 1), [index, advanceTo])
+
+  // Enter a card: highlight, snap to its vantage, speak it, drop its object a
+  // beat later, and auto-advance when Marco actually finishes the line (his
+  // audio's own 'ended') — never a guessed timer, so nothing is cut off and it
+  // never drags. Only runs once started (the click that unlocks audio).
   useEffect(() => {
-    if (finished || !step) return
+    if (!started || finished || !step) return
     if (step.point?.length) {
       void dispatch('guide.point', { targets: step.point }).catch(() => undefined)
     } else {
@@ -130,15 +126,20 @@ function TrainingRunner() {
 
     narration.current?.stop()
     narration.current = narrate(step.say, () => {
-      // Only auto mode advances, and only when the line has truly finished.
-      if (autoRef.current) goNext()
+      if (!pausedRef.current) goNext()
     })
-
-    actTimer.current = setTimeout(() => performAction(index), ACT_DELAY_MS)
+    dropTimer.current = setTimeout(() => performAction(index), ACT_DROP_MS)
     return () => {
-      if (actTimer.current) clearTimeout(actTimer.current)
+      if (dropTimer.current) clearTimeout(dropTimer.current)
     }
-  }, [index, finished, step, performAction, goNext])
+  }, [started, index, finished, step, performAction, goNext])
+
+  // Pause/resume the current line without restarting it.
+  useEffect(() => {
+    if (!started) return
+    if (paused) narration.current?.pause()
+    else narration.current?.resume()
+  }, [paused, started])
 
   // Open on an iso overview of the empty yard, so the first object lands in a
   // framed 3D view (never the orthographic plan tab, where the view-cube snaps
@@ -225,6 +226,33 @@ function TrainingRunner() {
 
   if (!step) return null
 
+  // The Start gate: one click, which is what authorizes Marco's audio to play.
+  if (!started) {
+    return (
+      <div className="pointer-events-auto fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4">
+        <div className="w-full max-w-md rounded-pfMd border border-border bg-white p-4 shadow-pfLg">
+          <div className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+            <Sparkles className="h-4 w-4 text-pfAccent" aria-hidden />
+            Marco builds your first pool
+          </div>
+          <p className="mt-1 text-[12px] text-textMuted">
+            Watch it go up start to finish, in his voice. It plays on its own; pause or skip any time.
+          </p>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setStarted(true)}
+              className="flex items-center gap-1.5 rounded-pfSm bg-foreground px-3 py-1.5 text-[12px] font-medium text-white hover:bg-foreground/90"
+            >
+              <Play className="h-3.5 w-3.5" aria-hidden />
+              Start the tour
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4">
       <div className="pointer-events-auto w-full max-w-lg rounded-pfMd border border-border bg-white/95 p-3 shadow-pfLg backdrop-blur">
@@ -233,29 +261,14 @@ function TrainingRunner() {
             <Sparkles className="h-3 w-3 text-pfAccent" aria-hidden />
             Marco · step {index + 1} of {FIRST_POOL_SCRIPT.length}
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setAuto(a => !a)}
-              title={auto ? 'Auto-play on: advances when Marco finishes each line' : 'Auto-play off: advance yourself'}
-              aria-pressed={auto}
-              className={
-                'flex items-center gap-1 rounded-pfSm px-1.5 py-1 text-[10px] font-medium ' +
-                (auto ? 'bg-pfAccentSoft text-foreground' : 'text-textMuted hover:bg-rowHover hover:text-foreground')
-              }
-            >
-              {auto ? <Pause className="h-3 w-3" aria-hidden /> : <Play className="h-3 w-3" aria-hidden />}
-              Auto
-            </button>
-            <button
-              type="button"
-              onClick={onStop}
-              title="End the tour"
-              className="rounded-pfSm p-1 text-textMuted hover:bg-rowHover hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onStop}
+            title="End the tour"
+            className="rounded-pfSm p-1 text-textMuted hover:bg-rowHover hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+          </button>
         </div>
         <p className="mt-1.5 text-[13px] leading-snug text-foreground">{step.say}</p>
         <div className="mt-2.5 flex items-center justify-between gap-2">
@@ -263,6 +276,7 @@ function TrainingRunner() {
             type="button"
             onClick={goBack}
             disabled={index === 0}
+            title="Back"
             className="flex items-center gap-1 rounded-pfSm px-2 py-1.5 text-[12px] font-medium text-textMuted hover:bg-rowHover hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
           >
             <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
@@ -270,10 +284,20 @@ function TrainingRunner() {
           </button>
           <button
             type="button"
+            onClick={() => setPaused(p => !p)}
+            title={paused ? 'Resume' : 'Pause'}
+            className="flex items-center gap-1 rounded-pfSm px-2 py-1.5 text-[12px] font-medium text-textMuted hover:bg-rowHover hover:text-foreground"
+          >
+            {paused ? <Play className="h-3.5 w-3.5" aria-hidden /> : <Pause className="h-3.5 w-3.5" aria-hidden />}
+            {paused ? 'Resume' : 'Pause'}
+          </button>
+          <button
+            type="button"
             onClick={goNext}
+            title="Skip ahead"
             className="flex items-center gap-1 rounded-pfSm bg-foreground px-3 py-1.5 text-[12px] font-medium text-white hover:bg-foreground/90"
           >
-            {isLast ? 'Finish' : 'Next'}
+            {index >= FIRST_POOL_SCRIPT.length - 1 ? 'Finish' : 'Next'}
             <ChevronRight className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
