@@ -169,6 +169,9 @@ OPTIONAL_SECRETS=(
   # cold start - fine for a smoke test, wrong for real walks.
   "TURSO_DATABASE_URL=pool-forge-turso-database-url"
   "TURSO_AUTH_TOKEN=pool-forge-turso-auth-token"
+  # Enables the token-gated training-narration health probe. Absent, that route
+  # 404s and the training voice is unaffected.
+  "TRAINING_HEALTH_TOKEN=pool-forge-training-health-token"
 )
 
 say "Checking secrets"
