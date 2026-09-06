@@ -80,3 +80,9 @@ state.
 ## Build-priority discipline
 
 `docs/build-priority.md` is the active roadmap (mirrors the product brief §17). Before adding scope, check whether it's listed there. If not, surface the question rather than silently expanding.
+
+## Shared stack rules
+@~/claude-config/rules/nextjs.md
+@~/claude-config/rules/express.md
+@~/claude-config/rules/gcp-deploy.md
+@~/claude-config/rules/prisma.md
