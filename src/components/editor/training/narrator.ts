@@ -14,6 +14,10 @@ export interface Narration {
   stop(): void
 }
 
+// Charon's default TTS cadence is slower than the live Marco. Nudge playback
+// faster (pitch preserved) so it matches how he actually talks.
+const SPEECH_RATE = 1.18
+
 /** The closest thing the browser has to Marco's low, measured voice. */
 function pickMarcoVoice(synth: SpeechSynthesis): SpeechSynthesisVoice | null {
   const voices = synth.getVoices()
@@ -62,7 +66,7 @@ export function narrate(text: string, onEnded: () => void): Narration {
       const u = new SpeechSynthesisUtterance(text)
       const voice = pickMarcoVoice(synth)
       if (voice) u.voice = voice
-      u.rate = 0.95
+      u.rate = 1.05
       u.pitch = 0.9
       u.onend = finish
       u.onerror = finish
@@ -86,6 +90,12 @@ export function narrate(text: string, onEnded: () => void): Narration {
         if (stopped) return
         objectUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
         audio = new Audio(objectUrl)
+        audio.playbackRate = SPEECH_RATE
+        // Keep his pitch while speeding him up, across vendor prefixes.
+        audio.preservesPitch = true
+        const a = audio as HTMLAudioElement & { mozPreservesPitch?: boolean; webkitPreservesPitch?: boolean }
+        a.mozPreservesPitch = true
+        a.webkitPreservesPitch = true
         audio.onended = () => {
           cleanupUrl()
           finish()

@@ -1,11 +1,11 @@
 /** @vitest-environment jsdom */
 
-// The runner's whole job is pacing: announce first, act second, never both at
-// once, and hold each caption until Marco has actually finished speaking it.
-// These assert that contract — the ordering, that a step never advances before
-// narration ends, that Pause freezes it, that Next skips, and that leaving
-// clears the highlight — against the real script with dispatch and the narrator
-// mocked, so we control exactly when a line finishes and see which command fired.
+// The tour is click-through so a line is never cut off: it never advances on its
+// own (unless Auto is toggled on, and then only when the line has truly ended).
+// These assert that — an object drops a beat after its card opens, Next always
+// performs the current action before moving on, Back never rebuilds, and Auto
+// advances only on the narrator's own 'ended' — with dispatch and the narrator
+// mocked so we see exactly which command fired when.
 
 import * as React from 'react'
 import { render, screen, act, cleanup } from '@testing-library/react'
@@ -24,8 +24,6 @@ vi.mock('@/lib/commands/dispatch', () => ({
   }),
 }))
 
-// The narrator is mocked so a line "finishes" exactly when the test says. We
-// capture the latest onEnded callback and the controls for the active line.
 let lastOnEnded: (() => void) | null = null
 const narrationControls = { pause: vi.fn(), resume: vi.fn(), stop: vi.fn() }
 vi.mock('@/components/editor/training/narrator', () => ({
@@ -36,52 +34,28 @@ vi.mock('@/components/editor/training/narrator', () => ({
 }))
 
 import { dispatch } from '@/lib/commands/dispatch'
-import { narrate } from '@/components/editor/training/narrator'
 import { FirstPoolTraining } from '@/components/editor/training/FirstPoolTraining'
 import { FIRST_POOL_SCRIPT } from '@/modules/editor/training/first-pool-script'
 
 const dispatchMock = vi.mocked(dispatch)
-const narrateMock = vi.mocked(narrate)
+const ACT_DELAY = 900
 
-const ANNOUNCE_MIN = 2200
-
-// Commands the runner issues for narration highlighting, view setup, and
-// reframing — not for building the pool. buildCommands() strips them.
-const NON_BUILD = new Set([
-  'guide.point',
-  'guide.clear',
-  'canvas.fit',
-  'camera.set.view',
-  'view.set.tab',
-])
-
+const NON_BUILD = new Set(['guide.point', 'guide.clear', 'canvas.fit', 'camera.set.view', 'view.set.tab'])
 function buildCommands(): string[] {
   return dispatchMock.mock.calls.map(c => c[0] as string).filter(id => !NON_BUILD.has(id))
 }
-
-// End the current spoken line and let the announce beat advance to its act.
-async function finishAnnounce(): Promise<void> {
-  await act(async () => {
-    lastOnEnded?.()
-  })
-  await act(async () => {
-    vi.advanceTimersByTime(ANNOUNCE_MIN + 100)
-  })
+function countOf(id: string): number {
+  return dispatchMock.mock.calls.filter(c => c[0] === id).length
 }
-
-// Elapse the act settle so the beat advances to the next step's announce.
-async function finishAct(): Promise<void> {
-  await act(async () => {
-    vi.advanceTimersByTime(4000)
+function clickNext(): void {
+  act(() => {
+    screen.getByRole('button', { name: /next|finish/i }).click()
   })
 }
 
 beforeEach(() => {
   vi.useFakeTimers()
   dispatchMock.mockClear()
-  narrateMock.mockClear()
-  narrationControls.pause.mockClear()
-  narrationControls.resume.mockClear()
   narrationControls.stop.mockClear()
   lastOnEnded = null
   window.history.replaceState({}, '', '/projects/proj_sandbox/editor?training=first-pool')
@@ -102,84 +76,69 @@ describe('the first-pool training runner', () => {
     expect(screen.queryByText(/Marco · step/)).toBeNull()
   })
 
-  it('holds the announce beat until the line finishes: no build fires early', async () => {
+  it('drops the card\'s object a beat after it opens, and never advances on its own', async () => {
     render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    // Step 1 narration is playing. Even a long time later — short of the safety
-    // cap — nothing should have advanced, because the line has not ended.
-    act(() => {
-      vi.advanceTimersByTime(10000)
+    clickNext() // step 1: the pool card
+    expect(buildCommands()).toEqual([]) // nothing yet — the words come first
+    await act(async () => {
+      vi.advanceTimersByTime(ACT_DELAY + 50)
     })
-    expect(buildCommands()).toEqual([])
-
-    // Finish step 1's line -> act (narration only, no build). Finish that beat
-    // -> step 2 announce. Still no build until step 2's line ends and its act.
-    await finishAnnounce()
-    await finishAct()
-    expect(buildCommands()).toEqual([])
-    await finishAnnounce()
-    await finishAct()
+    expect(buildCommands()).toEqual(['add.shape']) // object dropped
+    // Wait a long time: still on the same card, no further build. No auto-jump.
+    await act(async () => {
+      vi.advanceTimersByTime(30000)
+    })
     expect(buildCommands()).toEqual(['add.shape'])
+    expect(screen.getByText(/step 2 of/i)).toBeTruthy()
   })
 
-  it('pauses the narration and freezes, then resumes', async () => {
+  it('Next performs the current action even when clicked before it auto-fires', () => {
     render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    await finishAnnounce()
-    await finishAct() // step 2 announce
-    await finishAnnounce()
-    await finishAct() // step 2 built the pool
-    expect(buildCommands()).toEqual(['add.shape'])
+    clickNext() // to step 1 (pool)
+    clickNext() // click through before the 900ms drop
+    expect(buildCommands()).toContain('add.shape')
+  })
 
+  it('Back revisits a card without rebuilding its object', async () => {
+    render(<FirstPoolTraining />)
     act(() => {
-      screen.getByTitle('Pause').click()
+      vi.advanceTimersByTime(0)
     })
-    expect(narrationControls.pause).toHaveBeenCalled()
-    const before = buildCommands().length
+    clickNext() // step 1 (pool)
+    await act(async () => {
+      vi.advanceTimersByTime(ACT_DELAY + 50)
+    })
+    expect(countOf('add.shape')).toBe(1)
     act(() => {
-      vi.advanceTimersByTime(20000)
+      screen.getByRole('button', { name: /back/i }).click()
+    }) // back to step 0
+    clickNext() // forward to step 1 again
+    await act(async () => {
+      vi.advanceTimersByTime(ACT_DELAY + 50)
     })
-    // Even ending the line while paused must not advance.
+    expect(countOf('add.shape')).toBe(1) // not rebuilt
+  })
+
+  it('Auto advances only when the line finishes', () => {
+    render(<FirstPoolTraining />)
+    act(() => {
+      vi.advanceTimersByTime(0)
+    })
+    act(() => {
+      screen.getByRole('button', { name: /auto/i }).click()
+    })
+    expect(screen.getByText(/step 1 of/i)).toBeTruthy()
+    // The line ends -> auto advances one card.
     act(() => {
       lastOnEnded?.()
     })
-    act(() => {
-      vi.advanceTimersByTime(20000)
-    })
-    expect(buildCommands().length).toBe(before)
-
-    act(() => {
-      screen.getByTitle('Resume').click()
-    })
-    expect(narrationControls.resume).toHaveBeenCalled()
-    await finishAnnounce()
-    await finishAct()
-    expect(buildCommands().length).toBeGreaterThan(before)
-  })
-
-  it('Next stops the current line and advances', async () => {
-    render(<FirstPoolTraining />)
-    act(() => {
-      vi.advanceTimersByTime(0)
-    })
-    act(() => {
-      screen.getByTitle('Next').click()
-    }) // step 1 announce -> act
-    expect(narrationControls.stop).toHaveBeenCalled()
-    act(() => {
-      screen.getByTitle('Next').click()
-    }) // step 1 act -> step 2 announce
-    act(() => {
-      screen.getByTitle('Next').click()
-    }) // step 2 announce -> act
-    await act(async () => {
-      vi.advanceTimersByTime(4000)
-    }) // step 2 act fires the build
-    expect(buildCommands()).toEqual(['add.shape'])
+    expect(screen.getByText(/step 2 of/i)).toBeTruthy()
   })
 
   it('clears the highlight and stops narration when the training unmounts', () => {
@@ -189,19 +148,21 @@ describe('the first-pool training runner', () => {
     })
     dispatchMock.mockClear()
     unmount()
-    const cleared = dispatchMock.mock.calls.some(c => c[0] === 'guide.clear')
-    expect(cleared).toBe(true)
+    expect(dispatchMock.mock.calls.some(c => c[0] === 'guide.clear')).toBe(true)
     expect(narrationControls.stop).toHaveBeenCalled()
   })
 
-  it('runs every build step by the end and shows the finish panel', async () => {
+  it('Finish on the last card shows the end panel, and every build step ran', async () => {
     render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
     })
     for (let i = 0; i < FIRST_POOL_SCRIPT.length; i++) {
-      await finishAnnounce()
-      await finishAct()
+      clickNext()
+      // flush the dispatch promise (add.shape capture) between cards
+      await act(async () => {
+        vi.advanceTimersByTime(0)
+      })
     }
     const expected = FIRST_POOL_SCRIPT.filter(s => {
       const a = s.run?.({ poolId: 'shape_pool_1' })

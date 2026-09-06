@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Pause, Play, SkipForward, Sparkles, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pause, Play, Sparkles, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { dispatch } from '@/lib/commands/dispatch'
@@ -15,15 +15,12 @@ import type { CameraView } from '@/modules/editor/state/cameraStore'
 export const TRAINING_PARAM = 'training'
 export const FIRST_POOL_TRAINING = 'first-pool'
 
-// The announce beat holds until Marco has actually finished speaking the line,
-// so nothing is cut off. These only bound that: never advance before MIN (so a
-// very short clip still lingers), and never wait past MAX (so a failed or silent
-// clip can't stall the whole tour).
-const ANNOUNCE_MIN_MS = 2200
-const ANNOUNCE_MAX_MS = 16000
-const ACT_SETTLE_MS = 1500
-
-type Beat = 'announce' | 'act'
+// The tour is click-through: it never auto-jumps off a card, so a line is never
+// cut off mid-sentence. The object for a card lands a beat after the card opens
+// (so the words land first), and the user reads and clicks Next when ready.
+// Auto-advance is an opt-in that fires only when Marco has actually finished
+// speaking (the audio's own `ended`), never a guessed timer.
+const ACT_DELAY_MS = 900
 
 /** Commands that move the camera themselves; the runner must not reframe after. */
 const VIEW_COMMANDS = new Set(['canvas.fit', 'camera.set.view', 'view.set.tab', 'canvas.zoom.in', 'canvas.zoom.out', 'canvas.pan', 'camera.frame.selection'])
@@ -60,27 +57,20 @@ function TrainingRunner() {
   const projectId = params?.id
 
   const [index, setIndex] = useState(0)
-  const [beat, setBeat] = useState<Beat>('announce')
-  const [paused, setPaused] = useState(false)
   const [finished, setFinished] = useState(false)
+  const [auto, setAuto] = useState(false)
 
   const ctx = useRef<TrainingContext>({})
-  const acted = useRef<Set<string>>(new Set())
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Narration state, in refs because it is driven by audio 'ended' callbacks
-  // that fire outside React's render, and must read the latest beat/pause.
+  const acted = useRef<Set<number>>(new Set())
+  const actTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const narration = useRef<Narration | null>(null)
-  const announceEnded = useRef(false)
-  const announceStart = useRef(0)
-  const pausedRef = useRef(paused)
-  const finishedRef = useRef(finished)
-  const beatRef = useRef<Beat>(beat)
-  useEffect(() => { pausedRef.current = paused }, [paused])
-  useEffect(() => { finishedRef.current = finished }, [finished])
-  useEffect(() => { beatRef.current = beat }, [beat])
+  // Auto-advance is read inside the audio 'ended' callback, which fires outside
+  // React's render, so it must come from a ref.
+  const autoRef = useRef(auto)
+  useEffect(() => { autoRef.current = auto }, [auto])
 
   const step = FIRST_POOL_SCRIPT[index]
+  const isLast = index >= FIRST_POOL_SCRIPT.length - 1
 
   // Frame everything after a placement so the growing drawing stays on screen.
   // Steps that name their own vantage re-assert it instead, so a top-down site
@@ -90,97 +80,65 @@ function TrainingRunner() {
     else void dispatch('canvas.fit', {}).catch(() => undefined)
   }, [])
 
-  // The one place the sequence moves forward: announce -> act, or act -> next
-  // step (or finish). Called by the announce narration, the settle timer, Next.
-  const advance = useCallback(() => {
-    setBeat(prevBeat => {
-      if (prevBeat === 'announce') return 'act'
-      setIndex(i => {
-        const next = i + 1
-        if (next >= FIRST_POOL_SCRIPT.length) {
-          setFinished(true)
-          return i
-        }
-        return next
-      })
-      return 'announce'
+  // Perform a step's action exactly once (Back can revisit a card without
+  // rebuilding the pool), then keep the result on screen.
+  const performAction = useCallback((i: number) => {
+    if (acted.current.has(i)) return
+    acted.current.add(i)
+    const s = FIRST_POOL_SCRIPT[i]
+    const action = s?.run?.(ctx.current)
+    if (!action) return
+    void dispatch(action.command, action.input).then(res => {
+      if (res.ok && s?.capture) s.capture(ctx.current, res.data)
+      if (!VIEW_COMMANDS.has(action.command)) frameFor(s?.view)
     })
+  }, [frameFor])
+
+  // Move on: make sure the current card's action has run (even if the user
+  // clicked before it auto-fired), stop the current line, then next card or the
+  // end card. Never fires on its own timer.
+  const goNext = useCallback(() => {
+    if (actTimer.current) {
+      clearTimeout(actTimer.current)
+      actTimer.current = null
+    }
+    performAction(index)
+    narration.current?.stop()
+    if (isLast) setFinished(true)
+    else setIndex(i => i + 1)
+  }, [index, isLast, performAction])
+
+  const goBack = useCallback(() => {
+    if (actTimer.current) {
+      clearTimeout(actTimer.current)
+      actTimer.current = null
+    }
+    narration.current?.stop()
+    setIndex(i => (i > 0 ? i - 1 : i))
   }, [])
 
-  // Advance out of the announce beat only once Marco has finished the line (so
-  // nothing is cut off) and at least the minimum hold has passed (so a very
-  // short clip still lingers). The safety cap in the effect covers a clip that
-  // never ends.
-  const tryAdvanceAnnounce = useCallback(() => {
-    if (pausedRef.current || finishedRef.current || beatRef.current !== 'announce') return
-    if (!announceEnded.current) return
-    if (timer.current) {
-      clearTimeout(timer.current)
-      timer.current = null
-    }
-    const elapsed = Date.now() - announceStart.current
-    if (elapsed >= ANNOUNCE_MIN_MS) advance()
-    else timer.current = setTimeout(advance, ANNOUNCE_MIN_MS - elapsed)
-  }, [advance])
-
-  const onNarrationEnded = useCallback(() => {
-    announceEnded.current = true
-    tryAdvanceAnnounce()
-  }, [tryAdvanceAnnounce])
-
-  // Perform the current beat once, then hold. Announce holds until narration
-  // ends; act holds a fixed settle. Re-running on pause/resume does not repeat
-  // the side effect (guarded by `acted`), it just re-arms timing and audio.
+  // Enter a card: highlight, snap to its vantage, speak it, and drop its object
+  // a beat later. Nothing here advances the tour; the buttons do.
   useEffect(() => {
     if (finished || !step) return
-    if (timer.current) {
-      clearTimeout(timer.current)
-      timer.current = null
-    }
-    if (paused) {
-      narration.current?.pause()
-      return
-    }
-    narration.current?.resume()
-
-    const key = `${index}:${beat}`
-    if (!acted.current.has(key)) {
-      acted.current.add(key)
-      if (beat === 'announce') {
-        if (step.point?.length) {
-          void dispatch('guide.point', { targets: step.point }).catch(() => undefined)
-        } else {
-          void dispatch('guide.clear', {}).catch(() => undefined)
-        }
-        if (step.view) void dispatch('camera.set.view', { view: step.view }).catch(() => undefined)
-        announceEnded.current = false
-        announceStart.current = Date.now()
-        narration.current?.stop()
-        narration.current = narrate(step.say, onNarrationEnded)
-      } else if (step.run) {
-        const action = step.run(ctx.current)
-        if (action) {
-          void dispatch(action.command, action.input).then(res => {
-            if (res.ok && step.capture) step.capture(ctx.current, res.data)
-            // Keep the result on screen: reframe unless the command already
-            // moved the camera itself.
-            if (!VIEW_COMMANDS.has(action.command)) frameFor(step.view)
-          })
-        }
-      }
-    }
-
-    if (beat === 'announce') {
-      timer.current = setTimeout(advance, ANNOUNCE_MAX_MS)
-      // Narration may have finished while paused; catch that on resume.
-      if (announceEnded.current) tryAdvanceAnnounce()
+    if (step.point?.length) {
+      void dispatch('guide.point', { targets: step.point }).catch(() => undefined)
     } else {
-      timer.current = setTimeout(advance, step.settleMs ?? ACT_SETTLE_MS)
+      void dispatch('guide.clear', {}).catch(() => undefined)
     }
+    if (step.view) void dispatch('camera.set.view', { view: step.view }).catch(() => undefined)
+
+    narration.current?.stop()
+    narration.current = narrate(step.say, () => {
+      // Only auto mode advances, and only when the line has truly finished.
+      if (autoRef.current) goNext()
+    })
+
+    actTimer.current = setTimeout(() => performAction(index), ACT_DELAY_MS)
     return () => {
-      if (timer.current) clearTimeout(timer.current)
+      if (actTimer.current) clearTimeout(actTimer.current)
     }
-  }, [index, beat, paused, finished, step, advance, frameFor, onNarrationEnded])
+  }, [index, finished, step, performAction, goNext])
 
   // Open on an iso overview of the empty yard, so the first object lands in a
   // framed 3D view (never the orthographic plan tab, where the view-cube snaps
@@ -206,15 +164,6 @@ function TrainingRunner() {
       narration.current?.stop()
     }
   }, [])
-
-  function onNext() {
-    if (timer.current) {
-      clearTimeout(timer.current)
-      timer.current = null
-    }
-    narration.current?.stop()
-    advance()
-  }
 
   function onStop() {
     narration.current?.stop()
@@ -287,24 +236,21 @@ function TrainingRunner() {
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setPaused(p => !p)}
-              title={paused ? 'Resume' : 'Pause'}
-              className="rounded-pfSm p-1 text-textMuted hover:bg-rowHover hover:text-foreground"
+              onClick={() => setAuto(a => !a)}
+              title={auto ? 'Auto-play on: advances when Marco finishes each line' : 'Auto-play off: advance yourself'}
+              aria-pressed={auto}
+              className={
+                'flex items-center gap-1 rounded-pfSm px-1.5 py-1 text-[10px] font-medium ' +
+                (auto ? 'bg-pfAccentSoft text-foreground' : 'text-textMuted hover:bg-rowHover hover:text-foreground')
+              }
             >
-              {paused ? <Play className="h-3.5 w-3.5" aria-hidden /> : <Pause className="h-3.5 w-3.5" aria-hidden />}
-            </button>
-            <button
-              type="button"
-              onClick={onNext}
-              title="Next"
-              className="rounded-pfSm p-1 text-textMuted hover:bg-rowHover hover:text-foreground"
-            >
-              <SkipForward className="h-3.5 w-3.5" aria-hidden />
+              {auto ? <Pause className="h-3 w-3" aria-hidden /> : <Play className="h-3 w-3" aria-hidden />}
+              Auto
             </button>
             <button
               type="button"
               onClick={onStop}
-              title="Stop the tour"
+              title="End the tour"
               className="rounded-pfSm p-1 text-textMuted hover:bg-rowHover hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" aria-hidden />
@@ -312,6 +258,25 @@ function TrainingRunner() {
           </div>
         </div>
         <p className="mt-1.5 text-[13px] leading-snug text-foreground">{step.say}</p>
+        <div className="mt-2.5 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={goBack}
+            disabled={index === 0}
+            className="flex items-center gap-1 rounded-pfSm px-2 py-1.5 text-[12px] font-medium text-textMuted hover:bg-rowHover hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            className="flex items-center gap-1 rounded-pfSm bg-foreground px-3 py-1.5 text-[12px] font-medium text-white hover:bg-foreground/90"
+          >
+            {isLast ? 'Finish' : 'Next'}
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
       </div>
     </div>
   )
