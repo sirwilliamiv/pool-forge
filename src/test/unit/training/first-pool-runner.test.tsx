@@ -1,11 +1,10 @@
 /** @vitest-environment jsdom */
 
-// The tour is click-through so a line is never cut off: it never advances on its
-// own (unless Auto is toggled on, and then only when the line has truly ended).
-// These assert that — an object drops a beat after its card opens, Next always
-// performs the current action before moving on, Back never rebuilds, and Auto
-// advances only on the narrator's own 'ended' — with dispatch and the narrator
-// mocked so we see exactly which command fired when.
+// The tour begins on a Start click (which is what lets Marco's audio play) and
+// then advances on his line actually ending — the narrator's own 'ended' — so a
+// line is never cut off and it never drags. These assert that: nothing happens
+// before Start, an object drops a beat after its card, ending a line advances,
+// Pause freezes it, Next skips, Back never rebuilds, and Finish ends the tour.
 
 import * as React from 'react'
 import { render, screen, act, cleanup } from '@testing-library/react'
@@ -38,7 +37,7 @@ import { FirstPoolTraining } from '@/components/editor/training/FirstPoolTrainin
 import { FIRST_POOL_SCRIPT } from '@/modules/editor/training/first-pool-script'
 
 const dispatchMock = vi.mocked(dispatch)
-const ACT_DELAY = 900
+const ACT_DROP = 700
 
 const NON_BUILD = new Set(['guide.point', 'guide.clear', 'canvas.fit', 'camera.set.view', 'view.set.tab'])
 function buildCommands(): string[] {
@@ -47,15 +46,27 @@ function buildCommands(): string[] {
 function countOf(id: string): number {
   return dispatchMock.mock.calls.filter(c => c[0] === id).length
 }
+function clickStart(): void {
+  act(() => {
+    screen.getByRole('button', { name: /start the tour/i }).click()
+  })
+}
 function clickNext(): void {
   act(() => {
     screen.getByRole('button', { name: /next|finish/i }).click()
+  })
+}
+// Simulate Marco finishing the current line.
+function endLine(): void {
+  act(() => {
+    lastOnEnded?.()
   })
 }
 
 beforeEach(() => {
   vi.useFakeTimers()
   dispatchMock.mockClear()
+  narrationControls.pause.mockClear()
   narrationControls.stop.mockClear()
   lastOnEnded = null
   window.history.replaceState({}, '', '/projects/proj_sandbox/editor?training=first-pool')
@@ -73,35 +84,57 @@ describe('the first-pool training runner', () => {
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    expect(screen.queryByText(/Marco · step/)).toBeNull()
+    expect(screen.queryByText(/Marco/)).toBeNull()
   })
 
-  it('drops the card\'s object a beat after it opens, and never advances on its own', async () => {
+  it('does nothing until Start is clicked, then narrates the first card', () => {
     render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    clickNext() // step 1: the pool card
-    expect(buildCommands()).toEqual([]) // nothing yet — the words come first
+    expect(lastOnEnded).toBeNull() // no narration before the gesture
+    clickStart()
+    expect(lastOnEnded).not.toBeNull()
+    expect(screen.getByText(/step 1 of/i)).toBeTruthy()
+  })
+
+  it('drops the card\'s object a beat after it opens, and advances when the line ends', async () => {
+    render(<FirstPoolTraining />)
+    act(() => {
+      vi.advanceTimersByTime(0)
+    })
+    clickStart()
+    endLine() // step 1 (intro, no build) -> step 2 (pool)
+    expect(buildCommands()).toEqual([]) // words first
     await act(async () => {
-      vi.advanceTimersByTime(ACT_DELAY + 50)
+      vi.advanceTimersByTime(ACT_DROP + 50)
     })
     expect(buildCommands()).toEqual(['add.shape']) // object dropped
-    // Wait a long time: still on the same card, no further build. No auto-jump.
-    await act(async () => {
-      vi.advanceTimersByTime(30000)
-    })
-    expect(buildCommands()).toEqual(['add.shape'])
     expect(screen.getByText(/step 2 of/i)).toBeTruthy()
   })
 
-  it('Next performs the current action even when clicked before it auto-fires', () => {
+  it('does not advance while paused, even when the line ends', () => {
     render(<FirstPoolTraining />)
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    clickNext() // to step 1 (pool)
-    clickNext() // click through before the 900ms drop
+    clickStart()
+    act(() => {
+      screen.getByRole('button', { name: /pause/i }).click()
+    })
+    expect(narrationControls.pause).toHaveBeenCalled()
+    endLine() // line ends while paused -> must NOT advance
+    expect(screen.getByText(/step 1 of/i)).toBeTruthy()
+  })
+
+  it('Next skips ahead and performs the current action', () => {
+    render(<FirstPoolTraining />)
+    act(() => {
+      vi.advanceTimersByTime(0)
+    })
+    clickStart()
+    clickNext() // step 1 -> step 2 (pool)
+    clickNext() // performs the pool action on the way out
     expect(buildCommands()).toContain('add.shape')
   })
 
@@ -110,35 +143,20 @@ describe('the first-pool training runner', () => {
     act(() => {
       vi.advanceTimersByTime(0)
     })
-    clickNext() // step 1 (pool)
+    clickStart()
+    clickNext() // step 2 (pool)
     await act(async () => {
-      vi.advanceTimersByTime(ACT_DELAY + 50)
+      vi.advanceTimersByTime(ACT_DROP + 50)
     })
     expect(countOf('add.shape')).toBe(1)
     act(() => {
       screen.getByRole('button', { name: /back/i }).click()
-    }) // back to step 0
-    clickNext() // forward to step 1 again
+    })
+    clickNext()
     await act(async () => {
-      vi.advanceTimersByTime(ACT_DELAY + 50)
+      vi.advanceTimersByTime(ACT_DROP + 50)
     })
-    expect(countOf('add.shape')).toBe(1) // not rebuilt
-  })
-
-  it('Auto advances only when the line finishes', () => {
-    render(<FirstPoolTraining />)
-    act(() => {
-      vi.advanceTimersByTime(0)
-    })
-    act(() => {
-      screen.getByRole('button', { name: /auto/i }).click()
-    })
-    expect(screen.getByText(/step 1 of/i)).toBeTruthy()
-    // The line ends -> auto advances one card.
-    act(() => {
-      lastOnEnded?.()
-    })
-    expect(screen.getByText(/step 2 of/i)).toBeTruthy()
+    expect(countOf('add.shape')).toBe(1)
   })
 
   it('clears the highlight and stops narration when the training unmounts', () => {
@@ -146,6 +164,7 @@ describe('the first-pool training runner', () => {
     act(() => {
       vi.advanceTimersByTime(0)
     })
+    clickStart()
     dispatchMock.mockClear()
     unmount()
     expect(dispatchMock.mock.calls.some(c => c[0] === 'guide.clear')).toBe(true)
@@ -157,9 +176,9 @@ describe('the first-pool training runner', () => {
     act(() => {
       vi.advanceTimersByTime(0)
     })
+    clickStart()
     for (let i = 0; i < FIRST_POOL_SCRIPT.length; i++) {
       clickNext()
-      // flush the dispatch promise (add.shape capture) between cards
       await act(async () => {
         vi.advanceTimersByTime(0)
       })
