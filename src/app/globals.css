@@ -346,27 +346,108 @@
   initial-value: #00b6ff;
 }
 
+/* The parasol is a real object now, not a printed disc: eight triangular
+ * panels stand in a shallow cone around a pole (preserve-3d all the way down).
+ * The camera starts directly overhead, where the cone reads as the same flat
+ * pinwheel as before, turns for a beat, then the rig leans over once to the
+ * side view an umbrella actually presents, pole planted on the O's shoulder,
+ * and the canopy keeps turning about its own tilted axis the whole time.
+ *
+ * Three layers because the three motions must not share a transform: the
+ * outer span only holds perspective, the rig carries the one-shot tilt, and
+ * the spin span turns forever. The pole sits on the rig, not the spin: a pole
+ * does not rotate with its canopy. Reduced motion skips tilt and spin both,
+ * which leaves the finished side-view umbrella standing still on brand blue. */
 .pf-mark-parasol {
   position: absolute;
   left: 0.38em;
-  top: -0.16em;
+  top: -0.3em;
   width: 0.4em;
   height: 0.4em;
-  border-radius: 50%;
-  --pf-parasol-hue: var(--brand-blue);
-  background:
-    radial-gradient(circle, rgb(0 0 0 / 0.72) 0 9%, transparent 9.5%),
-    repeating-conic-gradient(
-      color-mix(in srgb, var(--pf-parasol-hue), #000000 22%) 0deg 45deg,
-      var(--pf-parasol-hue) 45deg 90deg
-    );
+  perspective: 1.6em;
 }
 
+.pf-parasol-rig {
+  position: absolute;
+  left: 50%;
+  top: 0.05em;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(10deg);
+}
+
+.pf-parasol-spin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.pf-parasol-pole {
+  position: absolute;
+  left: -0.011em;
+  top: -0.035em;
+  width: 0.022em;
+  height: 0.37em;
+  background: var(--ink-black);
+  border-radius: 0.011em;
+}
+
+.pf-parasol-panel {
+  position: absolute;
+  left: -0.083em;
+  top: 0;
+  width: 0.166em;
+  height: 0.2385em;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transform-origin: 50% 0;
+  --pf-parasol-hue: var(--brand-blue);
+  background: var(--pf-parasol-hue);
+}
+
+/* Self-shaded alternates, same as the flat canopy had: each hue against a
+ * darker cut of itself, so the turn stays visible with no white in it. */
+.pf-parasol-panel:nth-child(odd) {
+  background: color-mix(in srgb, var(--pf-parasol-hue), #000000 22%);
+}
+
+.pf-parasol-panel:nth-child(1) { transform: rotateY(0deg) rotateX(57deg); }
+.pf-parasol-panel:nth-child(2) { transform: rotateY(45deg) rotateX(57deg); }
+.pf-parasol-panel:nth-child(3) { transform: rotateY(90deg) rotateX(57deg); }
+.pf-parasol-panel:nth-child(4) { transform: rotateY(135deg) rotateX(57deg); }
+.pf-parasol-panel:nth-child(5) { transform: rotateY(180deg) rotateX(57deg); }
+.pf-parasol-panel:nth-child(6) { transform: rotateY(225deg) rotateX(57deg); }
+.pf-parasol-panel:nth-child(7) { transform: rotateY(270deg) rotateX(57deg); }
+.pf-parasol-panel:nth-child(8) { transform: rotateY(315deg) rotateX(57deg); }
+
 @media (prefers-reduced-motion: no-preference) {
-  .pf-mark-parasol {
-    animation:
-      pf-pool-parasol 9s linear infinite,
-      pf-parasol-hue 6s steps(1, end) infinite;
+  .pf-parasol-rig {
+    animation: pf-parasol-tilt 5s ease-in-out 1 forwards;
+  }
+  .pf-parasol-spin {
+    animation: pf-parasol-spin 9s linear infinite;
+  }
+  .pf-parasol-panel {
+    animation: pf-parasol-hue 6s steps(1, end) infinite;
+  }
+}
+
+@keyframes pf-parasol-spin {
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+@keyframes pf-parasol-tilt {
+  0%,
+  45% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(10deg);
   }
 }
 

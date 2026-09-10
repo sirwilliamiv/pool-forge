@@ -27,9 +27,11 @@ import { MonsteraLeaf, PalmFrond } from '@/components/marketing/botanicals'
 // its counter is the water, and each pool steps through the five core hues on
 // the loading pool's 6s clock, one hue step apart, so the parasol and the
 // three pools always show four different hues and no two are ever the same.
-// The parasol on the first O's shoulder turns at breeze speed while its canopy
-// cycles too. The door, the loading screen and the favicon share one piece of
-// furniture and one clock. Styles live with the loading pool's in
+// The parasol on the first O's shoulder is a 3D cone of eight panels on a
+// pole: seen from overhead first (the flat pinwheel), it turns for a beat,
+// leans over once to a side view, and keeps turning at breeze speed while its
+// canopy cycles too. The door, the loading screen and the favicon share one
+// piece of furniture and one clock. Styles live with the loading pool's in
 // `globals.css` (`.pf-mark-pool`, `.pf-mark-parasol`); the link's aria-label
 // carries the name, so the glyph swaps cost a screen reader nothing.
 export function AuthStage({ children }: { children: React.ReactNode }) {
@@ -46,7 +48,16 @@ export function AuthStage({ children }: { children: React.ReactNode }) {
             <span className="block text-[clamp(3.5rem,8vw,7.5rem)]" aria-hidden>
               P
               <span className="pf-mark-pool pf-mark-pool--1">
-                <span className="pf-mark-parasol" />
+                <span className="pf-mark-parasol">
+                  <span className="pf-parasol-rig">
+                    <span className="pf-parasol-pole" />
+                    <span className="pf-parasol-spin">
+                      {Array.from({ length: 8 }, (_, i) => (
+                        <span key={i} className="pf-parasol-panel" />
+                      ))}
+                    </span>
+                  </span>
+                </span>
               </span>
               <span className="pf-mark-pool pf-mark-pool--2" />L
             </span>
