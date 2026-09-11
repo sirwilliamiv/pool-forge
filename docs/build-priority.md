@@ -35,9 +35,11 @@ surveyed: "Photo→design, AI estimating, auto-camera all uncontested."
 
 - [x] **I0 contract** — ingestion models + migration, `BlobStore`, `POLYGON_POOL`
       primitive, `import` command category, survey data-URL migration.
-- [ ] **I1 ingest** · **I2 extraction** · **I3 precision** · **I4 review wizard** ·
+- [x] **I1 ingest** · **I2 extraction** · **I3 precision** · **I4 review wizard** ·
       **I5 intake funnel** — parallel tracks over disjoint file sets.
-- [ ] **I6 integration** — end-to-end money path plus the golden-corpus eval harness.
+- [~] **I6 integration** — money-path integration test added
+      (`src/test/unit/imports/money-path.test.ts`); golden-corpus eval harness
+      deferred until fixture images are captured.
 
 Note: I0 took ownership of the freeform polygon footprint that Wave 1 T2 was
 slated to author. T2 is now a consumer of it; its plan is amended accordingly.
