@@ -17,8 +17,10 @@ import { captureError } from '@/modules/monitoring'
 export interface Email {
   to: string
   subject: string
-  /** Plain text. Every one of these is short and transactional. */
-  body: string
+  /** Plain text fallback. Required for accessibility and mail clients that do not render HTML. */
+  text: string
+  /** Optional HTML body for branded emails. When omitted, only plain text is sent. */
+  html?: string
 }
 
 export type SendResult =
@@ -54,9 +56,20 @@ export async function sendEmail(email: Email): Promise<SendResult> {
         reason: 'no provider configured',
         to: maskAddress(email.to),
         subject: email.subject,
+        hasHtml: Boolean(email.html),
       }),
     )
     return { delivered: false, reason: 'not-configured' }
+  }
+
+  const payload: Record<string, unknown> = {
+    from: process.env.EMAIL_FROM?.trim(),
+    to: [email.to],
+    subject: email.subject,
+    text: email.text,
+  }
+  if (email.html) {
+    payload.html = email.html
   }
 
   try {
@@ -66,12 +79,7 @@ export async function sendEmail(email: Email): Promise<SendResult> {
         Authorization: `Bearer ${process.env.RESEND_API_KEY?.trim() ?? ''}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM?.trim(),
-        to: [email.to],
-        subject: email.subject,
-        text: email.body,
-      }),
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {

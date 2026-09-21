@@ -391,3 +391,50 @@ describeDb('reading the list', () => {
     expect((await rowFor(email('invite')))?.invitedAt).toBeNull()
   })
 })
+
+// ─────────────────────────── email sending ───────────────────────────
+
+describeDb('signup returns isNew for email decisions', () => {
+  it('returns isNew: true for a new signup', async () => {
+    const result = await recordWaitlistSignup(
+      waitlistSignupSchema.parse({ email: email('new-signup') }),
+    )
+    expect(result.isNew).toBe(true)
+  })
+
+  it('returns isNew: false for a duplicate signup', async () => {
+    const address = email('dupe-check')
+    await recordWaitlistSignup(waitlistSignupSchema.parse({ email: address }))
+    const result = await recordWaitlistSignup(waitlistSignupSchema.parse({ email: address }))
+    expect(result.isNew).toBe(false)
+  })
+})
+
+describeDb('signup succeeds regardless of email configuration', () => {
+  const envVars = ['RESEND_API_KEY', 'EMAIL_FROM', 'WAITLIST_OPERATOR_EMAILS']
+  const saved = new Map<string, string | undefined>()
+
+  beforeEach(() => {
+    for (const key of envVars) {
+      saved.set(key, process.env[key])
+      delete process.env[key]
+    }
+  })
+
+  afterAll(() => {
+    for (const key of envVars) {
+      const value = saved.get(key)
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  })
+
+  it('succeeds when email is not configured', async () => {
+    const outcome = await handleWaitlistSubmission(
+      { email: email('no-email-config') },
+      bucket('no-email-config'),
+    )
+    expect(outcome).toEqual({ ok: true, status: 200 })
+    expect(await rowFor(email('no-email-config'))).not.toBeNull()
+  })
+})

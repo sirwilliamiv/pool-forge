@@ -93,7 +93,7 @@ export async function inviteMemberAction(formData: FormData): Promise<TeamAction
   const sent = await sendEmail({
     to: result.data.email,
     subject: `You have been invited to ${result.data.orgName} on Pool Forge`,
-    body: [
+    text: [
       `You have been invited to join ${result.data.orgName} on Pool Forge.`,
       '',
       link,
