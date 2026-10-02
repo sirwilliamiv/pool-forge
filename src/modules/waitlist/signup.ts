@@ -1,13 +1,18 @@
 // Recording somebody who asked to be let in.
 //
-// WHY THIS TELLS THE CALLER NOTHING
+// WHY THIS TELLS THE CALLER NOTHING (about whether the address was new)
 //
-// The one thing this function must never do is behave differently for an
-// address that is already on the list. "You are already signed up" is a
-// membership oracle: anyone could type a competitor's sales address, or a
-// prospect's, and learn whether that company has been talking to us. So there
-// is one return value, one code path, and one sentence on screen, whether the
-// row was created just now or three weeks ago.
+// The one thing this function must never do is behave differently *to the
+// public caller* for an address that is already on the list. "You are already
+// signed up" is a membership oracle: anyone could type a competitor's sales
+// address, or a prospect's, and learn whether that company has been talking to
+// us. So there is one code path on the HTTP response, and one sentence on
+// screen, whether the row was created just now or three weeks ago.
+//
+// Internally the function does return whether the row was newly created, so
+// the handler can choose to send a thank-you email only on first signup (not
+// on every duplicate submission). That fact must never surface in the HTTP
+// response, timing, or logs the caller can observe.
 //
 // That is also why this is an upsert rather than a create-and-catch. A unique
 // violation surfacing as an error would be a difference the caller could see,
@@ -32,6 +37,15 @@ import { db } from '@/lib/db'
 import type { WaitlistSignupInput } from './schema'
 
 /**
+ * Internal result of recording a signup. The `isNew` field is for internal
+ * email-sending decisions only and must never surface in the HTTP response.
+ */
+export interface SignupRecordResult {
+  /** True if a new row was created, false if an existing row was updated. */
+  isNew: boolean
+}
+
+/**
  * `WaitlistSignup.id` is `@default(cuid())`, which Prisma applies in the
  * client. A raw insert has to bring its own, and the only requirement on it is
  * uniqueness.
@@ -46,14 +60,17 @@ function orNull(value: string | undefined): string | null {
 }
 
 /**
- * Write the signup. Returns nothing, deliberately: there is no fact about the
- * list that a caller from the public internet is entitled to.
+ * Write the signup. Returns whether the row was newly created, for internal
+ * email-sending decisions. This result must never influence the public HTTP
+ * response or be observable by the caller.
  */
 export async function recordWaitlistSignup(
   input: WaitlistSignupInput,
   now: Date = new Date(),
-): Promise<void> {
-  await db.$executeRaw(Prisma.sql`
+): Promise<SignupRecordResult> {
+  // Postgres xmax trick: after INSERT ... ON CONFLICT DO UPDATE ... RETURNING xmax,
+  // xmax = 0 means the row was inserted, xmax != 0 means it was updated.
+  const result = await db.$queryRaw<Array<{ xmax: string }>>(Prisma.sql`
     INSERT INTO "WaitlistSignup"
       ("id", "email", "name", "company", "phone", "teamSize", "usesToday", "note", "source", "createdAt")
     VALUES (
@@ -76,5 +93,10 @@ export async function recordWaitlistSignup(
       "usesToday" = COALESCE("WaitlistSignup"."usesToday", EXCLUDED."usesToday"),
       "note"      = COALESCE("WaitlistSignup"."note",      EXCLUDED."note"),
       "source"    = COALESCE("WaitlistSignup"."source",    EXCLUDED."source")
+    RETURNING xmax::text
   `)
+
+  const row = result[0]
+  const isNew = row !== undefined && row.xmax === '0'
+  return { isNew }
 }

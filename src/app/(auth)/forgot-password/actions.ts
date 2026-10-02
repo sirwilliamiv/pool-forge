@@ -75,7 +75,7 @@ export async function forgotPasswordAction(formData: FormData): Promise<ForgotPa
     await sendEmail({
       to: email,
       subject: 'Set a new Pool Forge password',
-      body: [
+      text: [
         'Somebody asked to reset the password for this Pool Forge account.',
         '',
         appUrl(`/reset-password/${token}`),
