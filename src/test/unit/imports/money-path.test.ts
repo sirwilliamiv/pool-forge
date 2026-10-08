@@ -18,7 +18,7 @@ import { computeMeasurements } from '@/modules/measurements/engine'
 import { computeQuote, toPriceBookItems } from '@/modules/pricing/engine'
 import { ShapeKind, type Shape, type PolygonPool } from '@/modules/editor/state/shapes'
 import { parseDrawingPayload } from '@/modules/editor/drawing-payload'
-import { starterPriceBook } from '@/modules/onboarding/starter-price-book'
+import { STARTER_PRICE_LINES } from '@/modules/onboarding/starter-price-book'
 
 const RUN = randomUUID().slice(0, 8)
 
@@ -72,7 +72,7 @@ describe.skipIf(!reachable)('I6: end-to-end money path', () => {
     projectId = project.id
 
     // Create a starter price book for the org so quotes can be computed
-    const items = starterPriceBook()
+    const items = STARTER_PRICE_LINES
     const book = await db.priceBook.create({
       data: {
         orgId,
@@ -214,6 +214,7 @@ describe.skipIf(!reachable)('I6: end-to-end money path', () => {
           { x: 0.76, y: 0.64 },
           { x: 0.22, y: 0.64 },
         ],
+        gridVisible: true,
       },
       // Scale is resolved: 4 px/in (grid method from a 20px grid = 1ft square)
       scale: {
@@ -496,7 +497,7 @@ describe.skipIf(!reachable)('I6: quote accuracy from imported geometry', () => {
     })
     userId = user.id
 
-    const items = starterPriceBook()
+    const items = STARTER_PRICE_LINES
     const book = await db.priceBook.create({
       data: {
         orgId,
