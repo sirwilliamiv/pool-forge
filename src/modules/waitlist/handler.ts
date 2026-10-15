@@ -4,6 +4,7 @@
 // testing about a public endpoint is its behaviour, and a test that has to
 // build a `Request` to check a rate-limit decision ends up testing Next.
 
+import { MAILROOM_EVENTS, MAILROOM_LISTS, syncContact } from '@/modules/email/mailroom'
 import { sendEmail } from '@/modules/email/send'
 import { captureError } from '@/modules/monitoring'
 
@@ -60,6 +61,15 @@ async function sendWaitlistEmails(
     source?: string | undefined
   },
 ): Promise<void> {
+  const attributes: Record<string, string> = {}
+  if (input.company) attributes.company = input.company
+  if (input.teamSize) attributes.teamSize = input.teamSize
+  if (input.usesToday) attributes.usesToday = input.usesToday
+  const contact: Parameters<typeof syncContact>[0] = { email: input.email, attributes, lists: [MAILROOM_LISTS.WAITLIST] }
+  if (input.name) contact.firstName = input.name.split(' ')[0] ?? input.name
+  if (input.source) contact.source = input.source
+  await syncContact(contact, { email: input.email, name: MAILROOM_EVENTS.WAITLIST_JOINED })
+
   try {
     const thankYouEmail = buildThankYouEmail(input)
     await sendEmail(thankYouEmail)

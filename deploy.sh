@@ -160,6 +160,8 @@ OPTIONAL_SECRETS=(
   "VOICE_TICKET_SECRET=pool-forge-voice-ticket-secret"
   "IDENTITY_PLATFORM_API_KEY=pool-forge-identity-api-key"
   "RESEND_API_KEY=pool-forge-resend-api-key"
+  # MAILROOM_URL is a plain env var (export it before deploying); the key is the secret.
+  "MAILROOM_API_KEY=pool-forge-mailroom-api-key"
   "MONITORING_ALERT_WEBHOOK_URL=pool-forge-monitoring-webhook"
   "GOOGLE_CLIENT_ID=pool-forge-google-client-id"
   "GOOGLE_CLIENT_SECRET=pool-forge-google-client-secret"
@@ -321,7 +323,7 @@ run gcloud run deploy "$SERVICE" \
   --cpu 1 --memory 1Gi \
   --min-instances 0 --max-instances 4 \
   --set-secrets "$SECRETS" \
-  --set-env-vars "NODE_ENV=production,APP_URL=${PUBLIC_URL},AUTH_URL=${PUBLIC_URL},AUTH_TRUST_HOST=true,GCP_PROJECT_ID=${PROJECT_ID},VERTEX_LOCATION=global,VERTEX_LIVE=1,BLOB_STORE_DRIVER=gcs,BLOB_STORE_BUCKET=${BUCKET},CAPTURE_BUNDLE_BUCKET=${CAPTURE_BUCKET},MONITORING_ENV=production${VOICE_ENV:-}"
+  --set-env-vars "NODE_ENV=production,APP_URL=${PUBLIC_URL},AUTH_URL=${PUBLIC_URL},AUTH_TRUST_HOST=true,GCP_PROJECT_ID=${PROJECT_ID},VERTEX_LOCATION=global,VERTEX_LIVE=1,BLOB_STORE_DRIVER=gcs,BLOB_STORE_BUCKET=${BUCKET},CAPTURE_BUNDLE_BUCKET=${CAPTURE_BUCKET},MONITORING_ENV=production,MAILROOM_URL=${MAILROOM_URL:-}${VOICE_ENV:-}"
 
 say "Applying database migrations"
 # Run as a job rather than at container start: every instance starting would
