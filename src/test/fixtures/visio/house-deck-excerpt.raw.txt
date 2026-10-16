@@ -1,0 +1,51 @@
+startDocument()
+  startPage(draw:name: R_Concrete, svg:height: 0.4688in, svg:width: 0.6250in)
+    setStyle()
+    drawGraphicObject (librevenge:mime-type: image/jpeg, office:binary-data: /9j/4AAQSkZJRgABAgEAlgCWAAD/4QmCRXhpZgAA..., svg:height: 0.4683in, svg:width: 0.6250in, svg:x: 0.0000in, svg:y: 0.0000in)
+  endPage
+  startPage(draw:name: Dimension Line 0, svg:height: 0.0104in, svg:width: 0.2500in)
+    startLayer (draw:id: id5)
+      setStyle(draw:fill: none, draw:stroke: solid, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0000in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 0.0365in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0677in), (librevenge:path-action: M, svg:x: 0.2500in, svg:y: 0.0365in), (librevenge:path-action: L, svg:x: 0.2500in, svg:y: 0.0677in), (librevenge:path-action: M, svg:x: -0.0625in, svg:y: 0.0052in), (librevenge:path-action: L, svg:x: 0.3125in, svg:y: 0.0052in), (librevenge:path-action: M, svg:x: -0.0312in, svg:y: 0.0365in), (librevenge:path-action: L, svg:x: 0.0312in, svg:y: -0.0260in), (librevenge:path-action: M, svg:x: 0.2188in, svg:y: 0.0365in), (librevenge:path-action: L, svg:x: 0.2812in, svg:y: -0.0260in)))
+      startTextObject (draw:textarea-vertical-align: middle, fo:padding-bottom: 0.0000in, fo:padding-left: 0.0000in, fo:padding-right: 0.0000in, fo:padding-top: 0.0000in, librevenge:rotate: 0.0000, svg:height: 0.1334in, svg:width: 0.2500in, svg:x: 0.0000in, svg:y: -0.1282in)
+        openParagraph (fo:line-height: 120.0000%, fo:margin-bottom: 0.0000in, fo:margin-left: 0.0000in, fo:margin-right: 0.0000in, fo:margin-top: 0.0000in, fo:text-align: center, fo:text-indent: 0.0000in, style:tab-stop-distance: 0.5000in)
+          openSpan(fo:color: #000000, fo:font-size: 8.0000pt, style:font-name: Arial, svg:fill-opacity: 100.0000%, svg:stroke-opacity: 100.0000%)
+            insertText (24)
+          closeSpan
+        closeParagraph
+      endTextObject
+    endLayer
+  endPage
+  startPage(draw:name: House, svg:height: 0.6250in, svg:width: 1.2500in)
+    startLayer (draw:id: id5)
+      setStyle(draw:fill: solid, draw:fill-color: #996633, draw:stroke: none, svg:fill-rule: evenodd, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0001in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 0.6250in), (librevenge:path-action: L, svg:x: 1.2500in, svg:y: 0.6250in), (librevenge:path-action: L, svg:x: 1.2500in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.6250in), (librevenge:path-action: Z)))
+      setStyle(draw:fill: none, draw:fill-color: #996633, draw:stroke: solid, svg:fill-rule: evenodd, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0001in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 0.6250in), (librevenge:path-action: L, svg:x: 1.2500in, svg:y: 0.6250in), (librevenge:path-action: L, svg:x: 1.2500in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.6250in), (librevenge:path-action: Z)))
+    endLayer
+  endPage
+  startPage(draw:name: Grass, svg:height: 4.3750in, svg:width: 6.2500in)
+    startLayer (draw:id: id5)
+      setStyle(draw:fill: solid, draw:fill-color: #000000, draw:stroke: none, svg:fill-rule: evenodd, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0001in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 4.3750in), (librevenge:path-action: L, svg:x: 6.2500in, svg:y: 4.3750in), (librevenge:path-action: L, svg:x: 6.2500in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 4.3750in), (librevenge:path-action: Z)))
+      setStyle(draw:fill: none, draw:fill-color: #000000, draw:stroke: solid, svg:fill-rule: evenodd, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0001in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 4.3750in), (librevenge:path-action: L, svg:x: 6.2500in, svg:y: 4.3750in), (librevenge:path-action: L, svg:x: 6.2500in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 4.3750in), (librevenge:path-action: Z)))
+    endLayer
+  endPage
+  startPage(draw:name: Concrete Lanai, svg:height: 0.6615in, svg:width: 1.2865in)
+    startLayer (draw:id: id5)
+      setStyle(draw:fill: solid, draw:fill-color: #000000, draw:stroke: none, svg:fill-rule: evenodd, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0001in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 0.6615in), (librevenge:path-action: L, svg:x: 1.2865in, svg:y: 0.6615in), (librevenge:path-action: L, svg:x: 1.2865in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.6615in), (librevenge:path-action: Z)))
+      setStyle(draw:fill: none, draw:fill-color: #000000, draw:stroke: solid, svg:fill-rule: evenodd, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0001in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 0.6615in), (librevenge:path-action: L, svg:x: 1.2865in, svg:y: 0.6615in), (librevenge:path-action: L, svg:x: 1.2865in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.6615in), (librevenge:path-action: Z)))
+    endLayer
+  endPage
+  startPage(draw:name: Raised Deck, svg:height: 0.2500in, svg:width: 1.8750in)
+    startLayer (draw:id: id5)
+      setStyle(draw:fill: solid, draw:fill-color: #f9eeb0, draw:stroke: none, svg:fill-rule: evenodd, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0001in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 0.2500in), (librevenge:path-action: L, svg:x: 1.8750in, svg:y: 0.2500in), (librevenge:path-action: L, svg:x: 1.8750in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.2500in), (librevenge:path-action: Z)))
+      setStyle(draw:fill: none, draw:fill-color: #f9eeb0, draw:stroke: solid, svg:fill-rule: evenodd, svg:stroke-color: #000000, svg:stroke-linecap: round, svg:stroke-linejoin: round, svg:stroke-opacity: 100.0000%, svg:stroke-width: 0.0001in)
+      drawPath (svg:d: ((librevenge:path-action: M, svg:x: 0.0000in, svg:y: 0.2500in), (librevenge:path-action: L, svg:x: 1.8750in, svg:y: 0.2500in), (librevenge:path-action: L, svg:x: 1.8750in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.0000in), (librevenge:path-action: L, svg:x: 0.0000in, svg:y: 0.2500in), (librevenge:path-action: Z)))
+    endLayer
+  endPage
+endDocument()

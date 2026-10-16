@@ -3,10 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // Runtime queries go through Neon's connection pooler (pgbouncer) so a
   // cold Cloud Run instance does not pay a fresh TCP+TLS handshake per request.
-  url      = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
   // Migrations need a direct (session) connection: pgbouncer transaction
   // pooling cannot run the advisory locks and DDL a migration takes.
   directUrl = env("DIRECT_DATABASE_URL")
@@ -53,6 +53,7 @@ model User {
   sourceImages   SourceImage[]        @relation("SourceImageUploadedBy")
   sceneTemplates SceneTemplate[]
   designVersions DesignVersion[]      @relation("DesignVersionAuthor")
+  orgStencils    OrgStencil[]
 }
 
 model Organization {
@@ -102,6 +103,8 @@ model Organization {
   siteCaptures        SiteCapture[]
   priceChangeRequests PriceChangeRequest[]
   authTokens          AuthToken[]
+  orgStencils         OrgStencil[]
+  stencilImports      StencilImport[]
 }
 
 model OrganizationMember {
@@ -855,6 +858,81 @@ model StencilDef {
   shapeKind           ShapeKind           @default(STENCIL)
 
   @@index([category])
+}
+
+/// Where a builder's own stencil came from.
+enum OrgStencilSource {
+  VISIO_IMPORT
+  SAVED_SELECTION
+}
+
+/// A builder's own stencil: a master imported from their Visio stencil files,
+/// or (later) a selection they saved.
+///
+/// Distinct from `StencilDef`, which is the global catalogue and carries no
+/// geometry. This row carries the outline itself, in real inches with the
+/// bounding box's top-left at the origin, so placing it creates a shape whose
+/// footprint is the one they drew in Visio rather than a box.
+model OrgStencil {
+  id           String           @id @default(cuid())
+  orgId        String
+  name         String
+  category     StencilCategory
+  /// What placing it creates. A pool outline becomes a POLYGON_POOL carrying
+  /// the ring; a spa or deck becomes that kind at bounding-box size; everything
+  /// else becomes a closed SKETCH_PATH carrying the ring.
+  shapeKind    ShapeKind
+  /// `{ x, y }[][]` in real inches. The first ring is the footprint; the rest
+  /// are detail rings kept for the thumbnail.
+  rings        Json             @default("[]")
+  widthIn      Float
+  heightIn     Float
+  fill         String
+  stroke       String
+  /// Rendered once at import so the panel never recomputes it.
+  thumbnailSvg String
+  source       OrgStencilSource
+  sourceFile   String?
+  sourceMaster String?
+  createdBy    String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator User?        @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  /// The three stencil files share names, and a re-import replaces rather
+  /// than duplicates.
+  @@unique([orgId, name])
+  @@index([orgId, category])
+}
+
+enum StencilImportStatus {
+  PENDING
+  COMMITTED
+  DISCARDED
+}
+
+/// A converted stencil file waiting for the builder to say which masters to
+/// keep. A row rather than process memory because Cloud Run may answer the
+/// commit from a different instance than the one that ran the preview.
+model StencilImport {
+  id                 String              @id @default(cuid())
+  orgId              String
+  fileName           String
+  scaleInchesPerInch Float
+  /// Candidates with their rings in drawing inches; the commit applies the
+  /// final scale.
+  candidatesJson     Json                @default("[]")
+  skippedJson        Json                @default("[]")
+  status             StencilImportStatus @default(PENDING)
+  createdBy          String?
+  createdAt          DateTime            @default(now())
+  expiresAt          DateTime
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
 }
 
 /// One-off money on a single job, priced by hand.
