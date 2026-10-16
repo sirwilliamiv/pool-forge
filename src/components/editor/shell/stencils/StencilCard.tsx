@@ -1,5 +1,7 @@
 'use client'
 
+import { INCHES_PER_FOOT } from '@/lib/three/units'
+import { StencilDragSource, encodeStencilDrag } from '@/modules/editor/interactions/stencil-drag'
 import type { Stencil } from '@/modules/editor/stencils'
 
 interface Props {
@@ -14,6 +16,10 @@ export function StencilCard({ stencil, onAdd }: Props) {
   const dim = stencil.defaultDimensions
   const widthFt = dim.unit === 'ft' ? dim.width : dim.width / 12
   const heightFt = dim.unit === 'ft' ? dim.height : dim.height / 12
+  // Real inches for the drag, taken from the source rather than back from feet
+  // so a 7 inch symbol does not arrive as 7.000000000000001.
+  const widthIn = dim.unit === 'ft' ? dim.width * INCHES_PER_FOOT : dim.width
+  const heightIn = dim.unit === 'ft' ? dim.height * INCHES_PER_FOOT : dim.height
   const dimLabel =
     Number.isInteger(widthFt) && Number.isInteger(heightFt)
       ? `${widthFt}' × ${heightFt}'`
@@ -34,7 +40,16 @@ export function StencilCard({ stencil, onAdd }: Props) {
   return (
     <button
       type="button"
+      draggable
       onClick={() => onAdd(stencil)}
+      onDragStart={(e) =>
+        encodeStencilDrag(e.dataTransfer, {
+          source: StencilDragSource.CATALOG,
+          id: stencil.id,
+          widthIn,
+          heightIn,
+        })
+      }
       title={`${stencil.name} (${dimLabel})`}
       className="group flex items-center gap-2 rounded-pfSm p-1.5 text-left hover:bg-rowHover focus:outline-none focus:ring-[1.5px] focus:ring-pfAccent"
     >

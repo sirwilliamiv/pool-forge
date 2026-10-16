@@ -12,6 +12,7 @@ somebody else's product.
 
 | Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
 |---|---|---|---|---|---|---|---|---|---|---|
+| **Your Visio stencils, dragged in (.vss, .vssx)** | yes | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 
 
 ## Money

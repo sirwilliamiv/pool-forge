@@ -1,34 +1,59 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import { useFileDrop } from '@/components/imports/ImportEmptyState'
 import { dispatch } from '@/lib/commands/dispatch'
 import { STENCILS, type Stencil } from '@/modules/editor/stencils'
-import { StencilCategory } from '@/modules/editor/stencils/types'
+import { CATEGORY_LABEL, CATEGORY_ORDER } from '@/modules/editor/stencils/categories'
+import type { StencilCategory } from '@/modules/editor/stencils/types'
+import { useLibraryStore } from '@/modules/editor/state/libraryStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { stagedCount, stagingPlacement } from '@/modules/editor/placement'
+import type { OrgStencilSummary, PreviewOutput } from '@/modules/imports/visio/types'
+import { LibraryGroup } from './LibraryGroup'
 import { StencilCard } from './StencilCard'
-
-const CATEGORY_LABEL: Record<StencilCategory, string> = {
-  [StencilCategory.POOL_SHAPE]: 'Pool shapes',
-  [StencilCategory.INTERIOR_FEATURE]: 'Steps & shelves',
-  [StencilCategory.WATER_OUTDOOR]: 'Water & outdoor',
-  [StencilCategory.DECK_HOUSE]: 'Site & deck',
-  [StencilCategory.CONSTRUCTION_SYMBOL]: 'Construction symbols',
-}
-
-const CATEGORY_ORDER: StencilCategory[] = [
-  StencilCategory.POOL_SHAPE,
-  StencilCategory.INTERIOR_FEATURE,
-  StencilCategory.WATER_OUTDOOR,
-  StencilCategory.DECK_HOUSE,
-  StencilCategory.CONSTRUCTION_SYMBOL,
-]
+import { VisioImportDialog } from './VisioImportDialog'
+import { uploadStencilFile } from './visio-upload'
 
 interface Props {
   search: string
 }
 
 export function StencilGrid({ search }: Props) {
+  const [preview, setPreview] = useState<PreviewOutput | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const libraryMatches = useLibraryStore((st) => {
+    const q = search.trim().toLowerCase()
+    return st.stencils.some((s) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
+  })
+
+  const importFile = async (file: File) => {
+    setUploading(true)
+    const pending = toast.loading(`Reading ${file.name}`)
+    const result = await uploadStencilFile(file)
+    toast.dismiss(pending)
+    setUploading(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    setPreview(result.data)
+  }
+
+  // The whole panel takes a dropped stencil file, not only the library's empty
+  // zone: aiming at a small box is a needless miss. It reacts to `Files` alone,
+  // so a stencil card dragged across it on the way to the canvas lights nothing.
+  const { dragging, dropProps } = useFileDrop((files) => {
+    const file = files[0]
+    if (file) void importFile(file)
+  }, uploading)
+
+  const onImported = (stencils: OrgStencilSummary[]) => {
+    useLibraryStore.getState().upsertMany(stencils)
+    setPreview(null)
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     const list = q
@@ -58,16 +83,23 @@ export function StencilGrid({ search }: Props) {
     void dispatch('add.shape', { stencilId: stencil.id, x, y })
   }
 
-  if (filtered.size === 0) {
-    return (
-      <p className="px-3 py-3 text-[11.5px] text-textFaint">
-        No stencils match “{search}”.
-      </p>
-    )
-  }
-
   return (
-    <div className="pb-3">
+    <div
+      data-accent="azure"
+      data-testid="stencil-drop-zone"
+      data-dragging={dragging ? 'true' : 'false'}
+      {...dropProps}
+      className={
+        'relative min-h-full pb-3 transition duration-brand ease-brand ' +
+        (dragging ? 'bg-family-tint/40 ring-2 ring-inset ring-family-accent' : '')
+      }
+    >
+      <LibraryGroup search={search} onImportFile={(file) => void importFile(file)} />
+      {filtered.size === 0 && !libraryMatches ? (
+        <p className="px-3 py-3 text-[11.5px] text-textFaint">
+          No stencils match “{search}”.
+        </p>
+      ) : null}
       {CATEGORY_ORDER.map((cat) => {
         const items = filtered.get(cat)
         if (!items || items.length === 0) return null
@@ -90,6 +122,9 @@ export function StencilGrid({ search }: Props) {
           </section>
         )
       })}
+      {preview ? (
+        <VisioImportDialog preview={preview} onClose={() => setPreview(null)} onImported={onImported} />
+      ) : null}
     </div>
   )
 }
