@@ -27,6 +27,7 @@ import { useCameraStore } from '@/modules/editor/state/cameraStore'
 import { useEditorStore } from '@/modules/editor/state/editorStore'
 import { useGradeStore } from '@/modules/editor/state/gradeStore'
 import { useHistoryStore } from '@/modules/editor/state/historyStore'
+import { useLibraryStore } from '@/modules/editor/state/libraryStore'
 import { useSelectionStore } from '@/modules/editor/state/selectionStore'
 import { ShapeKind, type Shape } from '@/modules/editor/state/shapes'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
@@ -850,5 +851,26 @@ describe('grade.point.add', () => {
 
     expect(useGradeStore.getState().existing.points).toHaveLength(2)
     expect(result.count).toBe(2)
+  })
+})
+
+describe('stencil.catalog.toggle', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    useLibraryStore.setState({ catalogHidden: false })
+  })
+
+  it('hides the Pool Forge catalogue and remembers it for the next visit', async () => {
+    const out = await run<{ hidden: boolean }>('stencil.catalog.toggle', { hidden: true })
+    expect(out).toEqual({ hidden: true })
+    expect(useLibraryStore.getState().catalogHidden).toBe(true)
+    expect(window.localStorage.getItem('poolforge.stencils.catalogHidden')).toBe('1')
+  })
+
+  it('flips when told nothing, and reports the state it landed in', async () => {
+    expect(await run('stencil.catalog.toggle', {})).toEqual({ hidden: true })
+    expect(await run('stencil.catalog.toggle', {})).toEqual({ hidden: false })
+    expect(useLibraryStore.getState().catalogHidden).toBe(false)
+    expect(window.localStorage.getItem('poolforge.stencils.catalogHidden')).toBeNull()
   })
 })

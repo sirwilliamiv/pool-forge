@@ -52,9 +52,12 @@ import { useCommandPaletteStore } from './shell/CommandPalette'
 import {
   LibraryCommand,
   PlacementSchema,
+  type CatalogToggleInput,
+  type CatalogToggleOutput,
   type PlaceInput,
   type PlaceOutput,
 } from '@/modules/imports/visio/types'
+import { useLibraryStore } from '@/modules/editor/state/libraryStore'
 
 let sunStudyRaf: number | null = null
 
@@ -302,6 +305,7 @@ const HANDLER_IDS: string[] = [
   // shape category
   'add.shape',
   LibraryCommand.PLACE,
+  LibraryCommand.CATALOG_TOGGLE,
   'select.shape',
   'move.shape',
   'resize.shape',
@@ -413,6 +417,15 @@ export function ClientCommandHandlers() {
       if (placement.shapeKind === ShapeKind.SKETCH_PATH) { opts.points = placement.points; opts.closed = true; opts.labelText = placement.name }
       const shapeId = store.addShape(placement.shapeKind, input.x, input.y, opts)
       return { ...placement, shapeId }
+    })
+
+    // The Stencils panel's own preference: hide the built-in catalogue so a
+    // builder sees only their imported library. Report where it landed.
+    registerClientHandler<CatalogToggleInput, CatalogToggleOutput>('stencil.catalog.toggle', (input) => {
+      const library = useLibraryStore.getState()
+      const hidden = input.hidden ?? !library.catalogHidden
+      library.setCatalogHidden(hidden)
+      return { hidden }
     })
 
     registerClientHandler<{ id: string; poolShape: 'rectangle' | 'ellipse' }, { id: string }>(

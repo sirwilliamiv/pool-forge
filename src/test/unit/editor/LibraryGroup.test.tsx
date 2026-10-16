@@ -42,6 +42,43 @@ describe('LibraryGroup', () => {
   })
 })
 
+describe('Stencils panel catalogue toggle', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    useLibraryStore.setState({ stencils: [kidney], loaded: true, loading: false, error: null, catalogHidden: false })
+  })
+
+  it('lists the Pool Forge stencils under their own heading with a Hide control', async () => {
+    const { StencilGrid } = await import('@/components/editor/shell/stencils/StencilGrid')
+    render(<StencilGrid search="" />)
+    expect(screen.getByText('Pool Forge stencils')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hide Pool Forge stencils' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getAllByRole('button', { name: /standard rectangle/i }).length).toBeGreaterThan(0)
+  })
+
+  // The store is what the command's client handler writes, so flipping it is
+  // what the user sees after pressing Hide; the handler itself is covered in
+  // handler-behaviour.test.ts.
+  it('hides every built-in stencil and keeps the library when the catalogue is hidden', async () => {
+    const { StencilGrid } = await import('@/components/editor/shell/stencils/StencilGrid')
+    render(<StencilGrid search="" />)
+    useLibraryStore.getState().setCatalogHidden(true)
+    expect(await screen.findByText('Hidden. Only your library is listed.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /standard rectangle/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /kidney 11/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show Pool Forge stencils' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByText(/no stencils match/i)).toBeNull()
+  })
+
+  it('sends the Hide press through the command registry', async () => {
+    const { dispatch } = await import('@/lib/commands/dispatch')
+    const { StencilGrid } = await import('@/components/editor/shell/stencils/StencilGrid')
+    render(<StencilGrid search="" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Hide Pool Forge stencils' }))
+    expect(dispatch).toHaveBeenCalledWith('stencil.catalog.toggle', { hidden: true })
+  })
+})
+
 describe('Stencils panel file drop', () => {
   beforeEach(() => useLibraryStore.setState({ stencils: [], loaded: true, loading: false, error: null }))
 

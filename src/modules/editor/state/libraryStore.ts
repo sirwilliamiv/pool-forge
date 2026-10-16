@@ -9,13 +9,25 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand'
 
 import { dispatch } from '@/lib/commands/dispatch'
 import { CATEGORY_ORDER } from '@/modules/editor/stencils/categories'
-import { LibraryCommand, type ListOutput, type OrgStencilSummary } from '@/modules/imports/visio/types'
+import {
+  CATALOG_HIDDEN_STORAGE_KEY,
+  LibraryCommand,
+  type ListOutput,
+  type OrgStencilSummary,
+} from '@/modules/imports/visio/types'
 
 export interface LibraryState {
   stencils: OrgStencilSummary[]
   loaded: boolean
   loading: boolean
   error: string | null
+  /**
+   * Whether the built-in Pool Forge catalogue is hidden in the panel. A builder
+   * who has imported their own library often wants only that. Per browser, kept
+   * in localStorage; it is a viewing preference, not drawing data.
+   */
+  catalogHidden: boolean
+  setCatalogHidden: (hidden: boolean) => void
   /** Dispatches stencil.library.list and replaces `stencils`. */
   refresh: () => Promise<void>
   /** Replace by id or add, after a commit. */
@@ -23,11 +35,37 @@ export interface LibraryState {
   remove: (id: string) => void
 }
 
+function readCatalogHidden(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(CATALOG_HIDDEN_STORAGE_KEY) === '1'
+  } catch {
+    // Private mode or blocked storage: the catalogue simply shows.
+    return false
+  }
+}
+
+function writeCatalogHidden(hidden: boolean): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (hidden) window.localStorage.setItem(CATALOG_HIDDEN_STORAGE_KEY, '1')
+    else window.localStorage.removeItem(CATALOG_HIDDEN_STORAGE_KEY)
+  } catch {
+    // Non-fatal: the preference still holds for this page.
+  }
+}
+
 export const useLibraryStore: UseBoundStore<StoreApi<LibraryState>> = create<LibraryState>((set, get) => ({
   stencils: [],
   loaded: false,
   loading: false,
   error: null,
+  catalogHidden: readCatalogHidden(),
+
+  setCatalogHidden: (hidden) => {
+    writeCatalogHidden(hidden)
+    set({ catalogHidden: hidden })
+  },
 
   refresh: async () => {
     if (get().loading) return

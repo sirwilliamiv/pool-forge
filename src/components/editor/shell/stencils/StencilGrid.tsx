@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFileDrop } from '@/components/imports/ImportEmptyState'
 import { dispatch } from '@/lib/commands/dispatch'
@@ -10,7 +11,14 @@ import type { StencilCategory } from '@/modules/editor/stencils/types'
 import { useLibraryStore } from '@/modules/editor/state/libraryStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { stagedCount, stagingPlacement } from '@/modules/editor/placement'
-import type { OrgStencilSummary, PreviewOutput } from '@/modules/imports/visio/types'
+import {
+  CatalogCopy,
+  LibraryCommand,
+  type CatalogToggleInput,
+  type CatalogToggleOutput,
+  type OrgStencilSummary,
+  type PreviewOutput,
+} from '@/modules/imports/visio/types'
 import { LibraryGroup } from './LibraryGroup'
 import { StencilCard } from './StencilCard'
 import { VisioImportDialog } from './VisioImportDialog'
@@ -23,6 +31,7 @@ interface Props {
 export function StencilGrid({ search }: Props) {
   const [preview, setPreview] = useState<PreviewOutput | null>(null)
   const [uploading, setUploading] = useState(false)
+  const catalogHidden = useLibraryStore((st) => st.catalogHidden)
   const libraryMatches = useLibraryStore((st) => {
     const q = search.trim().toLowerCase()
     return st.stencils.some((s) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
@@ -73,6 +82,16 @@ export function StencilGrid({ search }: Props) {
     return groups
   }, [search])
 
+  const catalogCount = useMemo(
+    () => [...filtered.values()].reduce((n, items) => n + items.length, 0),
+    [filtered],
+  )
+
+  const toggleCatalog = () =>
+    void dispatch<CatalogToggleInput, CatalogToggleOutput>(LibraryCommand.CATALOG_TOGGLE, {
+      hidden: !catalogHidden,
+    })
+
   const onAdd = (stencil: Stencil) => {
     // Staged in a block beside whatever is already drawn, rather than queued in
     // a line. The old rule anchored to RECTANGLE_POOL alone, so a Grecian or a
@@ -95,21 +114,44 @@ export function StencilGrid({ search }: Props) {
       }
     >
       <LibraryGroup search={search} onImportFile={(file) => void importFile(file)} />
-      {filtered.size === 0 && !libraryMatches ? (
+      {(catalogHidden || filtered.size === 0) && !libraryMatches && search.trim() ? (
         <p className="px-3 py-3 text-[11.5px] text-textFaint">
           No stencils match “{search}”.
         </p>
       ) : null}
-      {CATEGORY_ORDER.map((cat) => {
+      {/* The built-in catalogue under its own heading, so a builder who has
+          imported their own library can put ours away and see only theirs.
+          The preference goes through the registry like every other toggle. */}
+      <section aria-label={CatalogCopy.HEADING}>
+        <div className="flex items-center justify-between px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.5px] text-textMuted">
+          <span>
+            {CatalogCopy.HEADING}
+            {!catalogHidden ? <span className="ml-1 text-textFaint">{catalogCount}</span> : null}
+          </span>
+          <button
+            type="button"
+            onClick={toggleCatalog}
+            aria-pressed={catalogHidden}
+            aria-label={catalogHidden ? CatalogCopy.SHOW_LABEL : CatalogCopy.HIDE_LABEL}
+            data-testid="catalog-toggle"
+            className="flex items-center gap-1 rounded-pfXs px-1 normal-case tracking-normal text-textMuted hover:text-foreground focus:outline-none focus:ring-[1.5px] focus:ring-pfAccent"
+          >
+            {catalogHidden ? <Eye className="h-3 w-3" aria-hidden /> : <EyeOff className="h-3 w-3" aria-hidden />}
+            {catalogHidden ? CatalogCopy.SHOW : CatalogCopy.HIDE}
+          </button>
+        </div>
+        {catalogHidden ? (
+          <p className="px-3 pb-2 text-[10.5px] text-textFaint">{CatalogCopy.HIDDEN_NOTE}</p>
+        ) : null}
+      </section>
+      {catalogHidden ? null : CATEGORY_ORDER.map((cat) => {
         const items = filtered.get(cat)
         if (!items || items.length === 0) return null
         return (
           <section key={cat}>
-            <div className="flex items-center justify-between px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.5px] text-textMuted">
-              <span>
-                {CATEGORY_LABEL[cat]}
-                <span className="ml-1 text-textFaint">{items.length}</span>
-              </span>
+            <div className="px-3 pb-0.5 pt-1.5 text-[10px] text-textFaint">
+              {CATEGORY_LABEL[cat]}
+              <span className="ml-1">{items.length}</span>
             </div>
             {/* One column. Three columns is what forced every name into an
                 ellipsis, and the names are the only thing that tells two of

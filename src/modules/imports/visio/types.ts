@@ -239,8 +239,19 @@ export const LibraryCommand = {
   LIST: 'stencil.library.list',
   PLACE: 'stencil.library.place',
   DELETE: 'stencil.library.delete',
+  /** Hide or show the built-in Pool Forge catalogue in the Stencils panel. */
+  CATALOG_TOGGLE: 'stencil.catalog.toggle',
 } as const
 export type LibraryCommand = (typeof LibraryCommand)[keyof typeof LibraryCommand]
+
+/** Omit `hidden` to flip; pass it to set. */
+export const CatalogToggleInputSchema = z.object({ hidden: z.boolean().optional() })
+export type CatalogToggleInput = z.infer<typeof CatalogToggleInputSchema>
+export const CatalogToggleOutputSchema = z.object({ hidden: z.boolean() })
+export type CatalogToggleOutput = z.infer<typeof CatalogToggleOutputSchema>
+
+/** localStorage key for the catalogue preference; it is per browser, not per org. */
+export const CATALOG_HIDDEN_STORAGE_KEY = 'poolforge.stencils.catalogHidden'
 
 export const ScaleSchema = z
   .number()
@@ -355,4 +366,14 @@ export const VisioMessage = {
   NOTHING_SELECTED: 'Tick at least one stencil to import.',
   NOT_FOUND: 'That stencil is not in your library.',
   NO_GROUND: 'Switch to the plan or 3D view to drop a stencil.',
+} as const
+
+/** Copy for the catalogue section of the Stencils panel. */
+export const CatalogCopy = {
+  HEADING: 'Pool Forge stencils',
+  HIDE: 'Hide',
+  SHOW: 'Show',
+  HIDE_LABEL: 'Hide Pool Forge stencils',
+  SHOW_LABEL: 'Show Pool Forge stencils',
+  HIDDEN_NOTE: 'Hidden. Only your library is listed.',
 } as const

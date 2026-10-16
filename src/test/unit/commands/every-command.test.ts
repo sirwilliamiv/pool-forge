@@ -53,6 +53,7 @@ import { useMaterialsStore } from '@/modules/editor/state/materialsStore'
 import { useShapesStore } from '@/modules/editor/state/shapesStore'
 import { useCommentsStore } from '@/modules/editor/state/commentsStore'
 import { useDrawStore } from '@/modules/editor/state/drawStore'
+import { useLibraryStore } from '@/modules/editor/state/libraryStore'
 import { buildFinishCatalog } from '@/modules/materials/catalog'
 import { useSunStore } from '@/modules/editor/state/sunStore'
 import { useSurveyStore } from '@/modules/editor/state/surveyStore'
@@ -124,6 +125,7 @@ const STORES = {
   save: useSaveStatusStore,
   comments: useCommentsStore,
   draw: useDrawStore,
+  library: useLibraryStore,
 }
 
 type Snapshot = Record<string, unknown>
@@ -618,6 +620,11 @@ const EXERCISES: Record<string, Exercise> = {
   'stencil.library.delete': {
     kind: 'server',
     why: 'Removes an OrgStencil row.',
+  },
+  'stencil.catalog.toggle': {
+    kind: 'mutates',
+    input: async () => ({ hidden: true }),
+    notUndoable: CHROME_NOT_DRAWING,
   },
 
   // ---------- navigation ----------
@@ -1122,6 +1129,7 @@ function resetStores(): void {
   useGradeStore.getState().hydrate(null)
   useGradeStore.getState().setEditing('existing')
   useCommentsStore.getState().hydrate([])
+  useLibraryStore.setState({ stencils: [], loaded: true, loading: false, error: null, catalogHidden: false })
   // Last, and through hydrate: it clears the undo stack and closes any drag
   // transaction left open, which plain setState leaves dangling and lets
   // history bleed from one test into the next.

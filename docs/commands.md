@@ -1,6 +1,6 @@
 # Pool Forge Command Reference
 
-Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **130**.
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **131**.
 
 ## Project
 
@@ -459,6 +459,14 @@ Save the current selection as a reusable shape template.
 **Voice examples:**
 - "Save this as a template called Standard Backyard."
 - "Save shape as a template."
+
+### `stencil.catalog.toggle` — Hide or show the Pool Forge stencils
+
+Hide the built-in Pool Forge stencil catalogue in the Stencils panel so only your own library is listed, or show it again. Omit `hidden` to flip.
+
+**Voice examples:**
+- "Hide the Pool Forge stencils."
+- "Show the built-in stencils again."
 
 ### `stencil.library.commit` — Add stencils to my library
 

@@ -13,6 +13,8 @@ import { scaleRings } from '@/modules/imports/visio/scale'
 import { sniffVisio } from '@/modules/imports/visio/sniff'
 import {
   CandidateSchema,
+  CatalogToggleInputSchema,
+  CatalogToggleOutputSchema,
   CommitInputSchema,
   CommitOutputSchema,
   DeleteInputSchema,
@@ -38,7 +40,6 @@ import {
   type OrgStencilSummary,
   type PlaceOutput,
   type PreviewOutput,
-  type Ring,
   type StoredCandidate,
 } from '@/modules/imports/visio/types'
 
@@ -336,4 +337,19 @@ register({
     if (result.count === 0) return { ok: false, error: VisioMessage.NOT_FOUND }
     return { ok: true, data: { deleted: true } }
   },
+})
+
+// Chrome, not content: the client handler flips the panel's preference and
+// reports the state it landed in. The server half only validates and audits.
+register({
+  id: LibraryCommand.CATALOG_TOGGLE,
+  label: 'Hide or show the Pool Forge stencils',
+  description:
+    'Hide the built-in Pool Forge stencil catalogue in the Stencils panel so only your own library is listed, or show it again. Omit `hidden` to flip.',
+  category: 'template',
+  inputSchema: CatalogToggleInputSchema,
+  outputSchema: CatalogToggleOutputSchema,
+  voiceExamples: ['Hide the Pool Forge stencils.', 'Show the built-in stencils again.'],
+  runsOn: 'client',
+  execute: async (input) => ({ ok: true, data: { hidden: input.hidden ?? true } }),
 })
