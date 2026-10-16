@@ -52,7 +52,8 @@ RUN pnpm build
 
 # ---------------------------------------------------------------- runtime
 FROM node:22-alpine AS runtime
-RUN apk add --no-cache openssl libc6-compat
+# libvisio-tools provides vss2raw, which src/modules/imports/visio/convert.ts spawns to read Visio stencil files.
+RUN apk add --no-cache openssl libc6-compat libvisio-tools
 WORKDIR /app
 
 ENV NODE_ENV=production

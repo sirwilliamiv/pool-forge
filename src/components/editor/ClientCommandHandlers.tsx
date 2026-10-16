@@ -49,6 +49,12 @@ import { getStencil } from '@/modules/editor/stencils'
 import { framingFor } from '@/modules/editor/framing'
 import { visibleBounds } from '@/modules/editor/placement'
 import { useCommandPaletteStore } from './shell/CommandPalette'
+import {
+  LibraryCommand,
+  PlacementSchema,
+  type PlaceInput,
+  type PlaceOutput,
+} from '@/modules/imports/visio/types'
 
 let sunStudyRaf: number | null = null
 
@@ -295,6 +301,7 @@ const HANDLER_IDS: string[] = [
   'grid.snap.toggle',
   // shape category
   'add.shape',
+  LibraryCommand.PLACE,
   'select.shape',
   'move.shape',
   'resize.shape',
@@ -392,6 +399,20 @@ export function ClientCommandHandlers() {
         store.updateShape(shapeId, { displayHint: input.displayHint })
       }
       return { shapeId }
+    })
+
+    // A stencil from the org's own library. The server loads the row and hands
+    // back the ring; the shape is born complete so placing it is one undo step.
+    registerClientHandler<PlaceInput, PlaceOutput>('stencil.library.place', (input, serverData) => {
+      const placement = PlacementSchema.parse(serverData)
+      const store = useShapesStore.getState()
+      const opts: { name: string; width: number; height: number; points?: { x: number; y: number }[]; closed?: boolean; labelText?: string } = {
+        name: placement.name, width: placement.width, height: placement.height,
+      }
+      if (placement.shapeKind === ShapeKind.POLYGON_POOL) opts.points = placement.points
+      if (placement.shapeKind === ShapeKind.SKETCH_PATH) { opts.points = placement.points; opts.closed = true; opts.labelText = placement.name }
+      const shapeId = store.addShape(placement.shapeKind, input.x, input.y, opts)
+      return { ...placement, shapeId }
     })
 
     registerClientHandler<{ id: string; poolShape: 'rectangle' | 'ellipse' }, { id: string }>(
