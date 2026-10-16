@@ -32,7 +32,7 @@ export type FeatureKey =
   | 'browserAuthoring' | 'mobileAuthoring' | 'customerOnPhone' | 'planView' | 'pool3d'
   | 'photoreal' | 'flythroughVideo' | 'panorama360' | 'virtualReality' | 'augmentedReality'
   | 'sunStudy' | 'terrainGrading' | 'existingStructures' | 'propertyLines' | 'freeformShapes'
-  | 'materialLibrary' | 'plantLibrary' | 'sceneTemplates'
+  | 'materialLibrary' | 'plantLibrary' | 'sceneTemplates' | 'customStencils'
   // Measuring
   | 'autoMeasurements' | 'takeoffQuantities' | 'earthworkVolumes' | 'photoToDesign' | 'siteCapture'
   // Money
@@ -101,6 +101,8 @@ export const FEATURES: readonly Feature[] = [
     matters: 'The rest of the backyard, which is often the rest of the sale.' },
   { key: 'sceneTemplates', group: 'Drawing', label: 'Saved scenes and templates',
     matters: 'Your three best sellers, ready to drop in.' },
+  { key: 'customStencils', group: 'Drawing', label: 'Your own stencil library',
+    matters: 'The steps, spas and ledges you drew over years, imported from Visio and dragged onto the pool.' },
 
   { key: 'autoMeasurements', group: 'Measuring', label: 'Measurements from the drawing',
     matters: 'Area, perimeter, volume, without a tape or a calculator.' },
@@ -259,6 +261,7 @@ export const POOL_FORGE: Product = {
     serviceRouting: { support: 'no' },
     teamRoles: { support: 'partial', note: 'Roles decide who may change the price book. Invites are in progress.' },
     planView: { support: 'yes' },
+    customStencils: { support: 'yes', note: 'Drop a Visio .vss or .vssx on the Stencils panel; outlines import, text and pictures are listed as skipped.' },
     flythroughVideo: { support: 'no' },
     panorama360: { support: 'no' },
     virtualReality: { support: 'no' },

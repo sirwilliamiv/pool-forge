@@ -103,7 +103,7 @@ export type RawSegment =
       /** Degrees, as librevenge writes it. */
       rotate: number
       largeArc: boolean
-      /** Absent in the file means false. */
+      /** Absent in the file means true: librevenge renders a missing sweep flag as 1 (checked against vss2xhtml on Round Corners). */
       sweep: boolean
       x: number
       y: number

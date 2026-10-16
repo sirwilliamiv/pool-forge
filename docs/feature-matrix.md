@@ -12,7 +12,6 @@ somebody else's product.
 
 | Feature | Pool Forge | Pool Studio | Vip3D | ProDBX | Poologics | Houzz Pro | Jobber | QuoteIQ | JobTread | Cedreo |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **Your Visio stencils, dragged in (.vss, .vssx)** | yes | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 
 
 ## Money
@@ -72,6 +71,7 @@ somebody else's product.
 - **Property lines and setbacks** A permit set without them comes back.
 - **Finishes and materials** Plaster, pebble, tile, coping, decking. What the customer actually chooses between.
 - **Saved scenes and templates** Your three best sellers, ready to drop in.
+- **Your own stencil library** The steps, spas and ledges you drew over years, imported from Visio and dragged onto the pool.
 - **Measurements from the drawing** Area, perimeter, volume, without a tape or a calculator.
 - **Takeoff quantities** How much concrete, how much coping, how many lights.
 - **Cut and fill volumes** Dirt is money, and it is the number most often guessed.

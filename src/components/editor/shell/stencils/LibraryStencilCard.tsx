@@ -57,8 +57,17 @@ export function LibraryStencilCard({ stencil }: Props) {
     if (!result.ok) toast.error(result.error)
   }
 
+  // Two clicks, not a browser confirm dialog. The first turns the control into
+  // the question; the second answers it. Leaving the card withdraws the
+  // question, so a stray hover cannot delete anything.
+  const [confirming, setConfirming] = useState(false)
+
   const removeFromLibrary = async () => {
-    if (!window.confirm(`Remove ${stencil.name} from your library? Shapes already drawn stay.`)) return
+    if (!confirming) {
+      setConfirming(true)
+      return
+    }
+    setConfirming(false)
     const result = await dispatch<DeleteInput, DeleteOutput>(LibraryCommand.DELETE, {
       orgStencilId: stencil.id,
     })
@@ -73,10 +82,10 @@ export function LibraryStencilCard({ stencil }: Props) {
     <div
       className="relative"
       onMouseEnter={() => setActive(true)}
-      onMouseLeave={() => setActive(false)}
+      onMouseLeave={() => { setActive(false); setConfirming(false) }}
       onFocus={() => setActive(true)}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setActive(false)
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) { setActive(false); setConfirming(false) }
       }}
     >
       <button
@@ -113,9 +122,15 @@ export function LibraryStencilCard({ stencil }: Props) {
           type="button"
           aria-label={`Remove ${stencil.name} from library`}
           onClick={() => void removeFromLibrary()}
-          className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-pfXs text-textFaint hover:bg-rowHover hover:text-foreground focus:outline-none focus:ring-[1.5px] focus:ring-pfAccent"
+          title={confirming ? 'Click again to remove. Shapes already drawn stay.' : 'Remove from library'}
+          className={
+            'absolute right-1.5 top-1/2 flex h-5 -translate-y-1/2 items-center justify-center rounded-pfXs text-[10px] font-medium focus:outline-none focus:ring-[1.5px] focus:ring-pfAccent ' +
+            (confirming
+              ? 'w-auto px-1.5 bg-foreground text-white'
+              : 'w-5 text-textFaint hover:bg-rowHover hover:text-foreground')
+          }
         >
-          <X className="h-3 w-3" aria-hidden />
+          {confirming ? 'Remove?' : <X className="h-3 w-3" aria-hidden />}
         </button>
       ) : null}
     </div>

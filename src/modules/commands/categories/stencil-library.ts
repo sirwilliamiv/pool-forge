@@ -9,6 +9,7 @@ import {
   ConverterMissingError,
   getStencilConverter,
 } from '@/modules/imports/visio/convert'
+import { scaleRings } from '@/modules/imports/visio/scale'
 import { sniffVisio } from '@/modules/imports/visio/sniff'
 import {
   CandidateSchema,
@@ -55,8 +56,6 @@ const ANONYMOUS = 'anonymous'
 /** Placeholder id the server returns; the client handler creates the real shape. */
 const CLIENT_PENDING_SHAPE_ID = 'client-pending'
 
-const COORDINATE_DECIMALS = 6
-const COORDINATE_FACTOR = 10 ** COORDINATE_DECIMALS
 
 const LibraryError = {
   NOT_AUTHENTICATED: 'Not authenticated',
@@ -77,37 +76,6 @@ async function authorId(userId: string): Promise<string | null> {
   return user?.id ?? null
 }
 
-function round(value: number): number {
-  return Math.round(value * COORDINATE_FACTOR) / COORDINATE_FACTOR
-}
-
-interface ScaledRings {
-  rings: Ring[]
-  widthIn: number
-  heightIn: number
-}
-
-/**
- * Drawing inches to real inches. Rings arrive normalized with the top-left at
- * the origin, so the first ring's bounds are the footprint's size.
- */
-function scaleStored(rings: Ring[], inchesPerInch: number): ScaledRings {
-  const scaled = rings.map(ring => ring.map(p => ({ x: round(p.x * inchesPerInch), y: round(p.y * inchesPerInch) })))
-  const footprint = scaled[0] ?? []
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const p of footprint) {
-    minX = Math.min(minX, p.x)
-    minY = Math.min(minY, p.y)
-    maxX = Math.max(maxX, p.x)
-    maxY = Math.max(maxY, p.y)
-  }
-  const widthIn = footprint.length > 0 ? round(maxX - minX) : 0
-  const heightIn = footprint.length > 0 ? round(maxY - minY) : 0
-  return { rings: scaled, widthIn, heightIn }
-}
 
 const summarySelect = {
   id: true,
@@ -253,7 +221,7 @@ register({
 
         const written: SummaryRow[] = []
         for (const { item, candidate } of plan) {
-          const scaled = scaleStored(candidate.rings, input.scaleInchesPerInch)
+          const scaled = scaleRings(candidate.rings, input.scaleInchesPerInch)
           const fields = {
             category: item.category,
             shapeKind: item.shapeKind,
