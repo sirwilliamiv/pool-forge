@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { polygonArea } from '@/lib/geometry/polygon-footprint'
 import { flattenMaster } from '@/modules/imports/visio/flatten'
 import { outlineOf } from '@/modules/imports/visio/outline'
-import { previewFromRaw } from '@/modules/imports/visio/pipeline'
+import { detailOrKind, previewFromRaw } from '@/modules/imports/visio/pipeline'
 import { parseRaw } from '@/modules/imports/visio/raw-parser'
 import { scaleRings } from '@/modules/imports/visio/scale'
 import { FLATTEN_TOLERANCE_IN, SkipReason, StoredCandidateSchema, VISIO_SCALE_DEFAULT } from '@/modules/imports/visio/types'
@@ -74,6 +74,26 @@ describe('previewFromRaw on Pool.vss', () => {
     const jets = result.candidates.find(c => c.name === 'Deck Jets (5)')!
     expect(jets.thumbnailSvg).toContain('<svg')
     expect(jets.index).toBe(29)
+  })
+})
+
+describe('detail tiles', () => {
+  // Pool.vss carries hatch tiles for decks (a 2.8' score pattern, an 8" brick)
+  // under deck-like names. As decks they would price by area and read as a
+  // deck the size of a doormat; as outlines they are the detail they are.
+  it("Deck Score 2' Tan Diag is an outline, not a 2.8 foot concrete deck", () => {
+    const { candidates } = previewFromRaw(POOL, { fileName: 'Pool.vss' })
+    const tile = candidates.find(c => c.name === "Deck Score 2' Tan Diag")
+    expect(tile).toBeDefined()
+    expect(tile?.category).toBe(StencilCategory.DECK_HOUSE)
+    expect(tile?.shapeKind).toBe(ShapeKind.SKETCH_PATH)
+  })
+
+  it('keeps a full-size deck or spa as itself', () => {
+    expect(detailOrKind(ShapeKind.CONCRETE_DECK, 60, 40)).toBe(ShapeKind.CONCRETE_DECK)
+    expect(detailOrKind(ShapeKind.SPA, 10.5, 10.5)).toBe(ShapeKind.SPA)
+    expect(detailOrKind(ShapeKind.SPA, 0.4, 0.4)).toBe(ShapeKind.SKETCH_PATH)
+    expect(detailOrKind(ShapeKind.POLYGON_POOL, 0.4, 0.4)).toBe(ShapeKind.POLYGON_POOL)
   })
 })
 

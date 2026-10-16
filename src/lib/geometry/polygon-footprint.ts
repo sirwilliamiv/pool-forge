@@ -245,3 +245,26 @@ function segmentsIntersect(
     ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
   )
 }
+
+/** Scale a ring about its own origin, so a shape's points follow a new width and height. */
+export function scalePolygon(points: readonly PolygonPoint[], sx: number, sy: number): PolygonPoint[] {
+  return points.map(p => ({ x: p.x * sx, y: p.y * sy }))
+}
+
+/**
+ * A plan ring as the XY contour of a mesh that will be laid flat with
+ * `rotateX(-90deg)`.
+ *
+ * Centred on the bounding box, so the mesh rotates about its centre the way
+ * the handles and every other object do; and with y negated, because that
+ * rotation carries +y to world -z while plan +y is world +z. Without the
+ * negation a freeform pool draws mirrored above its own selection box, which
+ * is what the handles, the halo and the pool disagreeing on screen looked like.
+ */
+export function contourForFlatExtrude(
+  points: readonly PolygonPoint[],
+  width: number,
+  height: number,
+): PolygonPoint[] {
+  return points.map(p => ({ x: p.x - width / 2, y: -(p.y - height / 2) }))
+}

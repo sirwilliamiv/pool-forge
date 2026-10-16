@@ -1,7 +1,8 @@
 'use client'
 
 import { create } from 'zustand'
-import { SHAPE_DEFAULTS, ShapeKind, type Shape } from './shapes'
+import { SHAPE_DEFAULTS, ShapeKind, isPolygonPool, isSketchPath, type Shape } from './shapes'
+import { scalePolygon } from '@/lib/geometry/polygon-footprint'
 import { useHistoryStore } from './historyStore'
 import { getStencil } from '@/modules/editor/stencils'
 
@@ -60,6 +61,25 @@ let txTimer: ReturnType<typeof setTimeout> | null = null
 
 function rid(prefix = 'shape') {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+/**
+ * Merge a patch, keeping a ring in step with its box.
+ *
+ * For a freeform pool or a drawn outline the points are the shape; width and
+ * height only describe them. A resize, from the handles or the inspector,
+ * writes the box alone, so the ring is scaled to match here. Before this the
+ * handles, the layer list and the quote all moved while the drawing stayed
+ * exactly where it was. A patch that carries its own points wins.
+ */
+function applyPatch(s: Shape, patch: Partial<Shape>): Shape {
+  const next = { ...s, ...patch } as Shape
+  if ('points' in patch) return next
+  if (!(isPolygonPool(s) || isSketchPath(s))) return next
+  const sx = s.width > 0 && next.width !== s.width ? next.width / s.width : 1
+  const sy = s.height > 0 && next.height !== s.height ? next.height / s.height : 1
+  if (sx === 1 && sy === 1) return next
+  return { ...next, points: scalePolygon(s.points, sx, sy) } as Shape
 }
 
 function defaultsFor(
@@ -231,9 +251,7 @@ export const useShapesStore = create<ShapesState>((set, get) => {
       txTimer = setTimeout(endTransaction, TRANSACTION_AUTOCOMMIT_MS)
 
       set({
-        shapes: get().shapes.map((s) =>
-          s.id === id ? ({ ...s, ...patch } as Shape) : s,
-        ),
+        shapes: get().shapes.map((s) => (s.id === id ? applyPatch(s, patch) : s)),
       })
     },
 

@@ -244,6 +244,14 @@ export const LibraryCommand = {
 } as const
 export type LibraryCommand = (typeof LibraryCommand)[keyof typeof LibraryCommand]
 
+/**
+ * Below this size on both sides, at the default scale, a master classified as
+ * a deck or a spa is a detail (a score line, a brick, a coping corner) and
+ * imports as an outline instead. A 2.8' "deck" prices as a deck and is never
+ * one; a real deck or spa is larger than this on at least one side.
+ */
+export const DETAIL_MAX_REAL_IN = 48
+
 /** Omit `hidden` to flip; pass it to set. */
 export const CatalogToggleInputSchema = z.object({ hidden: z.boolean().optional() })
 export type CatalogToggleInput = z.infer<typeof CatalogToggleInputSchema>

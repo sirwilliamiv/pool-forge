@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 import { feet } from '@/lib/three/units'
-import { normalizePolygon } from '@/lib/geometry/polygon-footprint'
+import { contourForFlatExtrude, normalizePolygon } from '@/lib/geometry/polygon-footprint'
 import { isPolygonPool, type Shape } from '@/modules/editor/state/shapes'
 import { getMaterial, waterDefault } from '../Materials'
 
@@ -34,7 +34,9 @@ function buildContour(outline: readonly { x: number; y: number }[]): THREE.Shape
 
 // Freeform pool: the basin is the footprint ring extruded downward, so the
 // render matches what the measurement engine measures. Points are inches
-// relative to the shape origin; the group is placed at that origin.
+// relative to the shape's top-left; the contour is recentred and flipped for
+// the flat extrusion (see `contourForFlatExtrude`) and the group sits at the
+// box centre, so rotation turns about the same point the handles turn about.
 export function PolygonPool({ shape, materialId }: Props) {
   const ref = useRef<THREE.Group>(null)
   useEffect(() => {
@@ -42,7 +44,12 @@ export function PolygonPool({ shape, materialId }: Props) {
   }, [shape.id])
 
   const outline = useMemo(
-    () => normalizePolygon(isPolygonPool(shape) ? shape.points : []),
+    () =>
+      contourForFlatExtrude(
+        normalizePolygon(isPolygonPool(shape) ? shape.points : []),
+        shape.width,
+        shape.height,
+      ),
     [shape],
   )
 
@@ -79,7 +86,7 @@ export function PolygonPool({ shape, materialId }: Props) {
   return (
     <group
       ref={ref}
-      position={[feet(shape.x), 0, feet(shape.y)]}
+      position={[feet(shape.x + shape.width / 2), 0, feet(shape.y + shape.height / 2)]}
       rotation={[0, (shape.rotation * Math.PI) / 180, 0]}
     >
       {/* Extrusion is built in the XY plane, so lay it flat and push it down. */}

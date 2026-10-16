@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  contourForFlatExtrude,
   isSelfIntersecting,
   normalizePolygon,
   polygonArea,
   polygonBounds,
   polygonCentroid,
   polygonPerimeter,
+  scalePolygon,
   signedDoubleArea,
   type PolygonPoint,
 } from '@/lib/geometry/polygon-footprint'
@@ -208,5 +210,27 @@ describe('isSelfIntersecting', () => {
 
   it('is false below four points', () => {
     expect(isSelfIntersecting([pt(0, 0), pt(12, 0), pt(0, 12)])).toBe(false)
+  })
+})
+
+describe('scalePolygon', () => {
+  it('scales each axis about the origin', () => {
+    expect(scalePolygon([{ x: 0, y: 0 }, { x: 10, y: 4 }], 2, 0.5)).toEqual([{ x: 0, y: 0 }, { x: 20, y: 2 }])
+  })
+})
+
+describe('contourForFlatExtrude', () => {
+  // A mesh laid flat with rotateX(-90deg) sends +y to world -z, and plan +y is
+  // world +z. So the plan's top-left corner has to come out at the contour's
+  // top-left: negative x, positive y. Getting this wrong drew every freeform
+  // pool mirrored above its own selection box.
+  it('centres the ring and flips y so plan down becomes world +z after the flat rotation', () => {
+    const ring = [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }, { x: 0, y: 10 }]
+    expect(contourForFlatExtrude(ring, 20, 10)).toEqual([
+      { x: -10, y: 5 },
+      { x: 10, y: 5 },
+      { x: 10, y: -5 },
+      { x: -10, y: -5 },
+    ])
   })
 })
