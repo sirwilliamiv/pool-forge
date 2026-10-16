@@ -599,6 +599,26 @@ const EXERCISES: Record<string, Exercise> = {
     kind: 'server',
     why: 'Removes a SceneTemplate row.',
   },
+  'stencil.library.preview': {
+    kind: 'server',
+    why: 'Runs the Visio converter on a staged upload and writes a StencilImport row.',
+  },
+  'stencil.library.commit': {
+    kind: 'server',
+    why: 'Writes OrgStencil rows and marks the StencilImport committed in one transaction.',
+  },
+  'stencil.library.list': {
+    kind: 'server',
+    why: 'Reads OrgStencil rows for the org through Prisma, so it cannot run without a database.',
+  },
+  'stencil.library.place': {
+    kind: 'server',
+    why: 'Loads the OrgStencil ring through Prisma; the client handler then adds the shape from the returned placement.',
+  },
+  'stencil.library.delete': {
+    kind: 'server',
+    why: 'Removes an OrgStencil row.',
+  },
 
   // ---------- navigation ----------
   'nav.goto': {

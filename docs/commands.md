@@ -1,5 +1,6 @@
-Wrote 115 commands to /Users/b/Desktop/code/Pool-forge/docs/commands.md
-s/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **115**.
+# Pool Forge Command Reference
+
+Auto-generated from `src/modules/commands/categories/*`. Run `pnpm tsx scripts/gen-commands.ts` to regenerate. Total commands: **130**.
 
 ## Project
 
@@ -26,6 +27,22 @@ Record a customer's signed acceptance of a shared proposal and advance the proje
 
 **Voice examples:**
 - "Mark the Rivera proposal as accepted by Dana Reyes."
+
+### `project.status.set` — Set project status
+
+Move a project along the pipeline: Draft, Ready for review, Proposal sent, Approved, Construction ready, or Archived.
+
+**Voice examples:**
+- "Mark this project approved."
+- "Set the status to proposal sent."
+
+### `project.update` — Update project details
+
+Save the project page: site address, customer, permit facts, pool specs, and equipment selections.
+
+**Voice examples:**
+- "Set the salesperson to Ray Delgado."
+- "The customer email is dana@example.com."
 
 ### `save.project` — Save project
 
@@ -443,6 +460,32 @@ Save the current selection as a reusable shape template.
 - "Save this as a template called Standard Backyard."
 - "Save shape as a template."
 
+### `stencil.library.commit` — Add stencils to my library
+
+Add the reviewed stencils from a previewed file to this organization's library at the chosen scale, replacing any of the same name.
+
+### `stencil.library.delete` — Delete a stencil from my library
+
+Remove one of this organization's own stencils. Drawings that already use it are untouched.
+
+### `stencil.library.list` — List my stencil library
+
+The stencils this organization has imported, grouped by category and sorted by name.
+
+**Voice examples:**
+- "What is in my stencil library?"
+
+### `stencil.library.place` — Place a stencil from my library
+
+Drop one of this organization's own stencils onto the drawing at real size.
+
+**Voice examples:**
+- "Drop my kidney pool here."
+
+### `stencil.library.preview` — Preview a stencil file
+
+Read an uploaded Visio stencil file and list the stencils it contains, ready to review before they join the library.
+
 ### `template.scene.apply` — Apply scene template
 
 Put a saved scene into this project, either alongside what is already drawn or in place of it.
@@ -850,6 +893,10 @@ Report how much of an area was actually measured by the site capture and how muc
 ### `capture.heightfield.ingest` — Take in a walked site capture
 
 Take the heightfield from a phone that walked the site and make it the existing ground. The elevations come in as a grid with a coverage mask, and only the cells somebody actually walked become survey shots. The benchmark the builder tapped sets the datum.
+
+### `capture.synthesize` — Simulate a walked site capture
+
+Fabricate a plausible walked-site heightfield for this project and take it in through the same pipeline a real capture uses, so the terrain, coverage and earthwork can be seen without an iPhone.
 
 ## Notes on the drawing
 
